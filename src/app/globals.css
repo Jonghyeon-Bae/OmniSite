@@ -1,0 +1,53 @@
+@import "tailwindcss";
+
+:root {
+  /* HSL 프리미엄 다크 컬러 시스템 */
+  --bg-main: hsl(222, 47%, 6%);
+  --bg-surface: hsla(223, 47%, 11%, 0.75);
+  --border-glass: rgba(255, 255, 255, 0.08);
+  
+  /* 상태 및 강조 색상 */
+  --color-accent: hsl(217, 91%, 60%);
+  --color-danger: hsla(354, 84%, 57%, 0.4);
+  --color-success: hsla(142, 70%, 50%, 0.65);
+  --color-text-primary: hsl(0, 0%, 100%);
+  --color-text-secondary: hsl(215, 20%, 65%);
+}
+
+body {
+  background: var(--bg-main);
+  color: var(--color-text-primary);
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* 글래스모피즘 패널 공통 유틸리티 */
+.glass-panel {
+  background: var(--bg-surface);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--border-glass);
+  border-radius: 16px;
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
+  color: var(--color-text-primary);
+}
+
+/* 지도 영역 레이아웃 컨테이너 */
+.map-container {
+  width: 100%;
+  height: 100vh;
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 1;
+}
+
+/* 대시보드 플로팅 오버레이 패널 */
+.floating-overlay {
+  position: absolute;
+  z-index: 10;
+  pointer-events: auto;
+}

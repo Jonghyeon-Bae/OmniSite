@@ -1,0 +1,6 @@
+{
+  "summary":  "Replaced 'src/app/dashboard/page.js' to add dynamic HTML/PDF download logic with Korean CSS print styling, removed gamified credit items, and implemented historical logs modal viewer.",
+  "updatedAt":  "2026-07-03T04:38:08.595076500Z",
+  "requestFeedback":  true,
+  "userFacing":  true
+}

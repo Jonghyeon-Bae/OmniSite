@@ -363,4 +363,14 @@ CREATE INDEX idx_city_features_type ON city_spatial_features (feature_type);
     *   지도 영역을 독립된 자식 컴포넌트(`InteractiveMap.js`)로 완전 분리하고, **`React.memo`**로 랩핑하여 부모 컴포넌트의 슬라이더 값 변화가 지도의 재초기화를 유발하지 않도록 통제합니다.
     *   Next.js에서 SSR(서버 사이드 렌더링) 시 `window` 객체 부재로 인한 맵 빌드 크래시를 방지하기 위해, `next/dynamic` 모듈을 이용하여 **`ssr: false` 옵션으로 지도를 Lazy-loading 로드**합니다.
 
+---
+
+## 6. 🔌 REST API 명세 (RAG 및 조례 관리 엔드포인트)
+
+| Method | Endpoint | Description | Request Body / Params | Response Schema (200 OK) |
+| :---: | :--- | :--- | :--- | :--- |
+| **GET** | `/api/v1/upload/regulations` | 등록된 조례/시행규칙 목록 비동기 조회 | 없음 | `{"regulations": [{"filename": "string", "size_bytes": 0}]}` |
+| **POST** | `/api/v1/upload/regulation` | 조례 PDF 다중 등록 및 텍스트 캐싱 (중복 차단 적용) | `files: Multipart/form-data` | `{"message": "string", "files": [...]}` (중복 시 `400 Bad Request` 에러) |
+| **DELETE** | `/api/v1/upload/regulations/{filename}` | 조례 물리 파일 및 추출된 텍스트 캐시(.txt) 동시 삭제 | `filename` (Path Variable) | `{"message": "성공적으로 [filename] 및 연관 캐시를 삭제했습니다."}` |
+
 

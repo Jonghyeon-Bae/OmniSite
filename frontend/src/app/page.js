@@ -24,6 +24,8 @@ export default function Home() {
   const [showRagModal, setShowRagModal] = useState(false);
   const [ragUploadSuccess, setRagUploadSuccess] = useState(false);
   const [isRegulationUploading, setIsRegulationUploading] = useState(false);
+  const [showRegulationListModal, setShowRegulationListModal] = useState(false);
+  const [regulationList, setRegulationList] = useState([]);
   const [userPurpose, setUserPurpose] = useState('');
   const [uploadedCsvFilename, setUploadedCsvFilename] = useState('');
   const [columnMapping, setColumnMapping] = useState({});
@@ -471,6 +473,39 @@ export default function Home() {
     setShowLoginModal(false);
   };
 
+  // 조례 목록 비동기 조회
+  const fetchRegulations = async () => {
+    try {
+      const response = await fetch('/api/v1/upload/regulations');
+      if (!response.ok) throw new Error('조례 목록 조회 실패');
+      const data = await response.json();
+      setRegulationList(data.regulations || []);
+    } catch (error) {
+      console.error("Failed to fetch regulations:", error);
+    }
+  };
+
+  // 조례 물리 삭제 및 캐시 수거 처리
+  const handleDeleteRegulation = async (filename) => {
+    if (!confirm(`정말로 '${filename}' 조례를 삭제하시겠습니까?\n삭제된 법규는 RAG 감리 데이터베이스에서 영구 제외됩니다.`)) {
+      return;
+    }
+    try {
+      const response = await fetch(`/api/v1/upload/regulations/${encodeURIComponent(filename)}`, {
+        method: 'DELETE'
+      });
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.detail || '삭제 실패');
+      }
+      const data = await response.json();
+      alert(data.message || '조례가 삭제되었습니다.');
+      fetchRegulations();
+    } catch (error) {
+      alert('조례 삭제 중 오류: ' + error.message);
+    }
+  };
+
   // 조례 및 규제 법령 PDF 개별 등록 이벤트 핸들러 (다중 업로드 지원)
   const handleRegulationFileChange = async (e) => {
     const files = e.target.files;
@@ -502,6 +537,7 @@ export default function Home() {
       }
       const data = await response.json();
       setRagUploadSuccess(true);
+      fetchRegulations(); // 업로드 성공 시 목록 갱신
     } catch (error) {
       alert('조례 등록 중 오류: ' + error.message);
     } finally {
@@ -626,6 +662,15 @@ export default function Home() {
           <Link href="/dashboard" className="text-slate-400 hover:text-white transition-all pb-1">이력 대시보드 (Analytics)</Link>
         </nav>
         <div className="flex items-center gap-4">
+          <button 
+            onClick={() => {
+              setShowRegulationListModal(true);
+              fetchRegulations();
+            }}
+            className="text-xs bg-slate-800 hover:bg-slate-700 border border-slate-700/80 text-slate-200 px-3.5 py-1.5 rounded-lg font-semibold cursor-pointer transition-all flex items-center gap-1.5"
+          >
+            📋 조례 목록 조회
+          </button>
           <button 
             onClick={() => setShowRagModal(true)}
             className="text-xs bg-slate-800 hover:bg-slate-700 border border-slate-700/80 text-slate-200 px-3.5 py-1.5 rounded-lg font-semibold cursor-pointer transition-all flex items-center gap-1.5"
@@ -1074,6 +1119,63 @@ export default function Home() {
               className="w-full bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white text-xs font-bold py-2.5 rounded-lg transition-all"
             >
               확인 및 닫기
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* 📋 등록된 조례 목록 조회 모달 */}
+      {showRegulationListModal && (
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="glass-panel w-full max-w-md p-6 flex flex-col gap-4 relative animate-fade-in">
+            <button 
+              onClick={() => {
+                setShowRegulationListModal(false);
+              }}
+              className="absolute top-4 right-4 text-slate-400 hover:text-white font-bold cursor-pointer"
+            >
+              ✕
+            </button>
+            <div>
+              <h3 className="text-sm font-bold text-white mb-1">📋 등록된 조례/법규 목록</h3>
+              <p className="text-[11px] text-slate-400">RAG 지식베이스에 적재되어 공간 감리에 반영되고 있는 조례 문서들입니다.</p>
+            </div>
+            
+            <div className="border border-slate-800 rounded-lg p-3 bg-slate-900/40 flex flex-col gap-2">
+              <div className="max-h-60 overflow-y-auto pr-1 flex flex-col gap-2">
+                {regulationList.length === 0 ? (
+                  <p className="text-center py-8 text-xs text-slate-500 font-medium">등록된 조례/시행규칙이 없습니다.</p>
+                ) : (
+                  regulationList.map((reg) => (
+                    <div key={reg.filename} className="flex justify-between items-center bg-slate-950/50 border border-slate-800/80 p-2.5 rounded-lg">
+                      <div className="flex flex-col gap-0.5 max-w-[80%]">
+                        <span className="text-[11px] font-semibold text-slate-200 truncate" title={reg.filename}>
+                          {reg.filename}
+                        </span>
+                        <span className="text-[9px] text-slate-500 font-mono">
+                          {(reg.size_bytes / 1024).toFixed(1)} KB
+                        </span>
+                      </div>
+                      <button
+                        onClick={() => handleDeleteRegulation(reg.filename)}
+                        className="text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 p-1.5 rounded-md transition-all shrink-0 cursor-pointer"
+                        title="조례 삭제"
+                      >
+                        🗑️
+                      </button>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+            
+            <button 
+              onClick={() => {
+                setShowRegulationListModal(false);
+              }}
+              className="w-full bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white text-xs font-bold py-2.5 rounded-lg transition-all"
+            >
+              닫기
             </button>
           </div>
         </div>

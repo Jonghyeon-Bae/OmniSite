@@ -275,8 +275,15 @@ async def upload_regulation_files(files: List[UploadFile] = File(...)):
                 detail=f"조례/법규 문서는 오직 PDF 또는 HWP 형식만 업로드할 수 있습니다. 허용군: {list(DOCUMENT_EXTENSIONS)}"
             )
 
-        category = "document"
+        # 중복 파일 검증
         saved_path = os.path.join(UPLOAD_DIR, filename)
+        if os.path.exists(saved_path):
+            raise HTTPException(
+                status_code=400,
+                detail=f"이미 등록된 법규 파일입니다: {filename}"
+            )
+
+        category = "document"
         with open(saved_path, "wb") as buffer:
             while chunk := await file.read(1024 * 1024):
                 buffer.write(chunk)
@@ -302,6 +309,55 @@ async def upload_regulation_files(files: List[UploadFile] = File(...)):
         "message": f"성공적으로 {len(files)}개 조례/시행규칙 파일을 등록 및 텍스트 캐싱 완료했습니다.",
         "files": uploaded_info
     }
+
+# 등록된 조례/시행규칙 규정 목록 조회 API
+@router.get("/upload/regulations")
+async def list_regulations():
+    try:
+        files_list = []
+        if os.path.exists(UPLOAD_DIR):
+            for filename in os.listdir(UPLOAD_DIR):
+                ext = filename.split(".")[-1].lower() if "." in filename else ""
+                if ext in DOCUMENT_EXTENSIONS:
+                    file_path = os.path.join(UPLOAD_DIR, filename)
+                    files_list.append({
+                        "filename": filename,
+                        "size_bytes": os.path.getsize(file_path)
+                    })
+        return {"regulations": files_list}
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"조례 목록 조회 중 오류가 발생했습니다: {str(e)}"
+        )
+
+# 등록된 조례/시행규칙 규정 삭제 API
+@router.delete("/upload/regulations/{filename}")
+async def delete_regulation(filename: str):
+    try:
+        file_path = os.path.join(UPLOAD_DIR, filename)
+        if not os.path.exists(file_path):
+            raise HTTPException(
+                status_code=404,
+                detail=f"삭제할 법규 파일을 찾을 수 없습니다: {filename}"
+            )
+        
+        # 원본 파일 물리 삭제
+        os.remove(file_path)
+        
+        # 캐싱된 텍스트 파일도 존재하면 삭제
+        cache_path = file_path + ".txt"
+        if os.path.exists(cache_path):
+            os.remove(cache_path)
+            
+        return {"message": f"성공적으로 {filename} 및 연관 캐시를 삭제했습니다."}
+    except Exception as e:
+        if isinstance(e, HTTPException):
+            raise e
+        raise HTTPException(
+            status_code=500,
+            detail=f"조례 삭제 중 오류가 발생했습니다: {str(e)}"
+        )
 
 # PM 개발 철칙 2조 준수: 반드시 비동기 API(async def) 적용
 @router.post("/upload")

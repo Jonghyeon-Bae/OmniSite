@@ -1,12 +1,15 @@
-# 📋 Task List: 법규 RAG 독립 모달 분리 및 다중 업로드(Multi-Upload) 지원
+# 📋 Task List: 조례 목록 조회, 중복 검증 및 삭제 기능 구현
 
-- [x] **1단계: Next.js 프론트엔드 UI/UX 수정 (`page.js`)**
-  - [x] React 상태값에 `showRagModal` 및 `ragUploadSuccess` 추가
-  - [x] 글로벌 헤더 우측 소속 정보 영역 옆에 **"⚖️ 법규 RAG 관리"** 단추 추가 및 모달 트리거 바인딩
-  - [x] 메인 좌측 플로팅 패널(Left Panel)에서 조례 PDF 업로드 섹션 완전히 제거
-  - [x] 팝업 모달 다이얼로그 `⚖️ 법규 RAG 데이터베이스 관리` 마크업 및 스타일링 신설
-  - [x] 조례 업로드 함수 `handleRegulationFileChange`를 세션 보존이 아닌 단발성 "캐싱 성공 피드백"으로 교정
-  - [x] 조례 및 공간 CSV 업로더를 모두 다중 파일 선택(`multiple`) 및 다중 파일 서버 전송(FormData `files` 루프) 구조로 전면 확장
-- [x] **2단계: E2E 통합 테스트 및 이관**
-  - [x] 브라우저 상에서 RAG 모달을 통한 PDF 등록 및 메인 CSV 감리 연동 수동 검증
-  - [x] `task.md` 및 `walkthrough.md` 최신 상태 동기화 및 1.0-prototype/docs/ 폴더로 복사 이관
+- [x] **1단계: 백엔드 API 보완 (`backend/app/routers/upload.py`)**
+  - [x] 조례 PDF 업로드 (`POST /upload/regulation`) 시 동일한 파일명이 존재할 경우 중복 예외(400) 반환
+  - [x] 조례 물리 파일 및 텍스트 캐시 동시 수거 API (`DELETE /upload/regulations/{filename}`) 신규 작성
+- [x] **2단계: 프론트엔드 UI/UX 개발 (`frontend/src/app/page.js`)**
+  - [x] React 상태값에 `showRegulationListModal` 및 `regulationList` 추가
+  - [x] 조례 목록 조회 비동기 fetch 함수 (`fetchRegulations`) 및 삭제 핸들러 (`handleDeleteRegulation`) 구현
+  - [x] 조례 업로드 성공 시 `fetchRegulations()` 연동 갱신 추가
+  - [x] 글로벌 헤더에 **"📋 조례 목록 조회"** 단추 추가 및 모달 트리거 바인딩
+  - [x] `📋 등록된 조례 목록` 독립 모달 컴포넌트 마크업 설계 (스크롤 및 휴지통 삭제 단추 포함)
+- [x] **3단계: 통합 검증 및 문서 이관**
+  - [x] 백엔드 및 프론트엔드 프로세스 가동
+  - [x] `scratch/e2e_test.py`에 조례 중복 및 삭제 검증 코드 추가 후 통합 테스트 실행
+  - [x] `task.md` 및 `walkthrough.md` 상태 업데이트 동기화 및 1.0-prototype/docs/ 폴더로 최종 이관 복사

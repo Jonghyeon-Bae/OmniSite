@@ -99,8 +99,16 @@ def parse_csv_file(file_path: str):
         detail=f"CSV 파일 인코딩을 판독할 수 없거나 읽을 수 없습니다: {os.path.basename(file_path)}"
     )
 
-# PDF 텍스트 추출 헬퍼
+# PDF 텍스트 추출 헬퍼 (로컬 캐시 적용)
 def extract_pdf_text(file_path: str) -> str:
+    cache_path = file_path + ".txt"
+    if os.path.exists(cache_path):
+        try:
+            with open(cache_path, "r", encoding="utf-8") as f:
+                return f.read()
+        except Exception:
+            pass
+
     try:
         reader = PdfReader(file_path)
         text_content = ""
@@ -108,6 +116,16 @@ def extract_pdf_text(file_path: str) -> str:
             page_text = page.extract_text()
             if page_text:
                 text_content += page_text + "\n"
+            if len(text_content) >= 3000:
+                break
+
+        # 추출 텍스트 캐싱 저장
+        try:
+            with open(cache_path, "w", encoding="utf-8") as f:
+                f.write(text_content)
+        except Exception:
+            pass
+
         return text_content
     except Exception as e:
         raise HTTPException(
@@ -241,31 +259,36 @@ class HITLCommitRequest(BaseModel):
     confirmed_domain: Optional[str] = None
 
 # PM 개발 철칙 2조 준수: 반드시 비동기 API(async def) 적용
-@router.post("/upload")
-async def upload_files(files: List[UploadFile] = File(...)):
+# 조례/시행규칙 규정 문서 등록 API
+@router.post("/upload/regulation")
+async def upload_regulation_files(files: List[UploadFile] = File(...)):
     uploaded_info = []
 
     for file in files:
         filename = file.filename
         content_type = file.content_type
-
         ext = filename.split(".")[-1].lower() if "." in filename else ""
 
-        if ext not in ALLOWED_EXTENSIONS:
+        if ext not in DOCUMENT_EXTENSIONS:
             raise HTTPException(
                 status_code=400,
-                detail=f"지원하지 않는 확장자입니다: .{ext}. 허용군: {list(ALLOWED_EXTENSIONS)}"
+                detail=f"조례/법규 문서는 오직 PDF 또는 HWP 형식만 업로드할 수 있습니다. 허용군: {list(DOCUMENT_EXTENSIONS)}"
             )
 
-        category = "spatial" if ext in SPATIAL_EXTENSIONS else "document"
-
+        category = "document"
         saved_path = os.path.join(UPLOAD_DIR, filename)
         with open(saved_path, "wb") as buffer:
             while chunk := await file.read(1024 * 1024):
                 buffer.write(chunk)
 
-        file_size = os.path.getsize(saved_path)
+        # PDF일 경우 텍스트를 미리 추출/캐싱하여 RAG 인프라 준비
+        if ext == "pdf":
+            try:
+                extract_pdf_text(saved_path)
+            except Exception:
+                pass
 
+        file_size = os.path.getsize(saved_path)
         uploaded_info.append({
             "filename": filename,
             "size_bytes": file_size,
@@ -276,7 +299,44 @@ async def upload_files(files: List[UploadFile] = File(...)):
         })
 
     return {
-        "message": f"성공적으로 {len(files)}개 파일을 검증 및 적재 완료했습니다.",
+        "message": f"성공적으로 {len(files)}개 조례/시행규칙 파일을 등록 및 텍스트 캐싱 완료했습니다.",
+        "files": uploaded_info
+    }
+
+# PM 개발 철칙 2조 준수: 반드시 비동기 API(async def) 적용
+@router.post("/upload")
+async def upload_files(files: List[UploadFile] = File(...)):
+    uploaded_info = []
+
+    for file in files:
+        filename = file.filename
+        content_type = file.content_type
+        ext = filename.split(".")[-1].lower() if "." in filename else ""
+
+        if ext != "csv":
+            raise HTTPException(
+                status_code=400,
+                detail=f"공간 데이터셋은 오직 CSV 형식만 업로드할 수 있습니다. 입력 파일: .{ext}"
+            )
+
+        category = "spatial"
+        saved_path = os.path.join(UPLOAD_DIR, filename)
+        with open(saved_path, "wb") as buffer:
+            while chunk := await file.read(1024 * 1024):
+                buffer.write(chunk)
+
+        file_size = os.path.getsize(saved_path)
+        uploaded_info.append({
+            "filename": filename,
+            "size_bytes": file_size,
+            "content_type": content_type,
+            "extension": ext,
+            "category": category,
+            "saved_path": saved_path
+        })
+
+    return {
+        "message": f"성공적으로 {len(files)}개 공간 데이터(CSV) 파일을 검증 및 적재 완료했습니다.",
         "files": uploaded_info
     }
 
@@ -287,6 +347,16 @@ async def audit_upload_files(request: AuditRequest):
     csv_headers_list = []
     csv_results_dict = {}
     
+    # 서버에 등록/저장된 기존 PDF 규제 파일들을 동적으로 스캔하여 매핑
+    try:
+        pdf_filenames = [f for f in os.listdir(UPLOAD_DIR) if f.endswith(".pdf")]
+        for pdf_filename in pdf_filenames:
+            pdf_path = os.path.join(UPLOAD_DIR, pdf_filename)
+            pdf_text = extract_pdf_text(pdf_path)
+            pdf_texts.append(f"조례 파일명: {pdf_filename}\n내용:\n{pdf_text[:3000]}")
+    except Exception as e:
+        pdf_texts.append(f"서버 내 기존 조례 스캔 중 오류: {str(e)}")
+
     for filename in request.filenames:
         file_path = os.path.join(UPLOAD_DIR, filename)
         if not os.path.exists(file_path):
@@ -294,13 +364,7 @@ async def audit_upload_files(request: AuditRequest):
             
         ext = filename.split(".")[-1].lower() if "." in filename else ""
         
-        if ext == "pdf":
-            try:
-                pdf_text = extract_pdf_text(file_path)
-                pdf_texts.append(f"파일명: {filename}\n내용:\n{pdf_text[:3000]}")
-            except Exception as e:
-                pdf_texts.append(f"파일명: {filename}\n내용: (PDF 텍스트 추출 오류: {str(e)})")
-        elif ext == "csv":
+        if ext == "csv":
             try:
                 headers = parse_csv_header(file_path)
                 detected_mapping, schema_errors = analyze_csv_header_only(headers)
@@ -325,6 +389,7 @@ async def audit_upload_files(request: AuditRequest):
     inferred_purpose = "일반 스마트시티 공간의사결정 입지 분석"
     inferred_domain_tag = "city_feature"
     hitl_question = "업로드하신 데이터를 토대로 공간 입지 분석을 진행하시겠습니까?"
+    reasoning_global = "조례 파일명 및 공간 데이터 속성을 교차 대조하여 감리를 수행했습니다."
     opinion_global = "업로드된 데이터셋에 대한 감리를 완료했습니다."
     rules_matched_global = []
     
@@ -337,9 +402,9 @@ async def audit_upload_files(request: AuditRequest):
         
         prompt = f"""
 당신은 스마트시티 다목적 공간의사결정시스템(SDSS)의 지능형 감리 AI 에이전트입니다.
-사용자가 이번 입지 분석을 진행하기 위해 일괄 업로드한 행정 조례 문서(PDF)와 공간 데이터 파일(CSV) 목록 및 구조는 다음과 같습니다.
+사용자가 이번 입지 분석을 진행하기 위해 등록한 행정 조례 문서(PDF)와 업로드한 공간 데이터 파일(CSV) 목록 및 구조는 다음과 같습니다.
 
-[업로드된 조례 문서 정보]
+[서버에 등록된 조례 문서 정보]
 {pdf_context if pdf_context else "없음"}
 
 [업로드된 공간 데이터 파일 정보]
@@ -349,14 +414,16 @@ async def audit_upload_files(request: AuditRequest):
 1. inferred_purpose: 이번 입지 분석의 시맨틱 목적 추론 (예: "실외 흡연구역 입지 선정 및 간접흡연 규제 배제 분석", "전기차 충전소 최적 입지 매핑 및 규제구역 제외 분석")
 2. inferred_domain_tag: 도메인 분류 영문 태그 (예: smoking_zone, smart_shelter, yellow_carpet, ev_charging)
 3. hitl_question: 사용자(공무원)에게 의사결정 목적이 맞는지 최종 확정하기 위한 확인 질문 (예: "업로드하신 데이터들은 [실외 흡연구역/흡연구역 지정]을 위한 입지 분석이 맞습니까?")
-4. opinion: 전체 조례 및 공간 데이터를 교차 검토하여 특정 시설물 제한 구역(예: 어린이집 반경 10m 금역, 학교 200m 정화구역 등)에 대한 감리 평가 의견
-5. rules_matched: 조례 상에서 식별해 낸 구체적인 입지 제약 조항 목록
+4. reasoning: 어떤 조례 문서의 조항 구절과 어떤 CSV 파일명의 키워드 및 컬럼 헤더들을 대조하여 위 inferred_purpose와 inferred_domain_tag를 판독했는지 상세히 서술하십시오 (예: "'용산구 금연구역 지정 조례 규칙' 내 버스정류장 반경 10m 제한 조항과 업로드된 CSV 파일 내의 '담배꽁초/위도/경도' 컬럼을 교차 분석하여, 흡연 부지 선정을 위한 입지분석 목적임을 추론했습니다.")
+5. opinion: 전체 조례 및 공간 데이터를 교차 검토하여 특정 시설물 제한 구역(예: 어린이집 반경 10m 금역, 학교 200m 정화구역 등)에 대한 감리 평가 의견
+6. rules_matched: 조례 상에서 식별해 낸 구체적인 입지 제약 조항 목록
 
 반드시 아래 JSON 포맷으로만 응답해야 합니다 (Markdown 없이 순수 JSON만 반환):
 {{
   "inferred_purpose": "추론한 입지 분석 목적",
   "inferred_domain_tag": "영문 도메인 태그",
   "hitl_question": "사용자 확인 질문",
+  "reasoning": "위 도메인 및 목적을 추론한 구체적인 분석 근거 상세 설명",
   "opinion": "전체 조례 검토 의견 및 시맨틱 입지 분석 방향 요약",
   "rules_matched": [
     {{
@@ -380,19 +447,21 @@ async def audit_upload_files(request: AuditRequest):
             inferred_purpose = result_json.get("inferred_purpose", inferred_purpose)
             inferred_domain_tag = result_json.get("inferred_domain_tag", inferred_domain_tag)
             hitl_question = result_json.get("hitl_question", hitl_question)
+            reasoning_global = result_json.get("reasoning", reasoning_global)
             opinion_global = result_json.get("opinion", opinion_global)
             rules_matched_global = result_json.get("rules_matched", [])
             ai_success = True
         except Exception as e:
             opinion_global = f"AI 교차 감리 도중 예외가 발생하여 로컬 룰 엔진으로 대체합니다. (에러: {str(e)})"
 
-    # 로컬 Fallback 규칙 기반 자동 추정
+    # 로컬 Fallback 규칙 기반 자동 추정 및 reasoning 생성
     if not ai_success:
         combined_text = " ".join(pdf_texts) + " " + " ".join(request.filenames)
         if any(keyword in combined_text for keyword in ["금연", "흡연", "smoking", "tobacco"]):
             inferred_purpose = "실외 흡연구역 입지 선정 및 간접흡연 규제 배제 분석"
             inferred_domain_tag = "smoking_zone"
             hitl_question = "업로드하신 데이터들은 [실외 흡연구역/흡연구역 지정]을 위한 입지 분석이 맞습니까?"
+            reasoning_global = "공간 데이터 파일명 및 컬럼 구조에서 금연/흡연(smoking) 관련 키워드가 감지되었으며, 서버에 보관된 금연 규제 시행규칙 조항과 교차 매핑하여 실외 흡연구역 선정을 위한 입지분석 목적으로 자동 추론했습니다. (로컬 Fallback 판독)"
             rules_matched_global = [{
                 "clause": "용산구 금연구역 지정 조례(추정)",
                 "description": "금연구역 경계선으로부터 10미터 이내 지정 (로컬 Fallback 추정)",
@@ -402,10 +471,12 @@ async def audit_upload_files(request: AuditRequest):
             inferred_purpose = "전기차 충전소 최적 입지 매핑 및 규제구역 제외 분석"
             inferred_domain_tag = "ev_charging"
             hitl_question = "업로드하신 데이터들은 [전기차 충전 인프라 설치]를 위한 입지 분석이 맞습니까?"
+            reasoning_global = "공간 데이터 파일명에서 전기차/충전(ev) 관련 키워드가 감지되어, 친환경 충전 인프라 부지 선정을 위한 분석 목적으로 자동 추론했습니다. (로컬 Fallback 판독)"
         elif any(keyword in combined_text for keyword in ["어린이", "보행", "안전", "스쿨", "school"]):
             inferred_purpose = "어린이 보호구역 옐로카펫 및 안심 횡단보도 설치 분석"
             inferred_domain_tag = "yellow_carpet"
             hitl_question = "업로드하신 데이터들은 [어린이 교통 안전 및 옐로카펫 설치]를 위한 입지 분석이 맞습니까?"
+            reasoning_global = "공간 데이터 파일명에서 어린이/스쿨구역 관련 키워드가 감지되어, 어린이 교통 보호 및 옐로카펫 설치를 위한 분석 목적으로 자동 추론했습니다. (로컬 Fallback 판독)"
 
     results = []
     for filename in request.filenames:
@@ -423,16 +494,6 @@ async def audit_upload_files(request: AuditRequest):
                 "column_mapping": meta.get("detected_mapping", {}),
                 "rules_matched": []
             })
-        elif ext == "pdf":
-            results.append({
-                "filename": filename,
-                "status": "pass" if ai_success else "warning",
-                "score": 0.85 if ai_success else 0.50,
-                "opinion": opinion_global,
-                "schema_errors": [],
-                "missing_coordinates": [],
-                "rules_matched": rules_matched_global
-            })
         else:
             results.append({
                 "filename": filename,
@@ -449,6 +510,7 @@ async def audit_upload_files(request: AuditRequest):
         "inferred_purpose": inferred_purpose,
         "inferred_domain_tag": inferred_domain_tag,
         "hitl_question": hitl_question,
+        "reasoning": reasoning_global,
         "results": results
     }
 
@@ -564,8 +626,14 @@ async def commit_hitl_data(request: HITLCommitRequest, db: Session = Depends(get
     committed_count = 0
     details_applied = []
     
-    # 2. 보정값 대조 및 PostGIS DB 마이그레이션 트랜잭션 실행
+    # 2. 보정값 대조 및 PostGIS DB 마이그레이션 트랜잭션 실행 (Bulk Insert 적용)
     try:
+        insert_query = text("""
+            INSERT INTO city_spatial_features (district_id, feature_type, feature_name, geom, properties)
+            VALUES (:district_id, :feature_type, :feature_name, ST_SetSRID(ST_MakePoint(:lng, :lat), 4326), :properties)
+        """)
+        
+        params_list = []
         for idx, row in enumerate(rows):
             if len(row) <= max(lat_idx, lng_idx):
                 continue
@@ -584,30 +652,26 @@ async def commit_hitl_data(request: HITLCommitRequest, db: Session = Depends(get
                     
             addr_val = row[addr_idx] if addr_idx != -1 and addr_idx < len(row) else f"행 번호 {idx+1}"
             
-            # PostGIS ST_SetSRID 및 ST_MakePoint로 지오메트리 객체 생성 적재
-            query = text("""
-                INSERT INTO city_spatial_features (district_id, feature_type, feature_name, geom, properties)
-                VALUES (:district_id, :feature_type, :feature_name, ST_SetSRID(ST_MakePoint(:lng, :lat), 4326), :properties)
-            """)
-            
             properties_json = json.dumps({
                 "address": addr_val, 
                 "original_row": row,
                 "domain": request.confirmed_domain
             }, ensure_ascii=False)
             
-            # confirmed_domain이 명시되었으면 해당 도메인을 feature_type으로 저장하고, 없으면 기본 룰 활용
             feature_type_val = request.confirmed_domain if request.confirmed_domain else ("smoking_zone" if "smoking" in request.filename.lower() else "city_feature")
             
-            db.execute(query, {
-                "district_id": 1,  # 서울특별시 용산구 (sig_cd: 11170) 마스터 ID
+            params_list.append({
+                "district_id": 1,
                 "feature_type": feature_type_val,
                 "feature_name": request.filename,
                 "lng": final_lng,
                 "lat": final_lat,
                 "properties": properties_json
             })
-            committed_count += 1
+            
+        if params_list:
+            db.execute(insert_query, params_list)
+            committed_count = len(params_list)
             
         db.commit()
     except Exception as e:

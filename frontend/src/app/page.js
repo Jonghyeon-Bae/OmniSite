@@ -20,6 +20,10 @@ export default function Home() {
   const [inferredPurpose, setInferredPurpose] = useState('');
   const [inferredDomainTag, setInferredDomainTag] = useState('city_feature');
   const [hitlQuestion, setHitlQuestion] = useState('');
+  const [inferredReasoning, setInferredReasoning] = useState('');
+  const [showRagModal, setShowRagModal] = useState(false);
+  const [ragUploadSuccess, setRagUploadSuccess] = useState(false);
+  const [isRegulationUploading, setIsRegulationUploading] = useState(false);
   const [userPurpose, setUserPurpose] = useState('');
   const [uploadedCsvFilename, setUploadedCsvFilename] = useState('');
   const [columnMapping, setColumnMapping] = useState({});
@@ -467,10 +471,57 @@ export default function Home() {
     setShowLoginModal(false);
   };
 
-  // 실제 파일 선택 이벤트 핸들러 및 AI 교차 감리 API 트리거
+  // 조례 및 규제 법령 PDF 개별 등록 이벤트 핸들러 (다중 업로드 지원)
+  const handleRegulationFileChange = async (e) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    
+    for (let i = 0; i < files.length; i++) {
+      const ext = files[i].name.split('.').pop().toLowerCase();
+      if (ext !== 'pdf') {
+        alert('⚠️ 조례/규칙 문서는 오직 PDF 형식만 업로드 가능합니다.');
+        return;
+      }
+    }
+
+    setIsRegulationUploading(true);
+    setRagUploadSuccess(false);
+    try {
+      const formData = new FormData();
+      for (let i = 0; i < files.length; i++) {
+        formData.append('files', files[i]);
+      }
+
+      const response = await fetch('/api/v1/upload/regulation', {
+        method: 'POST',
+        body: formData
+      });
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.detail || '조례 업로드 실패');
+      }
+      const data = await response.json();
+      setRagUploadSuccess(true);
+    } catch (error) {
+      alert('조례 등록 중 오류: ' + error.message);
+    } finally {
+      setIsRegulationUploading(false);
+    }
+  };
+
+  // 실제 공간 데이터(CSV) 파일 선택 이벤트 핸들러 및 AI 감리 API 트리거 (다중 업로드 지원)
   const handleFileChange = async (e) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
+    
+    for (let i = 0; i < files.length; i++) {
+      const ext = files[i].name.split('.').pop().toLowerCase();
+      if (ext !== 'csv') {
+        alert('⚠️ 공간 데이터셋은 오직 CSV 형식만 업로드 가능합니다.');
+        return;
+      }
+    }
+
     setIsUploading(true);
     try {
       const formData = new FormData();
@@ -478,7 +529,7 @@ export default function Home() {
         formData.append('files', files[i]);
       }
 
-      // 1. 원천 데이터 일괄 업로드 API
+      // 1. 원천 데이터 일괄 업로드 API (CSV 다중 업로드)
       const uploadRes = await fetch('/api/v1/upload', {
         method: 'POST',
         body: formData
@@ -505,18 +556,40 @@ export default function Home() {
       setInferredPurpose(auditData.inferred_purpose);
       setInferredDomainTag(auditData.inferred_domain_tag);
       setHitlQuestion(auditData.hitl_question);
+      setInferredReasoning(auditData.reasoning || '');
       setUserPurpose(auditData.inferred_purpose);
 
       const csvResult = auditData.results.find(r => r.filename.endsWith('.csv'));
       if (csvResult) {
         setUploadedCsvFilename(csvResult.filename);
         setColumnMapping(csvResult.column_mapping || {});
-        setMissingCoordinates(csvResult.missing_coordinates || []);
-        
-        if (csvResult.missing_coordinates && csvResult.missing_coordinates.length > 0) {
-          setHitlJibun(csvResult.missing_coordinates[0].address || '용산구 관내 결측지');
-          setHitlLat(37.5395);
-          setHitlLng(126.9721);
+        setMissingCoordinates([]);
+        try {
+          const geojsonRes = await fetch(`/api/v1/upload/geojson/${csvResult.filename}`);
+          if (geojsonRes.ok) {
+            const geojsonData = await geojsonRes.json();
+            const missing = geojsonData.features
+              .filter(f => f.properties && f.properties.status === 'missing_coordinate')
+              .map(f => ({
+                row_index: f.properties.row_index,
+                address: f.properties.address || '용산구 관내 결측지'
+              }));
+            setMissingCoordinates(missing);
+            
+            if (missing.length > 0) {
+              setHitlJibun(missing[0].address);
+              const firstMissingFeature = geojsonData.features.find(f => f.properties && f.properties.row_index === missing[0].row_index);
+              if (firstMissingFeature && firstMissingFeature.geometry && firstMissingFeature.geometry.coordinates) {
+                setHitlLng(firstMissingFeature.geometry.coordinates[0]);
+                setHitlLat(firstMissingFeature.geometry.coordinates[1]);
+              } else {
+                setHitlLat(37.5395);
+                setHitlLng(126.9721);
+              }
+            }
+          }
+        } catch (err) {
+          console.error("Failed to fetch geojson coordinates for correction:", err);
         }
       }
 
@@ -552,7 +625,13 @@ export default function Home() {
           <Link href="/" className="text-white border-b-2 border-blue-500 pb-1">입지분석 메인 (Map)</Link>
           <Link href="/dashboard" className="text-slate-400 hover:text-white transition-all pb-1">이력 대시보드 (Analytics)</Link>
         </nav>
-        <div>
+        <div className="flex items-center gap-4">
+          <button 
+            onClick={() => setShowRagModal(true)}
+            className="text-xs bg-slate-800 hover:bg-slate-700 border border-slate-700/80 text-slate-200 px-3.5 py-1.5 rounded-lg font-semibold cursor-pointer transition-all flex items-center gap-1.5"
+          >
+            ⚖️ 법규 RAG 관리
+          </button>
           {isLoggedIn ? (
             <span className="text-xs text-slate-300 font-medium">{department} | {municipalId}</span>
           ) : (
@@ -581,11 +660,13 @@ export default function Home() {
           </span>
         </div>
 
-        {/* [Step 1] 데이터 일괄 업로드 및 AI 감리 의도 검증 */}
+        {/* RAG 조례 업로더는 독립 모달로 분리됨 */}
+
+        {/* [Step 1] 공간 데이터 업로드 및 AI 감리 의도 검증 */}
         <div className={`flex flex-col gap-3 transition-all duration-300 ${pipelineStep !== 1 ? 'opacity-40 pointer-events-none' : ''}`}>
           <div className="flex justify-between items-center">
-            <label className="text-xs font-semibold text-slate-300">Step 1. 파일 일괄 수집 & AI 감리</label>
-            <span className="text-[10px] text-blue-400 font-mono">CSV, PDF (다목적 교차)</span>
+            <label className="text-xs font-semibold text-slate-300">Step 1. 공간 데이터 수집 & AI 감리</label>
+            <span className="text-[10px] text-blue-400 font-mono">CSV 전용 (분석용)</span>
           </div>
 
           {!isAuditComplete ? (
@@ -593,8 +674,8 @@ export default function Home() {
               onClick={triggerFileAudit}
               className="border-2 border-dashed border-slate-700 hover:border-blue-500 rounded-xl p-5 text-center cursor-pointer transition-all bg-slate-950/40 hover:bg-slate-900/30"
             >
-              <p className="text-xs text-slate-300 font-semibold">📁 파일 일괄 드래그앤드롭 (클릭)</p>
-              <p className="text-[10px] text-slate-500 mt-1">파일 수집 및 스키마 구조 분석 시작</p>
+              <p className="text-xs text-slate-300 font-semibold">📁 공간 데이터 CSV 업로드 (클릭)</p>
+              <p className="text-[10px] text-slate-500 mt-1">컬럼명 및 위치 결측 검증 가동</p>
               {isUploading && <p className="text-[10px] text-amber-400 mt-1 animate-pulse">업로드 및 AI 감리 분석 중...</p>}
             </div>
           ) : (
@@ -604,10 +685,16 @@ export default function Home() {
                 <span className="text-[11px] text-blue-400 font-bold">✓ AI 감리 결과 분석 완료</span>
                 <span className="text-[10px] text-slate-500">인프라 목적 판독</span>
               </div>
-              <div className="text-[11px] flex flex-col gap-2 text-slate-300 leading-relaxed">
+              <div className="text-[11px] flex flex-col gap-2.5 text-slate-300 leading-relaxed">
                 <p><strong className="text-slate-400">분석 의도 판독:</strong> {inferredPurpose}</p>
+                {inferredReasoning && (
+                  <div className="bg-slate-900/80 p-2.5 rounded border border-slate-800 text-[10px] text-slate-400 leading-normal font-mono">
+                    <strong className="text-slate-300 block mb-1">🔍 AI 감리 추론 근거 (Reasoning):</strong>
+                    {inferredReasoning}
+                  </div>
+                )}
                 {hitlQuestion && (
-                  <div className="bg-blue-950/40 p-2 rounded border border-blue-500/20 text-blue-300 font-medium">
+                  <div className="bg-blue-950/40 p-2.5 rounded border border-blue-500/20 text-blue-300 font-medium">
                     ❓ {hitlQuestion}
                   </div>
                 )}
@@ -648,6 +735,7 @@ export default function Home() {
           <input 
             type="file" 
             multiple 
+            accept=".csv" 
             id="file-uploader" 
             className="hidden" 
             onChange={handleFileChange} 
@@ -929,6 +1017,64 @@ export default function Home() {
                 행정망 접속 승인
               </button>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ⚖️ 법규 RAG 관리 모달 (Ingestion Modal) */}
+      {showRagModal && (
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="glass-panel w-full max-w-md p-6 flex flex-col gap-4 relative animate-fade-in">
+            <button 
+              onClick={() => {
+                setShowRagModal(false);
+                setRagUploadSuccess(false);
+              }}
+              className="absolute top-4 right-4 text-slate-400 hover:text-white font-bold cursor-pointer"
+            >
+              ✕
+            </button>
+            <div>
+              <h3 className="text-sm font-bold text-white mb-1">⚖️ 법규 RAG 데이터베이스 관리</h3>
+              <p className="text-[11px] text-slate-400">조례 및 시행령 PDF 문서를 텍스트로 벡터 캐싱하여 RAG 지식베이스를 구축합니다.</p>
+            </div>
+            
+            <div className="border border-slate-800 rounded-lg p-4 bg-slate-900/40 flex flex-col gap-3">
+              <div 
+                onClick={() => document.getElementById('modal-regulation-uploader').click()}
+                className="border-2 border-dashed border-slate-700 hover:border-blue-500 rounded-xl p-6 text-center cursor-pointer transition-all bg-slate-950/40 hover:bg-slate-900/30 flex flex-col items-center justify-center gap-1.5"
+              >
+                <span className="text-xl">⚖️</span>
+                <p className="text-xs text-slate-300 font-semibold">조례 및 법규 PDF 파일 등록</p>
+                <p className="text-[10px] text-slate-500">클릭하여 PDF 파일을 선택해 주세요.</p>
+                {isRegulationUploading && <p className="text-[10px] text-amber-400 mt-1 animate-pulse">RAG 적재 및 텍스트 벡터 캐싱 중...</p>}
+              </div>
+              
+              {ragUploadSuccess && (
+                <div className="bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[11px] p-2.5 rounded-lg text-center font-medium animate-pulse">
+                  ✓ 법규 문서의 RAG DB 적재가 성공적으로 완료되었습니다!
+                </div>
+              )}
+              
+              <input 
+                type="file" 
+                multiple 
+                accept=".pdf" 
+                id="modal-regulation-uploader" 
+                className="hidden" 
+                onChange={handleRegulationFileChange} 
+              />
+            </div>
+            
+            <button 
+              onClick={() => {
+                setShowRagModal(false);
+                setRagUploadSuccess(false);
+              }}
+              className="w-full bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white text-xs font-bold py-2.5 rounded-lg transition-all"
+            >
+              확인 및 닫기
+            </button>
           </div>
         </div>
       )}

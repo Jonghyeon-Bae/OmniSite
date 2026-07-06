@@ -677,6 +677,7 @@ export default function Home() {
           >
             ⚖️ 법규 RAG 관리
           </button>
+          {/* 
           {isLoggedIn ? (
             <span className="text-xs text-slate-300 font-medium">{department} | {municipalId}</span>
           ) : (
@@ -687,6 +688,7 @@ export default function Home() {
               공무원 로그인
             </button>
           )}
+          */}
         </div>
       </header>
 
@@ -1021,7 +1023,7 @@ export default function Home() {
         </div>
       )}
 
-      {/* 공무원 로그인 모달 */}
+      {/* 
       {showLoginModal && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-6">
           <div className="w-[400px] glass-panel p-6 flex flex-col gap-4">
@@ -1065,6 +1067,7 @@ export default function Home() {
           </div>
         </div>
       )}
+      */}
 
       {/* ⚖️ 법규 RAG 관리 모달 (Ingestion Modal) */}
       {showRagModal && (

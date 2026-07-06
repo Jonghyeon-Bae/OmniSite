@@ -1,0 +1,21 @@
+version: '3.8'
+
+services:
+  db:
+    build:
+      context: .
+      dockerfile: DB/Dockerfile
+    container_name: omnisite-db
+    environment:
+      POSTGRES_USER: Admin
+      POSTGRES_PASSWORD: admin1234
+      POSTGRES_DB: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./DB/init:/docker-entrypoint-initdb.d
+    restart: always
+
+volumes:
+  postgres_data:

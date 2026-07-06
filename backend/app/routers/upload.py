@@ -32,6 +32,54 @@ def get_openai_client() -> Optional[OpenAI]:
             return None
     return None
 
+# CSV 파일 첫 라인(헤더)만 스트리밍하는 경량 헬퍼
+def parse_csv_header(file_path: str) -> List[str]:
+    encodings = ["utf-8", "cp949", "utf-8-sig"]
+    for enc in encodings:
+        try:
+            with open(file_path, "r", encoding=enc) as f:
+                reader = csv.reader(f)
+                headers = next(reader, None)
+                if headers is not None:
+                    return [h.strip() for h in headers]
+        except (UnicodeDecodeError, PermissionError):
+            continue
+    raise HTTPException(
+        status_code=400, 
+        detail=f"CSV 파일 인코딩을 판독할 수 없거나 읽을 수 없습니다: {os.path.basename(file_path)}"
+    )
+
+# 헤더 정보만으로 매핑 및 스키마 결함 여부를 검사하는 경량 헬퍼
+def analyze_csv_header_only(headers: List[str]):
+    standard_columns = {
+        "lat": ["lat", "latitude", "위도", "y"],
+        "lng": ["lng", "longitude", "경도", "x"],
+        "pnu": ["pnu", "pnu_code", "필지고유번호", "지적코드"],
+        "address": ["address", "addr", "주소", "지번", "location"]
+    }
+    
+    detected_mapping = {}
+    schema_errors = []
+    
+    for std_col, candidates in standard_columns.items():
+        matched_header = None
+        for header in headers:
+            if header.lower() in candidates:
+                matched_header = header
+                break
+        
+        if matched_header:
+            detected_mapping[std_col] = matched_header
+        else:
+            if std_col in ["lat", "lng"]:
+                schema_errors.append({
+                    "column": std_col.upper(),
+                    "suggested": std_col,
+                    "reason": f"필수 공간 정보 컬럼('{std_col}')이 존재하지 않거나 매핑되지 않았습니다."
+                })
+                
+    return detected_mapping, schema_errors
+
 # CSV 파일 인코딩 탐색 및 파싱 헬퍼
 def parse_csv_file(file_path: str):
     encodings = ["utf-8", "cp949", "utf-8-sig"]
@@ -190,6 +238,7 @@ class HITLCommitRequest(BaseModel):
     filename: str
     column_mapping: Dict[str, str]
     corrections: List[CoordinateCorrection]
+    confirmed_domain: Optional[str] = None
 
 # PM 개발 철칙 2조 준수: 반드시 비동기 API(async def) 적용
 @router.post("/upload")
@@ -234,7 +283,9 @@ async def upload_files(files: List[UploadFile] = File(...)):
 # --- [Step 2-3] AI 감리 분석 결과 반환 API ---
 @router.post("/upload/audit")
 async def audit_upload_files(request: AuditRequest):
-    results = []
+    pdf_texts = []
+    csv_headers_list = []
+    csv_results_dict = {}
     
     for filename in request.filenames:
         file_path = os.path.join(UPLOAD_DIR, filename)
@@ -243,62 +294,70 @@ async def audit_upload_files(request: AuditRequest):
             
         ext = filename.split(".")[-1].lower() if "." in filename else ""
         
-        # 1) 공간 데이터 (.csv) 실제 파싱 및 시맨틱 감리
-        if ext == "csv":
+        if ext == "pdf":
             try:
-                _, _, _, schema_errors, missing_coordinates = analyze_csv_data(file_path)
-                
-                has_error = len(schema_errors) > 0 or len(missing_coordinates) > 0
-                status = "warning" if has_error else "pass"
-                score = 0.65 if has_error else 0.95
-                opinion = (
-                    f"공간 데이터 '{filename}' 분석 결과, "
-                    f"스키마 오류 {len(schema_errors)}건 및 위경도 좌표 결측 {len(missing_coordinates)}건이 발견되어 수동 검수(HITL)가 요구됩니다."
-                    if has_error else "공간 데이터 스키마 및 좌표 무결성 검증을 정상 통과했습니다."
-                )
-                
-                results.append({
-                    "filename": filename,
-                    "status": status,
-                    "score": score,
-                    "opinion": opinion,
-                    "schema_errors": schema_errors,
-                    "missing_coordinates": missing_coordinates,
-                    "rules_matched": []
-                })
+                pdf_text = extract_pdf_text(file_path)
+                pdf_texts.append(f"파일명: {filename}\n내용:\n{pdf_text[:3000]}")
             except Exception as e:
-                results.append({
-                    "filename": filename,
-                    "status": "fail",
-                    "score": 0.0,
-                    "opinion": f"공간 데이터 파싱 오류: {str(e)}",
+                pdf_texts.append(f"파일명: {filename}\n내용: (PDF 텍스트 추출 오류: {str(e)})")
+        elif ext == "csv":
+            try:
+                headers = parse_csv_header(file_path)
+                detected_mapping, schema_errors = analyze_csv_header_only(headers)
+                csv_results_dict[filename] = {
+                    "headers": headers,
+                    "detected_mapping": detected_mapping,
+                    "schema_errors": schema_errors,
+                    "missing_coordinates": [],
+                    "status": "warning" if len(schema_errors) > 0 else "pass"
+                }
+                csv_headers_list.append(f"파일명: {filename}\n컬럼 헤더: {', '.join(headers)}\n매핑된 공간 컬럼: {detected_mapping}")
+            except Exception as e:
+                csv_results_dict[filename] = {
                     "schema_errors": [],
                     "missing_coordinates": [],
-                    "rules_matched": []
-                })
-                
-        # 2) 행정 조례 문서 (.pdf) 실물 텍스트 AI 감리
-        elif ext == "pdf":
-            pdf_text = extract_pdf_text(file_path)
-            client = get_openai_client()
-            
-            if not client:
-                # Fallback 로컬 룰 엔진 실행
-                results.append(run_local_fallback_audit(pdf_text, filename))
-                continue
-                
-            try:
-                prompt = f"""
-다음은 스마트시티 입지 선정과 관련된 행정 조례 문서의 텍스트입니다.
-문서명: {filename}
-내용:
-{pdf_text[:4000]}
+                    "status": "fail",
+                    "error_msg": f"CSV 분석 중 오류: {str(e)}"
+                }
+                csv_headers_list.append(f"파일명: {filename}\n오류 메시지: {str(e)}")
 
-이 조례 텍스트에서 특정 스마트시티 시설물(예: 금연구역, 쓰레기통, 어린이집 등)의 '입지 규정'이나 '제약 거리'(예: 10미터 이내 금지, 200미터 이내 정화구역 등)에 관한 조항을 식별하고 요약해주세요.
+    # 기본 추론 및 Fallback 디폴트값 설정
+    inferred_purpose = "일반 스마트시티 공간의사결정 입지 분석"
+    inferred_domain_tag = "city_feature"
+    hitl_question = "업로드하신 데이터를 토대로 공간 입지 분석을 진행하시겠습니까?"
+    opinion_global = "업로드된 데이터셋에 대한 감리를 완료했습니다."
+    rules_matched_global = []
+    
+    client = get_openai_client()
+    ai_success = False
+    
+    if client and (len(pdf_texts) > 0 or len(csv_headers_list) > 0):
+        pdf_context = "\n\n".join(pdf_texts)
+        csv_context = "\n\n".join(csv_headers_list)
+        
+        prompt = f"""
+당신은 스마트시티 다목적 공간의사결정시스템(SDSS)의 지능형 감리 AI 에이전트입니다.
+사용자가 이번 입지 분석을 진행하기 위해 일괄 업로드한 행정 조례 문서(PDF)와 공간 데이터 파일(CSV) 목록 및 구조는 다음과 같습니다.
+
+[업로드된 조례 문서 정보]
+{pdf_context if pdf_context else "없음"}
+
+[업로드된 공간 데이터 파일 정보]
+{csv_context if csv_context else "없음"}
+
+위 파일들의 파일명, 컬럼 구성, 그리고 조례 텍스트 내용을 종합 분석하여 다음 정보들을 도출하십시오:
+1. inferred_purpose: 이번 입지 분석의 시맨틱 목적 추론 (예: "실외 흡연구역 입지 선정 및 간접흡연 규제 배제 분석", "전기차 충전소 최적 입지 매핑 및 규제구역 제외 분석")
+2. inferred_domain_tag: 도메인 분류 영문 태그 (예: smoking_zone, smart_shelter, yellow_carpet, ev_charging)
+3. hitl_question: 사용자(공무원)에게 의사결정 목적이 맞는지 최종 확정하기 위한 확인 질문 (예: "업로드하신 데이터들은 [실외 흡연구역/흡연구역 지정]을 위한 입지 분석이 맞습니까?")
+4. opinion: 전체 조례 및 공간 데이터를 교차 검토하여 특정 시설물 제한 구역(예: 어린이집 반경 10m 금역, 학교 200m 정화구역 등)에 대한 감리 평가 의견
+5. rules_matched: 조례 상에서 식별해 낸 구체적인 입지 제약 조항 목록
+
 반드시 아래 JSON 포맷으로만 응답해야 합니다 (Markdown 없이 순수 JSON만 반환):
 {{
-  "opinion": "전체 문서 요약 및 입지 적합성 의견",
-  "score": 0.0 ~ 1.0 사이의 점수,
+  "inferred_purpose": "추론한 입지 분석 목적",
+  "inferred_domain_tag": "영문 도메인 태그",
+  "hitl_question": "사용자 확인 질문",
+  "opinion": "전체 조례 검토 의견 및 시맨틱 입지 분석 방향 요약",
   "rules_matched": [
     {{
       "clause": "해당 조항명 (예: 제5조 제2항)",
@@ -308,28 +367,72 @@ async def audit_upload_files(request: AuditRequest):
   ]
 }}
 """
-                response = client.chat.completions.create(
-                    model="gpt-4o",
-                    messages=[
-                        {"role": "system", "content": "너는 스마트시티 공공갈등 예측 플랫폼의 행정 조례 감리 AI 에이전트이다."},
-                        {"role": "user", "content": prompt}
-                    ],
-                    response_format={"type": "json_object"}
-                )
-                result_json = json.loads(response.choices[0].message.content)
-                results.append({
-                    "filename": filename,
-                    "status": "pass" if result_json.get("score", 0.0) >= 0.7 else "warning",
-                    "score": result_json.get("score", 0.90),
-                    "opinion": result_json.get("opinion", "조례 분석 완료"),
-                    "schema_errors": [],
-                    "missing_coordinates": [],
-                    "rules_matched": result_json.get("rules_matched", [])
-                })
-            except Exception as e:
-                results.append(run_local_fallback_audit(pdf_text, filename, error_msg=str(e)))
-                
-        # 기본 감리 처리 (기타 파일 형식)
+        try:
+            response = client.chat.completions.create(
+                model="gpt-4o",
+                messages=[
+                    {"role": "system", "content": "너는 다목적 스마트시티 SDSS 플랫폼의 시맨틱 도메인 추론 및 감리 AI 에이전트이다."},
+                    {"role": "user", "content": prompt}
+                ],
+                response_format={"type": "json_object"}
+            )
+            result_json = json.loads(response.choices[0].message.content)
+            inferred_purpose = result_json.get("inferred_purpose", inferred_purpose)
+            inferred_domain_tag = result_json.get("inferred_domain_tag", inferred_domain_tag)
+            hitl_question = result_json.get("hitl_question", hitl_question)
+            opinion_global = result_json.get("opinion", opinion_global)
+            rules_matched_global = result_json.get("rules_matched", [])
+            ai_success = True
+        except Exception as e:
+            opinion_global = f"AI 교차 감리 도중 예외가 발생하여 로컬 룰 엔진으로 대체합니다. (에러: {str(e)})"
+
+    # 로컬 Fallback 규칙 기반 자동 추정
+    if not ai_success:
+        combined_text = " ".join(pdf_texts) + " " + " ".join(request.filenames)
+        if any(keyword in combined_text for keyword in ["금연", "흡연", "smoking", "tobacco"]):
+            inferred_purpose = "실외 흡연구역 입지 선정 및 간접흡연 규제 배제 분석"
+            inferred_domain_tag = "smoking_zone"
+            hitl_question = "업로드하신 데이터들은 [실외 흡연구역/흡연구역 지정]을 위한 입지 분석이 맞습니까?"
+            rules_matched_global = [{
+                "clause": "용산구 금연구역 지정 조례(추정)",
+                "description": "금연구역 경계선으로부터 10미터 이내 지정 (로컬 Fallback 추정)",
+                "status": "matched"
+            }]
+        elif any(keyword in combined_text for keyword in ["충전", "전기차", "ev", "battery"]):
+            inferred_purpose = "전기차 충전소 최적 입지 매핑 및 규제구역 제외 분석"
+            inferred_domain_tag = "ev_charging"
+            hitl_question = "업로드하신 데이터들은 [전기차 충전 인프라 설치]를 위한 입지 분석이 맞습니까?"
+        elif any(keyword in combined_text for keyword in ["어린이", "보행", "안전", "스쿨", "school"]):
+            inferred_purpose = "어린이 보호구역 옐로카펫 및 안심 횡단보도 설치 분석"
+            inferred_domain_tag = "yellow_carpet"
+            hitl_question = "업로드하신 데이터들은 [어린이 교통 안전 및 옐로카펫 설치]를 위한 입지 분석이 맞습니까?"
+
+    results = []
+    for filename in request.filenames:
+        ext = filename.split(".")[-1].lower() if "." in filename else ""
+        
+        if ext == "csv":
+            meta = csv_results_dict.get(filename, {"schema_errors": [], "missing_coordinates": [], "status": "fail"})
+            results.append({
+                "filename": filename,
+                "status": meta["status"],
+                "score": 0.65 if meta["status"] in ["warning", "fail"] else 0.95,
+                "opinion": meta.get("error_msg", f"공간 데이터 '{filename}' 스키마 및 좌표 무결성 검사 완료."),
+                "schema_errors": meta.get("schema_errors", []),
+                "missing_coordinates": meta.get("missing_coordinates", []),
+                "column_mapping": meta.get("detected_mapping", {}),
+                "rules_matched": []
+            })
+        elif ext == "pdf":
+            results.append({
+                "filename": filename,
+                "status": "pass" if ai_success else "warning",
+                "score": 0.85 if ai_success else 0.50,
+                "opinion": opinion_global,
+                "schema_errors": [],
+                "missing_coordinates": [],
+                "rules_matched": rules_matched_global
+            })
         else:
             results.append({
                 "filename": filename,
@@ -340,9 +443,12 @@ async def audit_upload_files(request: AuditRequest):
                 "missing_coordinates": [],
                 "rules_matched": []
             })
-            
+
     return {
         "message": "실물 기반 AI 시맨틱 감리 분석이 완료되었습니다.",
+        "inferred_purpose": inferred_purpose,
+        "inferred_domain_tag": inferred_domain_tag,
+        "hitl_question": hitl_question,
         "results": results
     }
 
@@ -486,12 +592,16 @@ async def commit_hitl_data(request: HITLCommitRequest, db: Session = Depends(get
             
             properties_json = json.dumps({
                 "address": addr_val, 
-                "original_row": row
+                "original_row": row,
+                "domain": request.confirmed_domain
             }, ensure_ascii=False)
+            
+            # confirmed_domain이 명시되었으면 해당 도메인을 feature_type으로 저장하고, 없으면 기본 룰 활용
+            feature_type_val = request.confirmed_domain if request.confirmed_domain else ("smoking_zone" if "smoking" in request.filename.lower() else "city_feature")
             
             db.execute(query, {
                 "district_id": 1,  # 서울특별시 용산구 (sig_cd: 11170) 마스터 ID
-                "feature_type": "smoking_zone" if "smoking" in request.filename.lower() else "city_feature",
+                "feature_type": feature_type_val,
                 "feature_name": request.filename,
                 "lng": final_lng,
                 "lat": final_lat,

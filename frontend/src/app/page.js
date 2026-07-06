@@ -16,6 +16,16 @@ export default function Home() {
   const [isAuditComplete, setIsAuditComplete] = useState(false);
   const [auditMetadata, setAuditMetadata] = useState(null);
 
+  // 신규 AI 감리 & HITL 목적/도메인 바인딩 상태
+  const [inferredPurpose, setInferredPurpose] = useState('');
+  const [inferredDomainTag, setInferredDomainTag] = useState('city_feature');
+  const [hitlQuestion, setHitlQuestion] = useState('');
+  const [userPurpose, setUserPurpose] = useState('');
+  const [uploadedCsvFilename, setUploadedCsvFilename] = useState('');
+  const [columnMapping, setColumnMapping] = useState({});
+  const [missingCoordinates, setMissingCoordinates] = useState([]);
+  const [isUploading, setIsUploading] = useState(false);
+
   // 1. AHP 가중치 입력 상태
   const [ahpWeights, setAhpWeights] = useState({
     traffic: 5,
@@ -373,22 +383,49 @@ export default function Home() {
   }, [activeTab, selectedParcel]);
 
   // HITL 보정 완료
-  const handleHitlCommit = () => {
+  const handleHitlCommit = async () => {
     if (!isValidCoordinate(hitlLat, hitlLng)) {
       alert('⚠️ 예외 감지: 입력된 좌표가 결측치(Null/Zero) 상태이거나 위경도 한계를 이탈했습니다. (군사기지 및 주요 보안시설로 자동 감지되어 분석 후보군에서 즉시 예외 처리 및 격리 제외됩니다.)');
       return;
     }
-    setSelectedParcel(prev => ({
-      ...prev,
-      [activeTab]: {
-        ...prev[activeTab],
-        jibun: hitlJibun,
+
+    const payload = {
+      filename: uploadedCsvFilename || 'unknown.csv',
+      column_mapping: columnMapping,
+      corrections: missingCoordinates.map(mc => ({
+        row_index: mc.row_index,
         lat: hitlLat,
         lng: hitlLng
+      })),
+      confirmed_domain: inferredDomainTag
+    };
+
+    try {
+      const response = await fetch('/api/v1/upload/hitl/commit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.detail || '보정 커밋 실패');
       }
-    }));
-    setPipelineStep(3);
-    alert('공간 좌표 및 지번 속성이 보정 완료되었습니다. [Step 3: AHP 인자 설정] 단계를 진행합니다.');
+      const data = await response.json();
+      
+      setSelectedParcel(prev => ({
+        ...prev,
+        [activeTab]: {
+          ...prev[activeTab],
+          jibun: hitlJibun,
+          lat: hitlLat,
+          lng: hitlLng
+        }
+      }));
+      setPipelineStep(3);
+      alert(data.message || '공간 좌표 및 지번 속성이 보정 완료되었습니다. [Step 3: AHP 인자 설정] 단계를 진행합니다.');
+    } catch (error) {
+      alert('보정 커밋 중 오류: ' + error.message);
+    }
   };
 
   // AI 시뮬레이션 개시
@@ -430,15 +467,76 @@ export default function Home() {
     setShowLoginModal(false);
   };
 
-  // Step 1 파일 드롭 모사 및 AI 감리 수행
+  // 실제 파일 선택 이벤트 핸들러 및 AI 교차 감리 API 트리거
+  const handleFileChange = async (e) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    setIsUploading(true);
+    try {
+      const formData = new FormData();
+      for (let i = 0; i < files.length; i++) {
+        formData.append('files', files[i]);
+      }
+
+      // 1. 원천 데이터 일괄 업로드 API
+      const uploadRes = await fetch('/api/v1/upload', {
+        method: 'POST',
+        body: formData
+      });
+      if (!uploadRes.ok) {
+        const err = await uploadRes.json();
+        throw new Error(err.detail || '파일 업로드 실패');
+      }
+      const uploadData = await uploadRes.json();
+      const filenames = uploadData.files.map(f => f.filename);
+
+      // 2. AI 교차 시맨틱 목적 추론 감리 API 호출
+      const auditRes = await fetch('/api/v1/upload/audit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ filenames })
+      });
+      if (!auditRes.ok) {
+        throw new Error('AI 시맨틱 감리 분석 중 오류가 발생했습니다.');
+      }
+      const auditData = await auditRes.json();
+
+      // 3. 추론 결과 기반 상태 세팅
+      setInferredPurpose(auditData.inferred_purpose);
+      setInferredDomainTag(auditData.inferred_domain_tag);
+      setHitlQuestion(auditData.hitl_question);
+      setUserPurpose(auditData.inferred_purpose);
+
+      const csvResult = auditData.results.find(r => r.filename.endsWith('.csv'));
+      if (csvResult) {
+        setUploadedCsvFilename(csvResult.filename);
+        setColumnMapping(csvResult.column_mapping || {});
+        setMissingCoordinates(csvResult.missing_coordinates || []);
+        
+        if (csvResult.missing_coordinates && csvResult.missing_coordinates.length > 0) {
+          setHitlJibun(csvResult.missing_coordinates[0].address || '용산구 관내 결측지');
+          setHitlLat(37.5395);
+          setHitlLng(126.9721);
+        }
+      }
+
+      setAuditMetadata({
+        fileName: filenames.join(' / '),
+        schemaScore: 95,
+        inferredIntention: auditData.inferred_purpose,
+        features: filenames
+      });
+      setIsAuditComplete(true);
+    } catch (error) {
+      alert('오류 발생: ' + error.message);
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  // 기존 모킹 함수는 백워드 컴팩트성을 위해 남겨둠
   const triggerFileAudit = () => {
-    setIsAuditComplete(true);
-    setAuditMetadata({
-      fileName: 'Yongsan_Smart_Facility_2026.shp / Traffic_Flow.csv',
-      schemaScore: 98,
-      inferredIntention: '도시 스마트 공간 인프라 (흡연부스/정화지/쉼터 등) 설치 입지 타당성 분석',
-      features: ['geom (MultiPolygon)', 'traffic_density (Float)', 'complaint_count (Int)']
-    });
+    document.getElementById('file-uploader').click();
   };
 
   return (
@@ -487,7 +585,7 @@ export default function Home() {
         <div className={`flex flex-col gap-3 transition-all duration-300 ${pipelineStep !== 1 ? 'opacity-40 pointer-events-none' : ''}`}>
           <div className="flex justify-between items-center">
             <label className="text-xs font-semibold text-slate-300">Step 1. 파일 일괄 수집 & AI 감리</label>
-            <span className="text-[10px] text-blue-400 font-mono">SHP, CSV, PDF, HWP</span>
+            <span className="text-[10px] text-blue-400 font-mono">CSV, PDF (다목적 교차)</span>
           </div>
 
           {!isAuditComplete ? (
@@ -495,28 +593,65 @@ export default function Home() {
               onClick={triggerFileAudit}
               className="border-2 border-dashed border-slate-700 hover:border-blue-500 rounded-xl p-5 text-center cursor-pointer transition-all bg-slate-950/40 hover:bg-slate-900/30"
             >
-              <p className="text-xs text-slate-300 font-semibold">📁 파일 일괄 드래그앤드롭</p>
+              <p className="text-xs text-slate-300 font-semibold">📁 파일 일괄 드래그앤드롭 (클릭)</p>
               <p className="text-[10px] text-slate-500 mt-1">파일 수집 및 스키마 구조 분석 시작</p>
+              {isUploading && <p className="text-[10px] text-amber-400 mt-1 animate-pulse">업로드 및 AI 감리 분석 중...</p>}
             </div>
           ) : (
             /* AI 감리 결과 판독 및 실무자 의도 승인 루프 */
             <div className="bg-slate-950/60 p-4 rounded-xl border border-blue-500/30 flex flex-col gap-3">
               <div className="flex justify-between items-center border-b border-slate-900 pb-1.5">
-                <span className="text-[11px] text-blue-400 font-bold">✓ AI 감리 결과 (98% 일치)</span>
-                <span className="text-[10px] text-slate-500">인프라 스펙 매핑 성공</span>
+                <span className="text-[11px] text-blue-400 font-bold">✓ AI 감리 결과 분석 완료</span>
+                <span className="text-[10px] text-slate-500">인프라 목적 판독</span>
               </div>
-              <div className="text-[11px] flex flex-col gap-1 text-slate-300 leading-relaxed">
-                <p><strong className="text-slate-400">분석 의도 판독:</strong> {auditMetadata.inferredIntention}</p>
-                <p><strong className="text-slate-400">스키마 확인:</strong> {auditMetadata.features.join(', ')}</p>
+              <div className="text-[11px] flex flex-col gap-2 text-slate-300 leading-relaxed">
+                <p><strong className="text-slate-400">분석 의도 판독:</strong> {inferredPurpose}</p>
+                {hitlQuestion && (
+                  <div className="bg-blue-950/40 p-2 rounded border border-blue-500/20 text-blue-300 font-medium">
+                    ❓ {hitlQuestion}
+                  </div>
+                )}
+                <div className="flex flex-col gap-1 my-1">
+                  <span className="text-slate-400">분석 목적 보정 (HITL)</span>
+                  <input
+                    type="text"
+                    value={userPurpose}
+                    onChange={(e) => {
+                      setUserPurpose(e.target.value);
+                      setInferredPurpose(e.target.value);
+                    }}
+                    className="bg-slate-900 border border-slate-700 rounded px-2.5 py-1 text-white text-[11px] outline-none focus:border-blue-500"
+                  />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <span className="text-slate-400">시맨틱 도메인 태그 지정</span>
+                  <select
+                    value={inferredDomainTag}
+                    onChange={(e) => setInferredDomainTag(e.target.value)}
+                    className="bg-slate-900 border border-slate-700 rounded px-2 py-1 text-white text-[11px] outline-none focus:border-blue-500"
+                  >
+                    <option value="smoking_zone">실외 흡연구역 입지 (smoking_zone)</option>
+                    <option value="ev_charging">전기차 충전소 입지 (ev_charging)</option>
+                    <option value="yellow_carpet">어린이 보호구역 옐로카펫 (yellow_carpet)</option>
+                    <option value="city_feature">일반 스마트시티 시설물 (city_feature)</option>
+                  </select>
+                </div>
               </div>
               <button
                 onClick={() => setPipelineStep(2)}
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-bold py-2 rounded-lg transition-all"
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-bold py-2.5 rounded-lg transition-all"
               >
                 의도 일치 확인 및 공간 매핑 승인 (Approve)
               </button>
             </div>
           )}
+          <input 
+            type="file" 
+            multiple 
+            id="file-uploader" 
+            className="hidden" 
+            onChange={handleFileChange} 
+          />
         </div>
 
         {/* [Step 3] AHP 슬라이더 컨트롤러 */}

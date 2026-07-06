@@ -132,9 +132,16 @@
     - **PostGIS DB 물리 마이그레이션 연계:** 사용자 HITL 보정 좌표를 DB의 `city_spatial_features` 테이블에 실제 공간 기하 객체 `ST_SetSRID(ST_MakePoint(lng, lat), 4326)`로 적재 완료함.
     - **E2E 검수 및 PostGIS 적재 확인:** 로컬 Uvicorn 서버를 통해 3대 실물 API의 E2E 테스트를 성공리에 마치고, `city_spatial_features` 테이블 내 공간 포인트(Point 4326)의 실제 적재 및 properties JSONB 확인을 완료함.
 
-### [1.0.0-prototype-Rev11] Git 저장소 이관 및 민감 정보 차단 (현재 단계)
+### [1.0.0-prototype-Rev11] Git 저장소 이관 및 민감 정보 차단
 *   **연구 내용:** 프로젝트 루트 디렉터리(`1.0-prototype/`)로 Git 저장소(.git)를 물리적으로 이관하고 `.gitignore` 설정을 적용하여 민감 정보 차단 환경을 고도화함.
 *   **주요 의사결정:**
     - 기존 `frontend` 하위로 국한되어 있던 Git 영역을 프로젝트 루트로 격리 수준을 상향하여, `backend/`, `DB/`, `docs/` 등의 서브 컴포넌트를 하나의 통일된 저장소로 버전 관리함.
     - 보안 규정 및 credentials 지침에 따라 `OPENAI_API_KEY` 등이 노출될 위험이 있는 `.env` 파일과 대용량 의존성 폴더인 `node_modules`, 가상환경 `venv/`, 로컬 임시 생성 파일들을 일괄 추적 배제(`.gitignore` 적용)하여 보안 취약점을 원천 제거함.
+
+### [1.0.0-prototype-Rev12] 다목적 도메인 시맨틱 추론 및 프론트엔드 연동 (현재 단계)
+*   **연구 내용:** OmniSite 플랫폼의 다목적(Multi-Domain) 공간 의사결정 지원을 위해, 사용자가 업로드한 다중 파일셋(조례 PDF 및 공간 CSV)을 교차 시맨틱 분석하는 AI 감리 엔진을 고도화하고, 이를 Next.js 프론트엔드 화면 상에 실물 E2E 연동함.
+*   **주요 의사결정:**
+    - **통합 교차 시맨틱 추론 엔진 구현:** `/upload/audit` 호출 시 다중 파일의 메타데이터(파일명, CSV 헤더, PDF 텍스트)를 하나의 단일 프롬프트 컨텍스트로 결합하여 GPT-4o에 전송. 이를 통해 AI가 분석의 목적(`inferred_purpose`), 확인 질문(`hitl_question`), 영문 도메인 태그(`inferred_domain_tag`)를 통합 도출하도록 구현.
+    - **HITL 도메인 동적 바인딩 및 PostGIS DB 적재:** `HITLCommitRequest` 스키마를 확장하여 사용자가 최종 확인/보정한 `confirmed_domain` 값을 전달받음. 이를 PostgreSQL `city_spatial_features` 테이블의 `feature_type` 및 `properties` JSONB 필드에 영구 바인딩 적재되도록 트랜잭션 개편.
+    - **Next.js 프론트엔드 실물 연동 및 목적 보정 UI 개발:** 하드코딩된 모킹 로직을 실제 FormData 파일 업로드 및 `/upload/audit` 호출 연동으로 전면 개편. AI가 제안한 확인 질문을 표시하고, 실무자가 직접 도메인 태그를 보정(수락/변경)하여 `/upload/hitl/commit`으로 전달하는 HITL 의사결정 흐름을 구현함. 이 과정에서 Leaflet 핵심 지도 렌더링 및 최적화 드래그 락 규칙은 완벽히 동결(Freeze) 유지함.
 

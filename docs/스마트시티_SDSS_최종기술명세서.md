@@ -81,11 +81,11 @@ sequenceDiagram
 
     Admin->>UI: 1. 다목적 데이터셋 및 조례 파일 일괄 업로드
     UI->>API: 2. 업로드 요청 전송 (Multipart/form-data)
-    API->>AI: 3. AI 데이터 감리 가동 (결함/정밀도 검토)
-    AI-->>UI: 4. 감리 결과 리포팅 (정합성 통과 여부 및 보정점 피드백)
-    Admin->>UI: 5. 수동 스키마 보정 및 최종 승인 (HITL 승인)
-    UI->>API: 6. 최종 업로드 확정 전송
-    API->>DB: 7. PostGIS 공간 인덱스(GIST) 활성화 적재
+    API->>AI: 3. AI 데이터 통합 감리 및 도메인 교차 시맨틱 추론 (GPT-4o)
+    AI-->>UI: 4. 감리 결과 리포팅 (추론된 목적/질문/도메인 태그 및 보정점 피드백)
+    Admin->>UI: 5. 목적 검증/수정 및 수동 좌표 보정 후 최종 승인 (HITL 승인)
+    UI->>API: 6. 최종 업로드 확정 및 도메인 바인딩 요청 (/upload/hitl/commit)
+    API->>DB: 7. PostGIS 공간 인덱스(GIST) 및 도메인 속성(properties JSONB, feature_type) 동시 적재
     Admin->>UI: 8. AHP 가중치 슬라이더 설정 및 입지 추천 요청
     UI->>API: 9. 추천 연산 요청 (AHP 가중치 파라미터 전달)
     API->>API: 10. AHP C.R. < 0.1 검증 및 ahp_models DB 락(Lock) 저장

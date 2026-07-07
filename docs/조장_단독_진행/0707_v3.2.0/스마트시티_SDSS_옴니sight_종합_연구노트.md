@@ -67,7 +67,7 @@
 *   **주요 의사결정:**
     - `dong_boundaries.dong_code` 및 `transit_stations.station_no`에 UNIQUE 제약조건을 명문화하고, 연관 통계 테이블들이 이들을 기본키-외래키 관계로 안전하게 참조하도록 물리 DDL 개편.
     - WBS에 명기된 가중치 저장(`ahp_models`), 모의 토론 보관(`conflict_simulations`), 검증 데이터셋(`verified_precedents`) 테이블 3종을 신규 DDL 명세에 공식 정합 완료.
-    - 일반 시민 페이지를 걷어내고 순수 B2G 행정 시스템의 구정 실무자 상세 E2E 업무 흐름에 맞춰 서비스 플로우 다이어그램 재설계.
+    - 일반 시민 페이지를 걷어내고 순수 B2G 행정 시스템의 구정 실무자 상세 E2E 업무 흐름에 맞춰 service 플로우 다이어그램 재설계.
     - 디자인 시스템 및 컴포넌트 레이아웃, 모크업 디자인을 포함한 **UI/UX 설계서** 신규 편찬 및 3-Tier EKS 아키텍처 슬라이드 최적화 다이어그램 적용.
 
 ### [1.0.0-prototype-Rev2] 공간 시각 피드백 루프 및 데이터 연동성 디버깅
@@ -120,7 +120,7 @@
 ### [1.0.0-prototype-Rev9] 다중 파일 일괄 업로드 API 뼈대 구축 및 메타데이터 파싱
 *   **연구 내용:** 스마트시티 행정 데이터를 가공하여 일괄 전달하는 멀티파트 데이터 수집 관문 설계.
 *   **주요 의사결정:**
-    - **비동기 일괄 수집:** `python-multipart` 의존성을 가동하고 FastAPI의 `List[UploadFile]` 비동기 멀티파트 규격을 활용하여 다중 파일의 스트림 데이터를 블로킹 없이 병렬 수집할 수 있도록 라우터를 구현함.
+    - **비동기 일괄 수집:** `python-multipart` 의존성을 가동하고 FastAPI의 `List[UploadFile]` 비동기 멀티파트 규격을 활용하여 다중 파일의 스트림 데이터를 브라우저 단에서 렉(Lag) 없이 병렬 수집할 수 있도록 라우터를 구현함.
     - **메타데이터 선제 분석 및 물리 저장:** 실물 파일 적재에 앞서 파일 이름, 바이트 크기, 그리고 확장자(.shp, .csv, .pdf 등)를 비동기로 추출하고 허용 확장자군 필터링을 통해 비인가 확장자를 거절함. 수신된 파일 스트림은 대용량 처리를 고려하여 1MB chunk 단위로 안전하게 서버 내 지정 디렉터리([backend/data/raw](file:///c:/Users/Admin/Desktop/빅프로젝트%20관련자료/최종1차/1.0-prototype/backend/data/raw))에 임시 보관하며, 공간데이터(spatial)와 조례법규 문서(document)로 카테고리 분류 태그를 매핑하도록 구현함.
     - **AI 시맨틱 감리 모의 피드백 루프:** 수집된 메타데이터를 기반으로 Pydantic 스키마(`AuditRequest`)를 검증하여 파일의 카테고리별로 감리 의견(`opinion`), 통과 상태(`status: pass/warning/fail`), 조례 적합성 대조 결과(`rules_matched`)를 즉각 응답하는 모의 분석 API를 설계함.
 
@@ -161,4 +161,3 @@
     - **Step 2 비주얼 HITL 규제 기하 버퍼 시각화 및 충돌 감지 설계:** AI 감리가 도출한 `spatial_restrictions`에 의거해 지도 상에 붉은색 규제 버퍼를 그리고 마커 드래그 시 진입을 실시간 경고 토글.
     - **LangGraph 기반 3자 SSE 토론 스트리밍 설계:** OpenAI Streaming API를 연동하여 찬성/반대/조정 대사를 `text/event-stream` 프로토콜로 실시간 전송.
     - **Step 3 UI hidden 설계 개편:** Step 1, 2 진행 중에 임의의 수치로 노출되어 혼선을 야기하던 AHP 상대 가중치 슬라이더 영역을 `pipelineStep < 3`인 경우 Tailwind `hidden` 클래스를 주입하여 완벽하게 숨김 처리하고, 의사결정 시점에만 점진적으로 페이드인 노출되도록 UX 복잡성을 해소.
-

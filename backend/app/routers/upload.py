@@ -35,15 +35,28 @@ def get_openai_client() -> Optional[OpenAI]:
 # CSV 파일 첫 라인(헤더)만 스트리밍하는 경량 헬퍼
 def parse_csv_header(file_path: str) -> List[str]:
     encodings = ["utf-8", "cp949", "utf-8-sig"]
+    correct_enc = "utf-8"
     for enc in encodings:
         try:
             with open(file_path, "r", encoding=enc) as f:
                 reader = csv.reader(f)
-                headers = next(reader, None)
-                if headers is not None:
-                    return [h.strip() for h in headers]
+                next(reader, None)
+                correct_enc = enc
+                break
         except (UnicodeDecodeError, PermissionError):
             continue
+            
+    try:
+        with open(file_path, "r", encoding=correct_enc, errors="replace") as f:
+            reader = csv.reader(f)
+            headers = next(reader, None)
+            if headers is not None:
+                return [h.strip() for h in headers]
+    except Exception as e:
+        raise HTTPException(
+            status_code=400,
+            detail=f"CSV 파일 헤더 파싱 오류: {str(e)}"
+        )
     raise HTTPException(
         status_code=400, 
         detail=f"CSV 파일 인코딩을 판독할 수 없거나 읽을 수 없습니다: {os.path.basename(file_path)}"
@@ -83,17 +96,30 @@ def analyze_csv_header_only(headers: List[str]):
 # CSV 파일 인코딩 탐색 및 파싱 헬퍼
 def parse_csv_file(file_path: str):
     encodings = ["utf-8", "cp949", "utf-8-sig"]
+    correct_enc = "utf-8"
     for enc in encodings:
         try:
             with open(file_path, "r", encoding=enc) as f:
                 reader = csv.reader(f)
-                headers = next(reader, None)
-                if not headers:
-                    continue
-                rows = list(reader)
-                return [h.strip() for h in headers], [[val.strip() for val in r] for r in rows]
+                next(reader, None)
+                correct_enc = enc
+                break
         except (UnicodeDecodeError, PermissionError):
             continue
+            
+    try:
+        with open(file_path, "r", encoding=correct_enc, errors="replace") as f:
+            reader = csv.reader(f)
+            headers = next(reader, None)
+            if not headers:
+                raise HTTPException(status_code=400, detail="CSV 헤더가 비어 있습니다.")
+            rows = list(reader)
+            return [h.strip() for h in headers], [[val.strip() for val in r] for r in rows]
+    except Exception as e:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"CSV 파일 본문 파싱 오류: {str(e)}"
+        )
     raise HTTPException(
         status_code=400, 
         detail=f"CSV 파일 인코딩을 판독할 수 없거나 읽을 수 없습니다: {os.path.basename(file_path)}"
@@ -403,13 +429,59 @@ async def audit_upload_files(request: AuditRequest):
     csv_headers_list = []
     csv_results_dict = {}
     
-    # 서버에 등록/저장된 기존 PDF 규제 파일들을 동적으로 스캔하여 매핑
+    # 1. 업로드된 CSV 파일명 및 헤더 기반 핵심 키워드군 추출
+    csv_keywords = set()
+    for filename in request.filenames:
+        clean_name = re.sub(r"[^가-힣a-zA-Z]", " ", filename)
+        csv_keywords.update([w.strip() for w in clean_name.split() if len(w.strip()) >= 2])
+        try:
+            file_path = os.path.join(UPLOAD_DIR, filename)
+            headers = parse_csv_header(file_path)
+            for h in headers:
+                clean_h = re.sub(r"[^가-힣a-zA-Z]", " ", h)
+                csv_keywords.update([w.strip() for w in clean_h.split() if len(w.strip()) >= 2])
+        except Exception:
+            pass
+
+    # 2. 서버에 등록/저장된 기존 PDF 규제 파일들 중 시맨틱 연관성 매핑 검증
     try:
         pdf_filenames = [f for f in os.listdir(UPLOAD_DIR) if f.endswith(".pdf")]
         for pdf_filename in pdf_filenames:
             pdf_path = os.path.join(UPLOAD_DIR, pdf_filename)
             pdf_text = extract_pdf_text(pdf_path)
-            pdf_texts.append(f"조례 파일명: {pdf_filename}\n내용:\n{pdf_text[:3000]}")
+            
+            # 시맨틱 교차 매핑 판단
+            is_matched = False
+            domain_mappings = {
+                "smoking_zone": ["금연", "흡연", "담배", "smoking", "tobacco"],
+                "ev_charging": ["전기차", "충전", "ev", "battery", "소방", "용수", "소방시설", "소방용수"],
+                "yellow_carpet": ["어린이", "보호구역", "초등학교", "안전", "옐로우", "카펫", "스쿨존"],
+            }
+            
+            clean_pdf = pdf_text.lower()
+            clean_pdf_filename = pdf_filename.lower()
+            
+            # CSV 파일 키워드가 조례 내용/파일명에 명시되어 있는지 비교
+            for keyword in csv_keywords:
+                if keyword in ["정보", "안내", "위치", "현황", "시설", "관리", "서울시", "서울특별시"]:
+                    continue
+                if keyword.lower() in clean_pdf or keyword.lower() in clean_pdf_filename:
+                    is_matched = True
+                    break
+            
+            # 도메인 기반 교차 체크
+            for domain, keywords in domain_mappings.items():
+                csv_has_domain = any(k in " ".join(csv_keywords).lower() for k in keywords)
+                pdf_has_domain = any(k in clean_pdf or k in clean_pdf_filename for k in keywords)
+                if csv_has_domain and pdf_has_domain:
+                    is_matched = True
+                    break
+
+            # 일치하는 조례 조각만 프롬프트 컨텍스트에 할당
+            if is_matched:
+                pdf_texts.append(f"조례 파일명: {pdf_filename}\n내용:\n{pdf_text[:3000]}")
+            else:
+                print(f"[Semantic Filtering] 조례 '{pdf_filename}' 은(는) 업로드된 데이터셋과 시맨틱 관계가 없으므로 감리 컨텍스트에서 제외되었습니다.")
     except Exception as e:
         pdf_texts.append(f"서버 내 기존 조례 스캔 중 오류: {str(e)}")
 
@@ -448,6 +520,11 @@ async def audit_upload_files(request: AuditRequest):
     reasoning_global = "조례 파일명 및 공간 데이터 속성을 교차 대조하여 감리를 수행했습니다."
     opinion_global = "업로드된 데이터셋에 대한 감리를 완료했습니다."
     rules_matched_global = []
+    criteria_global = [
+        {"key": "traffic", "label": "대중교통 유동성"},
+        {"key": "complaint", "label": "주민 민원 빈도"},
+        {"key": "density", "label": "주변 혼잡 밀도"}
+    ]
     
     client = get_openai_client()
     ai_success = False
@@ -470,9 +547,10 @@ async def audit_upload_files(request: AuditRequest):
 1. inferred_purpose: 이번 입지 분석의 시맨틱 목적 추론 (예: "실외 흡연구역 입지 선정 및 간접흡연 규제 배제 분석", "전기차 충전소 최적 입지 매핑 및 규제구역 제외 분석")
 2. inferred_domain_tag: 도메인 분류 영문 태그 (예: smoking_zone, smart_shelter, yellow_carpet, ev_charging)
 3. hitl_question: 사용자(공무원)에게 의사결정 목적이 맞는지 최종 확정하기 위한 확인 질문 (예: "업로드하신 데이터들은 [실외 흡연구역/흡연구역 지정]을 위한 입지 분석이 맞습니까?")
-4. reasoning: 어떤 조례 문서의 조항 구절과 어떤 CSV 파일명의 키워드 및 컬럼 헤더들을 대조하여 위 inferred_purpose와 inferred_domain_tag를 판독했는지 상세히 서술하십시오 (예: "'용산구 금연구역 지정 조례 규칙' 내 버스정류장 반경 10m 제한 조항과 업로드된 CSV 파일 내의 '담배꽁초/위도/경도' 컬럼을 교차 분석하여, 흡연 부지 선정을 위한 입지분석 목적임을 추론했습니다.")
-5. opinion: 전체 조례 및 공간 데이터를 교차 검토하여 특정 시설물 제한 구역(예: 어린이집 반경 10m 금역, 학교 200m 정화구역 등)에 대한 감리 평가 의견
+4. reasoning: 어떤 조례 문서의 조항 구절과 어떤 CSV 파일명의 키워드 및 컬럼 헤더들을 대조하여 위 inferred_purpose와 inferred_domain_tag를 판독했는지 상세히 서술하십시오
+5. opinion: 전체 조례 및 공간 데이터를 교차 검토하여 특정 시설물 제한 구역에 대한 감리 평가 의견
 6. rules_matched: 조례 상에서 식별해 낸 구체적인 입지 제약 조항 목록
+7. criteria: 이번 입지 분석 목적에 매칭되는 가장 연관성 높고 중요한 핵심 의사결정 평가 인자(AHP용 지표) 목록 (수량은 3~8개 사이로 유동적으로 도출하며, 각 인자마다 key와 한글 label을 쌍으로 생성할 것)
 
 반드시 아래 JSON 포맷으로만 응답해야 합니다 (Markdown 없이 순수 JSON만 반환):
 {{
@@ -487,12 +565,18 @@ async def audit_upload_files(request: AuditRequest):
       "description": "규정 요약 내용",
       "status": "matched"
     }}
+  ],
+  "criteria": [
+    {{
+      "key": "인자_영문_키 (예: traffic, ev_density, school_zone)",
+      "label": "인자_한글_라벨 (예: 대중교통 유동성, 전기차 등록밀도, 스쿨존 사고율)"
+    }}
   ]
 }}
 """
         try:
             response = client.chat.completions.create(
-                model="gpt-4o",
+                model="gpt-4o-mini",
                 messages=[
                     {"role": "system", "content": "너는 다목적 스마트시티 SDSS 플랫폼의 시맨틱 도메인 추론 및 감리 AI 에이전트이다."},
                     {"role": "user", "content": prompt}
@@ -506,6 +590,7 @@ async def audit_upload_files(request: AuditRequest):
             reasoning_global = result_json.get("reasoning", reasoning_global)
             opinion_global = result_json.get("opinion", opinion_global)
             rules_matched_global = result_json.get("rules_matched", [])
+            criteria_global = result_json.get("criteria", criteria_global)
             ai_success = True
         except Exception as e:
             opinion_global = f"AI 교차 감리 도중 예외가 발생하여 로컬 룰 엔진으로 대체합니다. (에러: {str(e)})"
@@ -523,16 +608,35 @@ async def audit_upload_files(request: AuditRequest):
                 "description": "금연구역 경계선으로부터 10미터 이내 지정 (로컬 Fallback 추정)",
                 "status": "matched"
             }]
+            criteria_global = [
+                {"key": "traffic", "label": "대중교통 유동성"},
+                {"key": "complaint", "label": "불법흡연 민원빈도"},
+                {"key": "dumping", "label": "상습 무단투기"},
+                {"key": "population", "label": "배후 생활인구"},
+                {"key": "youth", "label": "청소년 비율"}
+            ]
         elif any(keyword in combined_text for keyword in ["충전", "전기차", "ev", "battery"]):
             inferred_purpose = "전기차 충전소 최적 입지 매핑 및 규제구역 제외 분석"
             inferred_domain_tag = "ev_charging"
             hitl_question = "업로드하신 데이터들은 [전기차 충전 인프라 설치]를 위한 입지 분석이 맞습니까?"
             reasoning_global = "공간 데이터 파일명에서 전기차/충전(ev) 관련 키워드가 감지되어, 친환경 충전 인프라 부지 선정을 위한 분석 목적으로 자동 추론했습니다. (로컬 Fallback 판독)"
+            criteria_global = [
+                {"key": "ev_density", "label": "전기차 등록 밀도"},
+                {"key": "grid_capacity", "label": "배후 전력 인프라"},
+                {"key": "park_distance", "label": "공영주차장 거리"},
+                {"key": "residence_density", "label": "배후 주거 밀집도"}
+            ]
         elif any(keyword in combined_text for keyword in ["어린이", "보행", "안전", "스쿨", "school"]):
             inferred_purpose = "어린이 보호구역 옐로카펫 및 안심 횡단보도 설치 분석"
             inferred_domain_tag = "yellow_carpet"
             hitl_question = "업로드하신 데이터들은 [어린이 교통 안전 및 옐로카펫 설치]를 위한 입지 분석이 맞습니까?"
             reasoning_global = "공간 데이터 파일명에서 어린이/스쿨구역 관련 키워드가 감지되어, 어린이 교통 보호 및 옐로카펫 설치를 위한 분석 목적으로 자동 추론했습니다. (로컬 Fallback 판독)"
+            criteria_global = [
+                {"key": "school_zone", "label": "스쿨존 사고율"},
+                {"key": "traffic_volume", "label": "보행 유동인구"},
+                {"key": "speed_violations", "label": "속도위반 빈도"},
+                {"key": "youth_ratio", "label": "아동 생활밀도"}
+            ]
 
     results = []
     for filename in request.filenames:
@@ -567,6 +671,7 @@ async def audit_upload_files(request: AuditRequest):
         "inferred_domain_tag": inferred_domain_tag,
         "hitl_question": hitl_question,
         "reasoning": reasoning_global,
+        "criteria": criteria_global,
         "results": results
     }
 
@@ -659,16 +764,26 @@ async def commit_hitl_data(request: HITLCommitRequest, db: Session = Depends(get
         
     headers, rows = parse_csv_file(file_path)
     
-    # 1. 컬럼 매핑 인덱스 추적
+    # 1. 컬럼 매핑 인덱스 추적 (Key-Value Inversion 방어막 적용)
     lat_idx, lng_idx, addr_idx = -1, -1, -1
-    for raw_header, std_col in request.column_mapping.items():
-        if raw_header in headers:
-            idx = headers.index(raw_header)
-            if std_col == "lat":
+    for k, v in request.column_mapping.items():
+        # k가 표준 컬럼명이고, v가 실물 헤더명인 경우 (프론트 포맷: {"lat": "위도"})
+        if k in ["lat", "lng", "address"] and v in headers:
+            idx = headers.index(v)
+            if k == "lat":
                 lat_idx = idx
-            elif std_col == "lng":
+            elif k == "lng":
                 lng_idx = idx
-            elif std_col == "address":
+            elif k == "address":
+                addr_idx = idx
+        # 반대로 k가 실물 헤더명이고, v가 표준 컬럼명인 경우 (백엔드 기본 기대 포맷: {"위도": "lat"})
+        elif v in ["lat", "lng", "address"] and k in headers:
+            idx = headers.index(k)
+            if v == "lat":
+                lat_idx = idx
+            elif v == "lng":
+                lng_idx = idx
+            elif v == "address":
                 addr_idx = idx
                 
     if lat_idx == -1 or lng_idx == -1:

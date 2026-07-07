@@ -371,5 +371,3 @@ CREATE INDEX idx_city_features_type ON city_spatial_features (feature_type);
 *   **최적화 적용:** 
     *   지도 영역을 독립된 자식 컴포넌트(`InteractiveMap.js`)로 완전 분리하고, **`React.memo`**로 랩핑하여 부모 컴포넌트의 슬라이더 값 변화가 지도의 재초기화를 유발하지 않도록 통제합니다.
     *   Next.js에서 SSR(서버 사이드 렌더링) 시 `window` 객체 부재로 인한 맵 빌드 크래시를 방지하기 위해, `next/dynamic` 모듈을 이용하여 **`ssr: false` 옵션으로 지도를 Lazy-loading 로드**합니다.
-
-

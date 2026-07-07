@@ -4,6 +4,8 @@ from sqlalchemy.orm import Session
 from sqlalchemy import text
 from app.database import get_db
 from app.routers.upload import router as upload_router
+from app.routers.ahp import router as ahp_router
+from app.routers.spatial import router as spatial_router
 
 app = FastAPI(
     title="OmniSite SDSS API Backend",
@@ -13,6 +15,8 @@ app = FastAPI(
 
 # 라우터 등록
 app.include_router(upload_router)
+app.include_router(ahp_router)
+app.include_router(spatial_router)
 
 # Next.js 연동을 위한 CORS 미들웨어 개설
 app.add_middleware(

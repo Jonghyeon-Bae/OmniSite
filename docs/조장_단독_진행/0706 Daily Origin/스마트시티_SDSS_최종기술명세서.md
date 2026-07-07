@@ -79,13 +79,13 @@ sequenceDiagram
     participant AI as LangGraph (Multi-Agent RAG)
     participant PDF as WeasyPrint (PDF Engine)
 
-    Admin->>UI: 1. CSV 데이터셋 및 조례 PDF 파일 업로드 (위경도 필수 검증 가동)
-    UI->>API: 2. 업로드 요청 전송 (Multipart/form-data, SHP/DBF 배제 완료)
-    API->>AI: 3. AI 데이터 통합 감리 및 도메인 교차 시맨틱 추론 (GPT-4o)
-    AI-->>UI: 4. 감리 결과 리포팅 (추론된 목적/질문/도메인 태그 및 보정점 피드백, spatial_restrictions 동적 반환)
-    Admin->>UI: 5. 목적 검증/수정 및 수동 좌표 보정 후 최종 승인 (HITL 승인, 지도 상 규제 버퍼 서클 표출)
-    UI->>API: 6. 최종 업로드 확정 및 도메인 바인딩 요청 (/upload/hitl/commit, Key-Value 다중 매핑 적용)
-    API->>DB: 7. PostGIS 공간 인덱스(GIST) 및 도메인 속성(properties JSONB, feature_type) 동시 적재
+    Admin->>UI: 1. 다목적 데이터셋 및 조례 파일 일괄 업로드
+    UI->>API: 2. 업로드 요청 전송 (Multipart/form-data)
+    API->>AI: 3. AI 데이터 감리 가동 (결함/정밀도 검토)
+    AI-->>UI: 4. 감리 결과 리포팅 (정합성 통과 여부 및 보정점 피드백)
+    Admin->>UI: 5. 수동 스키마 보정 및 최종 승인 (HITL 승인)
+    UI->>API: 6. 최종 업로드 확정 전송
+    API->>DB: 7. PostGIS 공간 인덱스(GIST) 활성화 적재
     Admin->>UI: 8. AHP 가중치 슬라이더 설정 및 입지 추천 요청
     UI->>API: 9. 추천 연산 요청 (AHP 가중치 파라미터 전달)
     API->>API: 10. AHP C.R. < 0.1 검증 및 ahp_models DB 락(Lock) 저장
@@ -135,19 +135,18 @@ CREATE TABLE dong_boundaries (
 );
 CREATE INDEX idx_dong_geom ON dong_boundaries USING GIST(geom);
 
--- 3. 범용 스마트시티 제한/규제구역 테이블 (nosmoking_zones 일반화 리팩토링)
-CREATE TABLE restricted_zones (
+-- 3. 서울 금연구역 정보 테이블
+CREATE TABLE nosmoking_zones (
     id SERIAL PRIMARY KEY,
     district_id INT REFERENCES districts(id) ON DELETE CASCADE,
-    dong_id INT REFERENCES dong_boundaries(id) ON DELETE SET NULL,
+    dong_id INT REFERENCES dong_boundaries(id) ON DELETE SET NULL, -- 행정동 ID 관계 추가
     zone_name VARCHAR(150),
     address VARCHAR(250),
     geom GEOMETRY(Point, 4326) NOT NULL, -- Point 좌표 객체
-    zone_type VARCHAR(50) NOT NULL,     -- 'nosmoking_zone', 'school_cleanup_zone' 등 규제 구분
     area NUMERIC,
     registered_at DATE
 );
-CREATE INDEX idx_restricted_geom ON restricted_zones USING GIST(geom);
+CREATE INDEX idx_nosmoking_geom ON nosmoking_zones USING GIST(geom);
 
 -- 4. 서울 어린이집/학교 정보 테이블
 CREATE TABLE childcare_centers (
@@ -246,16 +245,16 @@ CREATE TABLE age_demographics (
     youth_ratio NUMERIC NOT NULL       -- youth_population / total_population
 );
 
--- 13. 범용 상습무단투기구역 테이블 (cigarette_dumping_zones 일반화 리팩토링)
-CREATE TABLE illegal_dumping_zones (
+-- 13. 담배꽁초상습무단투기지역현황 테이블 (최상위 가중치)
+CREATE TABLE cigarette_dumping_zones (
     id SERIAL PRIMARY KEY,
     district_id INT REFERENCES districts(id) ON DELETE CASCADE,
-    dong_id INT REFERENCES dong_boundaries(id) ON DELETE SET NULL,
+    dong_id INT REFERENCES dong_boundaries(id) ON DELETE SET NULL, -- 행정동 ID 관계 추가
     address VARCHAR(250),
     detail_location TEXT,
     geom GEOMETRY(Point, 4326) NOT NULL
 );
-CREATE INDEX idx_illegal_dumping_geom ON illegal_dumping_zones USING GIST(geom);
+CREATE INDEX idx_dumping_geom ON cigarette_dumping_zones USING GIST(geom);
 
 -- 14. AHP 가중치 프로파일 마스터 테이블 (추가)
 CREATE TABLE ahp_models (
@@ -304,14 +303,6 @@ CREATE TABLE district_regulations (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 CREATE INDEX idx_regulations_district_category_vector ON district_regulations (district_id, category) INCLUDE (embedding);
-
--- 17-2. 시맨틱 도메인 태그 중복 방지/병합용 메타 테이블 (추가)
-CREATE TABLE registered_domain_tags (
-    id SERIAL PRIMARY KEY,
-    tag_name VARCHAR(50) UNIQUE,
-    tag_description TEXT,
-    embedding VECTOR(1536)
-);
 
 -- 18. 범용 스마트시티 공간 시설물 테이블 (가/감점 요인 통합 관리용) (추가)
 CREATE TABLE city_spatial_features (
@@ -371,5 +362,15 @@ CREATE INDEX idx_city_features_type ON city_spatial_features (feature_type);
 *   **최적화 적용:** 
     *   지도 영역을 독립된 자식 컴포넌트(`InteractiveMap.js`)로 완전 분리하고, **`React.memo`**로 랩핑하여 부모 컴포넌트의 슬라이더 값 변화가 지도의 재초기화를 유발하지 않도록 통제합니다.
     *   Next.js에서 SSR(서버 사이드 렌더링) 시 `window` 객체 부재로 인한 맵 빌드 크래시를 방지하기 위해, `next/dynamic` 모듈을 이용하여 **`ssr: false` 옵션으로 지도를 Lazy-loading 로드**합니다.
+
+---
+
+## 6. 🔌 REST API 명세 (RAG 및 조례 관리 엔드포인트)
+
+| Method | Endpoint | Description | Request Body / Params | Response Schema (200 OK) |
+| :---: | :--- | :--- | :--- | :--- |
+| **GET** | `/api/v1/upload/regulations` | 등록된 조례/시행규칙 목록 비동기 조회 | 없음 | `{"regulations": [{"filename": "string", "size_bytes": 0}]}` |
+| **POST** | `/api/v1/upload/regulation` | 조례 PDF 다중 등록 및 텍스트 캐싱 (중복 차단 적용) | `files: Multipart/form-data` | `{"message": "string", "files": [...]}` (중복 시 `400 Bad Request` 에러) |
+| **DELETE** | `/api/v1/upload/regulations/{filename}` | 조례 물리 파일 및 추출된 텍스트 캐시(.txt) 동시 삭제 | `filename` (Path Variable) | `{"message": "성공적으로 [filename] 및 연관 캐시를 삭제했습니다."}` |
 
 

@@ -33,14 +33,21 @@ export default function Home() {
   const [isUploading, setIsUploading] = useState(false);
 
   // 1. AHP 가중치 입력 상태
+  const [criteriaList, setCriteriaList] = useState([
+    { key: 'traffic', label: '대중교통 유동성' },
+    { key: 'complaint', label: '불법흡연 민원빈도' },
+    { key: 'dumping', label: '상습 무단투기' },
+    { key: 'population', label: '배후 생활인구' },
+    { key: 'youth', label: '청소년 비율' }
+  ]);
   const [ahpWeights, setAhpWeights] = useState({
-    traffic: 5,
-    complaint: 5,
-    dumping: 5,
-    population: 5,
-    youth: 5
+    traffic: 5.0,
+    complaint: 5.0,
+    dumping: 5.0,
+    population: 5.0,
+    youth: 5.0
   });
-  const [crValue, setCrValue] = useState(0.04);
+  const [crValue, setCrValue] = useState(0.0);
   const [isAhpLocked, setIsAhpLocked] = useState(false);
 
   // 2. 후보지 탭 및 상태 (Step 4 & 5에서 노출)
@@ -369,15 +376,29 @@ export default function Home() {
   }, [activeTab, selectedParcel, pipelineStep]);
 
   // AHP 가중치 조절
-  const handleSliderChange = (key, val) => {
+  const handleSliderChange = async (key, val) => {
     if (isAhpLocked) return;
-    const value = parseInt(val);
-    setAhpWeights(prev => ({ ...prev, [key]: value }));
-    const values = [...Object.values({ ...ahpWeights, [key]: value })];
-    const maxVal = Math.max(...values);
-    const minVal = Math.min(...values);
-    const mockCr = parseFloat(((maxVal - minVal) / 20).toFixed(2));
-    setCrValue(mockCr);
+    const value = parseFloat(val);
+    const updatedWeights = { ...ahpWeights, [key]: value };
+    setAhpWeights(updatedWeights);
+    
+    try {
+      const res = await fetch('/api/v1/ahp/calculate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          district_id: 1,
+          facility_type: inferredDomainTag || 'smoking_zone',
+          criteria_weights: updatedWeights
+        })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setCrValue(data.consistency_ratio);
+      }
+    } catch (err) {
+      console.error("Failed to calculate AHP CR:", err);
+    }
   };
 
   // HITL 폼 동기화
@@ -595,6 +616,15 @@ export default function Home() {
       setInferredReasoning(auditData.reasoning || '');
       setUserPurpose(auditData.inferred_purpose);
 
+      if (auditData.criteria && auditData.criteria.length > 0) {
+        setCriteriaList(auditData.criteria);
+        const initialWeights = {};
+        auditData.criteria.forEach(c => {
+          initialWeights[c.key] = 5.0;
+        });
+        setAhpWeights(initialWeights);
+      }
+
       const csvResult = auditData.results.find(r => r.filename.endsWith('.csv'));
       if (csvResult) {
         setUploadedCsvFilename(csvResult.filename);
@@ -790,7 +820,7 @@ export default function Home() {
         </div>
 
         {/* [Step 3] AHP 슬라이더 컨트롤러 */}
-        <div className={`flex flex-col gap-4 border-t border-slate-800/80 pt-4 transition-all duration-300 ${pipelineStep < 3 ? 'opacity-20 pointer-events-none' : ''} ${pipelineStep > 3 ? 'opacity-40 pointer-events-none' : ''}`}>
+        <div className={`flex flex-col gap-4 border-t border-slate-800/80 pt-4 transition-all duration-300 ${pipelineStep < 3 ? 'hidden' : ''} ${pipelineStep > 3 ? 'opacity-40 pointer-events-none' : ''}`}>
           <div className="flex justify-between items-center">
             <label className="text-xs font-semibold text-slate-300">Step 3. AHP 인자별 상대 가중치</label>
             <span className={`text-[10px] px-2 py-0.5 rounded-full font-mono font-semibold transition-all ${crValue < 0.1 ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'}`}>
@@ -799,19 +829,20 @@ export default function Home() {
           </div>
 
           <div className="flex flex-col gap-3">
-            {Object.keys(ahpWeights).map(key => (
-              <div key={key} className="flex flex-col gap-1">
+            {criteriaList.map(item => (
+              <div key={item.key} className="flex flex-col gap-1">
                 <div className="flex justify-between text-[11px] text-slate-400">
-                  <span>{key === 'traffic' ? '대중교통 유동성' : key === 'complaint' ? '불법 민원빈도' : key === 'dumping' ? '상습 무단투기' : key === 'population' ? '배후 생활인구' : '청소년 비율'}</span>
-                  <span className="font-mono text-white">{ahpWeights[key]}</span>
+                  <span>{item.label}</span>
+                  <span className="font-mono text-white">{ahpWeights[item.key] !== undefined ? parseFloat(ahpWeights[item.key]).toFixed(1) : '5.0'}</span>
                 </div>
                 <input
                   type="range"
                   min="1"
                   max="9"
+                  step="0.1"
                   disabled={isAhpLocked || pipelineStep !== 3}
-                  value={ahpWeights[key]}
-                  onChange={(e) => handleSliderChange(key, e.target.value)}
+                  value={ahpWeights[item.key] !== undefined ? ahpWeights[item.key] : 5.0}
+                  onChange={(e) => handleSliderChange(item.key, e.target.value)}
                   className="w-full accent-blue-500 cursor-pointer h-1 bg-slate-800 rounded-lg appearance-none"
                 />
               </div>
@@ -820,10 +851,44 @@ export default function Home() {
 
           {/* AHP 잠금 버튼 -> 입지 분석 트리거 */}
           <button
-            onClick={() => {
-              setIsAhpLocked(true);
-              setPipelineStep(4);
-              alert('AHP 모델 일관성 검증 승인. PostGIS 다기준 공간 차집합 연산 기동 완료! [Step 4: 최적 입지 선정 결과]를 우측에서 확인하세요.');
+            onClick={async () => {
+              try {
+                const lockRes = await fetch('/api/v1/ahp/lock', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    district_id: 1,
+                    facility_type: inferredDomainTag || 'smoking_zone',
+                    criteria_weights: ahpWeights
+                  })
+                });
+                if (!lockRes.ok) {
+                  const errData = await lockRes.json();
+                  alert('AHP 모델 락 오류: ' + (errData.detail || '검증 실패'));
+                  return;
+                }
+                const lockData = await lockRes.json();
+                
+                // 추천 입지 연산 기동
+                const recommendRes = await fetch(`/api/v1/spatial/recommend?model_id=${lockData.model_id}`);
+                if (!recommendRes.ok) {
+                  throw new Error('공간 입지 추천 연산 실패');
+                }
+                const recommendData = await recommendRes.json();
+                
+                // selectedParcel 업데이트
+                setSelectedParcel({
+                  top1: recommendData.candidates.top1,
+                  top2: recommendData.candidates.top2,
+                  top3: recommendData.candidates.top3
+                });
+                
+                setIsAhpLocked(true);
+                setPipelineStep(4);
+                alert('AHP 모델 일관성 검증 승인. PostGIS 다기준 공간 차집합 연산 기동 완료! [Step 4: 최적 입지 선정 결과]를 우측에서 확인하세요.');
+              } catch (err) {
+                alert('오류 발생: ' + err.message);
+              }
             }}
             disabled={crValue >= 0.1 || pipelineStep !== 3}
             className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold cursor-pointer transition-all disabled:opacity-30"
@@ -934,6 +999,25 @@ export default function Home() {
                 }`} style={{ width: `${selectedParcel[activeTab].css}%` }} />
               </div>
             </div>
+
+            {/* 세부 평가 지표 스펙 */}
+            {selectedParcel[activeTab].criteria_scores && (
+              <div className="flex flex-col gap-2 border-t border-slate-900/60 pt-3">
+                <span className="text-[11px] font-semibold text-slate-400">세부 평가 지표 수치 (Spatial Detail)</span>
+                <div className="bg-slate-950/20 rounded-lg p-2.5 flex flex-col gap-1.5 border border-slate-800/30">
+                  {Object.entries(selectedParcel[activeTab].criteria_scores).map(([k, val]) => {
+                    const matchedCriteria = criteriaList.find(c => c.key === k);
+                    const label = matchedCriteria ? matchedCriteria.label : k;
+                    return (
+                      <div key={k} className="flex justify-between text-[11px]">
+                        <span className="text-slate-500">{label}</span>
+                        <span className="font-mono text-slate-300 font-semibold">{typeof val === 'number' ? val.toLocaleString(undefined, {maximumFractionDigits: 1}) : val}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             {/* [Step 5] AI 모의 토론 및 WeasyPrint PDF 발급 */}
             <div className="border-t border-slate-800/80 pt-4 flex flex-col gap-2">

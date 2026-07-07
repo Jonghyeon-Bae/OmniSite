@@ -1,54 +1,23 @@
-# [실행 태스크 체크리스트] OmniSite 초순위 셋업 및 단계별 개발 계획서 (v1.0.0-prototype)
+# 📋 v3.3.0 고도화 스프린트 작업 리스트 (task.md)
 
-본 문서는 프로젝트의 이중 트랙(조장 솔로 빌드 & 7인 팀 빌드) 구조를 안착시키기 위해, **가장 빨리 완료되어야 할 설정 업무부터 순서대로 배치한 즉각 실행 체크리스트**입니다.
-
----
-
-## ⚡ 1. 최우선 즉각 실행 태스크 (Immediate Setup Checklist)
-
-팀원들이 현재 진행 중인 데이터 정제 작업이 헛수고가 되지 않고, 정제 종료 즉시 개발 트랙이 병렬로 출발할 수 있도록 아래 순서대로 셋업을 완료합니다.
-
-### 🟥 [우선순위 1: 즉시 실행] Git 레포지토리 물리적 분리 및 브랜치 규칙 세팅
-*   **목적:** 조장 솔로 빌드 코드와 팀원 7명의 코드베이스가 섞여 충돌 및 롤백이 일어나는 것을 방지.
-*   **실행 과제:**
-    - [ ] 조장용 개인 리포지토리(`omnisite-solo`)와 팀 공동 리포지토리(`omnisite-team`)를 완전히 분할하여 GitHub에 개설.
-    - [ ] 팀 리포지토리의 `main` 브랜치 머지 권한을 조장(또는 팀 내 지목된 주니어 팀장)으로 고정하고, 팀원들은 `feature/기능명` 브랜치에서만 작업하여 Pull Request를 통해서만 병합하도록 규칙 선포.
-
-### 🟧 [우선순위 2: 오늘 내 실행] 데이터 정제 표준 포맷 가이드라인 정의 및 배포
-*   **목적:** 팀원들이 가공해 온 데이터 파일이 DB 스키마 및 위경도 검증 로직에 100% 매칭되게 고정.
-*   **실행 과제:**
-    - [ ] **좌표 컬럼 통일:** 위도(`lat`), 경도(`lng`) 컬럼 명칭 대소문자 고정 및 실수형(Float) 포맷 지정.
-    - [ ] **결측치 처리 규격:** 군부대/공항 등 위경도가 없는 특수 필지는 공백(Null)이나 `0.0`으로 표기하도록 규칙 규정.
-    - [ ] **지번 주소 통일:** 연속지적도의 지번 주소(`jibun`) 텍스트 문자열에 불필요한 특수문자나 괄호 제거 규칙 하달.
-
-### 🟨 [우선순위 3: 1일 내 실행] 로컬 PostGIS DB 인프라 및 초기 DDL 스키마 개설
-*   **목적:** 데이터 정제가 끝나는 즉시 DB에 부어 넣고 테스트할 수 있는 물리 환경 마련.
-*   **실행 과제:**
-    - [x] Docker로 PostgreSQL/PostGIS 환경을 올리는 `docker-compose.yml` 스크립트를 작성하여 배포 (기본 포트 5432).
-    - [x] 요구사항정의서 기준 13종 지적 및 행정 데이터 적재용 DDL(`schema.sql`)을 작성하고, 공간 연산 속도를 보증할 GIST 인덱싱 코드(`USING GIST(geom)`) 삽입 확인.
-
-### 🟩 [우선순위 4: 2일 내 실행] 백엔드-프런트엔드 간 API 통신 인터페이스(JSON Spec) 확정
-*   **목적:** 백엔드 개발팀과 프런트엔드 개발팀이 서로의 개발 진척도와 상관없이 Mock API로 독립 병렬 개발할 수 있도록 인터페이스 계약 체결.
-*   **실행 과제:**
-    - [ ] 회원가입/로그인 (`/api/v1/auth/login`), 파일 업로드 (`/api/v1/upload`), AHP 가중치 입력 및 C.R. 검증 (`/api/v1/ahp/calculate`), 입지 추천 목록 (`/api/v1/recommend`) 엔드포인트의 Request/Response JSON 규격서를 Notion 또는 마크다운 파일로 작성하여 배포.
-
----
-
-## 📅 2. 팀원 7인의 차세대 개발 마일스톤 (Post-Setup Timeline)
-
-셋업이 완료된 이후, 데이터 정제가 종료되는 시점부터 작동할 팀원들의 기능 구현 타임라인입니다.
-
-### 🏁 [1단계: 데이터 정제 종료 직후] DB 적재 및 API 스켈레톤 기동 (3일 소요)
-*   - [ ] **학부생 KM (메인) & 학부생 B (DB):** 정제 완료 데이터 PostGIS 이관 SQL 스크립트 수행 및 적재 확인.
-*   - [ ] **비전공 A - Cj (FastAPI):** 회원가입, 로그인, 파일 업로드 기본 API 뼈대 구현 및 Swagger UI 활성화.
-*   - [ ] **주니어 B - CM (FullStack):** Next.js 로그인 및 드롭존 마크업 화면 구현.
-
-### 🏁 [2단계: 개발 집중기] 핵심 비즈니스 로직 단위 구현 (5일 소요)
-*   - [ ] **주니어 C - SH (AI/AHP):** AHP 역산 행렬 및 일관성 비율(C.R.) 산출 공식, Audit AI OCR 팩트체크 엔진 빌드.
-*   - [ ] **주니어 A - DH (AI RAG):** LangGraph 활용 주민/상인/공무원 3자 토론 논리 구현 및 SSE 스트리밍 엔드포인트 개설.
-*   - [ ] **비전공 B - MY (프롬프트):** AI 토론에 주입할 용산구 스마트 쉼터 조례 세부 단락 가공 및 RAG 임베딩 데이터셋 준비.
-*   - [ ] **주니어 B - CM (FullStack):** Leaflet 지도 상에 3대 후보지 동적 마커 핀 매핑 및 클릭 시 탭 정보 동기화.
-
-### 🏁 [3단계: 연동 및 QA 피드백기] E2E 연동 및 예외 처리 QA (4일 소요)
-*   - [ ] **주니어 B - CM (FullStack) & 비전공 A - Cj (FastAPI):** Next.js-FastAPI 간 Axios 비동기 연동 및 SSE 실시간 스트리밍 중계 연계.
-*   - [ ] **비전공 B - MY (QA 지원):** 결측 위경도(Null/Zero) 유입 시 마커 렌더 차단 및 예외 안내 얼럿 프론트-백 연계 검수 완료.
+- `[x]` 4.1. 데이터베이스 테이블 스펙 개편 DDL 및 마이그레이션 적용
+  - `[x]` `01_schema.sql` 내 `nosmoking_zones` ➔ `restricted_zones` 변경, `cigarette_dumping_zones` ➔ `illegal_dumping_zones` 변경
+  - `[x]` `registered_domain_tags` 테이블 DDL 추가 및 코어 태그 프리-시딩 DML 추가
+  - `[x]` 기존 DB 데이터 마이그레이션 실행
+- `[x]` 4.2. 백엔드 시맨틱 도메인 태그 중복 방지 및 병합 엔진 구현
+  - `[x]` `registered_domain_tags` 연동하여 코사인 유사도 0.85 이상 시 대표 태그 자동 병합
+- `[x]` 4.3. 백엔드 테이블명 일반화 리팩토링 및 쿼리 갱신
+  - `[x]` `upload.py`, `spatial.py` 내 구 `nosmoking_zones`, `cigarette_dumping_zones` 관련 쿼리를 `restricted_zones`, `illegal_dumping_zones`로 변경
+- `[x]` 4.4. 백엔드 관할지 경계 GeoJSON 반환 및 좌표 포함 검증 API 추가
+  - `[x]` `GET /api/v1/spatial/district-boundary/{district_id}`
+  - `[x]` `POST /api/v1/spatial/check-boundary`
+- `[x]` 4.5. 백엔드 pgvector RAG 조례 내용 쿼리 & LangGraph SSE 3자 모의 토론 API 추가
+  - `[x]` `GET /api/v1/spatial/debate`
+- `[x]` 4.6. 프론트엔드 `page.js` 관할 경계 가시화 및 이탈 마커 롤백 가드 탑재 (Leaflet 동결 룰 준수)
+- `[x]` 4.7. 프론트엔드 `page.js` LangGraph SSE 토론 실시간 스트리밍 연동
+- `[x]` 4.8. E2E 통합 테스트 수행 및 산출물 편찬
+- `[x]` 4.9. 백엔드 `spatial.py` 내 `recommend_optimal_sites` criteria_list json.loads TypeError 해결
+- `[x]` 4.10. 백엔드 `spatial.py` 내 `get_criteria_score` properties Null-guard 및 데이터 정합성 보강
+- `[x]` 4.11. 백엔드 `spatial.py` 내 `exclusion_mask` 버퍼 기하 반경 정밀 재산정 (초등학교/유치원: 200m, 어린이집: 30m, 대중교통: 10m)
+- `[x]` 4.12. 백엔드 `upload.py` 내 AI 감리 가이드 및 로컬 Fallback 반경 규격 갱신 (transit_station: 10, childcare_center: 30)
+- `[x]` 4.13. 테스트 스크립트 E2E 검증 및 프론트엔드 빌드 무결성 확인

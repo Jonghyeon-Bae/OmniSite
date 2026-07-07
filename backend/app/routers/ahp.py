@@ -2,7 +2,7 @@ import numpy as np
 import json
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
-from typing import Dict
+from typing import Dict, List, Optional, Any
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from app.database import get_db
@@ -13,6 +13,8 @@ class AHPLockRequest(BaseModel):
     district_id: int
     facility_type: str = "smoking_zone"
     criteria_weights: Dict[str, float]
+    criteria_list: Optional[List[Dict[str, Any]]] = None
+    uploaded_files: Optional[List[str]] = None
 
 # R.I. 난수 지수 동적 매핑 테이블
 RI_TABLE = {
@@ -86,8 +88,8 @@ async def lock_ahp_model(request: AHPLockRequest, db: Session = Depends(get_db))
             
         # DB 적재
         query = text("""
-            INSERT INTO ahp_models (district_id, facility_type, criteria_weights, consistency_ratio, is_locked)
-            VALUES (:district_id, :facility_type, :criteria_weights, :consistency_ratio, :is_locked)
+            INSERT INTO ahp_models (district_id, facility_type, criteria_weights, consistency_ratio, is_locked, criteria_list, uploaded_files)
+            VALUES (:district_id, :facility_type, :criteria_weights, :consistency_ratio, :is_locked, :criteria_list, :uploaded_files)
             RETURNING id
         """)
         
@@ -96,7 +98,9 @@ async def lock_ahp_model(request: AHPLockRequest, db: Session = Depends(get_db))
             "facility_type": request.facility_type,
             "criteria_weights": json.dumps(request.criteria_weights),
             "consistency_ratio": cr,
-            "is_locked": True
+            "is_locked": True,
+            "criteria_list": json.dumps(request.criteria_list) if request.criteria_list is not None else "[]",
+            "uploaded_files": json.dumps(request.uploaded_files) if request.uploaded_files is not None else "[]"
         })
         
         db.commit()

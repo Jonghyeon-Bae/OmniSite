@@ -20,18 +20,19 @@ CREATE TABLE dong_boundaries (
 );
 CREATE INDEX idx_dong_geom ON dong_boundaries USING GIST(geom);
 
--- 3. 서울 금연구역 정보 테이블
-CREATE TABLE nosmoking_zones (
+-- 3. 범용 스마트시티 제한/규제구역 테이블 (nosmoking_zones 일반화 리팩토링)
+CREATE TABLE restricted_zones (
     id SERIAL PRIMARY KEY,
     district_id INT REFERENCES districts(id) ON DELETE CASCADE,
     dong_id INT REFERENCES dong_boundaries(id) ON DELETE SET NULL,
     zone_name VARCHAR(150),
     address VARCHAR(250),
     geom GEOMETRY(Point, 4326) NOT NULL,
+    zone_type VARCHAR(50) NOT NULL DEFAULT 'nosmoking_zone',
     area NUMERIC,
     registered_at DATE
 );
-CREATE INDEX idx_nosmoking_geom ON nosmoking_zones USING GIST(geom);
+CREATE INDEX idx_restricted_geom ON restricted_zones USING GIST(geom);
 
 -- 4. 서울 어린이집/학교 정보 테이블
 CREATE TABLE childcare_centers (
@@ -130,8 +131,8 @@ CREATE TABLE age_demographics (
     youth_ratio NUMERIC NOT NULL
 );
 
--- 13. 담배꽁초상습무단투기지역현황 테이블
-CREATE TABLE cigarette_dumping_zones (
+-- 13. 범용 상습무단투기구역 테이블 (cigarette_dumping_zones 일반화 리팩토링)
+CREATE TABLE illegal_dumping_zones (
     id SERIAL PRIMARY KEY,
     district_id INT REFERENCES districts(id) ON DELETE CASCADE,
     dong_id INT REFERENCES dong_boundaries(id) ON DELETE SET NULL,
@@ -139,7 +140,7 @@ CREATE TABLE cigarette_dumping_zones (
     detail_location TEXT,
     geom GEOMETRY(Point, 4326) NOT NULL
 );
-CREATE INDEX idx_dumping_geom ON cigarette_dumping_zones USING GIST(geom);
+CREATE INDEX idx_illegal_dumping_geom ON illegal_dumping_zones USING GIST(geom);
 
 -- 14. AHP 가중치 프로파일 마스터 테이블
 CREATE TABLE ahp_models (
@@ -188,6 +189,14 @@ CREATE TABLE district_regulations (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 CREATE INDEX idx_regulations_district_category_vector ON district_regulations (district_id, category) INCLUDE (embedding);
+
+-- 17-2. 시맨틱 도메인 태그 중복 방지/병합용 메타 테이블
+CREATE TABLE registered_domain_tags (
+    id SERIAL PRIMARY KEY,
+    tag_name VARCHAR(50) UNIQUE,
+    tag_description TEXT,
+    embedding VECTOR(1536)
+);
 
 -- 18. 범용 스마트시티 공간 시설물 테이블 (가/감점 요인 통합 관리용)
 CREATE TABLE city_spatial_features (

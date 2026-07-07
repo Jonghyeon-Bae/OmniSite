@@ -39,6 +39,12 @@
   - 업로드된 CSV 파일에 공간 위치 정보(위도 및 경도 관련 헤더 후보군)가 아예 존재하지 않는 결측 파일인 경우, 감리(`/upload/audit`) 단에서 프로세스를 진행하지 않고 **400 Bad Request 에러**(`"위도(lat) 및 경도(lng) 필수 위치 컬럼이 존재하지 않아 분석할 수 없습니다."`)를 발생시켜 선제적으로 차단합니다.
   - 이를 통해 부적합한 데이터셋이 시스템 내부(Step 2 보정 등)로 진입하는 것을 완벽하게 예방합니다.
 
+### 1.7. 관할 자치구 경계 가시화 및 마커 이탈 롤백 가드 (Boundary Constraint Guard)
+- **원리**:
+  - Step 2 보정 단계 진입 시 로그인 사용자의 관할 자치구(`districts`) 경계 기하 데이터(MultiPolygon)를 GeoJSON 형식으로 조회하여 지도 상에 옅은 파란색/보라색 반투명 폴리곤으로 시각적 렌더링합니다.
+  - 마커 드래그 시 좌표 오동작 및 타 자치구 침범 휴먼 에러를 물리적으로 차단하기 위해, 드래그 시작(`dragstart`) 시 최초 좌표를 백업하고 드래그 종료(`dragend`) 시점에 PostGIS `ST_Contains` 함수 기반으로 관할 경계 내 포함 여부를 검증합니다.
+  - 관할 구역 이탈이 감지되면 즉각 경고 경보를 팝업하고 마커를 원래의 안전한 이전 좌표로 강제 복귀(Rollback)시키는 가드를 가동합니다.
+
 ---
 
 ## 2. Proposed Changes
@@ -66,6 +72,8 @@
 - 리팩토링된 `restricted_zones` 및 `illegal_dumping_zones` 테이블명을 참조하도록 공간 연산 및 가중합 쿼리 갱신.
 - **[NEW]** `GET /api/v1/spatial/restrictions/points` API 신설: Step 2 규제 버퍼 가시화를 위한 시설물 좌표 반환.
 - **[NEW]** `GET /api/v1/spatial/debate` SSE 스트리밍 API 신설: OpenAI Streaming API를 연동하여 찬성/반대/조정 3자 토론 내용을 `text/event-stream` 프로토콜로 전송.
+- **[NEW]** `GET /api/v1/spatial/district-boundary/{district_id}` API 신설: 관할 자치구 경계 GeoJSON 반환.
+- **[NEW]** `POST /api/v1/spatial/check-boundary` API 신설: 특정 위경도의 자치구 경계 내 포함 여부 검증 (PostGIS ST_Contains 활용).
 
 ---
 
@@ -73,6 +81,8 @@
 
 #### [MODIFY] [page.js](file:///c:/Users/Admin/Desktop/빅프로젝트 관련자료/최종1차/1.0-prototype/frontend/src/app/page.js)
 - Step 2 진입 시, 감리 응답으로 수신받은 `spatial_restrictions` 에 따라 백엔드로부터 시설물 좌표를 조회해 붉은색 규제 버퍼 원(L.circle) 동적 가시화 구현.
+- 관할 자치구 경계 GeoJSON 데이터를 조회하여 지도 상에 옅은 파란색/보라색 반투명 폴리곤으로 시각적 렌더링.
+- 마커 드래그 시 `dragstart`에서 최초 좌표를 백업하고, `dragend` 시 백엔드 `/check-boundary` 검증을 거쳐 이탈 시 롤백 및 에러 얼럿 처리 적용.
 - 핀 드래그 스냅 핸들러에 규제 서클 교차 판정 기능을 추가하여 경고 토글 연동.
 - Step 5의 `runSimulation` 실행 시 하드코딩된 mock 스크립트 대신 `EventSource`를 생성하여 백엔드 `/api/v1/spatial/debate` SSE 채널을 구독하고 실시간 스트리밍 대화를 터미널 로그에 순차 밀어 넣는 로직으로 개편.
 

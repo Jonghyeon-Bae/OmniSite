@@ -32,6 +32,20 @@ def get_openai_client() -> Optional[OpenAI]:
             return None
     return None
 
+def get_embedding(text_input: str) -> Optional[List[float]]:
+    client = get_openai_client()
+    if not client:
+        return None
+    try:
+        response = client.embeddings.create(
+            model="text-embedding-3-small",
+            input=text_input
+        )
+        return response.data[0].embedding
+    except Exception as e:
+        print(f"[Embedding Error] {e}")
+        return None
+
 # CSV 파일 첫 라인(헤더)만 스트리밍하는 경량 헬퍼
 def parse_csv_header(file_path: str) -> List[str]:
     encodings = ["utf-8", "cp949", "utf-8-sig"]
@@ -269,6 +283,134 @@ def run_local_fallback_audit(pdf_text: str, filename: str, error_msg: str = None
         "rules_matched": rules_matched
     }
 
+# PDF 청킹 및 OpenAI text-embedding-3-small 임베딩을 통한 district_regulations 벡터 테이블 적재 헬퍼
+def chunk_and_embed_pdf(file_path: str, filename: str, db: Session, district_id: int = 1):
+    text_content = extract_pdf_text(file_path)
+    if not text_content:
+        return
+    
+    chunk_size = 1000
+    overlap = 200
+    chunks = []
+    
+    start = 0
+    while start < len(text_content):
+        end = start + chunk_size
+        chunks.append(text_content[start:end])
+        start += chunk_size - overlap
+        
+    client = get_openai_client()
+    if not client:
+        print("[Warning] OpenAI client is not initialized. Skipping embedding for RAG database.")
+        return
+        
+    for idx, chunk in enumerate(chunks):
+        try:
+            response = client.embeddings.create(
+                model="text-embedding-3-small",
+                input=chunk
+            )
+            embedding = response.data[0].embedding
+            
+            query = text("""
+                INSERT INTO district_regulations (district_id, regulation_title, clause_number, content, embedding, category)
+                VALUES (:district_id, :regulation_title, :clause_number, :content, :embedding, :category)
+            """)
+            db.execute(query, {
+                "district_id": district_id,
+                "regulation_title": filename,
+                "clause_number": f"청크 {idx+1}",
+                "content": chunk,
+                "embedding": embedding,
+                "category": "health_sanitation"
+            })
+        except Exception as e:
+            print(f"[Error] Failed to embed chunk {idx} of {filename}: {e}")
+            
+    db.commit()
+
+# 도메인 태그 유사도 기반 중복 방지 및 병합 헬퍼
+def get_or_create_merged_tag(domain_tag: str, reasoning: str, db: Session) -> str:
+    client = get_openai_client()
+    if not client:
+        return domain_tag
+        
+    try:
+        embed_res = client.embeddings.create(
+            model="text-embedding-3-small",
+            input=domain_tag
+        )
+        tag_embedding = embed_res.data[0].embedding
+        
+        query = text("""
+            SELECT tag_name, 1 - (embedding <=> :tag_embedding) AS similarity 
+            FROM registered_domain_tags 
+            ORDER BY similarity DESC 
+            LIMIT 1
+        """)
+        result = db.execute(query, {"tag_embedding": tag_embedding}).fetchone()
+        
+        if result:
+            matched_tag, similarity = result
+            print(f"[Semantic Tag Merger] Matched: {matched_tag} with similarity {similarity}")
+            if similarity >= 0.85:
+                print(f"[Semantic Tag Merger] Merged domain tag '{domain_tag}' into representative tag '{matched_tag}'")
+                return matched_tag
+                
+        print(f"[Semantic Tag Merger] Creating new domain tag '{domain_tag}'")
+        insert_query = text("""
+            INSERT INTO registered_domain_tags (tag_name, tag_description, embedding)
+            VALUES (:tag_name, :tag_description, :embedding)
+            ON CONFLICT (tag_name) DO NOTHING
+        """)
+        db.execute(insert_query, {
+            "tag_name": domain_tag,
+            "tag_description": reasoning[:200] if reasoning else "AI 감리가 도출한 도메인",
+            "embedding": tag_embedding
+        })
+        db.commit()
+        return domain_tag
+    except Exception as e:
+        print(f"[Semantic Tag Merger Error] {e}")
+        return domain_tag
+
+
+# RAG 임베딩 매핑 실패 시 로컬 디렉터리 내 PDF 문서 시맨틱 키워드 매칭 수행용 Fallback 헬퍼
+def fallback_pdf_matching(upload_dir: str, csv_keywords: set, pdf_texts: list):
+    try:
+        pdf_filenames = [f for f in os.listdir(upload_dir) if f.endswith(".pdf")]
+        for pdf_filename in pdf_filenames:
+            pdf_path = os.path.join(upload_dir, pdf_filename)
+            pdf_text = extract_pdf_text(pdf_path)
+            
+            is_matched = False
+            domain_mappings = {
+                "smoking_zone": ["금연", "흡연", "담배", "smoking", "tobacco"],
+                "ev_charging": ["전기차", "충전", "ev", "battery", "소방", "용수", "소방시설", "소방용수"],
+                "yellow_carpet": ["어린이", "보호구역", "초등학교", "안전", "옐로우", "카펫", "스쿨존"],
+            }
+            clean_pdf = pdf_text.lower()
+            clean_pdf_filename = pdf_filename.lower()
+            
+            for keyword in csv_keywords:
+                if keyword in ["정보", "안내", "위치", "현황", "시설", "관리", "서울시", "서울특별시"]:
+                    continue
+                if keyword.lower() in clean_pdf or keyword.lower() in clean_pdf_filename:
+                    is_matched = True
+                    break
+            
+            for domain, keywords in domain_mappings.items():
+                csv_has_domain = any(k in " ".join(csv_keywords).lower() for k in keywords)
+                pdf_has_domain = any(k in clean_pdf or k in clean_pdf_filename for k in keywords)
+                if csv_has_domain and pdf_has_domain:
+                    is_matched = True
+                    break
+
+            if is_matched:
+                pdf_texts.append(f"조례 파일명: {pdf_filename}\n내용:\n{pdf_text[:3000]}")
+    except Exception as e:
+        pdf_texts.append(f"서버 내 기존 조례 스캔 중 오류: {str(e)}")
+
 # Pydantic 데이터 모델 정의
 class AuditRequest(BaseModel):
     filenames: List[str]
@@ -287,7 +429,7 @@ class HITLCommitRequest(BaseModel):
 # PM 개발 철칙 2조 준수: 반드시 비동기 API(async def) 적용
 # 조례/시행규칙 규정 문서 등록 API
 @router.post("/upload/regulation")
-async def upload_regulation_files(files: List[UploadFile] = File(...)):
+async def upload_regulation_files(files: List[UploadFile] = File(...), db: Session = Depends(get_db)):
     uploaded_info = []
 
     for file in files:
@@ -314,12 +456,12 @@ async def upload_regulation_files(files: List[UploadFile] = File(...)):
             while chunk := await file.read(1024 * 1024):
                 buffer.write(chunk)
 
-        # PDF일 경우 텍스트를 미리 추출/캐싱하여 RAG 인프라 준비
+        # PDF일 경우 텍스트를 추출하여 pgvector DB에 적재
         if ext == "pdf":
             try:
-                extract_pdf_text(saved_path)
-            except Exception:
-                pass
+                chunk_and_embed_pdf(saved_path, filename, db)
+            except Exception as e:
+                print(f"[PDF RAG Error] {e}")
 
         file_size = os.path.getsize(saved_path)
         uploaded_info.append({
@@ -422,9 +564,10 @@ async def upload_files(files: List[UploadFile] = File(...)):
         "files": uploaded_info
     }
 
+
 # --- [Step 2-3] AI 감리 분석 결과 반환 API ---
 @router.post("/upload/audit")
-async def audit_upload_files(request: AuditRequest):
+async def audit_upload_files(request: AuditRequest, db: Session = Depends(get_db)):
     pdf_texts = []
     csv_headers_list = []
     csv_results_dict = {}
@@ -443,47 +586,39 @@ async def audit_upload_files(request: AuditRequest):
         except Exception:
             pass
 
-    # 2. 서버에 등록/저장된 기존 PDF 규제 파일들 중 시맨틱 연관성 매핑 검증
-    try:
-        pdf_filenames = [f for f in os.listdir(UPLOAD_DIR) if f.endswith(".pdf")]
-        for pdf_filename in pdf_filenames:
-            pdf_path = os.path.join(UPLOAD_DIR, pdf_filename)
-            pdf_text = extract_pdf_text(pdf_path)
+    # 2. pgvector 기반 RAG 조례 매핑 (pre-filtering: district_id=1, similarity >= 0.40)
+    client = get_openai_client()
+    rag_applied = False
+    if client and len(csv_keywords) > 0:
+        query_str = " ".join(list(csv_keywords)[:15])
+        try:
+            embed_res = client.embeddings.create(
+                model="text-embedding-3-small",
+                input=query_str
+            )
+            query_embedding = embed_res.data[0].embedding
             
-            # 시맨틱 교차 매핑 판단
-            is_matched = False
-            domain_mappings = {
-                "smoking_zone": ["금연", "흡연", "담배", "smoking", "tobacco"],
-                "ev_charging": ["전기차", "충전", "ev", "battery", "소방", "용수", "소방시설", "소방용수"],
-                "yellow_carpet": ["어린이", "보호구역", "초등학교", "안전", "옐로우", "카펫", "스쿨존"],
-            }
+            rag_query = text("""
+                SELECT regulation_title, content, 1 - (embedding <=> :query_embedding) AS similarity
+                FROM district_regulations
+                WHERE district_id = 1 AND 1 - (embedding <=> :query_embedding) >= 0.40
+                ORDER BY similarity DESC
+                LIMIT 5
+            """)
+            rag_results = db.execute(rag_query, {"query_embedding": query_embedding}).fetchall()
             
-            clean_pdf = pdf_text.lower()
-            clean_pdf_filename = pdf_filename.lower()
-            
-            # CSV 파일 키워드가 조례 내용/파일명에 명시되어 있는지 비교
-            for keyword in csv_keywords:
-                if keyword in ["정보", "안내", "위치", "현황", "시설", "관리", "서울시", "서울특별시"]:
-                    continue
-                if keyword.lower() in clean_pdf or keyword.lower() in clean_pdf_filename:
-                    is_matched = True
-                    break
-            
-            # 도메인 기반 교차 체크
-            for domain, keywords in domain_mappings.items():
-                csv_has_domain = any(k in " ".join(csv_keywords).lower() for k in keywords)
-                pdf_has_domain = any(k in clean_pdf or k in clean_pdf_filename for k in keywords)
-                if csv_has_domain and pdf_has_domain:
-                    is_matched = True
-                    break
+            if rag_results:
+                rag_applied = True
+                for row in rag_results:
+                    title, content, similarity = row
+                    print(f"[pgvector RAG] Matched regulation '{title}' with similarity {similarity:.4f}")
+                    pdf_texts.append(f"조례 파일명: {title}\n내용:\n{content}")
+        except Exception as e:
+            print(f"[pgvector RAG Error] {e}")
 
-            # 일치하는 조례 조각만 프롬프트 컨텍스트에 할당
-            if is_matched:
-                pdf_texts.append(f"조례 파일명: {pdf_filename}\n내용:\n{pdf_text[:3000]}")
-            else:
-                print(f"[Semantic Filtering] 조례 '{pdf_filename}' 은(는) 업로드된 데이터셋과 시맨틱 관계가 없으므로 감리 컨텍스트에서 제외되었습니다.")
-    except Exception as e:
-        pdf_texts.append(f"서버 내 기존 조례 스캔 중 오류: {str(e)}")
+    if not rag_applied:
+        # Fallback: 로컬 디렉터리 PDF 키워드 매칭
+        fallback_pdf_matching(UPLOAD_DIR, csv_keywords, pdf_texts)
 
     for filename in request.filenames:
         file_path = os.path.join(UPLOAD_DIR, filename)
@@ -520,13 +655,21 @@ async def audit_upload_files(request: AuditRequest):
     reasoning_global = "조례 파일명 및 공간 데이터 속성을 교차 대조하여 감리를 수행했습니다."
     opinion_global = "업로드된 데이터셋에 대한 감리를 완료했습니다."
     rules_matched_global = []
-    criteria_global = [
-        {"key": "traffic", "label": "대중교통 유동성"},
-        {"key": "complaint", "label": "주민 민원 빈도"},
-        {"key": "density", "label": "주변 혼잡 밀도"}
-    ]
     
-    client = get_openai_client()
+    # Fallback criteria matching helper
+    def find_fallback_file(key_keywords):
+        for f in request.filenames:
+            if f.endswith(".csv") and any(kw in f.lower() for kw in key_keywords):
+                return f
+        return None
+
+    criteria_global = [
+        {"key": "traffic", "label": "대중교통 유동성", "associated_file": find_fallback_file(["버스", "정류소", "지하철", "교통", "station", "bus", "subway", "transit"])},
+        {"key": "complaint", "label": "주민 민원 빈도", "associated_file": find_fallback_file(["민원", "complaint"])},
+        {"key": "density", "label": "주변 혼잡 밀도", "associated_file": None}
+    ]
+    spatial_restrictions_global = {}
+    
     ai_success = False
     
     if client and (len(pdf_texts) > 0 or len(csv_headers_list) > 0):
@@ -550,7 +693,8 @@ async def audit_upload_files(request: AuditRequest):
 4. reasoning: 어떤 조례 문서의 조항 구절과 어떤 CSV 파일명의 키워드 및 컬럼 헤더들을 대조하여 위 inferred_purpose와 inferred_domain_tag를 판독했는지 상세히 서술하십시오
 5. opinion: 전체 조례 및 공간 데이터를 교차 검토하여 특정 시설물 제한 구역에 대한 감리 평가 의견
 6. rules_matched: 조례 상에서 식별해 낸 구체적인 입지 제약 조항 목록
-7. criteria: 이번 입지 분석 목적에 매칭되는 가장 연관성 높고 중요한 핵심 의사결정 평가 인자(AHP용 지표) 목록 (수량은 3~8개 사이로 유동적으로 도출하며, 각 인자마다 key와 한글 label을 쌍으로 생성할 것)
+7. criteria: 이번 입지 분석 목적에 매칭되는 가장 연관성 높고 중요한 핵심 의사결정 평가 인자(AHP용 지표) 목록 (수량은 3~8개 사이로 유동적으로 도출하며, 각 인자마다 key, 한글 label, 그리고 이번에 업로드된 CSV 파일 목록 중 해당 인자와 가장 연관성이 높은 파일명을 'associated_file' 필드로 반드시 매칭하십시오. 만약 업로드된 파일 중에 매칭되는 데이터가 없다면 null로 비워두십시오.)
+8. spatial_restrictions: 조례 규정에서 발견된 이격거리 규제 사양 (예: 지하철역 주변 10m 혹은 어린이집 경계 30m 등). transit_station, childcare_center와 같은 영문 키와 규제 거리(미터 숫자값) 딕셔너리로 반환하십시오.
 
 반드시 아래 JSON 포맷으로만 응답해야 합니다 (Markdown 없이 순수 JSON만 반환):
 {{
@@ -569,9 +713,14 @@ async def audit_upload_files(request: AuditRequest):
   "criteria": [
     {{
       "key": "인자_영문_키 (예: traffic, ev_density, school_zone)",
-      "label": "인자_한글_라벨 (예: 대중교통 유동성, 전기차 등록밀도, 스쿨존 사고율)"
+      "label": "인자_한글_라벨 (예: 대중교통 유동성, 전기차 등록밀도, 스쿨존 사고율)",
+      "associated_file": "매칭되는 업로드 CSV 파일명 (예: 00. 버스정류소 위치.csv) 또는 null"
     }}
-  ]
+  ],
+  "spatial_restrictions": {{
+    "transit_station": 10,
+    "childcare_center": 30
+  }}
 }}
 """
         try:
@@ -591,6 +740,11 @@ async def audit_upload_files(request: AuditRequest):
             opinion_global = result_json.get("opinion", opinion_global)
             rules_matched_global = result_json.get("rules_matched", [])
             criteria_global = result_json.get("criteria", criteria_global)
+            spatial_restrictions_global = result_json.get("spatial_restrictions", {})
+            
+            # 도메인 태그 유사도 기반 중복 방지 및 병합 엔진 적용
+            inferred_domain_tag = get_or_create_merged_tag(inferred_domain_tag, reasoning_global, db)
+            
             ai_success = True
         except Exception as e:
             opinion_global = f"AI 교차 감리 도중 예외가 발생하여 로컬 룰 엔진으로 대체합니다. (에러: {str(e)})"
@@ -609,34 +763,46 @@ async def audit_upload_files(request: AuditRequest):
                 "status": "matched"
             }]
             criteria_global = [
-                {"key": "traffic", "label": "대중교통 유동성"},
-                {"key": "complaint", "label": "불법흡연 민원빈도"},
-                {"key": "dumping", "label": "상습 무단투기"},
-                {"key": "population", "label": "배후 생활인구"},
-                {"key": "youth", "label": "청소년 비율"}
+                {"key": "traffic", "label": "대중교통 유동성", "associated_file": find_fallback_file(["버스", "정류소", "지하철", "교통", "station", "bus", "subway", "transit"])},
+                {"key": "complaint", "label": "불법흡연 민원빈도", "associated_file": find_fallback_file(["민원", "complaint"])},
+                {"key": "dumping", "label": "상습 무단투기", "associated_file": find_fallback_file(["무단투기", "dumping", "쓰레기", "trash", "garbage"])},
+                {"key": "population", "label": "배후 생활인구", "associated_file": find_fallback_file(["생활인구", "인구", "people", "population"])},
+                {"key": "youth", "label": "청소년 비율", "associated_file": find_fallback_file(["연령", "청소년", "연령대", "demographics", "age", "youth"])}
             ]
+            spatial_restrictions_global = {
+                "transit_station": 10.0,
+                "childcare_center": 30.0
+            }
+            # 도메인 태그 유사도 기반 중복 방지 및 병합 엔진 적용 (Fallback)
+            inferred_domain_tag = get_or_create_merged_tag(inferred_domain_tag, reasoning_global, db)
+            
         elif any(keyword in combined_text for keyword in ["충전", "전기차", "ev", "battery"]):
             inferred_purpose = "전기차 충전소 최적 입지 매핑 및 규제구역 제외 분석"
             inferred_domain_tag = "ev_charging"
             hitl_question = "업로드하신 데이터들은 [전기차 충전 인프라 설치]를 위한 입지 분석이 맞습니까?"
             reasoning_global = "공간 데이터 파일명에서 전기차/충전(ev) 관련 키워드가 감지되어, 친환경 충전 인프라 부지 선정을 위한 분석 목적으로 자동 추론했습니다. (로컬 Fallback 판독)"
             criteria_global = [
-                {"key": "ev_density", "label": "전기차 등록 밀도"},
-                {"key": "grid_capacity", "label": "배후 전력 인프라"},
-                {"key": "park_distance", "label": "공영주차장 거리"},
-                {"key": "residence_density", "label": "배후 주거 밀집도"}
+                {"key": "ev_density", "label": "전기차 등록 밀도", "associated_file": find_fallback_file(["충전", "전기차", "ev", "battery"])},
+                {"key": "grid_capacity", "label": "배후 전력 인프라", "associated_file": find_fallback_file(["전력", "그리드", "변전소", "grid", "capacity"])},
+                {"key": "park_distance", "label": "공영주차장 거리", "associated_file": find_fallback_file(["주차장", "park"])},
+                {"key": "residence_density", "label": "배후 주거 밀집도", "associated_file": find_fallback_file(["주거", "residence", "아파트", "apartment"])}
             ]
+            # 도메인 태그 유사도 기반 중복 방지 및 병합 엔진 적용 (Fallback)
+            inferred_domain_tag = get_or_create_merged_tag(inferred_domain_tag, reasoning_global, db)
+            
         elif any(keyword in combined_text for keyword in ["어린이", "보행", "안전", "스쿨", "school"]):
             inferred_purpose = "어린이 보호구역 옐로카펫 및 안심 횡단보도 설치 분석"
             inferred_domain_tag = "yellow_carpet"
             hitl_question = "업로드하신 데이터들은 [어린이 교통 안전 및 옐로카펫 설치]를 위한 입지 분석이 맞습니까?"
             reasoning_global = "공간 데이터 파일명에서 어린이/스쿨구역 관련 키워드가 감지되어, 어린이 교통 보호 및 옐로카펫 설치를 위한 분석 목적으로 자동 추론했습니다. (로컬 Fallback 판독)"
             criteria_global = [
-                {"key": "school_zone", "label": "스쿨존 사고율"},
-                {"key": "traffic_volume", "label": "보행 유동인구"},
-                {"key": "speed_violations", "label": "속도위반 빈도"},
-                {"key": "youth_ratio", "label": "아동 생활밀도"}
+                {"key": "school_zone", "label": "스쿨존 사고율", "associated_file": find_fallback_file(["사고", "school", "보호구역", "스쿨존"])},
+                {"key": "traffic_volume", "label": "보행 유동인구", "associated_file": find_fallback_file(["보행", "유동", "유동인구", "traffic", "volume"])},
+                {"key": "speed_violations", "label": "속도위반 빈도", "associated_file": find_fallback_file(["위반", "속도", "speed", "violation"])},
+                {"key": "youth_ratio", "label": "아동 생활밀도", "associated_file": find_fallback_file(["아동", "청소년", "어린이", "youth", "child"])}
             ]
+            # 도메인 태그 유사도 기반 중복 방지 및 병합 엔진 적용 (Fallback)
+            inferred_domain_tag = get_or_create_merged_tag(inferred_domain_tag, reasoning_global, db)
 
     results = []
     for filename in request.filenames:
@@ -671,7 +837,10 @@ async def audit_upload_files(request: AuditRequest):
         "inferred_domain_tag": inferred_domain_tag,
         "hitl_question": hitl_question,
         "reasoning": reasoning_global,
+        "opinion": opinion_global,
+        "rules_matched": rules_matched_global,
         "criteria": criteria_global,
+        "spatial_restrictions": spatial_restrictions_global,
         "results": results
     }
 
@@ -767,7 +936,6 @@ async def commit_hitl_data(request: HITLCommitRequest, db: Session = Depends(get
     # 1. 컬럼 매핑 인덱스 추적 (Key-Value Inversion 방어막 적용)
     lat_idx, lng_idx, addr_idx = -1, -1, -1
     for k, v in request.column_mapping.items():
-        # k가 표준 컬럼명이고, v가 실물 헤더명인 경우 (프론트 포맷: {"lat": "위도"})
         if k in ["lat", "lng", "address"] and v in headers:
             idx = headers.index(v)
             if k == "lat":
@@ -776,7 +944,6 @@ async def commit_hitl_data(request: HITLCommitRequest, db: Session = Depends(get
                 lng_idx = idx
             elif k == "address":
                 addr_idx = idx
-        # 반대로 k가 실물 헤더명이고, v가 표준 컬럼명인 경우 (백엔드 기본 기대 포맷: {"위도": "lat"})
         elif v in ["lat", "lng", "address"] and k in headers:
             idx = headers.index(k)
             if v == "lat":
@@ -823,9 +990,10 @@ async def commit_hitl_data(request: HITLCommitRequest, db: Session = Depends(get
                     
             addr_val = row[addr_idx] if addr_idx != -1 and addr_idx < len(row) else f"행 번호 {idx+1}"
             
+            row_dict = {headers[i]: row[i] for i in range(min(len(headers), len(row)))}
             properties_json = json.dumps({
                 "address": addr_val, 
-                "original_row": row,
+                "data": row_dict,
                 "domain": request.confirmed_domain
             }, ensure_ascii=False)
             
@@ -842,17 +1010,87 @@ async def commit_hitl_data(request: HITLCommitRequest, db: Session = Depends(get
             
         if params_list:
             db.execute(insert_query, params_list)
-            committed_count = len(params_list)
-            
+            committed_count += len(params_list)
+
+        # UPLOAD_DIR 내 다른 모든 CSV 파일들도 자동 커밋 처리 진행
+        committed_files = [request.filename]
+        other_files = [f for f in os.listdir(UPLOAD_DIR) if f.endswith(".csv") and f != request.filename]
+        
+        for other_file in other_files:
+            other_path = os.path.join(UPLOAD_DIR, other_file)
+            try:
+                o_headers, o_rows = parse_csv_file(other_path)
+                o_mapping, o_errors = analyze_csv_header_only(o_headers)
+                
+                o_lat_col = o_mapping.get("lat")
+                o_lng_col = o_mapping.get("lng")
+                o_addr_col = o_mapping.get("address")
+                
+                if not o_lat_col or not o_lng_col:
+                    continue
+                    
+                o_lat_idx = o_headers.index(o_lat_col)
+                o_lng_idx = o_headers.index(o_lng_col)
+                o_addr_idx = o_headers.index(o_addr_col) if o_addr_col else -1
+                
+                o_params_list = []
+                for idx, r in enumerate(o_rows):
+                    if len(r) <= max(o_lat_idx, o_lng_idx):
+                        continue
+                    try:
+                        final_lat = float(r[o_lat_idx])
+                        final_lng = float(r[o_lng_idx])
+                    except ValueError:
+                        continue
+                        
+                    if not (33.0 <= final_lat <= 39.0 and 124.0 <= final_lng <= 132.0):
+                        continue
+                        
+                    addr_val = r[o_addr_idx] if o_addr_idx != -1 and o_addr_idx < len(r) else f"행 번호 {idx+1}"
+                    
+                    row_dict = {o_headers[i]: r[i] for i in range(min(len(o_headers), len(r)))}
+                    properties_json = json.dumps({
+                        "address": addr_val,
+                        "data": row_dict,
+                        "domain": request.confirmed_domain
+                    }, ensure_ascii=False)
+                    
+                    feature_type_val = request.confirmed_domain if request.confirmed_domain else ("smoking_zone" if "smoking" in other_file.lower() else "city_feature")
+                    
+                    o_params_list.append({
+                        "district_id": 1,
+                        "feature_type": feature_type_val,
+                        "feature_name": other_file,
+                        "lng": final_lng,
+                        "lat": final_lat,
+                        "properties": properties_json
+                    })
+                    
+                if o_params_list:
+                    db.execute(insert_query, o_params_list)
+                    committed_count += len(o_params_list)
+                    committed_files.append(other_file)
+            except Exception as ex:
+                print(f"[Auto Commit Error] Failed to process other file {other_file}: {ex}")
+                
         db.commit()
+        
+        # 커밋 완료 후 업로드 디렉터리 내 물리 파일 제거 (격리 무결성 보존)
+        for cf in committed_files:
+            try:
+                os.remove(os.path.join(UPLOAD_DIR, cf))
+            except Exception as e:
+                print(f"[Cleanup Error] Failed to remove committed file {cf}: {e}")
+                
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"데이터베이스 적재 중 오류가 발생해 롤백 처리되었습니다: {str(e)}")
         
     return {
         "status": "success",
-        "message": f"파일 '{request.filename}'에 대한 보정이 승인되었으며, {committed_count}건의 공간 레코드가 PostGIS DB에 적재 완료되었습니다.",
+        "message": f"성공적으로 {len(committed_files)}개 공간 데이터셋의 보정이 완료되었으며, 총 {committed_count}건의 공간 레코드가 PostGIS DB에 격리 적재되었습니다.",
         "committed_records": committed_count,
+        "committed_files": committed_files,
         "details": {
             "mapped_columns": request.column_mapping,
             "applied_corrections": details_applied

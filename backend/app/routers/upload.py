@@ -433,6 +433,7 @@ class HITLCommitRequest(BaseModel):
     column_mapping: Dict[str, str]
     corrections: List[CoordinateCorrection]
     confirmed_domain: Optional[str] = None
+    file_behaviors: Optional[Dict[str, str]] = None
 
 # PM 개발 철칙 2조 준수: 반드시 비동기 API(async def) 적용
 # 조례/시행규칙 규정 문서 등록 API
@@ -685,6 +686,7 @@ async def audit_upload_files(request: AuditRequest, db: Session = Depends(get_db
         {"key": "density", "label": "주변 혼잡 밀도", "associated_file": None}
     ]
     spatial_restrictions_global = {}
+    file_behaviors_global = {}
     
     ai_success = False
     
@@ -711,6 +713,7 @@ async def audit_upload_files(request: AuditRequest, db: Session = Depends(get_db
 6. rules_matched: 조례 상에서 식별해 낸 구체적인 입지 제약 조항 목록
 7. criteria: 이번 입지 분석 목적에 매칭되는 가장 연관성 높고 중요한 핵심 의사결정 평가 인자(AHP용 지표) 목록 (수량은 3~8개 사이로 유동적으로 도출하며, 각 인자마다 key, 한글 label, 그리고 이번에 업로드된 CSV 파일 목록 중 해당 인자와 가장 연관성이 높은 파일명을 'associated_file' 필드로 반드시 매칭하십시오. 만약 업로드된 파일 중에 매칭되는 데이터가 없다면 null로 비워두십시오.)
 8. spatial_restrictions: 조례 규정에서 발견된 이격거리 규제 사양 (예: 지하철역 주변 10m 혹은 어린이집 경계 30m 등). transit_station, childcare_center와 같은 영문 키와 규제 거리(미터 숫자값) 딕셔너리로 반환하십시오.
+9. file_behaviors: 업로드된 각 CSV 파일이 이번 도메인 분석 목적(inferred_domain_tag) 하에서 법적/행정적 설치 금지 구역에 해당하는지("exclusion"), 아니면 단순 설치 허용/가용/권장 주차장이나 교통 노드 정보 등에 해당하는지("inclusion") 조례(RAG)를 바탕으로 판정하십시오. 파일명을 키로 하고 "exclusion" 또는 "inclusion"을 값으로 하는 객체로 반환하십시오.
 
 반드시 아래 JSON 포맷으로만 응답해야 합니다 (Markdown 없이 순수 JSON만 반환):
 {{
@@ -736,6 +739,10 @@ async def audit_upload_files(request: AuditRequest, db: Session = Depends(get_db
   "spatial_restrictions": {{
     "transit_station": 10,
     "childcare_center": 30
+  }},
+  "file_behaviors": {{
+    "파일명1.csv": "exclusion",
+    "파일명2.csv": "inclusion"
   }}
 }}
 """
@@ -757,6 +764,7 @@ async def audit_upload_files(request: AuditRequest, db: Session = Depends(get_db
             rules_matched_global = result_json.get("rules_matched", [])
             criteria_global = result_json.get("criteria", criteria_global)
             spatial_restrictions_global = result_json.get("spatial_restrictions", {})
+            file_behaviors_global = result_json.get("file_behaviors", {})
             
             # 도메인 태그 유사도 기반 중복 방지 및 병합 엔진 적용
             inferred_domain_tag = get_or_create_merged_tag(inferred_domain_tag, reasoning_global, db)
@@ -834,6 +842,14 @@ async def audit_upload_files(request: AuditRequest, db: Session = Depends(get_db
             # 도메인 태그 유사도 기반 중복 방지 및 병합 엔진 적용 (Fallback)
             inferred_domain_tag = get_or_create_merged_tag(inferred_domain_tag, reasoning_global, db)
 
+    # AI가 누락했거나 Fallback인 경우 파일별 기본 성격 분류 (금지/불가능 단어 감지 시 exclusion)
+    for f in request.filenames:
+        if f not in file_behaviors_global:
+            if any(k in f.lower() for k in ["금지", "불가능", "제한", "위험", "exclusion", "banned", "nosmoking"]):
+                file_behaviors_global[f] = "exclusion"
+            else:
+                file_behaviors_global[f] = "inclusion"
+
     results = []
     for filename in request.filenames:
         ext = filename.split(".")[-1].lower() if "." in filename else ""
@@ -844,7 +860,7 @@ async def audit_upload_files(request: AuditRequest, db: Session = Depends(get_db
                 "filename": filename,
                 "status": meta["status"],
                 "score": 0.65 if meta["status"] in ["warning", "fail"] else 0.95,
-                "opinion": meta.get("error_msg", f"공간 데이터 '{filename}' 스키마 및 좌표 무결성 검사 완료."),
+                "opinion": meta.get("error_msg", f"공간 데이터 '{filename}' 스키마 및 좌표 무결성 검사 완료. 성격: {file_behaviors_global.get(filename, 'inclusion')}"),
                 "schema_errors": meta.get("schema_errors", []),
                 "missing_coordinates": meta.get("missing_coordinates", []),
                 "column_mapping": meta.get("detected_mapping", {}),
@@ -871,6 +887,7 @@ async def audit_upload_files(request: AuditRequest, db: Session = Depends(get_db
         "rules_matched": rules_matched_global,
         "criteria": criteria_global,
         "spatial_restrictions": spatial_restrictions_global,
+        "file_behaviors": file_behaviors_global,
         "results": results
     }
 
@@ -1034,10 +1051,15 @@ async def commit_hitl_data(request: HITLCommitRequest, db: Session = Depends(get
             addr_val = row[addr_idx] if addr_idx != -1 and addr_idx < len(row) else f"행 번호 {idx+1}"
             
             row_dict = {headers[i]: row[i] for i in range(min(len(headers), len(row)))}
+            zone_behavior = request.file_behaviors.get(request.filename, "inclusion") if request.file_behaviors else "inclusion"
+            is_exclusion = (zone_behavior == "exclusion")
+            
             properties_dict = {
                 "address": addr_val, 
                 "data": row_dict,
-                "domain": request.confirmed_domain
+                "domain": request.confirmed_domain,
+                "zone_behavior": zone_behavior,
+                "is_exclusion": is_exclusion
             }
             
             dong_id_val = find_dong_id(final_lng, final_lat)
@@ -1093,10 +1115,20 @@ async def commit_hitl_data(request: HITLCommitRequest, db: Session = Depends(get
                     addr_val = r[o_addr_idx] if o_addr_idx != -1 and o_addr_idx < len(r) else f"행 번호 {idx+1}"
                     
                     row_dict = {o_headers[i]: r[i] for i in range(min(len(o_headers), len(r)))}
+                    other_zone_behavior = "inclusion"
+                    if request.file_behaviors and other_file in request.file_behaviors:
+                        other_zone_behavior = request.file_behaviors[other_file]
+                    else:
+                        if any(k in other_file.lower() for k in ["금지", "불가능", "제한", "위험", "exclusion", "banned", "nosmoking"]):
+                            other_zone_behavior = "exclusion"
+                    other_is_exclusion = (other_zone_behavior == "exclusion")
+                    
                     properties_dict = {
                         "address": addr_val,
                         "data": row_dict,
-                        "domain": request.confirmed_domain
+                        "domain": request.confirmed_domain,
+                        "zone_behavior": other_zone_behavior,
+                        "is_exclusion": other_is_exclusion
                     }
                     
                     dong_id_val = find_dong_id(final_lng, final_lat)

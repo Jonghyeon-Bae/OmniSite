@@ -40,6 +40,7 @@ export default function Home() {
   const [missingCoordinates, setMissingCoordinates] = useState([]);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadedFilenames, setUploadedFilenames] = useState([]);
+  const [fileBehaviors, setFileBehaviors] = useState({});
 
   // 1. AHP 가중치 입력 상태
   const [criteriaList, setCriteriaList] = useState([
@@ -503,7 +504,8 @@ export default function Home() {
         lat: hitlLat,
         lng: hitlLng
       })),
-      confirmed_domain: inferredDomainTag
+      confirmed_domain: inferredDomainTag,
+      file_behaviors: fileBehaviors
     };
 
     try {
@@ -623,9 +625,9 @@ export default function Home() {
                     
                     const escapeRegExp = (string) => string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
                     
-                    const merchantRegex = new RegExp(`^(${escapeRegExp(merchantName)}|상인대표|상인)\\s*(\\(찬성\\))?:?\\s*`);
-                    const residentRegex = new RegExp(`^(${escapeRegExp(residentName)}|주민대표|구민대표|주민|구민)\\s*(\\(반대\\))?:?\\s*`);
-                    const coordinatorRegex = new RegExp(`^(${escapeRegExp(coordinatorName)}|갈등조정관|조정관)\\s*(\\(중재\\)|\\(조정안\\)|\\(조정\\))?:?\\s*`);
+                    const merchantRegex = new RegExp(`^(${escapeRegExp(merchantName)}|상인대표|상인|찬성)\\s*(\\(찬성\\))?:?\\s*`);
+                    const residentRegex = new RegExp(`^(${escapeRegExp(residentName)}|주민대표|구민대표|주민|구민|반대)\\s*(\\(반대\\))?:?\\s*`);
+                    const coordinatorRegex = new RegExp(`^(${escapeRegExp(coordinatorName)}|갈등조정관|조정관|정부)\\s*(\\(중재\\)|\\(조정안\\)|\\(조정\\))?:?\\s*`);
                     
                     for (let rawLine of rawLines) {
                       const trimmed = rawLine.trim();
@@ -809,6 +811,7 @@ export default function Home() {
       setInferredReasoning(auditData.reasoning || '');
       setUserPurpose(auditData.inferred_purpose);
       setSpatialRestrictions(auditData.spatial_restrictions || {});
+      setFileBehaviors(auditData.file_behaviors || {});
 
       if (auditData.criteria && auditData.criteria.length > 0) {
         setCriteriaList(auditData.criteria);

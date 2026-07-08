@@ -251,20 +251,28 @@ async def recommend_optimal_sites(
               AND c.ownership_type IN ('국유지', '시유지', '구유지')
               AND ST_IsValid(c.geom)
               AND ST_DWithin(c.geom, ST_SetSRID(ST_MakePoint(:ref_lng, :ref_lat), 4326), 0.01)
-              -- 개별 규제지 버퍼 저촉 여부를 geometry 인덱스(GIST)로 고속 감지 (실제 데이터가 탑재된 restricted_zones 테이블 기준)
+              -- 개별 규제지 버퍼 저촉 여부를 geometry 인덱스(GIST)로 고속 감지
               AND NOT EXISTS (
                   SELECT 1 FROM restricted_zones rz 
                   WHERE rz.district_id = 1
                     AND (
-                        (rz.zone_type = 'school' AND ST_DWithin(c.geom, rz.geom, 0.002)) OR
-                        (rz.zone_type = 'childcare_center' AND ST_DWithin(c.geom, rz.geom, 0.0003)) OR
-                        -- 흡연구역 도메인인 경우에만 기존 금연구역(nosmoking_zone) 버퍼 회피 강제
-                        (:is_smoking_zone = TRUE AND rz.zone_type = 'nosmoking_zone' AND ST_DWithin(c.geom, rz.geom, 0.0001))
+                        -- 흡연구역일 때는 school(200m), childcare(30m), nosmoking(10m) 모두 차집합 배제
+                        (:facility_type = 'smoking_zone' AND (
+                            (rz.zone_type = 'school' AND ST_DWithin(c.geom, rz.geom, 0.002)) OR
+                            (rz.zone_type = 'childcare_center' AND ST_DWithin(c.geom, rz.geom, 0.0003)) OR
+                            (rz.zone_type = 'nosmoking_zone' AND ST_DWithin(c.geom, rz.geom, 0.0001))
+                        )) OR
+                        -- 전기차 충전소일 때는 school(100m = 약 0.001도), childcare(30m = 약 0.0003도)만 차집합 배제
+                        (:facility_type = 'ev_charging' AND (
+                            (rz.zone_type = 'school' AND ST_DWithin(c.geom, rz.geom, 0.001)) OR
+                            (rz.zone_type = 'childcare_center' AND ST_DWithin(c.geom, rz.geom, 0.0003))
+                        ))
+                        -- 옐로카펫 및 공용자전거 등 기타 시설은 학교/어린이집/금연구역 등에 의한 강제 차집합 배제를 적용하지 않음 (안전 구역 내 설치 촉진)
                     )
               )
-              -- 흡연구역 도메인인 경우에만 버스정류장/지하철역 이격거리 규제 적용
+              -- 흡연구역 도메인인 경우에만 버스정류장/지하철역 이격거리 규제 적용 (10m)
               AND (
-                  :is_smoking_zone = FALSE OR
+                  :facility_type != 'smoking_zone' OR
                   NOT EXISTS (
                       SELECT 1 FROM transit_stations ts
                       WHERE ts.transit_type IN ('BUS', 'SUBWAY')
@@ -316,7 +324,7 @@ async def recommend_optimal_sites(
             rows = db.execute(spatial_query, {
                 "ref_lng": base_lng, 
                 "ref_lat": base_lat, 
-                "is_smoking_zone": (facility_type == "smoking_zone")
+                "facility_type": facility_type
             }).fetchall()
             for r in rows:
                 candidates.append({
@@ -328,6 +336,37 @@ async def recommend_optimal_sites(
                 })
         except Exception:
             candidates = []
+
+        # 2.5 사용자가 업로드한 동적 Exclusion 좌표 수집 및 2차 필터링
+        dynamic_exclusions = []
+        if os.path.exists(UPLOAD_DIR):
+            for file in os.listdir(UPLOAD_DIR):
+                if file.endswith(".json"):
+                    try:
+                        file_path = os.path.join(UPLOAD_DIR, file)
+                        with open(file_path, "r", encoding="utf-8") as f:
+                            records = json.load(f)
+                            for item in records:
+                                props = item.get("properties", {})
+                                if props.get("domain") == facility_type and props.get("is_exclusion") is True:
+                                    dynamic_exclusions.append((float(item["lng"]), float(item["lat"])))
+                    except Exception as ex:
+                        print(f"[Dynamic Exclusion Load Error in recommend] {file}: {ex}")
+
+        # 수집된 동적 Exclusion 좌표와 30m 이내로 인접한 후보지 필지는 즉시 배제 (이격 안전거리 보장)
+        if dynamic_exclusions:
+            filtered_candidates_list = []
+            for c in candidates:
+                too_close = False
+                for ex_lng, ex_lat in dynamic_exclusions:
+                    dist = ((c["lng"] - ex_lng) ** 2 + (c["lat"] - ex_lat) ** 2) ** 0.5
+                    if dist <= 0.0003: # 약 30미터
+                        too_close = True
+                        print(f"[Dynamic Exclusion Filter] Candidate {c['id']} ({c['jibun']}) excluded due to proximity to custom restricted area.")
+                        break
+                if not too_close:
+                    filtered_candidates_list.append(c)
+            candidates = filtered_candidates_list
 
         # 3. 실 DB 지적이 없는 경우 HITL 마커 기준점 주변으로 동적 Fallback 후보 생성
         if len(candidates) < 3:
@@ -643,30 +682,66 @@ async def check_boundary_containment(req: BoundaryCheckRequest, db: Session = De
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"경계 검증 처리 오류: {str(e)}")
 
-# 3. 규제 시설물 좌표 조회 API (Step 2 규제 버퍼 가시화용 - restricted_zones 실물 데이터 연동)
+# 3. 규제 시설물 좌표 조회 API (Step 2 규제 버퍼 가시화용 - restricted_zones 및 업로드된 dynamic exclusion 연동)
 @router.get("/spatial/restrictions/points")
-async def get_restriction_points(db: Session = Depends(get_db)):
+async def get_restriction_points(facility_type: str = "smoking_zone", db: Session = Depends(get_db)):
     try:
-        # DB 마이그레이션 완료된 restricted_zones 테이블 전체 조회
-        zone_query = text("""
-            SELECT id, zone_name, ST_X(geom), ST_Y(geom), COALESCE(area, 10.0), zone_type 
-            FROM restricted_zones 
-            WHERE district_id = 1
-        """)
-        zone_rows = db.execute(zone_query).fetchall()
-        
-        points = []
-        for r in zone_rows:
-            points.append({
-                "id": r[0],
-                "name": r[1] if r[1] else "규제구역",
-                "lng": float(r[2]),
-                "lat": float(r[3]),
-                "type": r[5] if r[5] else "restricted_zone",
-                "radius": float(r[4])
-            })
+        # 도메인별 적용되는 기본 법정 규제 유형 분류
+        # smoking_zone: school, childcare_center, nosmoking_zone 모두 적용
+        # ev_charging: school, childcare_center 만 적용 (화재안전, 아동보호)
+        # yellow_carpet 및 public_bicycle: 기본 규제 구역 제외 없음
+        allowed_types = []
+        if facility_type == "smoking_zone":
+            allowed_types = ["school", "childcare_center", "nosmoking_zone"]
+        elif facility_type == "ev_charging":
+            allowed_types = ["school", "childcare_center"]
             
-        if not points:
+        points = []
+        
+        # 1. 기본 법정 규제 데이터 조회
+        if allowed_types:
+            types_str = ", ".join(f"'{t}'" for t in allowed_types)
+            zone_query = text(f"""
+                SELECT id, zone_name, ST_X(geom), ST_Y(geom), COALESCE(area, 10.0), zone_type 
+                FROM restricted_zones 
+                WHERE district_id = 1 AND zone_type IN ({types_str})
+            """)
+            zone_rows = db.execute(zone_query).fetchall()
+            
+            for r in zone_rows:
+                points.append({
+                    "id": int(r[0]),
+                    "name": r[1] if r[1] else "기본 규제구역",
+                    "lng": float(r[2]),
+                    "lat": float(r[3]),
+                    "type": r[5] if r[5] else "restricted_zone",
+                    "radius": float(r[4])
+                })
+                
+        # 2. 사용자가 이번 도메인 분석용으로 업로드한 동적 Exclusion 캐시 로딩 및 병합
+        if os.path.exists(UPLOAD_DIR):
+            for file in os.listdir(UPLOAD_DIR):
+                if file.endswith(".json"):
+                    try:
+                        file_path = os.path.join(UPLOAD_DIR, file)
+                        with open(file_path, "r", encoding="utf-8") as f:
+                            records = json.load(f)
+                            for idx, item in enumerate(records):
+                                props = item.get("properties", {})
+                                # 도메인이 일치하고, is_exclusion 플래그가 True인 경우에만 병합
+                                if props.get("domain") == facility_type and props.get("is_exclusion") is True:
+                                    points.append({
+                                        "id": 100000 + idx + sum(ord(c) for c in file), # 유니크 ID 부여
+                                        "name": f"[동적 규제] {props.get('address', '사용자 금지구역')}",
+                                        "lng": float(item["lng"]),
+                                        "lat": float(item["lat"]),
+                                        "type": "dynamic_exclusion",
+                                        "radius": 30.0 # 30미터 버퍼 영역 설정
+                                    })
+                    except Exception as ex:
+                        print(f"[Dynamic Restriction Load Error] {file}: {ex}")
+                        
+        if not points and facility_type == "smoking_zone":
             # 실 DB 레코드가 비어있을 시 용산구 기준 대표 Fallback 데이터 주입
             points = [
                 {"id": 901, "name": "용산역광장 제한지구", "lng": 126.9680, "lat": 37.5290, "type": "restricted_zone", "radius": 30.0},
@@ -680,140 +755,10 @@ async def get_restriction_points(db: Session = Depends(get_db)):
 
 # 위치 및 도메인 기반 동적 페르소나 매핑 헬퍼 (무작위 템플릿 샘플러)
 def get_dynamic_personas(jibun: str, facility_type: str) -> Dict[str, str]:
-    import re
-    import random
-    
-    # 지번에서 동/로 이름 추출
-    dong_name = "용산구"
-    match = re.search(r'([가-힣]+[동로가])', jibun)
-    if match:
-        dong_name = match.group(1)
-        
-    # 도메인명 한글 변환
-    domain_ko = "지능형"
-    ft_lower = facility_type.lower()
-    if "smoking" in ft_lower:
-        domain_ko = "실외 흡연구역"
-    elif "ev" in ft_lower or "charging" in ft_lower:
-        domain_ko = "전기차 충전소"
-    elif "dumping" in ft_lower or "trash" in ft_lower:
-        domain_ko = "쓰레기 무단투기 차단기"
-    elif "shelter" in ft_lower or "rest" in ft_lower:
-        domain_ko = "스마트 쉼터"
-    elif "yellow" in ft_lower or "carpet" in ft_lower:
-        domain_ko = "어린이 보호 옐로카펫"
-        
-    # 각 지역별 그럴듯한 페르소나 후보군 풀 (Pool)
-    pools = {
-        "이촌": {
-            "residents": [
-                "이촌동 한강맨션 입주자대표 최영희",
-                "이촌 현대아파트 입주자대표회의 박정수",
-                "이촌동 코오롱아파트 입주민대표 김혜숙",
-                "이촌동 첼리투스 동대표 자문위원 이영호",
-                "이촌동 삼익아파트 주민자치위원회 정경아"
-            ],
-            "merchants": [
-                "이촌역 종합상가 번영회장 조태식",
-                "동부이촌동 상인연합회 총무 민영우",
-                "이촌로 개인카페 대표 김진아",
-                "이촌시장 골목상권 비상대책위 간사 한경수"
-            ]
-        },
-        "한강로": {
-            "residents": [
-                "한강로동 벽산메가트리움 입주민 자치회장 김동현",
-                "용산 센트럴파크 해링턴스퀘어 주민자치위원 임은주",
-                "한강로3가 주택가 거주 주민대표 박성원",
-                "용산 푸르지오 써밋 입주자대표단 총무 장미경"
-            ],
-            "merchants": [
-                "신용산역 먹자골목 상가번영회장 백윤기",
-                "용산 아이파크몰 인근 소상공인연합회장 최태호",
-                "한강대로 외식업지부 지회장 윤종필",
-                "용산역 광장 상인 권익보호위 사무국장 배진형"
-            ]
-        },
-        "한남": {
-            "residents": [
-                "한남더힐 주민자치위원회 대표 정재헌",
-                "나인원한남 입주자대표단 동대표 이수안",
-                "한남 뉴타운 3구역 원주민 대책위 대표 서무성",
-                "한남동 유엔빌리지 주민 자치총무 강태웅"
-            ],
-            "merchants": [
-                "한남동 독서당로 카페거리 번영회장 최민서",
-                "한남동 패션거리 상인연합회 사무국장 손지은",
-                "순천향대병원 상권 활성화대책위 간사 박용우",
-                "한남동 이태원로27길 상가번영총무 전상기"
-            ]
-        },
-        "이태원": {
-            "residents": [
-                "이태원 주택가 거주 주민 자치대표 송승헌",
-                "이태원1동 빌라 밀집지역 반장 이옥순",
-                "녹사평역 언덕길 거주민 비상대책위 정태일",
-                "이태원 외인아파트 인근 주민위원 조경호"
-            ],
-            "merchants": [
-                "이태원 관광특구 상인연합회 부회장 맹기영",
-                "경리단길 상가 살리기 연합회 총무 신현정",
-                "이태원 세계음식거리 번영회장 박재영",
-                "우사단길 청년상인연합 네트워크 대표 고석진"
-            ]
-        },
-        "원효로": {
-            "residents": [
-                "원효로 산호아파트 주민 동대표 강영수",
-                "원효로2동 주택가 소방도로 주민위원 이복희",
-                "원효로 용산 e-편한세상 입주자대표총무 최창원",
-                "원효로1동 청년주택 입주자 자치대표 정수민"
-            ],
-            "merchants": [
-                "원효로 열정도 골목상가 번영회장 임성민",
-                "원효로 인쇄상가 번영회 총무 전현우",
-                "원효로 용문시장 상인회 부회장 양정숙",
-                "전자상가 19동 유통협동조합 이사장 조장혁"
-            ]
-        }
-    }
-    
-    # 룩업 테이블 매칭 (없을 시 용산구 범용 풀 사용)
-    matched_key = None
-    for k in pools.keys():
-        if k in dong_name:
-            matched_key = k
-            break
-            
-    if matched_key:
-        residents_pool = pools[matched_key]["residents"]
-        merchants_pool = pools[matched_key]["merchants"]
-    else:
-        residents_pool = [
-            f"{dong_name} 주택가 주민자치위원회 대표 김윤석",
-            f"{dong_name} 빌라자치회 간사 이정훈",
-            f"{dong_name} 주민 비상대책위원회 총무 박혜자",
-            f"{dong_name} 아파트 연합 자치대표 정원철"
-        ]
-        merchants_pool = [
-            f"{dong_name} 골목상가 번영회장 최진규",
-            f"{dong_name} 상가 연합회 사무국장 배지환",
-            f"{dong_name} 소상공인 권익옹호위원 강성현",
-            f"{dong_name} 상가 살리기 연대 대표 안상우"
-        ]
-        
-    # 주소명 기반 해시 코드로 난수 시드 고정 (일관성 유지)
-    seed_val = sum(ord(c) for c in jibun) + sum(ord(c) for c in facility_type)
-    rng = random.Random(seed_val)
-    
-    resident = rng.choice(residents_pool)
-    merchant = rng.choice(merchants_pool)
-    coordinator = f"용산구청 {domain_ko} 심의 조정관"
-    
     return {
-        "resident": resident,
-        "merchant": merchant,
-        "coordinator": coordinator
+        "resident": "반대",
+        "merchant": "찬성",
+        "coordinator": "정부"
     }
 
 # 4. LangGraph 3자 대립 SSE 모의 토론 스트리밍 API (POST — 컨텍스트 주입 방식)

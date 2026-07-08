@@ -83,6 +83,20 @@ export default function Home() {
   const [restrictionPoints, setRestrictionPoints] = useState([]);
   const [spatialRestrictions, setSpatialRestrictions] = useState({});
 
+  // 최초 서비스 마운트 시 (웹 접속 시) 데이터베이스 및 로컬 캐시 초기화
+  useEffect(() => {
+    apiFetch('/api/v1/upload/clear', { method: 'POST' })
+      .then(res => res.ok ? res.json() : null)
+      .then(data => {
+        if (data) {
+          console.log('[OmniSite Initialization] Cleared server upload caches:', data);
+        }
+      })
+      .catch(err => {
+        console.error('[OmniSite Initialization Error] Failed to clear upload caches:', err);
+      });
+  }, []);
+
   // Step 2 진입 시 관할 경계 GeoJSON 및 규제 시설물 목록 로드
   useEffect(() => {
     if (pipelineStep === 2) {

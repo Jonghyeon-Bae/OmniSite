@@ -1116,3 +1116,31 @@ async def commit_hitl_data(request: HITLCommitRequest, db: Session = Depends(get
             "applied_corrections": details_applied
         }
     }
+
+# --- [Step 1-0] 캐시 파일 일괄 제거 API ---
+@router.post("/upload/clear")
+async def clear_uploaded_caches():
+    try:
+        purged_files = []
+        if os.path.exists(UPLOAD_DIR):
+            for f in os.listdir(UPLOAD_DIR):
+                # .json 및 .csv, .txt 파일들만 타깃으로 청소 (.gitkeep 등 제외)
+                if f.endswith((".json", ".csv", ".txt")):
+                    file_path = os.path.join(UPLOAD_DIR, f)
+                    try:
+                        os.remove(file_path)
+                        purged_files.append(f)
+                    except Exception:
+                        pass
+        
+        # 메모리 캐시 초기화
+        from app.routers.spatial import _file_cache
+        _file_cache.clear()
+        
+        return {
+            "status": "success",
+            "message": f"성공적으로 {len(purged_files)}개의 임시 공간 데이터/캐시 파일 및 메모리 캐시를 초기화(Clear)했습니다.",
+            "purged_files": purged_files
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"임시 캐시 초기화 중 오류 발생: {str(e)}")

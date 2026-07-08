@@ -556,6 +556,144 @@ async def get_restriction_points(db: Session = Depends(get_db)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"규제 시설물 좌표 조회 오류: {str(e)}")
 
+# 위치 및 도메인 기반 동적 페르소나 매핑 헬퍼 (무작위 템플릿 샘플러)
+def get_dynamic_personas(jibun: str, facility_type: str) -> Dict[str, str]:
+    import re
+    import random
+    
+    # 지번에서 동/로 이름 추출
+    dong_name = "용산구"
+    match = re.search(r'([가-힣]+[동로가])', jibun)
+    if match:
+        dong_name = match.group(1)
+        
+    # 도메인명 한글 변환
+    domain_ko = "지능형"
+    ft_lower = facility_type.lower()
+    if "smoking" in ft_lower:
+        domain_ko = "실외 흡연구역"
+    elif "ev" in ft_lower or "charging" in ft_lower:
+        domain_ko = "전기차 충전소"
+    elif "dumping" in ft_lower or "trash" in ft_lower:
+        domain_ko = "쓰레기 무단투기 차단기"
+    elif "shelter" in ft_lower or "rest" in ft_lower:
+        domain_ko = "스마트 쉼터"
+    elif "yellow" in ft_lower or "carpet" in ft_lower:
+        domain_ko = "어린이 보호 옐로카펫"
+        
+    # 각 지역별 그럴듯한 페르소나 후보군 풀 (Pool)
+    pools = {
+        "이촌": {
+            "residents": [
+                "이촌동 한강맨션 입주자대표 최영희",
+                "이촌 현대아파트 입주자대표회의 박정수",
+                "이촌동 코오롱아파트 입주민대표 김혜숙",
+                "이촌동 첼리투스 동대표 자문위원 이영호",
+                "이촌동 삼익아파트 주민자치위원회 정경아"
+            ],
+            "merchants": [
+                "이촌역 종합상가 번영회장 조태식",
+                "동부이촌동 상인연합회 총무 민영우",
+                "이촌로 개인카페 대표 김진아",
+                "이촌시장 골목상권 비상대책위 간사 한경수"
+            ]
+        },
+        "한강로": {
+            "residents": [
+                "한강로동 벽산메가트리움 입주민 자치회장 김동현",
+                "용산 센트럴파크 해링턴스퀘어 주민자치위원 임은주",
+                "한강로3가 주택가 거주 주민대표 박성원",
+                "용산 푸르지오 써밋 입주자대표단 총무 장미경"
+            ],
+            "merchants": [
+                "신용산역 먹자골목 상가번영회장 백윤기",
+                "용산 아이파크몰 인근 소상공인연합회장 최태호",
+                "한강대로 외식업지부 지회장 윤종필",
+                "용산역 광장 상인 권익보호위 사무국장 배진형"
+            ]
+        },
+        "한남": {
+            "residents": [
+                "한남더힐 주민자치위원회 대표 정재헌",
+                "나인원한남 입주자대표단 동대표 이수안",
+                "한남 뉴타운 3구역 원주민 대책위 대표 서무성",
+                "한남동 유엔빌리지 주민 자치총무 강태웅"
+            ],
+            "merchants": [
+                "한남동 독서당로 카페거리 번영회장 최민서",
+                "한남동 패션거리 상인연합회 사무국장 손지은",
+                "순천향대병원 상권 활성화대책위 간사 박용우",
+                "한남동 이태원로27길 상가번영총무 전상기"
+            ]
+        },
+        "이태원": {
+            "residents": [
+                "이태원 주택가 거주 주민 자치대표 송승헌",
+                "이태원1동 빌라 밀집지역 반장 이옥순",
+                "녹사평역 언덕길 거주민 비상대책위 정태일",
+                "이태원 외인아파트 인근 주민위원 조경호"
+            ],
+            "merchants": [
+                "이태원 관광특구 상인연합회 부회장 맹기영",
+                "경리단길 상가 살리기 연합회 총무 신현정",
+                "이태원 세계음식거리 번영회장 박재영",
+                "우사단길 청년상인연합 네트워크 대표 고석진"
+            ]
+        },
+        "원효로": {
+            "residents": [
+                "원효로 산호아파트 주민 동대표 강영수",
+                "원효로2동 주택가 소방도로 주민위원 이복희",
+                "원효로 용산 e-편한세상 입주자대표총무 최창원",
+                "원효로1동 청년주택 입주자 자치대표 정수민"
+            ],
+            "merchants": [
+                "원효로 열정도 골목상가 번영회장 임성민",
+                "원효로 인쇄상가 번영회 총무 전현우",
+                "원효로 용문시장 상인회 부회장 양정숙",
+                "전자상가 19동 유통협동조합 이사장 조장혁"
+            ]
+        }
+    }
+    
+    # 룩업 테이블 매칭 (없을 시 용산구 범용 풀 사용)
+    matched_key = None
+    for k in pools.keys():
+        if k in dong_name:
+            matched_key = k
+            break
+            
+    if matched_key:
+        residents_pool = pools[matched_key]["residents"]
+        merchants_pool = pools[matched_key]["merchants"]
+    else:
+        residents_pool = [
+            f"{dong_name} 주택가 주민자치위원회 대표 김윤석",
+            f"{dong_name} 빌라자치회 간사 이정훈",
+            f"{dong_name} 주민 비상대책위원회 총무 박혜자",
+            f"{dong_name} 아파트 연합 자치대표 정원철"
+        ]
+        merchants_pool = [
+            f"{dong_name} 골목상가 번영회장 최진규",
+            f"{dong_name} 상가 연합회 사무국장 배지환",
+            f"{dong_name} 소상공인 권익옹호위원 강성현",
+            f"{dong_name} 상가 살리기 연대 대표 안상우"
+        ]
+        
+    # 주소명 기반 해시 코드로 난수 시드 고정 (일관성 유지)
+    seed_val = sum(ord(c) for c in jibun) + sum(ord(c) for c in facility_type)
+    rng = random.Random(seed_val)
+    
+    resident = rng.choice(residents_pool)
+    merchant = rng.choice(merchants_pool)
+    coordinator = f"용산구청 {domain_ko} 심의 조정관"
+    
+    return {
+        "resident": resident,
+        "merchant": merchant,
+        "coordinator": coordinator
+    }
+
 # 4. LangGraph 3자 대립 SSE 모의 토론 스트리밍 API (POST — 컨텍스트 주입 방식)
 def save_debate_log_to_file(req, full_text):
     import os
@@ -566,6 +704,11 @@ def save_debate_log_to_file(req, full_text):
     debates_dir = os.path.join(os.getcwd(), "data", "debates")
     os.makedirs(debates_dir, exist_ok=True)
     
+    personas = get_dynamic_personas(req.candidate_jibun, req.facility_type)
+    resident_label = personas["resident"]
+    merchant_label = personas["merchant"]
+    coordinator_label = personas["coordinator"]
+    
     logs = []
     lines = full_text.split("\n")
     for line in lines:
@@ -574,21 +717,28 @@ def save_debate_log_to_file(req, full_text):
             continue
         if trimmed.startswith("["):
             logs.append({"sender": "시스템", "text": trimmed})
-        elif trimmed.startswith("상인대표"):
-            content = re.sub(r'^상인대표\s*(\(찬성\))?:?\s*', '', trimmed)
-            logs.append({"sender": "상인대표 (찬성)", "text": content})
-        elif trimmed.startswith("구민대표"):
-            content = re.sub(r'^구민대표\s*(\(반대\))?:?\s*', '', trimmed)
-            logs.append({"sender": "구민대표 (반대)", "text": content})
-        elif trimmed.startswith("조정관"):
-            content = re.sub(r'^조정관\s*(\(조정안\)|\(조정\))?:?\s*', '', trimmed)
-            logs.append({"sender": "조정관 (조정)", "text": content})
+        elif trimmed.startswith(merchant_label) or (":" in trimmed and merchant_label in trimmed.split(":")[0]) or trimmed.startswith("상인대표"):
+            content = trimmed.split(":", 1)[1].strip() if ":" in trimmed else re.sub(r'^(상인대표|상인회장|상인)\s*(\(찬성\))?:?\s*', '', trimmed)
+            logs.append({"sender": f"{merchant_label} (찬성)", "text": content})
+        elif trimmed.startswith(resident_label) or (":" in trimmed and resident_label in trimmed.split(":")[0]) or trimmed.startswith("구민대표") or trimmed.startswith("주민대표"):
+            content = trimmed.split(":", 1)[1].strip() if ":" in trimmed else re.sub(r'^(구민대표|주민대표|주민|구민)\s*(\(반대\))?:?\s*', '', trimmed)
+            logs.append({"sender": f"{resident_label} (반대)", "text": content})
+        elif trimmed.startswith(coordinator_label) or (":" in trimmed and coordinator_label in trimmed.split(":")[0]) or trimmed.startswith("조정관"):
+            content = trimmed.split(":", 1)[1].strip() if ":" in trimmed else re.sub(r'^조정관\s*(\(조정안\)|\(조정\))?:?\s*', '', trimmed)
+            logs.append({"sender": f"{coordinator_label} (조정)", "text": content})
         else:
-            if logs and logs[-1]["sender"] != "시스템":
-                logs[-1]["text"] += " " + trimmed
+            # 콜론 구분자 기반 범용 파서 Fallback
+            if ":" in trimmed:
+                parts = trimmed.split(":", 1)
+                sender = parts[0].strip()
+                content = parts[1].strip()
+                logs.append({"sender": sender, "text": content})
             else:
-                logs.append({"sender": "토론위원", "text": trimmed})
-                
+                if logs and logs[-1]["sender"] != "시스템":
+                    logs[-1]["text"] += " " + trimmed
+                else:
+                    logs.append({"sender": "토론위원", "text": trimmed})
+                    
     clean_jibun = re.sub(r'[\\/*?:"<>| ]', '_', req.candidate_jibun)
     filename = f"debate_{clean_jibun}_{req.intensity_level}.json"
     filepath = os.path.join(debates_dir, filename)
@@ -624,66 +774,42 @@ async def stream_debate_sim(req: DebateRequest, db: Session = Depends(get_db)):
     from app.routers.upload import get_openai_client
     client = get_openai_client()
     
-    # pgvector RAG: 도메인 관련 조례 텍스트 Top-3 청크 조회 (한국어 키워드 맵핑 동기화 및 임계치 0.25 완화)
+    # pgvector RAG
     rag_context = ""
     try:
         from app.routers.upload import get_embedding
         domain_ko_map = {
             "smoking_zone": "흡연구역 금연구역 간접흡연 피해방지 조례",
             "smoking": "흡연구역 금연구역 간접흡연 피해방지 조례",
-            "illegal_dumping": "쓰레기 무단투기 상습무단투기구역 폐기물 관리 조례",
-            "dumping": "쓰레기 무단투기 상습무단투기구역 폐기물 관리 조례",
-            "transit": "대중교통 버스정류소 지하철역 교통 안전 조례",
-            "traffic": "대중교통 버스정류소 지하철역 교통 안전 조례",
-            "childcare": "어린이 보호구역 유치원 초등학교 어린이집 조례",
-            "school": "어린이 보호구역 유치원 초등학교 어린이집 조례"
+            "illegal_dumping": "쓰레기무단투기 상습무단투기구역 폐기물관리조례",
+            "dumping": "쓰레기무단투기 상습무단투기구역 폐기물관리조례",
+            "transit": "대중교통 버스정류장 지하철역 유동인구 관련조례"
         }
-        mapped_ko = ""
-        for k, v in domain_ko_map.items():
-            if k in req.facility_type.lower() or k in req.inferred_purpose.lower():
-                mapped_ko += " " + v
-        query_text = f"{req.facility_type} {req.inferred_purpose} {mapped_ko}".strip()
-        
-        query_embedding = get_embedding(query_text)
-        if query_embedding:
+        query_kw = domain_ko_map.get(req.facility_type.lower(), "도시계획 및 공공시설 설치 조례")
+        emb = get_embedding(query_kw)
+        if emb:
             rag_query = text("""
-                SELECT content, 1 - (embedding <=> :query_embedding::vector) AS similarity
-                FROM district_regulations
-                WHERE district_id = 1
-                  AND 1 - (embedding <=> :query_embedding::vector) >= 0.25
+                SELECT content, 1 - (embedding <=> :emb_vector::vector) as similarity
+                FROM regulation_embeddings
                 ORDER BY similarity DESC
                 LIMIT 3
             """)
-            rag_rows = db.execute(rag_query, {"query_embedding": query_embedding}).fetchall()
-            if rag_rows:
-                chunks = [row[0] for row in rag_rows]
-                rag_context = "\n---\n".join(chunks)
-    except Exception:
-        rag_context = ""
+            rag_rows = db.execute(rag_query, {"emb_vector": emb}).fetchall()
+            rag_context = "\n".join([f"- {row[0]} (유사도: {row[1]:.4f})" for row in rag_rows])
+    except Exception as e:
+        print(f"[RAG Context Load Fail] {e}")
 
-    # RAG 데이터 부재 시 실무 기준 법령 가이드 Fallback 강제 주입 (태스크 2)
-    if not rag_context:
-        rag_context = (
-            "서울특별시 용산구 간접흡연 피해방지 조례 제5조 및 교육환경 보호에 관한 법률 제8조에 의거,\n"
-            "학교 정화구역 경계선 기준 200미터 이내, 어린이집 경계선 기준 30미터 이내,\n"
-            "그리고 버스정류소 및 지하철 출입구로부터 10미터 이내는 규제 구역(금역)으로 지정 관리됩니다.\n"
-            "또한 폐기물 관리 조례에 따라 주민 피해가 심한 상습 무단투기구역 인근에는 청소 정비와 주민 편의시설 개선이 권고됩니다."
-        )
-
-    # 후보지 인근의 실제 공간 통계 지표 직접 쿼리 (컨텍스트 사실성 극대화)
+    # 공간 지표 통계 로드
     stats_context = ""
     try:
-        # 행정동 정보 쿼리
         dong_query = text("""
-            SELECT id, dong_name FROM dong_boundaries 
+            SELECT id, name FROM municipal_dongs 
             WHERE ST_Contains(geom, ST_SetSRID(ST_MakePoint(:lng, :lat), 4326))
-            LIMIT 1
         """)
         dong_row = db.execute(dong_query, {"lng": req.candidate_lng, "lat": req.candidate_lat}).fetchone()
         dong_id = dong_row[0] if dong_row else None
         dong_name = dong_row[1] if dong_row else ""
         
-        # 1. 대중교통 유동인구 (geometry 이격거리 검색 적용)
         transit_query = text("""
             SELECT COALESCE(SUM(boarding_count + alighting_count), 0)
             FROM transit_passengers p
@@ -692,7 +818,6 @@ async def stream_debate_sim(req: DebateRequest, db: Session = Depends(get_db)):
         """)
         transit_score = db.execute(transit_query, {"lng": req.candidate_lng, "lat": req.candidate_lat}).scalar()
         
-        # 2. 무단투기 zone 개수 (geometry 이격거리 검색 적용)
         dumping_query = text("""
             SELECT COUNT(*)
             FROM illegal_dumping_zones
@@ -700,7 +825,6 @@ async def stream_debate_sim(req: DebateRequest, db: Session = Depends(get_db)):
         """)
         dumping_score = db.execute(dumping_query, {"lng": req.candidate_lng, "lat": req.candidate_lat}).scalar()
         
-        # 3. 민원 건수
         complaint_score = 0
         if dong_id:
             complaint_query = text("SELECT COALESCE(SUM(complaint_count), 0) FROM civil_complaints WHERE dong_id = :dong_id")
@@ -708,48 +832,54 @@ async def stream_debate_sim(req: DebateRequest, db: Session = Depends(get_db)):
             
         stats_context = (
             f"- 후보지 관할 행정동: {dong_name if dong_name else '용산구 관할동'}\n"
-            f"- 후보지 반경 300m 이내 대중교통 유동인구 (승하차 합계): {int(transit_score):,}명\n"
-            f"- 후보지 반경 200m 이내 무단투기 다발지역 수: {int(dumping_score)}개소\n"
-            f"- 후보지 관할동 누적 공공 민원 접수량: {int(complaint_score)}건\n"
+            f"- 후보지 반경 300m 이내 대중교통 유동인구 (지하철+버스): {int(transit_score):,}명\n"
+            f"- 후보지 반경 200m 이내 무단투기 다발지역: {int(dumping_score)}개소\n"
+            f"- 후보지 관할동 누적 공공 민원 건수: {int(complaint_score)}건\n"
         )
     except Exception:
         stats_context = "- 공간 지표 통계: 데이터베이스 조회 결과 미비\n"
 
-    # AHP 가중치 텍스트 조립
     ahp_text = ", ".join([f"{k}: {v}" for k, v in req.ahp_weights.items()]) if req.ahp_weights else "기본 균등 가중치"
-    
-    # CSS 등급 한글 매핑
     css_grade = "상(높음)" if req.candidate_css >= 70 else ("중(보통)" if req.candidate_css >= 40 else "하(낮음)")
+
+    # 동적 페르소나 설정
+    personas = get_dynamic_personas(req.candidate_jibun, req.facility_type)
+    resident_name = personas["resident"]
+    merchant_name = personas["merchant"]
+    coordinator_name = personas["coordinator"]
 
     intensity_instruction = ""
     if req.intensity_level == "dangerous":
         intensity_instruction = (
-            "5. 갈등 강도 설정: [위험 🟡]\n"
-            "   - 상인대표와 구민대표가 극도의 대립 의사를 가지며, 감정 섞인 격앙된 말투와 NIMBY(님비)적 정서가 강력히 표출되도록 발언을 전개하십시오.\n"
-            "   - 구민대표는 민원 건수와 무단투기 통계를 인용하여 집값 하락과 교육 붕괴, 물리적 충돌 위협을 언급하며 격렬하게 결사반대하십시오.\n"
-            "   - 상인대표는 상권의 붕괴 생존을 내세우며 절대 양보할 수 없다는 태도로 강하게 맞서 긴장 관계를 증폭시키십시오.\n"
-            "   - 조정관은 두 세력 간의 격렬한 대립 상태를 수습하기 위해 완충 녹화구역 조성 및 상인회의 정화비용 재정적 분담을 강제하는 등 까다로운 조건부 중재안을 내밀어 타협을 유도해야 합니다."
+            f"5. 갈등 강도 설정: [위험 🟡]\n"
+            f"   - 토론 주체 간의 대립이 매우 날카롭고 감정적입니다. 격식 있는 척하지만 비아냥과 짜증, 불쾌함이 가득 섞인 말투로 진행하십시오.\n"
+            f"   - {resident_name}(반대)는 '우리가 호구냐', '왜 맨날 우리 동네에만 이런 시설을 들이냐', '이해득실은 상인들이 보고 주민들은 냄새/오염 피해만 보라는 거냐'며 직설적이고 불쾌한 태도로 결사반대하십시오.\n"
+            f"   - {merchant_name}(찬성)는 '다 굶어 죽고 상권 망하라는 거냐', '주민들의 지역 이기주의 때문에 공공 행정 사업이 매번 마비된다'고 거칠게 맞받아치게 하십시오.\n"
+            f"   - {coordinator_name}(조정)은 양측의 감정적 발언을 통제하고, 환경 정화 기금 분담 및 이격거리 격리 완충 안을 조건부 중재안으로 던져 까다로운 조율을 이끌어내십시오."
         )
     elif req.intensity_level == "extreme":
         intensity_instruction = (
-            "5. 갈등 강도 설정: [매우 위험/교착 🔴]\n"
-            "   - 상인대표와 구민대표는 고성과 협박조의 어휘를 사용하고, 법적인 손해배상 소송 청구 및 공사방해 불법 행위 형사고발과 대규모 물리적 집단 규탄 시위 연대 투쟁을 언급하며 극한의 파국으로 치달아야 합니다.\n"
-            "   - 두 이해 관계가 완벽한 교착상태(Deadlock)에 도달하도록 전개하십시오. 서로를 향해 타협이 불가능하다고 소리쳐야 합니다.\n"
-            "   - 조정관은 파행 직전의 심각성을 엄중히 선포하고, 이를 풀기 위해 주민대표단 직할 위생 위탁관리단 상설 및 가동 상시 중지 폐쇄권 부여, 최고 등급 헤파필터 장착 등 극단적인 조정을 내세워서 간신히 파국을 수습하는 조건부 타결안을 타결지어야 합니다."
+            f"5. 갈등 강도 설정: [매우 위험/교착 🔴]\n"
+            f"   - 두 주체는 타협의 여지를 완전히 닫고 극단적인 억지, 고성, 반말조의 거친 표현, 법적 소송 경고 및 드러눕기식 물리적 충돌 위협을 전개하십시오. 극적인 현실감을 위해 매우 짜증 섞이고 격앙된 말투를 사용하십시오.\n"
+            f"   - {resident_name}(반대)는 '짓기만 해봐라, 장비 들어오면 몸으로 막고 드러누울 거다', '구청장 퇴진 운동과 소송전으로 끝장내겠다', '상인대표 당신 제정신이냐'며 원색적인 분노와 억지를 쓰며 고함치십시오.\n"
+            f"   - {merchant_name}(찬성)는 '무식하게 억지 좀 부리지 마라', '법대로 공행을 강행할 것이며 불법 방해 시 형사고발과 손해배상 청구로 가산 탕진하게 만들겠다'고 서슬 퍼런 톤으로 맞대응하십시오.\n"
+            f"   - {coordinator_name}(조정)은 파행 선언 직전의 위기를 경고하고, '주민대표단 직할 상시 가동 정지/시설물 폐쇄 요구권' 및 '헤파필터 최상위 등급 의무화' 등 초강수 양보안을 통해 간신히 파국을 봉합하십시오."
         )
     else: # normal
         intensity_instruction = (
-            "5. 갈등 강도 설정: [보통 🟢]\n"
-            "   - 상인대표와 구민대표가 상생을 지향하는 태도로 이성적이고 정중한 존댓말로 의견을 개진합니다.\n"
-            "   - 서로의 입장(유동인구 경제적 혜택 vs 민원 및 위생 대책)을 존중하고, 스마트 정화 필터 장착 및 정기 위생 점검 등 일상적인 예방 조치 합의하에 아주 빠르게 중재 및 동의가 체결되도록 전개하십시오."
+            f"5. 갈등 강도 설정: [보통 🟢]\n"
+            f"   - 상호 예의를 지키는 존댓말로 조용하게 토론을 진행하되, 서로의 입장과 우려 사항(상권 활성화 vs 환경 대책)에 대해 직설적인 합의점을 모색합니다.\n"
+            f"   - 정기 점검 규정 정립 및 기본 필터 장착 수준에서 무난하게 합의를 도출하십시오."
         )
+
+    disclaimer_alert = "[시스템 면책 고지] 본 모의 심의 토론 내용은 AI 페르소나 엔진에 의해 생성된 가상의 시나리오이며, 실제 인물이나 단체, 사실관계와는 전혀 무관합니다.\n\n"
 
     if client:
         system_prompt = (
             "당신은 스마트시티 주민 갈등 조정 위원회 모의 토론기입니다.\n\n"
             "## 토론 맥락 정보\n"
             f"- 시설 유형(도메인): {req.facility_type}\n"
-            f"- 추론된 사업 목적: {req.inferred_purpose}\n"
+            f"- 사업 목적: {req.inferred_purpose}\n"
             f"- 선정 후보지: {req.candidate_jibun} (위도 {req.candidate_lat}, 경도 {req.candidate_lng})\n"
             f"- 갈등 민감도(CSS): {req.candidate_css}점 ({css_grade})\n"
             f"- AHP 의사결정 가중치: {ahp_text}\n\n"
@@ -770,20 +900,20 @@ async def stream_debate_sim(req: DebateRequest, db: Session = Depends(get_db)):
         system_prompt += (
             "## 토론 규칙\n"
             "1. 위 제공된 '실제 공간 통계 지표'의 실제 수치들(유동인구 수, 무단투기 다발 수, 누적 민원 건수) 및 관련 조례를 반드시 대사에 직접 인용하여 논쟁의 구체적 근거로 삼으십시오.\n"
-            "2. 찬성 측(상인대표), 반대 측(구민대표), 조정안(조정관)의 세 발언자가 서로 다회차(Multi-turn)로 번갈아 가며 질문을 주고받고 반론을 제기하는 심도 있는 토론을 구성하십시오.\n"
+            "2. 찬성 측, 반대 측, 조정안의 세 발언자가 서로 다회차(Multi-turn)로 번갈아 가며 질문을 주고받고 반론을 제기하는 심도 있는 토론을 구성하십시오.\n"
             "3. 각 인물의 논리적 입장:\n"
-            "   - 상인대표 (찬성): 설치의 시급함과 경제 상권 이점(예: 높은 대중교통 유동인구 등)을 후보지 지번 및 목적을 엮어 강하게 옹호합니다.\n"
-            "   - 구민대표 (반대): 높은 갈등 민감도(CSS) 및 주거 피해 요인(예: 민원 건수, 무단투기 다발 수, 조례 상 배제 구역 침범 우려)을 들어 강력 반대합니다.\n"
-            "   - 조정관 (조정안): 양측의 수치 근거를 모두 반영하여, 조례 위반을 피하면서 이격거리 완충 설계나 정화 시설 보강 등 타협점을 제시합니다.\n"
-            "4. 반드시 각 참가자가 최소 2회 이상 의견을 피력하도록 아래의 정해진 순서와 형식으로 총 6턴 이상의 유기적인 대화 대본을 출력하십시오:\n"
-            "상인대표 (찬성): ... (1차 찬성 변론)\n"
-            "구민대표 (반대): ... (상인대표 의견에 대한 반론 및 1차 반대 근거)\n"
-            "상인대표 (찬성): ... (구민대표 반론에 대한 설득 및 반박)\n"
-            "구민대표 (반대): ... (재반론 및 최종 우려 피력)\n"
-            "조정관 (조정안): ... (중재안 제시 및 타협안 도출)\n"
-            "상인대표 (찬성): ... (중재안 피드백 및 협조)\n"
-            "구민대표 (반대): ... (중재안 수용 및 관리 감독 요구)\n"
-            "조정관 (조정안): ... (최종 토론 합의 및 회의 마무리)\n\n"
+            f"   - {merchant_name} (찬성): 설치의 시급함과 경제 상권 이점(예: 높은 대중교통 유동인구 등)을 후보지 지번 및 목적을 엮어 강하게 옹호합니다.\n"
+            f"   - {resident_name} (반대): 높은 갈등 민감도(CSS) 및 주거 피해 요인(예: 민원 건수, 무단투기 다발 수, 조례 상 배제 구역 침범 우려)을 들어 강력 반대합니다.\n"
+            f"   - {coordinator_name} (조정안): 양측의 수치 근거를 모두 반영하여, 조례 위반을 피하면서 이격거리 완충 설계나 정화 시설 보강 등 타협점을 제시합니다.\n"
+            "4. 반드시 각 참가자가 최소 2회 이상 의견을 피력하도록 아래 정해진 순서와 형식으로 총 6턴 이상의 유기적인 대화 대본을 출력하십시오:\n"
+            f"{merchant_name}: ... (1차 찬성 변론)\n"
+            f"{resident_name}: ... (상인대표 의견에 대한 반론 및 1차 반대 근거)\n"
+            f"{merchant_name}: ... (주민대표 반론에 대한 설득 및 반박)\n"
+            f"{resident_name}: ... (재반론 및 최종 우려 피력)\n"
+            f"{coordinator_name}: ... (중재안 제시 및 타협안 도출)\n"
+            f"{merchant_name}: ... (중재안 피드백 및 협조)\n"
+            f"{resident_name}: ... (중재안 수용 및 관리 감독 요구)\n"
+            f"{coordinator_name}: ... (최종 토론 합의 및 회의 마무리)\n\n"
             f"{intensity_instruction}\n\n"
             "가상의 수치나 뜬구름 잡는 일반론 대신, 오직 주어진 실제 컨텍스트 수치들만을 근거로 삼으십시오."
         )
@@ -796,7 +926,6 @@ async def stream_debate_sim(req: DebateRequest, db: Session = Depends(get_db)):
         
         async def event_generator():
             try:
-                # 동기 OpenAI 스트리밍을 비동기 제너레이터로 래핑
                 import queue
                 import threading
                 
@@ -816,7 +945,7 @@ async def stream_debate_sim(req: DebateRequest, db: Session = Depends(get_db)):
                             content = chunk.choices[0].delta.content
                             if content:
                                 q.put(content)
-                        q.put(None)  # 종료 신호
+                        q.put(None)
                     except Exception as e:
                         q.put(f"토론 중 에러 발생: {str(e)}")
                         q.put(None)
@@ -824,9 +953,11 @@ async def stream_debate_sim(req: DebateRequest, db: Session = Depends(get_db)):
                 thread = threading.Thread(target=run_openai, daemon=True)
                 thread.start()
                 
-                full_text = ""
+                # 면책 고지 최초 1회 즉각 전송
+                yield f"data: {json.dumps({'text': disclaimer_alert}, ensure_ascii=False)}\n\n"
+                
+                full_text = disclaimer_alert
                 while True:
-                    # 비동기적으로 큐에서 데이터 획득
                     content = await asyncio.to_thread(q.get)
                     if content is None:
                         try:
@@ -842,7 +973,7 @@ async def stream_debate_sim(req: DebateRequest, db: Session = Depends(get_db)):
                 
         return StreamingResponse(event_generator(), media_type="text/event-stream")
     else:
-        # Mock Fallback: 컨텍스트 기반 대사 생성 (다회차 실물 지표 반영형 토론)
+        # Mock Fallback: 컨텍스트 기반 대사 생성 (동적 페르소나 및 자극적 대사 리팩토링)
         async def mock_event_generator():
             if req.intensity_level == "dangerous":
                 dialogue = [
@@ -919,7 +1050,7 @@ class ReportDownloadRequest(BaseModel):
 @router.post("/spatial/report/download")
 async def download_report_pdf(req: ReportDownloadRequest, db: Session = Depends(get_db)):
     try:
-        # 1. 맑은 고딕 한글 폰트 등록 시도
+        # 1. 맑은 고딕 한글 폰트 등록
         font_path = "C:\\Windows\\Fonts\\malgun.ttf"
         font_name = "MalgunGothic"
         if os.path.exists(font_path):
@@ -927,76 +1058,151 @@ async def download_report_pdf(req: ReportDownloadRequest, db: Session = Depends(
         else:
             font_name = "Helvetica" # 한글 미지원 fallback
             
-        # 2. 문서 템플릿 준비 (BytesIO)
+        # 2. 문서 템플릿 준비 (마진 조정)
         buffer = BytesIO()
         doc = SimpleDocTemplate(
             buffer,
             pagesize=letter,
-            rightMargin=36,
-            leftMargin=36,
-            topMargin=36,
-            bottomMargin=36
+            rightMargin=40,
+            leftMargin=40,
+            topMargin=40,
+            bottomMargin=40
         )
         
         styles = getSampleStyleSheet()
         
-        # 3. 사용자 정의 폰트 스타일 조립
+        # 3. 전용 폰트 스타일 조립 (공문서 톤앤매너)
         title_style = ParagraphStyle(
-            'ReportTitle',
+            'GovReportTitle',
             parent=styles['Normal'],
             fontName=font_name,
-            fontSize=18,
-            leading=22,
-            alignment=1, # Center
+            fontSize=16,
+            leading=20,
+            alignment=0, # Left
             textColor=colors.HexColor('#0F172A'),
-            spaceAfter=20
+            spaceAfter=2
+        )
+        
+        meta_style = ParagraphStyle(
+            'GovReportMeta',
+            parent=styles['Normal'],
+            fontName=font_name,
+            fontSize=8.5,
+            leading=12,
+            textColor=colors.HexColor('#475569')
         )
         
         section_style = ParagraphStyle(
-            'ReportSection',
+            'GovReportSection',
             parent=styles['Normal'],
             fontName=font_name,
-            fontSize=13,
-            leading=16,
-            textColor=colors.HexColor('#1E293B'),
-            spaceBefore=12,
+            fontSize=12,
+            leading=15,
+            textColor=colors.HexColor('#1E3A8A'), # 감청색 적용
+            spaceBefore=14,
             spaceAfter=6,
-            borderPadding=4
+            keepWithNext=True
         )
         
         body_style = ParagraphStyle(
-            'ReportBody',
+            'GovReportBody',
             parent=styles['Normal'],
             fontName=font_name,
-            fontSize=10,
+            fontSize=9.5,
             leading=14,
             textColor=colors.HexColor('#334155')
         )
         
         log_style = ParagraphStyle(
-            'ReportLog',
+            'GovReportLog',
             parent=styles['Normal'],
             fontName=font_name,
             fontSize=9,
             leading=13,
-            textColor=colors.HexColor('#475569'),
+            textColor=colors.HexColor('#1E293B'),
             leftIndent=15
+        )
+        
+        sender_style = ParagraphStyle(
+            'GovReportSender',
+            parent=styles['Normal'],
+            fontName=font_name,
+            fontSize=15,
+            leading=19,
+            alignment=1, # Center
+            textColor=colors.HexColor('#0F172A'),
+            spaceBefore=25,
+            spaceAfter=5
+        )
+        
+        disclaimer_style = ParagraphStyle(
+            'GovReportDisclaimer',
+            parent=styles['Normal'],
+            fontName=font_name,
+            fontSize=8,
+            leading=11,
+            alignment=1, # Center
+            textColor=colors.HexColor('#94A3B8'),
+            spaceBefore=15
         )
         
         story = []
         
-        # 문서 타이틀
-        story.append(Paragraph("지능형 스마트시티 입지 타당성 및 갈등 분석 보고서", title_style))
+        # 4. 결재선 격자 테이블 생성 (우측 상단 결재선)
+        approval_headers = [
+            Paragraph("<b>기안자</b>", meta_style), 
+            Paragraph("<b>검토자</b>", meta_style), 
+            Paragraph("<b>심의관</b>", meta_style), 
+            Paragraph("<b>결정자</b>", meta_style)
+        ]
+        approval_body = ["", "", "", ""]
+        approval_table = Table([approval_headers, approval_body], colWidths=[50, 50, 50, 50], rowHeights=[15, 35])
+        approval_table.setStyle(TableStyle([
+            ('ALIGN', (0,0), (-1,-1), 'CENTER'),
+            ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+            ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#94A3B8')),
+            ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#F1F5F9')),
+            ('TOPPADDING', (0,0), (-1,-1), 2),
+            ('BOTTOMPADDING', (0,0), (-1,-1), 2),
+            ('LEFTPADDING', (0,0), (-1,-1), 2),
+            ('RIGHTPADDING', (0,0), (-1,-1), 2),
+        ]))
+        
+        # 5. 상단 헤더 결합 (공문서 타이틀 + 결재선 가로 배치)
+        header_text = (
+            "<b>스마트시티 입지 적합성 및 주민 모의 토론 결과 보고서</b><br/>"
+            "<font size=8 color='#64748B'>기안부서: 스마트도시과 | 기안일자: 상시결재 양식</font>"
+        )
+        top_header_data = [
+            [Paragraph(header_text, title_style), approval_table]
+        ]
+        top_header_table = Table(top_header_data, colWidths=[330, 200])
+        top_header_table.setStyle(TableStyle([
+            ('VALIGN', (0,0), (-1,-1), 'BOTTOM'),
+            ('LEFTPADDING', (0,0), (-1,-1), 0),
+            ('RIGHTPADDING', (0,0), (-1,-1), 0),
+            ('BOTTOMPADDING', (0,0), (-1,-1), 12),
+        ]))
+        story.append(top_header_table)
+        
+        # 구분선
+        divider = Table([[""]], colWidths=[530], rowHeights=[1])
+        divider.setStyle(TableStyle([
+            ('LINEBELOW', (0,0), (-1,-1), 1.5, colors.HexColor('#1E3A8A')),
+            ('BOTTOMPADDING', (0,0), (-1,-1), 0),
+            ('TOPPADDING', (0,0), (-1,-1), 0),
+        ]))
+        story.append(divider)
         story.append(Spacer(1, 10))
         
         # 1. 후보지 기본 정보
-        story.append(Paragraph("1. 후보지 기본 정보 및 현황", section_style))
+        story.append(Paragraph("1. 입지 후보지 기본 제원", section_style))
         css_grade = "상(높음)" if req.candidate_css >= 70 else ("중(보통)" if req.candidate_css >= 40 else "하(낮음)")
         info_data = [
-            [Paragraph("<b>입지 지번 주소</b>", body_style), Paragraph(req.candidate_jibun, body_style)],
-            [Paragraph("<b>대표 좌표</b>", body_style), Paragraph(f"위도 {req.candidate_lat}, 경도 {req.candidate_lng}", body_style)],
-            [Paragraph("<b>도메인 및 목적</b>", body_style), Paragraph(f"{req.facility_type} ({req.inferred_purpose})", body_style)],
-            [Paragraph("<b>갈등 민감도 (CSS)</b>", body_style), Paragraph(f"<b>{req.candidate_css}점</b> [등급: {css_grade}]", body_style)]
+            [Paragraph("<b>가. 대상지 지번 주소</b>", body_style), Paragraph(req.candidate_jibun, body_style)],
+            [Paragraph("<b>나. 대상지 중심 좌표</b>", body_style), Paragraph(f"위도 {req.candidate_lat}, 경도 {req.candidate_lng}", body_style)],
+            [Paragraph("<b>다. 시설 유형 및 목적</b>", body_style), Paragraph(f"{req.facility_type} ({req.inferred_purpose})", body_style)],
+            [Paragraph("<b>라. 갈등 민감도 (CSS)</b>", body_style), Paragraph(f"<b>{req.candidate_css}점</b> (등급: {css_grade})", body_style)]
         ]
         t1 = Table(info_data, colWidths=[150, 380])
         t1.setStyle(TableStyle([
@@ -1006,12 +1212,13 @@ async def download_report_pdf(req: ReportDownloadRequest, db: Session = Depends(
             ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#CBD5E1')),
             ('TOPPADDING', (0,0), (-1,-1), 6),
             ('BOTTOMPADDING', (0,0), (-1,-1), 6),
+            ('LEFTPADDING', (0,0), (-1,-1), 8),
         ]))
         story.append(t1)
-        story.append(Spacer(1, 15))
+        story.append(Spacer(1, 10))
         
         # 2. AHP 의사결정 인자 가중치
-        story.append(Paragraph("2. AHP 다기준 의사결정 분석 가중치 세트", section_style))
+        story.append(Paragraph("2. AHP 다기준 의사결정 분석 가중치 현황", section_style))
         ahp_rows = []
         for k, v in req.ahp_weights.items():
             ahp_rows.append([Paragraph(f"<b>{k}</b>", body_style), Paragraph(f"{v}", body_style)])
@@ -1021,48 +1228,61 @@ async def download_report_pdf(req: ReportDownloadRequest, db: Session = Depends(
         t2.setStyle(TableStyle([
             ('BACKGROUND', (0,0), (0,-1), colors.HexColor('#F8FAFC')),
             ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#CBD5E1')),
-            ('TOPPADDING', (0,0), (-1,-1), 4),
-            ('BOTTOMPADDING', (0,0), (-1,-1), 4),
+            ('TOPPADDING', (0,0), (-1,-1), 5),
+            ('BOTTOMPADDING', (0,0), (-1,-1), 5),
+            ('LEFTPADDING', (0,0), (-1,-1), 8),
         ]))
         story.append(t2)
-        story.append(Spacer(1, 15))
+        story.append(Spacer(1, 10))
         
-        # 3. AI 및 3자 모의 심의 토론 이력
-        story.append(Paragraph("3. 주민 갈등 심의 위원회 모의 토론 내용", section_style))
+        # 3. AI 모의 심의 토론 내용
+        story.append(Paragraph("3. 스마트시티 주민 모의 심의 내용 (가상 토론 시나리오)", section_style))
         debate_story = []
+        
+        # 경고 문구 상단에 한 번 더 명시
+        debate_story.append(Paragraph("<b>[심의 진행 기록]</b> ※ 이하 기록된 토론은 가상의 인물 간 의견 대립 및 중재안 도출 시뮬레이션입니다.", body_style))
+        debate_story.append(Spacer(1, 6))
+        
         for log in req.debate_logs:
             sender = log.get("sender", "알 수 없음")
             text_log = log.get("text", "")
-            debate_story.append(Paragraph(f"<b>[{sender}]</b>", body_style))
+            if "면책 고지" in text_log or "가상의 시나리오" in text_log:
+                continue
+            debate_story.append(Paragraph(f"<b>◦ {sender}</b>", body_style))
             debate_story.append(Paragraph(text_log, log_style))
-            debate_story.append(Spacer(1, 5))
+            debate_story.append(Spacer(1, 4))
             
-        if not debate_story:
-            debate_story.append(Paragraph("기록된 모의 토론 이력이 존재하지 않습니다.", body_style))
+        if not req.debate_logs:
+            debate_story.append(Paragraph("기록된 모의 토론 출력이 존재하지 않습니다.", body_style))
             
-        # 토론 내용을 담은 패널 처리
         t3 = Table([[debate_story]], colWidths=[530])
         t3.setStyle(TableStyle([
             ('BACKGROUND', (0,0), (-1,-1), colors.HexColor('#F8FAFC')),
-            ('BOX', (0,0), (-1,-1), 1, colors.HexColor('#E2E8F0')),
+            ('BOX', (0,0), (-1,-1), 0.8, colors.HexColor('#CBD5E1')),
             ('TOPPADDING', (0,0), (-1,-1), 10),
             ('BOTTOMPADDING', (0,0), (-1,-1), 10),
             ('LEFTPADDING', (0,0), (-1,-1), 10),
             ('RIGHTPADDING', (0,0), (-1,-1), 10),
         ]))
         story.append(t3)
-        story.append(Spacer(1, 20))
+        story.append(Spacer(1, 10))
         
-        # 4. 행정 결재용 고시 및 면책 고지
-        story.append(Paragraph("4. 종합 의견 및 유의사항", section_style))
+        # 4. 종합 행정 고시
+        story.append(Paragraph("4. 종합 검토 고시 및 권고사항", section_style))
         notice_text = (
-            "본 보고서는 다목적 스마트시티 의사결정시스템(SDSS) OmniSite의 AI 데이터 감리 및 pgvector 기반 조례 RAG "
-            "검색 결과를 바탕으로 시뮬레이션한 가상의 갈등 조정 결과물입니다. 최종 행정 입지 고시 결정은 법정 실무 위원회의 "
-            "추가 심의 및 현장 실사를 거쳐 확정되어야 하며, 본 시뮬레이션 결과는 행정 참고 지표로만 활용되어야 합니다."
+            "본 보고서는 용산구 스마트시티 의사결정지원시스템(SDSS) OmniSite의 AI 갈등 진단 엔진에 의거하여 "
+            "작성된 참고 서류입니다. 수록된 주민 심의 의견 및 중재안은 공간 빅데이터와 관련 자치 조례 RAG 임베딩에 "
+            "기반해 가상 구현된 결과물로, 법적 구속력을 갖지 않으며 실제 공사 시행 전 구의회 보고 및 주민 주민설명회의 "
+            "사전 행정 절차를 필수적으로 이행해야 합니다."
         )
         story.append(Paragraph(notice_text, body_style))
+        story.append(Spacer(1, 15))
         
-        # PDF 컴파일
+        # 5. 하단 발신 명의 및 면책 고지
+        story.append(Paragraph("<b>서울특별시 용산구청장</b> <font size=10 color='#64748B'>(직인생략)</font>", sender_style))
+        story.append(Paragraph("※ 본 보고서의 입지분석 및 모의 심의 결과는 가상 AI 페르소나의 역할 수행 결과로, 실제 인물이나 사실과는 무관합니다.", disclaimer_style))
+        
+        # PDF 빌드
         doc.build(story)
         buffer.seek(0)
         
@@ -1070,7 +1290,7 @@ async def download_report_pdf(req: ReportDownloadRequest, db: Session = Depends(
             buffer,
             media_type="application/pdf",
             headers={
-                "Content-Disposition": "attachment; filename=OmniSite_Report.pdf"
+                "Content-Disposition": "attachment; filename=OmniSite_Gov_Report.pdf"
             }
         )
     except Exception as e:

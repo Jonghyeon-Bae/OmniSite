@@ -1,23 +1,8 @@
-# 📋 v3.3.0 고도화 스프린트 작업 리스트 (task.md)
+# v3.8.0 Execution Task List
 
-- `[x]` 4.1. 데이터베이스 테이블 스펙 개편 DDL 및 마이그레이션 적용
-  - `[x]` `01_schema.sql` 내 `nosmoking_zones` ➔ `restricted_zones` 변경, `cigarette_dumping_zones` ➔ `illegal_dumping_zones` 변경
-  - `[x]` `registered_domain_tags` 테이블 DDL 추가 및 코어 태그 프리-시딩 DML 추가
-  - `[x]` 기존 DB 데이터 마이그레이션 실행
-- `[x]` 4.2. 백엔드 시맨틱 도메인 태그 중복 방지 및 병합 엔진 구현
-  - `[x]` `registered_domain_tags` 연동하여 코사인 유사도 0.85 이상 시 대표 태그 자동 병합
-- `[x]` 4.3. 백엔드 테이블명 일반화 리팩토링 및 쿼리 갱신
-  - `[x]` `upload.py`, `spatial.py` 내 구 `nosmoking_zones`, `cigarette_dumping_zones` 관련 쿼리를 `restricted_zones`, `illegal_dumping_zones`로 변경
-- `[x]` 4.4. 백엔드 관할지 경계 GeoJSON 반환 및 좌표 포함 검증 API 추가
-  - `[x]` `GET /api/v1/spatial/district-boundary/{district_id}`
-  - `[x]` `POST /api/v1/spatial/check-boundary`
-- `[x]` 4.5. 백엔드 pgvector RAG 조례 내용 쿼리 & LangGraph SSE 3자 모의 토론 API 추가
-  - `[x]` `GET /api/v1/spatial/debate`
-- `[x]` 4.6. 프론트엔드 `page.js` 관할 경계 가시화 및 이탈 마커 롤백 가드 탑재 (Leaflet 동결 룰 준수)
-- `[x]` 4.7. 프론트엔드 `page.js` LangGraph SSE 토론 실시간 스트리밍 연동
-- `[x]` 4.8. E2E 통합 테스트 수행 및 산출물 편찬
-- `[x]` 4.9. 백엔드 `spatial.py` 내 `recommend_optimal_sites` criteria_list json.loads TypeError 해결
-- `[x]` 4.10. 백엔드 `spatial.py` 내 `get_criteria_score` properties Null-guard 및 데이터 정합성 보강
-- `[x]` 4.11. 백엔드 `spatial.py` 내 `exclusion_mask` 버퍼 기하 반경 정밀 재산정 (초등학교/유치원: 200m, 어린이집: 30m, 대중교통: 10m)
-- `[x]` 4.12. 백엔드 `upload.py` 내 AI 감리 가이드 및 로컬 Fallback 반경 규격 갱신 (transit_station: 10, childcare_center: 30)
-- `[x]` 4.13. 테스트 스크립트 E2E 검증 및 프론트엔드 빌드 무결성 확인
+- `[x]` 1. [Backend] `backend/app/routers/spatial.py` - `DebateRequest` DTO에 `intensity_level` 추가 및 선택된 갈등 강도별 3종 LLM System Prompt 분기 조건 추가
+- `[x]` 2. [Backend] `backend/app/routers/spatial.py` - 토론 종료 시 로컬 파일 시스템 `data/debates/debate_{pnu}_{intensity}.json` 격리 적재 로직 구현 (OpenAI & Mock 공통)
+- `[x]` 3. [Backend] `backend/app/routers/spatial.py` - `mock_event_generator`에 갈등 강도별 3단계(보통, 위험, 매우 위험) 전용 장문 실측 지표 연계 모킹 대본 설계 및 Yield 버퍼 튜닝
+- `[x]` 4. [Frontend] `frontend/src/app/page.js` - `pipelineStep >= 4` 영역에 금지구역(규제 버퍼) 옅은 빨간색 서클 오버레이 가시화 추가
+- `[x]` 5. [Frontend] `frontend/src/app/page.js` - 모의 토론 모달 상단에 갈등 강도 3단계 선택 UI 적용 및 payload 전달 연동
+- `[x]` 6. [Verification] E2E API 테스트 수행 및 Next.js 프로덕션 빌드 체크

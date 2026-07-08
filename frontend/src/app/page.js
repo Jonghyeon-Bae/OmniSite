@@ -68,6 +68,7 @@ export default function Home() {
   const [showSimModal, setShowSimModal] = useState(false);
   const [simStep, setSimStep] = useState(0);
   const [simLogs, setSimLogs] = useState([]);
+  const [intensityLevel, setIntensityLevel] = useState("normal");
 
   // 4단계 추가 상태: 자치구 경계 및 규제 시설물 포인트
   const [districtGeoJson, setDistrictGeoJson] = useState(null);
@@ -205,7 +206,7 @@ export default function Home() {
       const marker = L.marker([hitlLat, hitlLng], {
         icon: markerIcon,
         draggable: true,
-        autoPan: false // 마커 드래그 시 지도 자동 스크롤(autoPan) 완전 차단
+        autoPan: true // 드래그 시 지도 자동 스크롤(autoPan) 지원으로 멈춤 현상 제거
       }).addTo(map);
 
       // 0. 관할 자치구 경계 GeoJSON 레이어 오버레이
@@ -250,53 +251,9 @@ export default function Home() {
         }
       });
 
-      marker.on('dragstart', () => {
-        map.dragging.disable(); // 마커 드래그 개시 시 지도 드래그 일시 잠금 (이격 예방)
-      });
-
-      marker.isWarning = false; // 드래그 도중 DOM 업데이트 쓰레싱 방지 플래그
-
-      marker.on('drag', (e) => {
-        const pos = e.target.getLatLng();
-        let shouldWarn = false;
-        
-        for (const item of circles) {
-          const dist = pos.distanceTo(L.latLng(item.pt.lat, item.pt.lng));
-          if (dist < item.limitRadius) {
-            shouldWarn = true;
-            break;
-          }
-        }
-
-        if (shouldWarn !== marker.isWarning) {
-          marker.isWarning = shouldWarn;
-          if (shouldWarn) {
-            marker.setIcon(L.divIcon({
-              className: 'custom-marker-warning',
-              html: `<div style="
-                width: 30px; 
-                height: 30px; 
-                background: #ef4444; 
-                border: 2px solid white; 
-                border-radius: 50%; 
-                display: flex; 
-                align-items: center; 
-                justify-content: center; 
-                font-size: 11px; 
-                font-weight: bold; 
-                color: white;
-                box-shadow: 0 0 15px rgba(239,68,68,0.8);
-              ">⚠️</div>`,
-              iconSize: [30, 30]
-            }));
-          } else {
-            marker.setIcon(markerIcon);
-          }
-        }
-      });
+      marker.isWarning = false;
 
       marker.on('dragend', async () => {
-        map.dragging.enable(); // 드래그 완료 시 지도 드래그 재활성화
         const newPos = marker.getLatLng();
         
         // 1. 규제 시설물 버퍼 침범 체크
@@ -351,6 +308,48 @@ export default function Home() {
 
     } else if (pipelineStep >= 4) {
       // Step 4 이상: 추천 후보 3개 마커 동시 드로잉
+
+      // 0. 관할 자치구 경계 GeoJSON 레이어 오버레이
+      if (districtGeoJson) {
+        const boundaryLayer = L.geoJSON(districtGeoJson, {
+          style: {
+            color: '#3b82f6',
+            fillColor: '#3b82f6',
+            fillOpacity: 0.04,
+            weight: 2,
+            dashArray: '5, 5'
+          }
+        }).addTo(map);
+        markersRef.current['boundary'] = boundaryLayer;
+      }
+
+      // 1. 규제 시설물 포인트에 따른 동적 버퍼 오버레이 생성 (정말 얕은 빨간색으로 시각화)
+      restrictionPoints.forEach((pt, idx) => {
+        let limitRadius = 0;
+        if (pt.type && spatialRestrictions[pt.type] !== undefined) {
+          limitRadius = spatialRestrictions[pt.type];
+        } else if (pt.type === 'transit_station') {
+          limitRadius = 30;
+        } else if (pt.type === 'childcare_center' || pt.type === 'school') {
+          limitRadius = 200;
+        } else if (pt.radius > 0) {
+          limitRadius = pt.radius;
+        } else {
+          limitRadius = 20;
+        }
+        
+        if (limitRadius > 0) {
+          const circle = L.circle([pt.lat, pt.lng], {
+            color: '#f87171',
+            fillColor: '#f87171',
+            fillOpacity: 0.04, // 극도로 연한 옅은 빨간색
+            weight: 1,         // 얇은 선
+            radius: limitRadius
+          }).addTo(map);
+          markersRef.current[`restriction_circle_${idx}`] = circle;
+        }
+      });
+
       Object.keys(selectedParcel).forEach(key => {
         const parcel = selectedParcel[key];
 
@@ -398,7 +397,7 @@ export default function Home() {
         map.panTo([activeParcel.lat, activeParcel.lng]);
       }
     }
-  }, [leafletLoaded, pipelineStep, districtGeoJson, restrictionPoints, spatialRestrictions]);
+  }, [leafletLoaded, pipelineStep, districtGeoJson, restrictionPoints, spatialRestrictions, selectedParcel]);
 
   // 마커 속성 및 지도 동기화 효과 (드래그 스냅 보정)
   useEffect(() => {
@@ -415,7 +414,7 @@ export default function Home() {
       const isSelected = activeTab === key;
 
       const currentPos = marker.getLatLng();
-      if (Math.abs(currentPos.lat - parcel.lat) > 0.005 || Math.abs(currentPos.lng - parcel.lng) > 0.005) {
+      if (currentPos.lat !== parcel.lat || currentPos.lng !== parcel.lng) {
         marker.setLatLng([parcel.lat, parcel.lng]);
       }
 
@@ -449,29 +448,35 @@ export default function Home() {
   }, [activeTab, selectedParcel, pipelineStep]);
 
   // AHP 가중치 조절
-  const handleSliderChange = async (key, val) => {
+  const handleSliderChange = (key, val) => {
     if (isAhpLocked) return;
     const value = parseFloat(val);
     const updatedWeights = { ...ahpWeights, [key]: value };
     setAhpWeights(updatedWeights);
     
-    try {
-      const res = await fetch('/api/v1/ahp/calculate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          district_id: 1,
-          facility_type: inferredDomainTag || 'smoking_zone',
-          criteria_weights: updatedWeights
-        })
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setCrValue(data.consistency_ratio);
-      }
-    } catch (err) {
-      console.error("Failed to calculate AHP CR:", err);
+    if (window.ahpCalcTimeout) {
+      clearTimeout(window.ahpCalcTimeout);
     }
+    
+    window.ahpCalcTimeout = setTimeout(async () => {
+      try {
+        const res = await fetch('/api/v1/ahp/calculate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            district_id: 1,
+            facility_type: inferredDomainTag || 'smoking_zone',
+            criteria_weights: updatedWeights
+          })
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setCrValue(data.consistency_ratio);
+        }
+      } catch (err) {
+        console.error("Failed to calculate AHP CR:", err);
+      }
+    }, 250);
   };
 
   // HITL 폼 동기화
@@ -545,6 +550,7 @@ export default function Home() {
     let reader = null;
 
     const startDebateStream = async () => {
+      setSimStep(0);
       try {
         const payload = {
           facility_type: inferredDomainTag || "city_feature",
@@ -553,7 +559,8 @@ export default function Home() {
           candidate_css: selectedParcel[activeTab]?.css || 50,
           candidate_lat: selectedParcel[activeTab]?.lat || 37.53,
           candidate_lng: selectedParcel[activeTab]?.lng || 126.97,
-          ahp_weights: ahpWeights || {}
+          ahp_weights: ahpWeights || {},
+          intensity_level: intensityLevel
         };
 
         const res = await fetch('/api/v1/spatial/debate', {
@@ -569,10 +576,20 @@ export default function Home() {
         reader = res.body.getReader();
         const decoder = new TextDecoder('utf-8');
         let buffer = '';
+        let accumulatedText = '';
+
+        const initialSystemLogs = [
+          { sender: '시스템', text: '⚡ pgvector RAG로부터 관할 자치구 조례 데이터셋 매핑 완료...' },
+          { sender: '시스템', text: `⚡ 지역 갈등 민감도 CSS(${selectedParcel[activeTab]?.css || 50}점) 및 통제 인자 에이전트 주입 완료.` },
+          { sender: '시스템', text: '💬 3자 모의 토론 채널 접속 중...' }
+        ];
 
         while (!isClosed) {
           const { value, done } = await reader.read();
-          if (done) break;
+          if (done) {
+            setSimStep(6);
+            break;
+          }
 
           buffer += decoder.decode(value, { stream: true });
           const lines = buffer.split('\n\n');
@@ -584,52 +601,36 @@ export default function Home() {
               try {
                 const data = JSON.parse(dataContent);
                 if (data && data.text) {
-                  const textChunk = data.text;
-                  setSimLogs(prev => {
-                    // 깊은 복사(Deep Copy): StrictMode 이중 실행 시 원본 뮤테이션 방지
-                    const newLogs = prev.map(log => ({ ...log }));
+                  accumulatedText += data.text;
+                  
+                  // 누적 텍스트를 줄 단위로 분해하여 토론 로그 재구성
+                  const parsedLogs = [];
+                  const rawLines = accumulatedText.split('\n');
+                  for (let rawLine of rawLines) {
+                    const trimmed = rawLine.trim();
+                    if (!trimmed) continue;
                     
-                    const speakerPatterns = [
-                      { pattern: '상인대표', sender: '상인대표 (찬성)' },
-                      { pattern: '구민대표', sender: '구민대표 (반대)' },
-                      { pattern: '조정관',   sender: '조정관 (조정)' },
-                    ];
-
-                    const isNewTurn = textChunk.includes('\n') 
-                      || speakerPatterns.some(sp => textChunk.includes(sp.pattern))
-                      || textChunk.startsWith('[');
-
-                    if (isNewTurn) {
-                      let sender = '토론위원';
-                      let text = textChunk;
-
-                      for (const sp of speakerPatterns) {
-                        if (textChunk.includes(sp.pattern)) {
-                          sender = sp.sender;
-                          text = textChunk
-                            .replace(`${sp.sender}:`, '')
-                            .replace(`${sp.pattern}:`, '')
-                            .replace(/^\s*/, '');
-                          break;
-                        }
-                      }
-                      if (textChunk.startsWith('[')) sender = '시스템';
-
-                      if (text.trim().length > 0) {
-                        newLogs.push({ sender, text: text.trimStart() });
-                      }
+                    if (trimmed.startsWith('[')) {
+                      parsedLogs.push({ sender: '시스템', text: trimmed });
+                    } else if (trimmed.startsWith('상인대표')) {
+                      const content = trimmed.replace(/^상인대표\s*(\(찬성\))?:?\s*/, '');
+                      parsedLogs.push({ sender: '상인대표 (찬성)', text: content });
+                    } else if (trimmed.startsWith('구민대표')) {
+                      const content = trimmed.replace(/^구민대표\s*(\(반대\))?:?\s*/, '');
+                      parsedLogs.push({ sender: '구민대표 (반대)', text: content });
+                    } else if (trimmed.startsWith('조정관')) {
+                      const content = trimmed.replace(/^조정관\s*(\(조정안\)|\(조정\))?:?\s*/, '');
+                      parsedLogs.push({ sender: '조정관 (조정)', text: content });
                     } else {
-                      if (newLogs.length > 0 && newLogs[newLogs.length - 1].sender !== '시스템') {
-                        newLogs[newLogs.length - 1] = {
-                          ...newLogs[newLogs.length - 1],
-                          text: newLogs[newLogs.length - 1].text + textChunk
-                        };
+                      if (parsedLogs.length > 0 && parsedLogs[parsedLogs.length - 1].sender !== '시스템') {
+                        parsedLogs[parsedLogs.length - 1].text += ' ' + trimmed;
                       } else {
-                        newLogs.push({ sender: '토론위원', text: textChunk });
+                        parsedLogs.push({ sender: '토론위원', text: trimmed });
                       }
                     }
-                    return newLogs;
-                  });
+                  }
+                  
+                  setSimLogs([...initialSystemLogs, ...parsedLogs]);
                 }
               } catch (e) {
                 console.error("Failed to parse stream chunk:", e);
@@ -650,7 +651,7 @@ export default function Home() {
         reader.cancel().catch(() => {});
       }
     };
-  }, [showSimModal, activeTab]);
+  }, [showSimModal, activeTab, intensityLevel]);
 
   // 로그인 처리
   const handleLogin = (e) => {
@@ -1042,8 +1043,11 @@ export default function Home() {
                 }
                 const lockData = await lockRes.json();
                 
+                const targetLat = isNaN(hitlLat) ? 37.5302 : hitlLat;
+                const targetLng = isNaN(hitlLng) ? 126.9724 : hitlLng;
+                
                 // 추천 입지 연산 기동 (HITL 마커 좌표 기준 인근 탐색)
-                const recommendRes = await fetch(`/api/v1/spatial/recommend?model_id=${lockData.model_id}&ref_lat=${hitlLat}&ref_lng=${hitlLng}`);
+                const recommendRes = await fetch(`/api/v1/spatial/recommend?model_id=${lockData.model_id}&ref_lat=${targetLat}&ref_lng=${targetLng}`);
                 if (!recommendRes.ok) {
                   throw new Error('공간 입지 추천 연산 실패');
                 }
@@ -1083,15 +1087,7 @@ export default function Home() {
             </div>
             
             <div className="bg-slate-950/40 p-4 rounded-xl border border-amber-500/30 flex flex-col gap-3">
-              <div className="flex flex-col gap-1 text-xs">
-                <span className="text-slate-400">임시 지번 주소 수정</span>
-                <input 
-                  type="text" 
-                  value={hitlJibun} 
-                  onChange={(e) => setHitlJibun(e.target.value)} 
-                  className="bg-slate-900 border border-slate-700 rounded px-2 py-1 text-white text-xs outline-none focus:border-amber-500"
-                />
-              </div>
+
               <div className="flex gap-2">
                 <div className="flex-1 flex flex-col gap-1 text-[11px]">
                   <span className="text-slate-400">경도(Lng)</span>
@@ -1193,8 +1189,52 @@ export default function Home() {
             )}
 
             {/* [Step 5] AI 모의 토론 및 WeasyPrint PDF 발급 */}
-            <div className="border-t border-slate-800/80 pt-4 flex flex-col gap-2">
-              <span className="text-xs font-semibold text-slate-300">Step 5. 의사결정 시뮬레이션</span>
+            <div className="border-t border-slate-800/80 pt-4 flex flex-col gap-2.5">
+              <div className="flex justify-between items-center">
+                <span className="text-xs font-semibold text-slate-300">Step 5. 의사결정 시뮬레이션</span>
+                <span className="text-[10px] text-slate-400 font-mono">갈등 조율 시뮬레이터</span>
+              </div>
+              
+              {/* 갈등 강도 선택 라디오 버튼 그룹 */}
+              <div className="flex flex-col gap-1.5">
+                <span className="text-[10px] text-slate-500 font-semibold">모의 토론 갈등 강도 설정</span>
+                <div className="grid grid-cols-3 gap-1.5 bg-slate-950 p-1 rounded-lg border border-slate-800/50">
+                  <button
+                    type="button"
+                    onClick={() => setIntensityLevel("normal")}
+                    className={`text-[10px] font-semibold py-1.5 rounded-md transition-all cursor-pointer ${
+                      intensityLevel === "normal"
+                        ? "bg-emerald-600/20 text-emerald-400 border border-emerald-500/30"
+                        : "text-slate-400 hover:text-slate-200"
+                    }`}
+                  >
+                    보통 🟢
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIntensityLevel("dangerous")}
+                    className={`text-[10px] font-semibold py-1.5 rounded-md transition-all cursor-pointer ${
+                      intensityLevel === "dangerous"
+                        ? "bg-amber-600/20 text-amber-400 border border-amber-500/30"
+                        : "text-slate-400 hover:text-slate-200"
+                    }`}
+                  >
+                    위험 🟡
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIntensityLevel("extreme")}
+                    className={`text-[10px] font-semibold py-1.5 rounded-md transition-all cursor-pointer ${
+                      intensityLevel === "extreme"
+                        ? "bg-rose-600/20 text-rose-400 border border-rose-500/30"
+                        : "text-slate-400 hover:text-slate-200"
+                    }`}
+                  >
+                    매우 위험 🔴
+                  </button>
+                </div>
+              </div>
+
               <button 
                 onClick={() => {
                   setPipelineStep(5);
@@ -1248,8 +1288,10 @@ export default function Home() {
                   <span className="text-slate-200">{log.text}</span>
                 </div>
               ))}
-              {simStep < 6 && (
+              {simStep < 6 ? (
                 <div className="text-slate-500 animate-pulse">... 에이전트 심의 분석 진행 중 ...</div>
+              ) : (
+                <div className="text-emerald-500 font-bold animate-pulse">✓ 에이전트 심의 분석 완료 (PDF 보고서 다운로드 가능)</div>
               )}
             </div>
 
@@ -1260,8 +1302,36 @@ export default function Home() {
               </span>
               <div className="flex gap-3">
                 <button
-                  onClick={() => {
-                    alert('WeasyPrint를 통해 입지 타당성 분석 PDF를 컴파일 및 다운로드합니다.');
+                  onClick={async () => {
+                    try {
+                      const payload = {
+                        facility_type: inferredDomainTag || "city_feature",
+                        inferred_purpose: inferredPurpose || "입지 분석",
+                        candidate_jibun: selectedParcel[activeTab]?.jibun || "용산구 미지정 부지",
+                        candidate_css: selectedParcel[activeTab]?.css || 50,
+                        candidate_lat: selectedParcel[activeTab]?.lat || 37.53,
+                        candidate_lng: selectedParcel[activeTab]?.lng || 126.97,
+                        ahp_weights: ahpWeights || {},
+                        debate_logs: simLogs.map(log => ({ sender: log.sender, text: log.text }))
+                      };
+                      const res = await fetch('/api/v1/spatial/report/download', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                      });
+                      if (!res.ok) throw new Error('PDF 다운로드 실패');
+                      const blob = await res.blob();
+                      const url = window.URL.createObjectURL(blob);
+                      const a = document.createElement('a');
+                      a.href = url;
+                      a.download = `OmniSite_Report_${payload.candidate_jibun.replace(/ /g, '_')}.pdf`;
+                      document.body.appendChild(a);
+                      a.click();
+                      document.body.removeChild(a);
+                      window.URL.revokeObjectURL(url);
+                    } catch (err) {
+                      alert('⚠️ PDF 보고서 발급 중 오류가 발생했습니다: ' + err.message);
+                    }
                   }}
                   disabled={simStep < 6}
                   className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 text-white font-semibold text-xs px-4 py-2.5 rounded-lg transition-all cursor-pointer"

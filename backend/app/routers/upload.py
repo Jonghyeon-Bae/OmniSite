@@ -343,7 +343,7 @@ def get_or_create_merged_tag(domain_tag: str, reasoning: str, db: Session) -> st
         tag_embedding = embed_res.data[0].embedding
         
         query = text("""
-            SELECT tag_name, 1 - (embedding <=> :tag_embedding) AS similarity 
+            SELECT tag_name, 1 - (embedding <=> :tag_embedding::vector) AS similarity 
             FROM registered_domain_tags 
             ORDER BY similarity DESC 
             LIMIT 1
@@ -599,9 +599,9 @@ async def audit_upload_files(request: AuditRequest, db: Session = Depends(get_db
             query_embedding = embed_res.data[0].embedding
             
             rag_query = text("""
-                SELECT regulation_title, content, 1 - (embedding <=> :query_embedding) AS similarity
+                SELECT regulation_title, content, 1 - (embedding <=> :query_embedding::vector) AS similarity
                 FROM district_regulations
-                WHERE district_id = 1 AND 1 - (embedding <=> :query_embedding) >= 0.40
+                WHERE district_id = 1 AND 1 - (embedding <=> :query_embedding::vector) >= 0.40
                 ORDER BY similarity DESC
                 LIMIT 5
             """)
@@ -964,14 +964,27 @@ async def commit_hitl_data(request: HITLCommitRequest, db: Session = Depends(get
     committed_count = 0
     details_applied = []
     
-    # 2. 보정값 대조 및 PostGIS DB 마이그레이션 트랜잭션 실행 (Bulk Insert 적용)
+    # 2. 행정동 WKT 폴리곤 데이터 조회 및 Shapely contains 연산기 구성
     try:
-        insert_query = text("""
-            INSERT INTO city_spatial_features (district_id, feature_type, feature_name, geom, properties)
-            VALUES (:district_id, :feature_type, :feature_name, ST_SetSRID(ST_MakePoint(:lng, :lat), 4326), :properties)
-        """)
+        dongs = db.execute(text("SELECT id, ST_AsText(geom) FROM dong_boundaries WHERE district_id = 1")).fetchall()
+        from shapely.wkt import loads
+        from shapely.geometry import Point
         
-        params_list = []
+        dong_polys = []
+        for d_id, wkt in dongs:
+            try:
+                dong_polys.append((d_id, loads(wkt)))
+            except Exception:
+                pass
+                
+        def find_dong_id(lng: float, lat: float) -> int:
+            p = Point(lng, lat)
+            for d_id, poly in dong_polys:
+                if poly.contains(p):
+                    return d_id
+            return 1  # 기본값
+            
+        json_records = []
         for idx, row in enumerate(rows):
             if len(row) <= max(lat_idx, lng_idx):
                 continue
@@ -991,26 +1004,27 @@ async def commit_hitl_data(request: HITLCommitRequest, db: Session = Depends(get
             addr_val = row[addr_idx] if addr_idx != -1 and addr_idx < len(row) else f"행 번호 {idx+1}"
             
             row_dict = {headers[i]: row[i] for i in range(min(len(headers), len(row)))}
-            properties_json = json.dumps({
+            properties_dict = {
                 "address": addr_val, 
                 "data": row_dict,
                 "domain": request.confirmed_domain
-            }, ensure_ascii=False)
+            }
             
-            feature_type_val = request.confirmed_domain if request.confirmed_domain else ("smoking_zone" if "smoking" in request.filename.lower() else "city_feature")
+            dong_id_val = find_dong_id(final_lng, final_lat)
             
-            params_list.append({
-                "district_id": 1,
-                "feature_type": feature_type_val,
-                "feature_name": request.filename,
-                "lng": final_lng,
+            json_records.append({
                 "lat": final_lat,
-                "properties": properties_json
+                "lng": final_lng,
+                "dong_id": dong_id_val,
+                "properties": properties_dict
             })
             
-        if params_list:
-            db.execute(insert_query, params_list)
-            committed_count += len(params_list)
+        if json_records:
+            json_filename = request.filename.replace(".csv", ".json")
+            json_path = os.path.join(UPLOAD_DIR, json_filename)
+            with open(json_path, "w", encoding="utf-8") as f:
+                json.dump(json_records, f, ensure_ascii=False, indent=2)
+            committed_count += len(json_records)
 
         # UPLOAD_DIR 내 다른 모든 CSV 파일들도 자동 커밋 처리 진행
         committed_files = [request.filename]
@@ -1033,7 +1047,7 @@ async def commit_hitl_data(request: HITLCommitRequest, db: Session = Depends(get
                 o_lng_idx = o_headers.index(o_lng_col)
                 o_addr_idx = o_headers.index(o_addr_col) if o_addr_col else -1
                 
-                o_params_list = []
+                o_records = []
                 for idx, r in enumerate(o_rows):
                     if len(r) <= max(o_lat_idx, o_lng_idx):
                         continue
@@ -1049,33 +1063,32 @@ async def commit_hitl_data(request: HITLCommitRequest, db: Session = Depends(get
                     addr_val = r[o_addr_idx] if o_addr_idx != -1 and o_addr_idx < len(r) else f"행 번호 {idx+1}"
                     
                     row_dict = {o_headers[i]: r[i] for i in range(min(len(o_headers), len(r)))}
-                    properties_json = json.dumps({
+                    properties_dict = {
                         "address": addr_val,
                         "data": row_dict,
                         "domain": request.confirmed_domain
-                    }, ensure_ascii=False)
+                    }
                     
-                    feature_type_val = request.confirmed_domain if request.confirmed_domain else ("smoking_zone" if "smoking" in other_file.lower() else "city_feature")
+                    dong_id_val = find_dong_id(final_lng, final_lat)
                     
-                    o_params_list.append({
-                        "district_id": 1,
-                        "feature_type": feature_type_val,
-                        "feature_name": other_file,
-                        "lng": final_lng,
+                    o_records.append({
                         "lat": final_lat,
-                        "properties": properties_json
+                        "lng": final_lng,
+                        "dong_id": dong_id_val,
+                        "properties": properties_dict
                     })
                     
-                if o_params_list:
-                    db.execute(insert_query, o_params_list)
-                    committed_count += len(o_params_list)
+                if o_records:
+                    o_json_filename = other_file.replace(".csv", ".json")
+                    o_json_path = os.path.join(UPLOAD_DIR, o_json_filename)
+                    with open(o_json_path, "w", encoding="utf-8") as f:
+                        json.dump(o_records, f, ensure_ascii=False, indent=2)
+                    committed_count += len(o_records)
                     committed_files.append(other_file)
             except Exception as ex:
                 print(f"[Auto Commit Error] Failed to process other file {other_file}: {ex}")
                 
-        db.commit()
-        
-        # 커밋 완료 후 업로드 디렉터리 내 물리 파일 제거 (격리 무결성 보존)
+        # 커밋 완료 후 업로드 디렉터리 내 원본 CSV 물리 파일 제거 (JSON 캐시만 유지)
         for cf in committed_files:
             try:
                 os.remove(os.path.join(UPLOAD_DIR, cf))
@@ -1083,12 +1096,11 @@ async def commit_hitl_data(request: HITLCommitRequest, db: Session = Depends(get
                 print(f"[Cleanup Error] Failed to remove committed file {cf}: {e}")
                 
     except Exception as e:
-        db.rollback()
-        raise HTTPException(status_code=500, detail=f"데이터베이스 적재 중 오류가 발생해 롤백 처리되었습니다: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"공간 데이터 캐시 파일 컴파일 중 오류 발생: {str(e)}")
         
     return {
         "status": "success",
-        "message": f"성공적으로 {len(committed_files)}개 공간 데이터셋의 보정이 완료되었으며, 총 {committed_count}건의 공간 레코드가 PostGIS DB에 격리 적재되었습니다.",
+        "message": f"성공적으로 {len(committed_files)}개 공간 데이터셋의 보정이 완료되었으며, 총 {committed_count}건의 공간 레코드가 로컬 캐시(JSON)에 격리 적재되었습니다.",
         "committed_records": committed_count,
         "committed_files": committed_files,
         "details": {

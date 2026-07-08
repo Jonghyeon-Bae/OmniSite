@@ -62,9 +62,9 @@ export default function Home() {
   // 2. 후보지 탭 및 상태 (Step 4 & 5에서 노출)
   const [activeTab, setActiveTab] = useState('top1');
   const [selectedParcel, setSelectedParcel] = useState({
-    top1: { id: 1, pnu: '1117011200100420000', jibun: '한강로동 42-12 (국유지)', price: 14200000, area: 15, css: 78, cssGrade: '상', lat: 37.5302, lng: 126.9724, simulated: true },
-    top2: { id: 2, pnu: '1117011200100450002', jibun: '한강로동 45-2 (시유지)', price: 9800000, area: 12, css: 45, cssGrade: '중', lat: 37.5328, lng: 126.9751, simulated: false },
-    top3: { id: 3, pnu: '1117011300100120001', jibun: '이촌동 12-1 (구유지)', price: 18500000, area: 18, css: 12, cssGrade: '하', lat: 37.5255, lng: 126.9702, simulated: false }
+    top1: { id: 1, pnu: '1117011200100420000', jibun: '한강로동 42-12 (국유지)', price: 14200000, area: 15, css: 78, cssGrade: '상', lat: 37.5302, lng: 126.9724, simulated: true, reason: '의사결정 우선순위인 \'대중교통 유동성\' 지표 측면에서 가장 부합하는 정량적 우수 입지입니다.' },
+    top2: { id: 2, pnu: '1117011200100450002', jibun: '한강로동 45-2 (시유지)', price: 9800000, area: 12, css: 45, cssGrade: '중', lat: 37.5328, lng: 126.9751, simulated: false, reason: '배후 주거 인구의 분포 비율 및 도로 접근성을 종합 검토하여 보통 등급으로 판정된 입지입니다.' },
+    top3: { id: 3, pnu: '1117011300100120001', jibun: '이촌동 12-1 (구유지)', price: 18500000, area: 18, css: 12, cssGrade: '하', lat: 37.5255, lng: 126.9702, simulated: false, reason: '조례상 규제 구역 경계선과 다소 인접해 있으며 보행 가용폭 확인이 권장되는 필지입니다.' }
   });
 
   // 3. 비주얼 HITL 보정 상태
@@ -77,6 +77,7 @@ export default function Home() {
   const [simStep, setSimStep] = useState(0);
   const [simLogs, setSimLogs] = useState([]);
   const [intensityLevel, setIntensityLevel] = useState("normal");
+  const [dynamicPersonas, setDynamicPersonas] = useState(['상인대표', '주민대표', '갈등조정관']);
 
   // 4단계 추가 상태: 자치구 경계 및 규제 시설물 포인트
   const [districtGeoJson, setDistrictGeoJson] = useState(null);
@@ -104,11 +105,11 @@ export default function Home() {
         .then(res => res.ok ? res.json() : null)
         .then(data => { if (data) setDistrictGeoJson(data); });
         
-      apiFetch('/api/v1/spatial/restrictions/points')
+      apiFetch(`/api/v1/spatial/restrictions/points?facility_type=${inferredDomainTag || 'city_feature'}`)
         .then(res => res.ok ? res.json() : null)
         .then(data => { if (data) setRestrictionPoints(data.points); });
     }
-  }, [pipelineStep]);
+  }, [pipelineStep, inferredDomainTag]);
 
   // 5. 로그인 모달 상태
   const [showLoginModal, setShowLoginModal] = useState(false);
@@ -245,21 +246,10 @@ export default function Home() {
         markersRef.current['boundary'] = boundaryLayer;
       }
 
-      // 1. 규제 시설물 포인트에 따른 동적 버퍼 오버레이 생성
+      // 1. 규제 시설물 포인트에 따른 동적 버퍼 오버레이 생성 (limit_radius 우선 적용)
       const circles = [];
       restrictionPoints.forEach((pt, idx) => {
-        let limitRadius = 0;
-        if (pt.type && spatialRestrictions[pt.type] !== undefined) {
-          limitRadius = spatialRestrictions[pt.type];
-        } else if (pt.type === 'transit_station') {
-          limitRadius = 30;
-        } else if (pt.type === 'childcare_center' || pt.type === 'school') {
-          limitRadius = 200;
-        } else if (pt.radius > 0) {
-          limitRadius = pt.radius;
-        } else {
-          limitRadius = 20;
-        }
+        const limitRadius = pt.limit_radius || pt.radius || 20;
         
         if (limitRadius > 0) {
           const circle = L.circle([pt.lat, pt.lng], {
@@ -345,20 +335,9 @@ export default function Home() {
         markersRef.current['boundary'] = boundaryLayer;
       }
 
-      // 1. 규제 시설물 포인트에 따른 동적 버퍼 오버레이 생성 (정말 얕은 빨간색으로 시각화)
+      // 1. 규제 시설물 포인트에 따른 동적 버퍼 오버레이 생성 (정말 얕은 빨간색으로 시각화, limit_radius 우선 적용)
       restrictionPoints.forEach((pt, idx) => {
-        let limitRadius = 0;
-        if (pt.type && spatialRestrictions[pt.type] !== undefined) {
-          limitRadius = spatialRestrictions[pt.type];
-        } else if (pt.type === 'transit_station') {
-          limitRadius = 30;
-        } else if (pt.type === 'childcare_center' || pt.type === 'school') {
-          limitRadius = 200;
-        } else if (pt.radius > 0) {
-          limitRadius = pt.radius;
-        } else {
-          limitRadius = 20;
-        }
+        const limitRadius = pt.limit_radius || pt.radius || 20;
         
         if (limitRadius > 0) {
           const circle = L.circle([pt.lat, pt.lng], {
@@ -606,6 +585,8 @@ export default function Home() {
           { sender: '시스템', text: '💬 3자 모의 토론 채널 접속 중...' }
         ];
 
+        let activePersonas = [...dynamicPersonas];
+
         while (!isClosed) {
           const { value, done } = await reader.read();
           if (done) {
@@ -622,37 +603,56 @@ export default function Home() {
               const dataContent = line.replace('data:', '').trim();
               try {
                 const data = JSON.parse(dataContent);
-                if (data && data.text) {
-                  accumulatedText += data.text;
-                  
-                  // 누적 텍스트를 줄 단위로 분해하여 토론 로그 재구성
-                  const parsedLogs = [];
-                  const rawLines = accumulatedText.split('\n');
-                  for (let rawLine of rawLines) {
-                    const trimmed = rawLine.trim();
-                    if (!trimmed) continue;
-                    
-                    if (trimmed.startsWith('[')) {
-                      parsedLogs.push({ sender: '시스템', text: trimmed });
-                    } else if (trimmed.startsWith('상인대표')) {
-                      const content = trimmed.replace(/^상인대표\s*(\(찬성\))?:?\s*/, '');
-                      parsedLogs.push({ sender: '상인대표 (찬성)', text: content });
-                    } else if (trimmed.startsWith('구민대표')) {
-                      const content = trimmed.replace(/^구민대표\s*(\(반대\))?:?\s*/, '');
-                      parsedLogs.push({ sender: '구민대표 (반대)', text: content });
-                    } else if (trimmed.startsWith('조정관')) {
-                      const content = trimmed.replace(/^조정관\s*(\(조정안\)|\(조정\))?:?\s*/, '');
-                      parsedLogs.push({ sender: '조정관 (조정)', text: content });
-                    } else {
-                      if (parsedLogs.length > 0 && parsedLogs[parsedLogs.length - 1].sender !== '시스템') {
-                        parsedLogs[parsedLogs.length - 1].text += ' ' + trimmed;
-                      } else {
-                        parsedLogs.push({ sender: '토론위원', text: trimmed });
-                      }
-                    }
+                if (data) {
+                  if (data.meta && data.personas) {
+                    activePersonas = data.personas;
+                    setDynamicPersonas(data.personas);
+                    continue;
                   }
                   
-                  setSimLogs([...initialSystemLogs, ...parsedLogs]);
+                  if (data.text) {
+                    accumulatedText += data.text;
+                    
+                    // 누적 텍스트를 줄 단위로 분해하여 토론 로그 재구성
+                    const parsedLogs = [];
+                    const rawLines = accumulatedText.split('\n');
+                    
+                    const merchantName = activePersonas[0] || '찬성';
+                    const residentName = activePersonas[1] || '반대';
+                    const coordinatorName = activePersonas[2] || '정부';
+                    
+                    const escapeRegExp = (string) => string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                    
+                    const merchantRegex = new RegExp(`^(${escapeRegExp(merchantName)}|상인대표|상인)\\s*(\\(찬성\\))?:?\\s*`);
+                    const residentRegex = new RegExp(`^(${escapeRegExp(residentName)}|주민대표|구민대표|주민|구민)\\s*(\\(반대\\))?:?\\s*`);
+                    const coordinatorRegex = new RegExp(`^(${escapeRegExp(coordinatorName)}|갈등조정관|조정관)\\s*(\\(중재\\)|\\(조정안\\)|\\(조정\\))?:?\\s*`);
+                    
+                    for (let rawLine of rawLines) {
+                      const trimmed = rawLine.trim();
+                      if (!trimmed) continue;
+                      
+                      if (trimmed.startsWith('[')) {
+                        parsedLogs.push({ sender: '시스템', text: trimmed });
+                      } else if (merchantRegex.test(trimmed)) {
+                        const content = trimmed.replace(merchantRegex, '');
+                        parsedLogs.push({ sender: merchantName, text: content });
+                      } else if (residentRegex.test(trimmed)) {
+                        const content = trimmed.replace(residentRegex, '');
+                        parsedLogs.push({ sender: residentName, text: content });
+                      } else if (coordinatorRegex.test(trimmed)) {
+                        const content = trimmed.replace(coordinatorRegex, '');
+                        parsedLogs.push({ sender: coordinatorName, text: content });
+                      } else {
+                        if (parsedLogs.length > 0 && parsedLogs[parsedLogs.length - 1].sender !== '시스템') {
+                          parsedLogs[parsedLogs.length - 1].text += ' ' + trimmed;
+                        } else {
+                          parsedLogs.push({ sender: '토론위원', text: trimmed });
+                        }
+                      }
+                    }
+                    
+                    setSimLogs([...initialSystemLogs, ...parsedLogs]);
+                  }
                 }
               } catch (e) {
                 console.error("Failed to parse stream chunk:", e);

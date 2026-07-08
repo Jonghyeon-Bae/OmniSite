@@ -18,10 +18,15 @@ app.include_router(upload_router)
 app.include_router(ahp_router)
 app.include_router(spatial_router)
 
-# Next.js 연동을 위한 CORS 미들웨어 개설
+# Next.js 연동을 위한 CORS 미들웨어 개설 (Credentials 허용을 위해 와일드카드 *를 명시적 Origin으로 치환)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:3001",
+        "http://127.0.0.1:3001"
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

@@ -6,7 +6,7 @@ from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
 from typing import List, Dict, Any, Optional
 from pydantic import BaseModel
 from pypdf import PdfReader
-from openai import OpenAI
+from openai import OpenAI, AsyncOpenAI
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from app.config import settings
@@ -28,6 +28,14 @@ def get_openai_client() -> Optional[OpenAI]:
     if settings.OPENAI_API_KEY:
         try:
             return OpenAI(api_key=settings.OPENAI_API_KEY)
+        except Exception:
+            return None
+    return None
+
+def get_async_openai_client() -> Optional[AsyncOpenAI]:
+    if settings.OPENAI_API_KEY:
+        try:
+            return AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
         except Exception:
             return None
     return None
@@ -343,7 +351,7 @@ def get_or_create_merged_tag(domain_tag: str, reasoning: str, db: Session) -> st
         tag_embedding = embed_res.data[0].embedding
         
         query = text("""
-            SELECT tag_name, 1 - (embedding <=> :tag_embedding::vector) AS similarity 
+            SELECT tag_name, 1 - (embedding <=> CAST(:tag_embedding AS vector)) AS similarity 
             FROM registered_domain_tags 
             ORDER BY similarity DESC 
             LIMIT 1
@@ -607,9 +615,9 @@ async def audit_upload_files(request: AuditRequest, db: Session = Depends(get_db
             query_embedding = embed_res.data[0].embedding
             
             rag_query = text("""
-                SELECT regulation_title, content, 1 - (embedding <=> :query_embedding::vector) AS similarity
+                SELECT regulation_title, content, 1 - (embedding <=> CAST(:query_embedding AS vector)) AS similarity
                 FROM district_regulations
-                WHERE district_id = 1 AND 1 - (embedding <=> :query_embedding::vector) >= 0.40
+                WHERE district_id = 1 AND 1 - (embedding <=> CAST(:query_embedding AS vector)) >= 0.40
                 ORDER BY similarity DESC
                 LIMIT 5
             """)

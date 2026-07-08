@@ -1385,13 +1385,13 @@ async def download_report_pdf(req: ReportDownloadRequest, db: Session = Depends(
         raise HTTPException(status_code=500, detail=f"PDF 리포트 생성 오류: {str(e)}")
 
 
-# Pydantic DTO 정의 [v4.4.0]
+# Pydantic DTO 정의 [v4.4.1]
 class UserExclusionCreateRequest(BaseModel):
     zone_name: str
     coordinates: List[List[float]]  # [[lng, lat], [lng, lat], ...]
+    memo: Optional[str] = None      # 사유 설명 메모
 
-
-# 5. 사용자 가상 금지구역 적재 API [v4.4.0]
+# 5. 사용자 가상 금지구역 적재 API [v4.4.1]
 @router.post("/spatial/user-exclusions")
 async def create_user_exclusion(req: UserExclusionCreateRequest, db: Session = Depends(get_db)):
     try:
@@ -1406,10 +1406,10 @@ async def create_user_exclusion(req: UserExclusionCreateRequest, db: Session = D
         wkt = f"POLYGON(({wkt_coords}))"
         
         insert_query = text("""
-            INSERT INTO user_exclusion_zones (zone_name, geom)
-            VALUES (:zone_name, ST_GeomFromText(:wkt, 4326))
+            INSERT INTO user_exclusion_zones (zone_name, geom, memo)
+            VALUES (:zone_name, ST_GeomFromText(:wkt, 4326), :memo)
         """)
-        db.execute(insert_query, {"zone_name": req.zone_name, "wkt": wkt})
+        db.execute(insert_query, {"zone_name": req.zone_name, "wkt": wkt, "memo": req.memo})
         db.commit()
         
         return {"status": "success", "message": f"성공적으로 '{req.zone_name}' 사용자 금지구역이 적재 및 고정되었습니다."}
@@ -1417,13 +1417,12 @@ async def create_user_exclusion(req: UserExclusionCreateRequest, db: Session = D
         db.rollback()
         raise HTTPException(status_code=500, detail=f"사용자 금지구역 저장 실패: {str(e)}")
 
-
-# 6. 사용자 가상 금지구역 조회 API (GeoJSON) [v4.4.0]
+# 6. 사용자 가상 금지구역 조회 API (GeoJSON) [v4.4.1]
 @router.get("/spatial/user-exclusions")
 async def get_user_exclusions(db: Session = Depends(get_db)):
     try:
         query = text("""
-            SELECT id, zone_name, ST_AsGeoJSON(geom) 
+            SELECT id, zone_name, ST_AsGeoJSON(geom), memo 
             FROM user_exclusion_zones
             ORDER BY created_at DESC
         """)
@@ -1431,14 +1430,15 @@ async def get_user_exclusions(db: Session = Depends(get_db)):
         
         features = []
         for r in rows:
-            z_id, name, geom_json = r
+            z_id, name, geom_json, memo = r
             if geom_json:
                 features.append({
                     "type": "Feature",
                     "id": z_id,
                     "properties": {
                         "name": name,
-                        "type": "user_exclusion"
+                        "type": "user_exclusion",
+                        "memo": memo if memo else "사유 없음"
                     },
                     "geometry": json.loads(geom_json)
                 })
@@ -1449,62 +1449,4 @@ async def get_user_exclusions(db: Session = Depends(get_db)):
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"사용자 금지구역 조회 실패: {str(e)}")
-
-
-# 7. 국가 절대 통제구역 GeoJSON 조회 API [v4.4.0]
-@router.get("/spatial/absolute-exclusions")
-async def get_absolute_exclusions():
-    try:
-        # 용산 미군기지/공원 영역 및 국방부/대통령실 영역의 대략적 폴리곤 좌표군 하드코딩 GeoJSON
-        # 용산공원 영역 바운더리
-        park_coords = [
-            [126.9750, 37.5280],
-            [126.9850, 37.5280],
-            [126.9850, 37.5180],
-            [126.9720, 37.5180],
-            [126.9720, 37.5240],
-            [126.9750, 37.5280]
-        ]
-        # 국방부/대통령실 영내 바운더리
-        mod_coords = [
-            [126.9680, 37.5270],
-            [126.9740, 37.5270],
-            [126.9740, 37.5220],
-            [126.9680, 37.5220],
-            [126.9680, 37.5270]
-        ]
-        
-        features = [
-            {
-                "type": "Feature",
-                "id": 8001,
-                "properties": {
-                    "name": "용산기지 / 미군 반환 용산공원 통제구역",
-                    "type": "absolute_exclusion"
-                },
-                "geometry": {
-                    "type": "Polygon",
-                    "coordinates": [park_coords]
-                }
-            },
-            {
-                "type": "Feature",
-                "id": 8002,
-                "properties": {
-                    "name": "국방부 / 대통령실 보안 경호통제구역",
-                    "type": "absolute_exclusion"
-                },
-                "geometry": {
-                    "type": "Polygon",
-                    "coordinates": [mod_coords]
-                }
-            }
-        ]
-        
-        return {
-            "type": "FeatureCollection",
-            "features": features
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"국가 절대 통제구역 조회 실패: {str(e)}")
 

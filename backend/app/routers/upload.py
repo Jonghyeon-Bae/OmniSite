@@ -1173,7 +1173,7 @@ async def commit_hitl_data(request: HITLCommitRequest, db: Session = Depends(get
 
 # --- [Step 1-0] 캐시 파일 일괄 제거 API ---
 @router.post("/upload/clear")
-async def clear_uploaded_caches():
+async def clear_uploaded_caches(db: Session = Depends(get_db)):
     try:
         purged_files = []
         if os.path.exists(UPLOAD_DIR):
@@ -1190,10 +1190,18 @@ async def clear_uploaded_caches():
         # 메모리 캐시 초기화
         from app.routers.spatial import _file_cache
         _file_cache.clear()
+
+        # v4.4.1 사용자 정의 금지구역 테이블 초기화 연동 (Mock 데이터 소거)
+        try:
+            db.execute(text("TRUNCATE TABLE user_exclusion_zones RESTART IDENTITY CASCADE"))
+            db.commit()
+        except Exception as db_ex:
+            db.rollback()
+            print(f"[DB Clear Error] user_exclusion_zones: {db_ex}")
         
         return {
             "status": "success",
-            "message": f"성공적으로 {len(purged_files)}개의 임시 공간 데이터/캐시 파일 및 메모리 캐시를 초기화(Clear)했습니다.",
+            "message": f"성공적으로 {len(purged_files)}개의 임시 공간 데이터/캐시 파일, 메모리 캐시 및 사용자 지정 금역 테이블을 초기화(Clear)했습니다.",
             "purged_files": purged_files
         }
     except Exception as e:

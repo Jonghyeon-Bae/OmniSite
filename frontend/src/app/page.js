@@ -84,14 +84,18 @@ export default function Home() {
   const [districtGeoJson, setDistrictGeoJson] = useState(null);
   const [restrictionPoints, setRestrictionPoints] = useState([]);
   const [spatialRestrictions, setSpatialRestrictions] = useState({});
-  const [showAbsoluteExclusions, setShowAbsoluteExclusions] = useState(false);
-  const [absoluteExclusionGeoJson, setAbsoluteExclusionGeoJson] = useState(null);
   const [userExclusionGeoJson, setUserExclusionGeoJson] = useState(null);
   const [isDrawingExclusion, setIsDrawingExclusion] = useState(false);
   const [drawnPoints, setDrawnPoints] = useState([]);
+  const [panelPosition, setPanelPosition] = useState({ x: 1000, y: 80 });
+  const [dragStart, setDragStart] = useState(null);
 
   // 최초 서비스 마운트 시 (웹 접속 시) 데이터베이스 및 로컬 캐시 초기화
   useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setPanelPosition({ x: window.innerWidth - 280, y: 80 });
+    }
+
     apiFetch('/api/v1/upload/clear', { method: 'POST' })
       .then(res => res.ok ? res.json() : null)
       .then(data => {
@@ -103,6 +107,28 @@ export default function Home() {
         console.error('[OmniSite Initialization Error] Failed to clear upload caches:', err);
       });
   }, []);
+
+  // [v4.4.1] 공간 통제 영역 제어판 마우스 드래그 이벤트 리스너
+  useEffect(() => {
+    if (!dragStart) return;
+    const handleMouseMove = (e) => {
+      const dx = e.clientX - dragStart.startX;
+      const dy = e.clientY - dragStart.startY;
+      setPanelPosition({
+        x: dragStart.posX + dx,
+        y: dragStart.posY + dy
+      });
+    };
+    const handleMouseUp = () => {
+      setDragStart(null);
+    };
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [dragStart]);
 
   // Step 2 진입 시 관할 경계 GeoJSON 및 규제 시설물 목록 로드
   useEffect(() => {
@@ -118,10 +144,6 @@ export default function Home() {
       apiFetch('/api/v1/spatial/user-exclusions')
         .then(res => res.ok ? res.json() : null)
         .then(data => { if (data) setUserExclusionGeoJson(data); });
-
-      apiFetch('/api/v1/spatial/absolute-exclusions')
-        .then(res => res.ok ? res.json() : null)
-        .then(data => { if (data) setAbsoluteExclusionGeoJson(data); });
     }
   }, [pipelineStep, inferredDomainTag]);
 
@@ -135,6 +157,9 @@ export default function Home() {
   const mapRef = useRef(null);
   const markersRef = useRef({});
   const [leafletLoaded, setLeafletLoaded] = useState(false);
+  const tempPointsRef = useRef([]);
+  const tempMarkersRef = useRef([]);
+  const tempPolylineRef = useRef(null);
 
   // 위경도 결측치(Null/Zero)에 기반한 군부대/보안시설 우회 예외처리 함수
   const isValidCoordinate = (lat, lng) => {
@@ -142,6 +167,82 @@ export default function Home() {
     if (lng === null || lng === undefined || isNaN(lng) || lng === 0) return false;
     if (lat < 33.0 || lat > 39.0 || lng < 124.0 || lng > 132.0) return false; // 대한민국 위경도 한계 범주 검증
     return true;
+  };
+
+  const handleMouseDown = (e) => {
+    if (e.target.tagName === 'BUTTON' || e.target.tagName === 'INPUT') return;
+    setDragStart({
+      startX: e.clientX,
+      startY: e.clientY,
+      posX: panelPosition.x,
+      posY: panelPosition.y
+    });
+  };
+
+  const clearTempDrawing = () => {
+    tempMarkersRef.current.forEach(m => m.remove());
+    tempMarkersRef.current = [];
+    if (tempPolylineRef.current) {
+      tempPolylineRef.current.remove();
+      tempPolylineRef.current = null;
+    }
+    tempPointsRef.current = [];
+  };
+
+  const finishDrawingExclusion = async () => {
+    const points = tempPointsRef.current;
+    if (points.length < 3) {
+      alert("⚠️ 통제 영역을 그리려면 최소 3개 이상의 지점을 마우스로 클릭해야 합니다.");
+      clearTempDrawing();
+      setIsDrawingExclusion(false);
+      return;
+    }
+
+    const zoneName = prompt("✏️ 생성할 가상 금지구역(Exclusion Area)의 명칭을 입력해 주세요:");
+    if (!zoneName) {
+      clearTempDrawing();
+      setIsDrawingExclusion(false);
+      return;
+    }
+
+    const memoText = prompt("📝 해당 통제구역의 상세 사유 및 설명 메모를 입력해 주세요:");
+    
+    try {
+      const res = await apiFetch('/api/v1/spatial/user-exclusions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          zone_name: zoneName,
+          coordinates: points,
+          memo: memoText || '지정 사유 없음'
+        })
+      });
+
+      if (res.ok) {
+        const resData = await res.json();
+        alert(`✅ 저장 완료: ${resData.message}`);
+        setIsDrawingExclusion(false);
+
+        const listRes = await apiFetch('/api/v1/spatial/user-exclusions');
+        if (listRes.ok) {
+          const listData = await listRes.json();
+          setUserExclusionGeoJson(listData);
+        }
+      } else {
+        const errData = await res.json();
+        alert(`❌ 저장 실패: ${errData.detail || '알 수 없는 오류'}`);
+        setIsDrawingExclusion(false);
+      }
+    } catch (err) {
+      console.error("Custom exclusion save error:", err);
+      alert("❌ 서버 통신 오류로 인해 금지구역을 저장하지 못했습니다.");
+      setIsDrawingExclusion(false);
+    } finally {
+      clearTempDrawing();
+      if (mapRef.current) {
+        mapRef.current.doubleClickZoom.enable();
+      }
+    }
   };
 
   // 1. Leaflet 스크립트 및 CSS 로드 (최초 마운트 시 단 1회만 기동)
@@ -260,44 +361,31 @@ export default function Home() {
         markersRef.current['boundary'] = boundaryLayer;
       }
 
-      // 0-1. 사용자 정의 금지구역(userExclusionGeoJson) 레이어 오버레이 [v4.4.0]
+      // 0-1. 사용자 정의 금지구역(userExclusionGeoJson) 레이어 오버레이 [v4.4.1]
       if (userExclusionGeoJson) {
         const userExclLayer = L.geoJSON(userExclusionGeoJson, {
           style: {
             color: '#f97316',
             fillColor: '#f97316',
-            fillOpacity: 0.15,
-            weight: 2
+            fillOpacity: 0.12,
+            weight: 1.8
           },
           onEachFeature: (feature, layer) => {
             if (feature.properties && feature.properties.name) {
-              layer.bindPopup(`<b>[사용자 지정 금역]</b><br/>명칭: ${feature.properties.name}`);
+              layer.bindPopup(`
+                <div style="font-family: inherit; font-size: 11px; padding: 4px; color: #1e293b;">
+                  <strong style="color: #ea580c; font-size: 12px;">🚫 사용자 지정 통제 영역</strong><br/>
+                  <span style="font-weight: 700; margin-top: 4px; display: inline-block;">명칭:</span> ${feature.properties.name}<br/>
+                  <span style="font-weight: 700; margin-top: 2px; display: inline-block;">사유:</span> ${feature.properties.memo || '지정 사유 없음'}
+                </div>
+              `);
             }
           }
         }).addTo(map);
         markersRef.current['user_exclusion'] = userExclLayer;
       }
 
-      // 0-2. 국가 절대 통제구역(showAbsoluteExclusions) 레이어 오버레이 [v4.4.0]
-      if (showAbsoluteExclusions && absoluteExclusionGeoJson) {
-        const absExclLayer = L.geoJSON(absoluteExclusionGeoJson, {
-          style: {
-            color: '#a855f7',
-            fillColor: '#a855f7',
-            fillOpacity: 0.15,
-            weight: 1.5,
-            dashArray: '4, 4'
-          },
-          onEachFeature: (feature, layer) => {
-            if (feature.properties && feature.properties.name) {
-              layer.bindPopup(`<b>[국가 통제구역]</b><br/>명칭: ${feature.properties.name}`);
-            }
-          }
-        }).addTo(map);
-        markersRef.current['absolute_exclusion'] = absExclLayer;
-      }
-
-      // 1. 규제 시설물 포인트에 따른 동적 버퍼 오버레이 생성 (limit_radius 우선 적용)
+      // 1. 규제 시설물 포인트에 따른 동적 버퍼 오버레이 생성 (limit_radius 우선 적용, 조례 기준 점선 및 0.05 투명화) [v4.4.1]
       const circles = [];
       restrictionPoints.forEach((pt, idx) => {
         const limitRadius = pt.limit_radius || pt.radius || 20;
@@ -306,7 +394,9 @@ export default function Home() {
           const circle = L.circle([pt.lat, pt.lng], {
             color: '#ef4444',
             fillColor: '#ef4444',
-            fillOpacity: 0.15,
+            fillOpacity: 0.05,  // 극도로 연한 붉은색
+            weight: 1.2,        // 얇은 선
+            dashArray: '4, 4',  // 점선 테두리
             radius: limitRadius
           }).addTo(map);
           circles.push({ circle, pt, limitRadius });
@@ -386,44 +476,31 @@ export default function Home() {
         markersRef.current['boundary'] = boundaryLayer;
       }
 
-      // 0-1. 사용자 정의 금지구역(userExclusionGeoJson) 레이어 오버레이 [v4.4.0]
+      // 0-1. 사용자 정의 금지구역(userExclusionGeoJson) 레이어 오버레이 [v4.4.1]
       if (userExclusionGeoJson) {
         const userExclLayer = L.geoJSON(userExclusionGeoJson, {
           style: {
             color: '#f97316',
             fillColor: '#f97316',
-            fillOpacity: 0.10,
+            fillOpacity: 0.08, // Step 4는 가시성 확장을 위해 조금 더 투명하게 조정
             weight: 1.5
           },
           onEachFeature: (feature, layer) => {
             if (feature.properties && feature.properties.name) {
-              layer.bindPopup(`<b>[사용자 지정 금역]</b><br/>명칭: ${feature.properties.name}`);
+              layer.bindPopup(`
+                <div style="font-family: inherit; font-size: 11px; padding: 4px; color: #1e293b;">
+                  <strong style="color: #ea580c; font-size: 12px;">🚫 사용자 지정 통제 영역</strong><br/>
+                  <span style="font-weight: 700; margin-top: 4px; display: inline-block;">명칭:</span> ${feature.properties.name}<br/>
+                  <span style="font-weight: 700; margin-top: 2px; display: inline-block;">사유:</span> ${feature.properties.memo || '지정 사유 없음'}
+                </div>
+              `);
             }
           }
         }).addTo(map);
         markersRef.current['user_exclusion'] = userExclLayer;
       }
 
-      // 0-2. 국가 절대 통제구역(showAbsoluteExclusions) 레이어 오버레이 [v4.4.0]
-      if (showAbsoluteExclusions && absoluteExclusionGeoJson) {
-        const absExclLayer = L.geoJSON(absoluteExclusionGeoJson, {
-          style: {
-            color: '#a855f7',
-            fillColor: '#a855f7',
-            fillOpacity: 0.10,
-            weight: 1,
-            dashArray: '4, 4'
-          },
-          onEachFeature: (feature, layer) => {
-            if (feature.properties && feature.properties.name) {
-              layer.bindPopup(`<b>[국가 통제구역]</b><br/>명칭: ${feature.properties.name}`);
-            }
-          }
-        }).addTo(map);
-        markersRef.current['absolute_exclusion'] = absExclLayer;
-      }
-
-      // 1. 규제 시설물 포인트에 따른 동적 버퍼 오버레이 생성 (정말 얕은 빨간색으로 시각화, limit_radius 우선 적용)
+      // 1. 규제 시설물 포인트에 따른 동적 버퍼 오버레이 생성 (점선 및 0.05 극저 투명화) [v4.4.1]
       restrictionPoints.forEach((pt, idx) => {
         const limitRadius = pt.limit_radius || pt.radius || 20;
         
@@ -431,8 +508,9 @@ export default function Home() {
           const circle = L.circle([pt.lat, pt.lng], {
             color: '#f87171',
             fillColor: '#f87171',
-            fillOpacity: 0.04, // 극도로 연한 옅은 빨간색
-            weight: 1,         // 얇은 선
+            fillOpacity: 0.05,  // 극도로 연한 옅은 빨간색
+            weight: 1.2,        // 얇은 선
+            dashArray: '4, 4',  // 점선 테두리
             radius: limitRadius
           }).addTo(map);
           markersRef.current[`restriction_circle_${idx}`] = circle;
@@ -486,28 +564,14 @@ export default function Home() {
         map.panTo([activeParcel.lat, activeParcel.lng]);
       }
     }
-  }, [leafletLoaded, pipelineStep, districtGeoJson, restrictionPoints, spatialRestrictions, selectedParcel, showAbsoluteExclusions, absoluteExclusionGeoJson, userExclusionGeoJson]);
+  }, [leafletLoaded, pipelineStep, districtGeoJson, restrictionPoints, spatialRestrictions, selectedParcel, userExclusionGeoJson]);
 
-  // [v4.4.0] 사용자 정의 금지구역 마우스 드로잉 이벤트 연동
+  // [v4.4.1] 사용자 정의 금지구역 마우스 드로잉 이벤트 연동
   useEffect(() => {
     if (!leafletLoaded || !mapRef.current || pipelineStep !== 2) return;
     const map = mapRef.current;
     const L = window.L;
     
-    let tempPoints = [];
-    let tempMarkers = [];
-    let tempPolyline = null;
-    
-    const clearTempDrawing = () => {
-      tempMarkers.forEach(m => m.remove());
-      tempMarkers = [];
-      if (tempPolyline) {
-        tempPolyline.remove();
-        tempPolyline = null;
-      }
-      tempPoints = [];
-    };
-
     if (!isDrawingExclusion) {
       clearTempDrawing();
       return;
@@ -519,7 +583,7 @@ export default function Home() {
       if (!isDrawingExclusion) return;
       const { lat, lng } = e.latlng;
       const pt = [parseFloat(lng.toFixed(5)), parseFloat(lat.toFixed(5))];
-      tempPoints.push(pt);
+      tempPointsRef.current.push(pt);
       
       const m = L.circleMarker(e.latlng, {
         radius: 4,
@@ -527,71 +591,33 @@ export default function Home() {
         fillColor: '#f97316',
         fillOpacity: 1
       }).addTo(map);
-      tempMarkers.push(m);
+      tempMarkersRef.current.push(m);
       
-      if (tempPolyline) {
-        tempPolyline.remove();
+      if (tempPolylineRef.current) {
+        tempPolylineRef.current.remove();
       }
-      const latlngs = tempPoints.map(p => [p[1], p[0]]);
-      tempPolyline = L.polyline(latlngs, {
+      const latlngs = tempPointsRef.current.map(p => [p[1], p[0]]);
+      tempPolylineRef.current = L.polyline(latlngs, {
         color: '#f97316',
         weight: 2,
         dashArray: '3, 3'
       }).addTo(map);
     };
 
-    const handleMapDblClick = async (e) => {
-      if (!isDrawingExclusion || tempPoints.length < 3) {
-        alert("⚠️ 통제 영역을 그리려면 최소 3개 이상의 지점을 마우스로 클릭해야 합니다.");
-        clearTempDrawing();
-        return;
+    const handleMapContextMenu = (e) => {
+      if (e && e.originalEvent) {
+        e.originalEvent.preventDefault();
+        e.originalEvent.stopPropagation();
       }
-      
-      const zoneName = prompt("✏️ 생성할 커스텀 금지구역(Exclusion Area)의 명칭을 입력해 주세요:");
-      if (!zoneName) {
-        clearTempDrawing();
-        return;
-      }
-      
-      try {
-        const res = await apiFetch('/api/v1/spatial/user-exclusions', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            zone_name: zoneName,
-            coordinates: tempPoints
-          })
-        });
-        
-        if (res.ok) {
-          const resData = await res.json();
-          alert(`✅ 저장 완료: ${resData.message}`);
-          setIsDrawingExclusion(false);
-          
-          const listRes = await apiFetch('/api/v1/spatial/user-exclusions');
-          if (listRes.ok) {
-            const listData = await listRes.json();
-            setUserExclusionGeoJson(listData);
-          }
-        } else {
-          const errData = await res.json();
-          alert(`❌ 저장 실패: ${errData.detail || '알 수 없는 오류'}`);
-        }
-      } catch (err) {
-        console.error("Custom exclusion save error:", err);
-        alert("❌ 서버 통신 오류로 인해 금지구역을 저장하지 못했습니다.");
-      } finally {
-        clearTempDrawing();
-        map.doubleClickZoom.enable();
-      }
+      finishDrawingExclusion();
     };
 
     map.on('click', handleMapClick);
-    map.on('dblclick', handleMapDblClick);
+    map.on('contextmenu', handleMapContextMenu);
 
     return () => {
       map.off('click', handleMapClick);
-      map.off('dblclick', handleMapDblClick);
+      map.off('contextmenu', handleMapContextMenu);
       clearTempDrawing();
       map.doubleClickZoom.enable();
     };
@@ -1119,47 +1145,52 @@ export default function Home() {
       <div className="relative w-full h-full">
         <div id="interactive-map" className="map-container w-full h-full" />
         
-        {/* [v4.4.0] 지도 우측 상단 공간 통제 영역 제어판 (Right Floating Control Panel) */}
-        {pipelineStep >= 2 && (
-          <div className="absolute right-6 top-6 z-[1000] glass-panel p-4 flex flex-col gap-3 w-64 shadow-xl">
-            <div className="border-b border-slate-800 pb-2">
-              <h3 className="text-xs font-bold text-white mb-0.5">🚨 공간 통제 영역 제어</h3>
-              <p className="text-[9px] text-slate-400">가상 구역 작도 및 절대 통제망 오버레이</p>
+        {/* [v4.4.1] 마우스로 끌어서 이동할 수 있는 공간 통제 영역 제어판 (Draggable Control Panel) */}
+        {pipelineStep === 2 && (
+          <div 
+            style={{ 
+              position: 'fixed', 
+              left: `${panelPosition.x}px`, 
+              top: `${panelPosition.y}px`,
+              width: '260px'
+            }}
+            className="z-[1000] glass-panel p-4 flex flex-col gap-3 shadow-xl select-none"
+          >
+            {/* 드래그용 핸들 헤더 (cursor-move) */}
+            <div 
+              onMouseDown={handleMouseDown}
+              className="border-b border-slate-800 pb-2 cursor-move flex flex-col gap-0.5 active:cursor-grabbing"
+              title="마우스로 잡고 드래그하여 위치를 조절할 수 있습니다."
+            >
+              <h3 className="text-xs font-bold text-white mb-0.5 flex items-center gap-1.5">
+                🚨 공간 통제 영역 설정
+              </h3>
+              <p className="text-[9px] text-slate-400">가상 구역 작도 및 실시간 DB 적재</p>
             </div>
             
-            {/* 1. 가상 금지구역 그리기 토글 */}
-            {pipelineStep === 2 && (
-              <div className="flex flex-col gap-1.5">
-                <button
-                  onClick={() => setIsDrawingExclusion(!isDrawingExclusion)}
-                  className={`text-xs py-2 px-3 rounded-lg font-semibold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                    isDrawingExclusion 
-                      ? 'bg-orange-600 hover:bg-orange-700 text-white animate-pulse' 
-                      : 'bg-slate-800 hover:bg-slate-700 text-slate-200'
-                  }`}
-                >
-                  {isDrawingExclusion ? '⏹️ 그리기 완료 (더블클릭)' : '✏️ 가상 금지구역 그리기'}
-                </button>
-                {isDrawingExclusion && (
-                  <p className="text-[9px] text-orange-400 font-medium text-center animate-bounce">
-                    ※ 지도 상 꼭짓점들을 클릭한 뒤, <br/>마지막 지점에서 더블클릭하면 닫힙니다.
-                  </p>
-                )}
-              </div>
-            )}
-
-            {/* 2. 국가 절대 통제구역 토글 */}
-            <div className="flex items-center justify-between bg-slate-950/40 p-2.5 rounded-lg border border-slate-800">
-              <label htmlFor="absolute-exclusion-toggle" className="text-xs text-slate-300 font-semibold cursor-pointer">
-                🏢 국가 절대 통제구역
-              </label>
-              <input
-                id="absolute-exclusion-toggle"
-                type="checkbox"
-                checked={showAbsoluteExclusions}
-                onChange={(e) => setShowAbsoluteExclusions(e.target.checked)}
-                className="w-4 h-4 rounded border-slate-700 text-purple-600 bg-slate-800 focus:ring-purple-500 cursor-pointer"
-              />
+            {/* 가상 금지구역 그리기 제어 */}
+            <div className="flex flex-col gap-1.5">
+              <button
+                onClick={() => {
+                  if (isDrawingExclusion) {
+                    finishDrawingExclusion();
+                  } else {
+                    setIsDrawingExclusion(true);
+                  }
+                }}
+                className={`text-xs py-2 px-3 rounded-lg font-semibold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                  isDrawingExclusion 
+                    ? 'bg-orange-600 hover:bg-orange-700 text-white animate-pulse' 
+                    : 'bg-slate-800 hover:bg-slate-700 text-slate-200'
+                }`}
+              >
+                {isDrawingExclusion ? '⏹️ 그리기 완료 및 저장' : '✏️ 가상 금지구역 그리기'}
+              </button>
+              {isDrawingExclusion && (
+                <p className="text-[9px] text-orange-400 font-medium text-center animate-bounce leading-relaxed">
+                  ※ 지도 위 꼭짓점들을 좌클릭하고, <br/>마우스 <b>우클릭</b> 또는 <b>이 버튼을 재클릭</b>하면 <br/>명칭/메모 등록 창이 열립니다.
+                </p>
+              )}
             </div>
           </div>
         )}

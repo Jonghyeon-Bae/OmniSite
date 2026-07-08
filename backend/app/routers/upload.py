@@ -733,7 +733,7 @@ async def audit_upload_files(request: AuditRequest, db: Session = Depends(get_db
 """
         try:
             response = client.chat.completions.create(
-                model="gpt-4o-mini",
+                model="gpt-4o",
                 messages=[
                     {"role": "system", "content": "너는 다목적 스마트시티 SDSS 플랫폼의 시맨틱 도메인 추론 및 감리 AI 에이전트이다."},
                     {"role": "user", "content": prompt}
@@ -808,6 +808,20 @@ async def audit_upload_files(request: AuditRequest, db: Session = Depends(get_db
                 {"key": "traffic_volume", "label": "보행 유동인구", "associated_file": find_fallback_file(["보행", "유동", "유동인구", "traffic", "volume"])},
                 {"key": "speed_violations", "label": "속도위반 빈도", "associated_file": find_fallback_file(["위반", "속도", "speed", "violation"])},
                 {"key": "youth_ratio", "label": "아동 생활밀도", "associated_file": find_fallback_file(["아동", "청소년", "어린이", "youth", "child"])}
+            ]
+            # 도메인 태그 유사도 기반 중복 방지 및 병합 엔진 적용 (Fallback)
+            inferred_domain_tag = get_or_create_merged_tag(inferred_domain_tag, reasoning_global, db)
+
+        elif any(keyword in combined_text for keyword in ["자전거", "따릉이", "대여소", "bicycle", "bike"]):
+            inferred_purpose = "공용자전거 대여소(따릉이) 설치 및 라스트마일 연계 분석"
+            inferred_domain_tag = "public_bicycle"
+            hitl_question = "업로드하신 데이터들은 [공용자전거 대여소 설치]를 위한 입지 분석이 맞습니까?"
+            reasoning_global = "공간 데이터 파일명에서 자전거/대여소(bicycle) 관련 키워드가 감지되어, 공공 대여 자전거 스테이션 부지 선정을 위한 분석 목적으로 자동 추론했습니다. (로컬 Fallback 판독)"
+            criteria_global = [
+                {"key": "bike_demand", "label": "자전거 대여 수요", "associated_file": find_fallback_file(["수요", "대여", "자전거", "따릉이", "demand", "bike"])},
+                {"key": "transit_connection", "label": "대중교통 환승 유동성", "associated_file": find_fallback_file(["지하철", "버스", "정류소", "교통", "transit", "connection", "transfer"])},
+                {"key": "bike_path_distance", "label": "기성 자전거도로 인접성", "associated_file": find_fallback_file(["도로", "자전거도로", "path", "route"])},
+                {"key": "slope_index", "label": "지형 경사도 평탄화", "associated_file": find_fallback_file(["경사", "평탄", "slope", "elevation"])}
             ]
             # 도메인 태그 유사도 기반 중복 방지 및 병합 엔진 적용 (Fallback)
             inferred_domain_tag = get_or_create_merged_tag(inferred_domain_tag, reasoning_global, db)

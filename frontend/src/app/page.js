@@ -1166,6 +1166,14 @@ export default function Home() {
                   <span>위도/경도 좌표</span>
                   <span className="font-mono">{selectedParcel[activeTab].lat}, {selectedParcel[activeTab].lng}</span>
                 </div>
+                {selectedParcel[activeTab].reason && (
+                  <div className="flex flex-col gap-1 mt-1 border-t border-slate-900/60 pt-2">
+                    <span className="text-[10px] text-emerald-500 font-semibold">입지 선정 사유 및 주변 환경 조언</span>
+                    <span className="text-[11px] text-slate-300 leading-relaxed bg-slate-950/30 p-2 rounded-lg border border-slate-900/50">
+                      {selectedParcel[activeTab].reason}
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -1333,6 +1341,7 @@ export default function Home() {
                         candidate_css: selectedParcel[activeTab]?.css || 50,
                         candidate_lat: selectedParcel[activeTab]?.lat || 37.53,
                         candidate_lng: selectedParcel[activeTab]?.lng || 126.97,
+                        candidate_reason: selectedParcel[activeTab]?.reason || "",
                         ahp_weights: ahpWeights || {},
                         debate_logs: simLogs.map(log => ({ sender: log.sender, text: log.text }))
                       };

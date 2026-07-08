@@ -370,7 +370,7 @@ async def recommend_optimal_sites(
                     "dong_id": ref_dong_id
                 })
 
-        # 4. 동적 지표 공간 집계 실행
+        # 4. 동적 지표 공간 집계 실행 및 편의점 근접 감점 처리 (XAI용 데이터 수집)
         keys = list(criteria_weights.keys())
         raw_scores = {k: [] for k in keys}
         
@@ -388,45 +388,164 @@ async def recommend_optimal_sites(
                 score = get_criteria_score(db, k, cand["dong_id"], cand["lng"], cand["lat"], assoc_file, facility_type)
                 cand["scores"][k] = score
                 raw_scores[k].append(score)
+            
+            # 편의점/슈퍼마켓 근접 10m 이격 검사 (ST_DWithin 0.0001)
+            cvs_query = text("""
+                SELECT shop_name FROM commercial_shops
+                WHERE district_id = 1 
+                  AND ST_DWithin(geom, ST_SetSRID(ST_MakePoint(:lng, :lat), 4326), 0.0001)
+                  AND (shop_name LIKE '%편의점%' OR shop_name LIKE '%CU%' OR shop_name LIKE '%GS25%' OR shop_name LIKE '%세븐%')
+                LIMIT 1
+            """)
+            cvs_row = None
+            try:
+                cvs_row = db.execute(cvs_query, {"lng": cand["lng"], "lat": cand["lat"]}).fetchone()
+            except Exception:
+                pass
+            
+            cand["has_cvs"] = cvs_row is not None
+            cand["cvs_name"] = cvs_row[0] if cvs_row else None
 
         # 5. 각 지표별 Min-Max 정규화 적용 (0.0 ~ 1.0)
         norm_scores = {k: [] for k in keys}
         for k in keys:
             scores_list = raw_scores[k]
-            min_val = min(scores_list)
-            max_val = max(scores_list)
+            min_val = min(scores_list) if scores_list else 0.0
+            max_val = max(scores_list) if scores_list else 1.0
             diff = max_val - min_val
             
             for score in scores_list:
                 if diff > 0:
                     norm = (score - min_val) / diff
                 else:
-                    norm = 1.0  # 모두 같으면 1.0
+                    norm = 1.0
                 norm_scores[k].append(norm)
 
-        # 정규화 점수를 다시 매핑 및 종합 AHP 가중합 연산
+        # 정규화 점수를 다시 매핑 및 종합 AHP 가중합 연산 (다목적 데이터셋 스왑 적용)
         for idx, cand in enumerate(candidates):
             total_score = 0.0
             for k in keys:
                 norm_val = norm_scores[k][idx]
                 total_score += criteria_weights[k] * norm_val
+            
+            # [다목적 분기] 흡연구역 도메인인 경우에만 편의점 이격 및 보도 방해 감점 작동
+            if facility_type == "smoking_zone":
+                if cand.get("land_use_code") == "도":
+                    total_score -= 8.0
+                if cand.get("has_cvs"):
+                    total_score -= 12.0
+            
+            # [다목적 분기] 아동 교통안전 옐로카펫 등인 경우
+            elif facility_type == "yellow_carpet":
+                # 보도/도로 인접 필수적이므로 가점
+                if cand.get("land_use_code") == "도":
+                    total_score += 5.0
+            
+            # [다목적 분기] 전기차 충전소 등 시설물인 경우
+            elif facility_type == "ev_charging":
+                if cand.get("land_use_code") == "도":
+                    total_score -= 4.0
+                elif cand.get("land_use_code") in ["차", "공"]: # 공영주차장/잡종지 가점
+                    total_score += 6.0
+            
+            # [다목적 분기] 공용자전거 대여소(따릉이 등)인 경우
+            elif facility_type == "public_bicycle":
+                # 보도/도로 인근 및 주차장 연계가 매우 유리하므로 가점
+                if cand.get("land_use_code") in ["도", "차", "공"]:
+                    total_score += 5.0
+                    
             cand["total_score"] = round(total_score, 3)
 
-        # 6. 점수 내림차순 정렬 후 Top 1, 2, 3 정보 조립
+        # 6. 점수 내림차순 정렬 후, 공간적 중복 배제 필터링 (최소 이격거리 70m 보장)
         candidates.sort(key=lambda x: x["total_score"], reverse=True)
         
-        # 종합 점수를 백분위 갈등도 점수(CSS)로 환산 매핑
+        filtered_candidates = []
+        for cand in candidates:
+            # 이미 선택된 필지들과 0.0007도(약 70m) 이내로 겹치는 경우 배제
+            is_overlap = False
+            for selected in filtered_candidates:
+                dist = math.sqrt((cand["lat"] - selected["lat"])**2 + (cand["lng"] - selected["lng"])**2)
+                if dist < 0.0007:
+                    is_overlap = True
+                    break
+            if not is_overlap:
+                filtered_candidates.append(cand)
+                if len(filtered_candidates) >= 3:
+                    break
+                    
+        # 후보지 부족 시 원본 리스트로 보완
+        if len(filtered_candidates) < 3:
+            for cand in candidates:
+                if cand not in filtered_candidates:
+                    filtered_candidates.append(cand)
+                if len(filtered_candidates) >= 3:
+                    break
+
+        # 7. 종합 점수를 백분위 갈등도 점수(CSS)로 환산 매핑 및 추천 사유 생성 (다목적 RAG)
         max_possible = sum(criteria_weights.values())
         if max_possible == 0:
             max_possible = 1.0
             
+        # XAI 추천 사유 생성 헬퍼 함수 (특정 시설물에 편향되지 않은 다목적 의사결정 추론)
+        def generate_recommendation_reason(cand_item: Dict[str, Any], type_str: str) -> str:
+            reasons = ["어린이보호구역(200m) 및 법적 규제지역 경계선을 안전하게 우회 통과한 적격지입니다."]
+            scores_map = cand_item.get("scores", {})
+            
+            # 1. AHP 가중치 가중 최우선 인자(Max Weight Key) 동적 추출
+            max_key = None
+            max_val_weight = -1.0
+            for k, weight in criteria_weights.items():
+                if weight > max_val_weight:
+                    max_val_weight = weight
+                    max_key = k
+            
+            # 한국어 레이블 매핑
+            max_label = max_key
+            if isinstance(criteria_list, list):
+                for c in criteria_list:
+                    if isinstance(c, dict) and c.get("key") == max_key:
+                        max_label = c.get("label", max_key)
+                        break
+            
+            # 2. 동적 기여도 멘트 결합
+            if max_key:
+                raw_val = scores_map.get(max_key, 0.0)
+                reasons.append(f"의사결정 우선순위인 '{max_label}' 지표(상대 가중치: {max_val_weight:.1f}, 실측값: {raw_val:.1f}) 측면에서 가장 부합하는 정량적 우수 입지입니다.")
+                
+                # 지표 성격별 설명 확장
+                max_key_lower = max_key.lower()
+                if "traffic" in max_key_lower or "station" in max_key_lower:
+                    reasons.append("일대 대중교통 노드 접근성과 유동 통행 흐름이 발달하여 이용 효율이 극대화됩니다.")
+                elif "complaint" in max_key_lower or "civil" in max_key_lower:
+                    reasons.append("상습 민원 접수 빈도를 우선 반영하여 설치 시 주민 분쟁 조율 효과가 큽니다.")
+                elif "dumping" in max_key_lower or "trash" in max_key_lower:
+                    reasons.append("상습적인 무단투기 및 환경 저해 요인이 감지되는 취약 거점을 포괄하여 도시 정화에 기여합니다.")
+                elif "youth" in max_key_lower or "school" in max_key_lower:
+                    reasons.append("청소년 및 아동 통학권 보호 구역의 안전 정주성을 확보하도록 가중 조율했습니다.")
+                elif "population" in max_key_lower or "resident" in max_key_lower:
+                    reasons.append("행정동 내부 생활 주거 인구의 공간적 밀집 분포 분석을 반영하였습니다.")
+            
+            # 3. 도메인별 제약 조건 조언
+            if type_str == "smoking_zone":
+                if cand_item.get("land_use_code") == "도":
+                    reasons.append("[보도 확인] 도로 점용 시 통행 장애를 막기 위한 보행 최소 보도폭(1.2m) 확보 검측이 권장됩니다.")
+                if cand_item.get("has_cvs"):
+                    reasons.append(f"[상가 조율] 편의점({cand_item.get('cvs_name')})과 10m 이내로 근접해 있어 상가 영업 시비 조율이 필요합니다.")
+            elif type_str == "yellow_carpet":
+                reasons.append("[보행 확인] 초등학교 어린이 보호구역 내 보행 안전 보차도 시인성 확보를 우선 검토해야 합니다.")
+            elif type_str == "ev_charging":
+                reasons.append("[인프라 확인] 인근 변전 배전선로의 그리드 용량 가용 여부를 한전과 협의해야 합니다.")
+            elif type_str == "public_bicycle":
+                reasons.append("[대중교통 연계] 버스정류장 및 지하철역 노드와의 유기적인 환승 연계(라스트마일)를 극대화하도록 배치되었습니다.")
+                
+            return " ".join(reasons)
+
         results = {}
         for idx, rank in enumerate(["top1", "top2", "top3"]):
-            cand = candidates[idx] if idx < len(candidates) else candidates[-1]
+            cand = filtered_candidates[idx] if idx < len(filtered_candidates) else filtered_candidates[-1]
             
-            # CSS 갈등 민감도 및 등급 가산 매핑
             percentage = (cand["total_score"] / max_possible) * 100
-            css_score = round(max(10, min(95, percentage))) # 10~95 사이로 보정
+            css_score = round(max(10, min(95, percentage)))
             
             if css_score >= 70:
                 css_grade = "상"
@@ -435,8 +554,10 @@ async def recommend_optimal_sites(
             else:
                 css_grade = "하"
 
-            # 공시지가 가상 매핑
             base_price = 14200000 if rank == "top1" else (9800000 if rank == "top2" else 18500000)
+            
+            # XAI 추천 사유 빌드
+            reason_text = generate_recommendation_reason(cand, facility_type)
             
             results[rank] = {
                 "id": cand["id"],
@@ -448,8 +569,9 @@ async def recommend_optimal_sites(
                 "cssGrade": css_grade,
                 "lat": cand["lat"],
                 "lng": cand["lng"],
-                "simulated": True if rank == "top1" else False, # Top 1은 자동 시뮬레이션
-                "criteria_scores": cand["scores"]
+                "simulated": True if rank == "top1" else False,
+                "criteria_scores": cand["scores"],
+                "reason": reason_text
             }
 
         return {
@@ -934,7 +1056,7 @@ async def stream_debate_sim(req: DebateRequest, db: Session = Depends(get_db)):
                 def run_openai():
                     try:
                         response = client.chat.completions.create(
-                            model="gpt-4o-mini",
+                            model="gpt-4o",
                             messages=[
                                 {"role": "system", "content": system_prompt},
                                 {"role": "user", "content": user_message}
@@ -1044,6 +1166,7 @@ class ReportDownloadRequest(BaseModel):
     candidate_css: int = 50
     candidate_lat: float = 37.53
     candidate_lng: float = 126.97
+    candidate_reason: str = ""
     ahp_weights: Dict[str, float] = {}
     debate_logs: List[Dict[str, str]] = []
 
@@ -1202,7 +1325,8 @@ async def download_report_pdf(req: ReportDownloadRequest, db: Session = Depends(
             [Paragraph("<b>가. 대상지 지번 주소</b>", body_style), Paragraph(req.candidate_jibun, body_style)],
             [Paragraph("<b>나. 대상지 중심 좌표</b>", body_style), Paragraph(f"위도 {req.candidate_lat}, 경도 {req.candidate_lng}", body_style)],
             [Paragraph("<b>다. 시설 유형 및 목적</b>", body_style), Paragraph(f"{req.facility_type} ({req.inferred_purpose})", body_style)],
-            [Paragraph("<b>라. 갈등 민감도 (CSS)</b>", body_style), Paragraph(f"<b>{req.candidate_css}점</b> (등급: {css_grade})", body_style)]
+            [Paragraph("<b>라. 갈등 민감도 (CSS)</b>", body_style), Paragraph(f"<b>{req.candidate_css}점</b> (등급: {css_grade})", body_style)],
+            [Paragraph("<b>마. 선정 사유 및 고려사항</b>", body_style), Paragraph(req.candidate_reason or "위치적 이격조건 및 AHP 기여 분석에 근거하여 입지 적합성을 확보한 지점입니다.", body_style)]
         ]
         t1 = Table(info_data, colWidths=[150, 380])
         t1.setStyle(TableStyle([

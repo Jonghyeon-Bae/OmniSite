@@ -279,6 +279,11 @@ async def recommend_optimal_sites(
                         AND ST_DWithin(c.geom, ts.geom, 0.0001)
                   )
               )
+              -- 사용자 지정 가상 금지구역(Exclusion Polygon)에 저촉되는 필지 실시간 제외 [v4.4.0]
+              AND NOT EXISTS (
+                  SELECT 1 FROM user_exclusion_zones uez
+                  WHERE ST_Intersects(c.geom, uez.geom)
+              )
             ORDER BY dist_from_ref ASC
             LIMIT 150
         """)
@@ -709,13 +714,25 @@ async def get_restriction_points(facility_type: str = "smoking_zone", db: Sessio
             zone_rows = db.execute(zone_query).fetchall()
             
             for r in zone_rows:
+                z_type = r[5]
+                # 조례 규정 및 PostGIS 이격 거리와 100% 매핑 동기화
+                real_radius = 10.0
+                if z_type == "school":
+                    real_radius = 200.0
+                elif z_type == "childcare_center":
+                    real_radius = 30.0
+                elif z_type == "nosmoking_zone":
+                    real_radius = 10.0
+                else:
+                    real_radius = float(r[4])
+
                 points.append({
                     "id": int(r[0]),
                     "name": r[1] if r[1] else "기본 규제구역",
                     "lng": float(r[2]),
                     "lat": float(r[3]),
-                    "type": r[5] if r[5] else "restricted_zone",
-                    "radius": float(r[4])
+                    "type": z_type if z_type else "restricted_zone",
+                    "radius": real_radius
                 })
                 
         # 2. 사용자가 이번 도메인 분석용으로 업로드한 동적 Exclusion 캐시 로딩 및 병합
@@ -1366,4 +1383,128 @@ async def download_report_pdf(req: ReportDownloadRequest, db: Session = Depends(
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"PDF 리포트 생성 오류: {str(e)}")
+
+
+# Pydantic DTO 정의 [v4.4.0]
+class UserExclusionCreateRequest(BaseModel):
+    zone_name: str
+    coordinates: List[List[float]]  # [[lng, lat], [lng, lat], ...]
+
+
+# 5. 사용자 가상 금지구역 적재 API [v4.4.0]
+@router.post("/spatial/user-exclusions")
+async def create_user_exclusion(req: UserExclusionCreateRequest, db: Session = Depends(get_db)):
+    try:
+        coords = list(req.coordinates)
+        if not coords:
+            raise HTTPException(status_code=400, detail="좌표 목록이 비어있습니다.")
+        if coords[0] != coords[-1]:
+            coords.append(coords[0])
+            
+        # WKT Polygon 생성
+        wkt_coords = ", ".join(f"{pt[0]} {pt[1]}" for pt in coords)
+        wkt = f"POLYGON(({wkt_coords}))"
+        
+        insert_query = text("""
+            INSERT INTO user_exclusion_zones (zone_name, geom)
+            VALUES (:zone_name, ST_GeomFromText(:wkt, 4326))
+        """)
+        db.execute(insert_query, {"zone_name": req.zone_name, "wkt": wkt})
+        db.commit()
+        
+        return {"status": "success", "message": f"성공적으로 '{req.zone_name}' 사용자 금지구역이 적재 및 고정되었습니다."}
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"사용자 금지구역 저장 실패: {str(e)}")
+
+
+# 6. 사용자 가상 금지구역 조회 API (GeoJSON) [v4.4.0]
+@router.get("/spatial/user-exclusions")
+async def get_user_exclusions(db: Session = Depends(get_db)):
+    try:
+        query = text("""
+            SELECT id, zone_name, ST_AsGeoJSON(geom) 
+            FROM user_exclusion_zones
+            ORDER BY created_at DESC
+        """)
+        rows = db.execute(query).fetchall()
+        
+        features = []
+        for r in rows:
+            z_id, name, geom_json = r
+            if geom_json:
+                features.append({
+                    "type": "Feature",
+                    "id": z_id,
+                    "properties": {
+                        "name": name,
+                        "type": "user_exclusion"
+                    },
+                    "geometry": json.loads(geom_json)
+                })
+                
+        return {
+            "type": "FeatureCollection",
+            "features": features
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"사용자 금지구역 조회 실패: {str(e)}")
+
+
+# 7. 국가 절대 통제구역 GeoJSON 조회 API [v4.4.0]
+@router.get("/spatial/absolute-exclusions")
+async def get_absolute_exclusions():
+    try:
+        # 용산 미군기지/공원 영역 및 국방부/대통령실 영역의 대략적 폴리곤 좌표군 하드코딩 GeoJSON
+        # 용산공원 영역 바운더리
+        park_coords = [
+            [126.9750, 37.5280],
+            [126.9850, 37.5280],
+            [126.9850, 37.5180],
+            [126.9720, 37.5180],
+            [126.9720, 37.5240],
+            [126.9750, 37.5280]
+        ]
+        # 국방부/대통령실 영내 바운더리
+        mod_coords = [
+            [126.9680, 37.5270],
+            [126.9740, 37.5270],
+            [126.9740, 37.5220],
+            [126.9680, 37.5220],
+            [126.9680, 37.5270]
+        ]
+        
+        features = [
+            {
+                "type": "Feature",
+                "id": 8001,
+                "properties": {
+                    "name": "용산기지 / 미군 반환 용산공원 통제구역",
+                    "type": "absolute_exclusion"
+                },
+                "geometry": {
+                    "type": "Polygon",
+                    "coordinates": [park_coords]
+                }
+            },
+            {
+                "type": "Feature",
+                "id": 8002,
+                "properties": {
+                    "name": "국방부 / 대통령실 보안 경호통제구역",
+                    "type": "absolute_exclusion"
+                },
+                "geometry": {
+                    "type": "Polygon",
+                    "coordinates": [mod_coords]
+                }
+            }
+        ]
+        
+        return {
+            "type": "FeatureCollection",
+            "features": features
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"국가 절대 통제구역 조회 실패: {str(e)}")
 

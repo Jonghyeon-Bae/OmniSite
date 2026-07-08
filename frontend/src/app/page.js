@@ -3,6 +3,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 
+const apiFetch = (url, options) => {
+  const targetUrl = typeof url === 'string' && url.startsWith('/api/v1')
+    ? `http://127.0.0.1:8000${url}`
+    : url;
+  const nativeFetch = typeof window !== 'undefined' ? window.fetch : (typeof globalThis !== 'undefined' ? globalThis.fetch : null);
+  return nativeFetch ? nativeFetch(targetUrl, options) : Promise.reject(new Error('Fetch not available'));
+};
+
 export default function Home() {
   // 플랫폼 단계별 상태 제어 (Pipeline Wizard Steps)
   // Step 1: 데이터 일괄 업로드 및 감리 (Ingestion & AI Audit)
@@ -78,11 +86,11 @@ export default function Home() {
   // Step 2 진입 시 관할 경계 GeoJSON 및 규제 시설물 목록 로드
   useEffect(() => {
     if (pipelineStep === 2) {
-      fetch('/api/v1/spatial/district-boundary/1')
+      apiFetch('/api/v1/spatial/district-boundary/1')
         .then(res => res.ok ? res.json() : null)
         .then(data => { if (data) setDistrictGeoJson(data); });
         
-      fetch('/api/v1/spatial/restrictions/points')
+      apiFetch('/api/v1/spatial/restrictions/points')
         .then(res => res.ok ? res.json() : null)
         .then(data => { if (data) setRestrictionPoints(data.points); });
     }
@@ -276,7 +284,7 @@ export default function Home() {
 
         // 2. 관할 자치구 경계선 이탈 체크 (PostGIS ST_Contains API 연동)
         try {
-          const boundaryRes = await fetch('/api/v1/spatial/check-boundary', {
+          const boundaryRes = await apiFetch('/api/v1/spatial/check-boundary', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -460,7 +468,7 @@ export default function Home() {
     
     window.ahpCalcTimeout = setTimeout(async () => {
       try {
-        const res = await fetch('/api/v1/ahp/calculate', {
+        const res = await apiFetch('/api/v1/ahp/calculate', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -506,7 +514,7 @@ export default function Home() {
     };
 
     try {
-      const response = await fetch('/api/v1/upload/hitl/commit', {
+      const response = await apiFetch('/api/v1/upload/hitl/commit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -563,7 +571,7 @@ export default function Home() {
           intensity_level: intensityLevel
         };
 
-        const res = await fetch('/api/v1/spatial/debate', {
+        const res = await apiFetch('/api/v1/spatial/debate', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
@@ -667,7 +675,7 @@ export default function Home() {
   // 조례 목록 비동기 조회
   const fetchRegulations = async () => {
     try {
-      const response = await fetch('/api/v1/upload/regulations');
+      const response = await apiFetch('/api/v1/upload/regulations');
       if (!response.ok) throw new Error('조례 목록 조회 실패');
       const data = await response.json();
       setRegulationList(data.regulations || []);
@@ -682,7 +690,7 @@ export default function Home() {
       return;
     }
     try {
-      const response = await fetch(`/api/v1/upload/regulations/${encodeURIComponent(filename)}`, {
+      const response = await apiFetch(`/api/v1/upload/regulations/${encodeURIComponent(filename)}`, {
         method: 'DELETE'
       });
       if (!response.ok) {
@@ -718,7 +726,7 @@ export default function Home() {
         formData.append('files', files[i]);
       }
 
-      const response = await fetch('/api/v1/upload/regulation', {
+      const response = await apiFetch('/api/v1/upload/regulation', {
         method: 'POST',
         body: formData
       });
@@ -757,7 +765,7 @@ export default function Home() {
       }
 
       // 1. 원천 데이터 일괄 업로드 API (CSV 다중 업로드)
-      const uploadRes = await fetch('/api/v1/upload', {
+      const uploadRes = await apiFetch('/api/v1/upload', {
         method: 'POST',
         body: formData
       });
@@ -770,7 +778,7 @@ export default function Home() {
       setUploadedFilenames(filenames);
 
       // 2. AI 교차 시맨틱 목적 추론 감리 API 호출
-      const auditRes = await fetch('/api/v1/upload/audit', {
+      const auditRes = await apiFetch('/api/v1/upload/audit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ filenames })
@@ -803,7 +811,7 @@ export default function Home() {
         setColumnMapping(csvResult.column_mapping || {});
         setMissingCoordinates([]);
         try {
-          const geojsonRes = await fetch(`/api/v1/upload/geojson/${csvResult.filename}`);
+          const geojsonRes = await apiFetch(`/api/v1/upload/geojson/${csvResult.filename}`);
           if (geojsonRes.ok) {
             const geojsonData = await geojsonRes.json();
             const missing = geojsonData.features
@@ -1025,7 +1033,7 @@ export default function Home() {
           <button
             onClick={async () => {
               try {
-                const lockRes = await fetch('/api/v1/ahp/lock', {
+                const lockRes = await apiFetch('/api/v1/ahp/lock', {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({
@@ -1047,7 +1055,7 @@ export default function Home() {
                 const targetLng = isNaN(hitlLng) ? 126.9724 : hitlLng;
                 
                 // 추천 입지 연산 기동 (HITL 마커 좌표 기준 인근 탐색)
-                const recommendRes = await fetch(`/api/v1/spatial/recommend?model_id=${lockData.model_id}&ref_lat=${targetLat}&ref_lng=${targetLng}`);
+                const recommendRes = await apiFetch(`/api/v1/spatial/recommend?model_id=${lockData.model_id}&ref_lat=${targetLat}&ref_lng=${targetLng}`);
                 if (!recommendRes.ok) {
                   throw new Error('공간 입지 추천 연산 실패');
                 }
@@ -1314,7 +1322,7 @@ export default function Home() {
                         ahp_weights: ahpWeights || {},
                         debate_logs: simLogs.map(log => ({ sender: log.sender, text: log.text }))
                       };
-                      const res = await fetch('/api/v1/spatial/report/download', {
+                      const res = await apiFetch('/api/v1/spatial/report/download', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(payload)

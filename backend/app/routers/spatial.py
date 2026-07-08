@@ -36,7 +36,7 @@ def get_cached_file_data(filename: str) -> Optional[List[Dict[str, Any]]]:
     return None
 
 # 3단계 의사결정 인자별 동적 공간 데이터 밀도/통계 집계 엔진
-def get_criteria_score(db: Session, key: str, dong_id: int, centroid_lng: float, centroid_lat: float, associated_file: Optional[str] = None) -> float:
+def get_criteria_score(db: Session, key: str, dong_id: int, centroid_lng: float, centroid_lat: float, associated_file: Optional[str] = None, facility_type: Optional[str] = "smoking_zone") -> float:
     key_clean = key.lower().strip()
     
     # 1. 만약 이번 실행에서 업로드된 전용 CSV/JSON 파일(associated_file)이 존재한다면,
@@ -135,9 +135,9 @@ def get_criteria_score(db: Session, key: str, dong_id: int, centroid_lng: float,
         res = db.execute(query, {"lng": centroid_lng, "lat": centroid_lat}).scalar()
         return float(res)
         
-    # 2-2. 민원 관련
+    # 2-2. 민원 관련 (흡연구역 도메인인 경우에만 기존 불법흡연 민원 통계 참조)
     elif any(w in key_clean for w in ["complaint", "civil_complaint"]):
-        if dong_id:
+        if facility_type == "smoking_zone" and dong_id:
             query = text("""
                 SELECT COALESCE(SUM(complaint_count), 0)
                 FROM civil_complaints
@@ -147,15 +147,17 @@ def get_criteria_score(db: Session, key: str, dong_id: int, centroid_lng: float,
             return float(res)
         return 0.0
         
-    # 2-3. 무단투기 및 쓰레기 관련
+    # 2-3. 무단투기 및 쓰레기 관련 (흡연구역 도메인인 경우에만 꽁초 무단투기 구역 참조)
     elif any(w in key_clean for w in ["dumping", "trash", "garbage"]):
-        query = text("""
-            SELECT COUNT(*)
-            FROM illegal_dumping_zones
-            WHERE ST_DWithin(geom, ST_SetSRID(ST_MakePoint(:lng, :lat), 4326), 0.002)
-        """)
-        res = db.execute(query, {"lng": centroid_lng, "lat": centroid_lat}).scalar()
-        return float(res)
+        if facility_type == "smoking_zone":
+            query = text("""
+                SELECT COUNT(*)
+                FROM illegal_dumping_zones
+                WHERE ST_DWithin(geom, ST_SetSRID(ST_MakePoint(:lng, :lat), 4326), 0.002)
+            """)
+            res = db.execute(query, {"lng": centroid_lng, "lat": centroid_lat}).scalar()
+            return float(res)
+        return 0.0
         
     # 2-4. 배후 생활인구 관련
     elif any(w in key_clean for w in ["population", "human", "people"]):
@@ -249,24 +251,28 @@ async def recommend_optimal_sites(
               AND c.ownership_type IN ('국유지', '시유지', '구유지')
               AND ST_IsValid(c.geom)
               AND ST_DWithin(c.geom, ST_SetSRID(ST_MakePoint(:ref_lng, :ref_lat), 4326), 0.01)
-              -- 개별 규제지 버퍼 저촉 여부를 geometry 인덱스(GIST)로 고속 감지
+              -- 개별 규제지 버퍼 저촉 여부를 geometry 인덱스(GIST)로 고속 감지 (실제 데이터가 탑재된 restricted_zones 테이블 기준)
               AND NOT EXISTS (
-                  SELECT 1 FROM childcare_centers cc 
-                  WHERE cc.center_type IN ('초등학교', '유치원')
-                    AND ST_DWithin(c.geom, cc.geom, 0.002)
+                  SELECT 1 FROM restricted_zones rz 
+                  WHERE rz.district_id = 1
+                    AND (
+                        (rz.zone_type = 'school' AND ST_DWithin(c.geom, rz.geom, 0.002)) OR
+                        (rz.zone_type = 'childcare_center' AND ST_DWithin(c.geom, rz.geom, 0.0003)) OR
+                        -- 흡연구역 도메인인 경우에만 기존 금연구역(nosmoking_zone) 버퍼 회피 강제
+                        (:is_smoking_zone = TRUE AND rz.zone_type = 'nosmoking_zone' AND ST_DWithin(c.geom, rz.geom, 0.0001))
+                    )
               )
-              AND NOT EXISTS (
-                  SELECT 1 FROM childcare_centers cc 
-                  WHERE cc.center_type = '어린이집'
-                    AND ST_DWithin(c.geom, cc.geom, 0.0003)
-              )
-              AND NOT EXISTS (
-                  SELECT 1 FROM transit_stations ts
-                  WHERE ts.transit_type IN ('BUS', 'SUBWAY')
-                    AND ST_DWithin(c.geom, ts.geom, 0.0001)
+              -- 흡연구역 도메인인 경우에만 버스정류장/지하철역 이격거리 규제 적용
+              AND (
+                  :is_smoking_zone = FALSE OR
+                  NOT EXISTS (
+                      SELECT 1 FROM transit_stations ts
+                      WHERE ts.transit_type IN ('BUS', 'SUBWAY')
+                        AND ST_DWithin(c.geom, ts.geom, 0.0001)
+                  )
               )
             ORDER BY dist_from_ref ASC
-            LIMIT 15
+            LIMIT 150
         """)
         
         # 도로명 주소 매핑 및 도로 꼬리표 결합 헬퍼
@@ -307,7 +313,11 @@ async def recommend_optimal_sites(
 
         candidates = []
         try:
-            rows = db.execute(spatial_query, {"ref_lng": base_lng, "ref_lat": base_lat}).fetchall()
+            rows = db.execute(spatial_query, {
+                "ref_lng": base_lng, 
+                "ref_lat": base_lat, 
+                "is_smoking_zone": (facility_type == "smoking_zone")
+            }).fetchall()
             for r in rows:
                 candidates.append({
                     "id": r[0], "pnu": r[1], 
@@ -375,7 +385,7 @@ async def recommend_optimal_sites(
             cand["scores"] = {}
             for k in keys:
                 assoc_file = criteria_file_map.get(k)
-                score = get_criteria_score(db, k, cand["dong_id"], cand["lng"], cand["lat"], assoc_file)
+                score = get_criteria_score(db, k, cand["dong_id"], cand["lng"], cand["lat"], assoc_file, facility_type)
                 cand["scores"][k] = score
                 raw_scores[k].append(score)
 

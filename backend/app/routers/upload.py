@@ -434,6 +434,10 @@ async def upload_regulation_files(files: List[UploadFile] = File(...), db: Sessi
 
     for file in files:
         filename = file.filename
+        try:
+            filename = filename.encode('latin-1').decode('utf-8')
+        except Exception:
+            pass
         content_type = file.content_type
         ext = filename.split(".")[-1].lower() if "." in filename else ""
 
@@ -534,6 +538,10 @@ async def upload_files(files: List[UploadFile] = File(...)):
 
     for file in files:
         filename = file.filename
+        try:
+            filename = filename.encode('latin-1').decode('utf-8')
+        except Exception:
+            pass
         content_type = file.content_type
         ext = filename.split(".")[-1].lower() if "." in filename else ""
 

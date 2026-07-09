@@ -6,6 +6,7 @@ export default function SidebarControl({
   isAuditComplete,
   triggerFileAudit,
   isUploading,
+  isRecommending,
   auditMetadata,
   inferredPurpose,
   setInferredPurpose,
@@ -155,10 +156,17 @@ export default function SidebarControl({
         {/* AHP 잠금 버튼 -> 입지 분석 트리거 */}
         <button
           onClick={handleAhpLock}
-          disabled={crValue >= 0.1 || pipelineStep !== 3}
-          className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold cursor-pointer transition-all disabled:opacity-30"
+          disabled={crValue >= 0.1 || pipelineStep !== 3 || isRecommending}
+          className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold cursor-pointer transition-all disabled:opacity-30 flex items-center justify-center gap-1.5"
         >
-          🔒 AHP 가중치 확정 및 추천 입지 연산 (Lock)
+          {isRecommending ? (
+            <>
+              <span className="w-3.5 h-3.5 border-2 border-t-transparent border-white rounded-full animate-spin shrink-0" />
+              AHP 락킹 및 PostGIS 연산 중...
+            </>
+          ) : (
+            '🔒 AHP 가중치 확정 및 추천 입지 연산 (Lock)'
+          )}
         </button>
       </div>
     </div>

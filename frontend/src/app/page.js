@@ -71,15 +71,18 @@ export default function Home() {
   // 2. 후보지 탭 및 상태 (Step 4 & 5에서 노출)
   const [activeTab, setActiveTab] = useState('top1');
   const [selectedParcel, setSelectedParcel] = useState({
-    top1: { id: 1, pnu: '1117011200100420000', jibun: '한강로동 42-12 (국유지)', price: 14200000, area: 15, css: 78, cssGrade: '상', lat: 37.5302, lng: 126.9724, simulated: true, reason: '의사결정 우선순위인 \'대중교통 유동성\' 지표 측면에서 가장 부합하는 정량적 우수 입지입니다.' },
-    top2: { id: 2, pnu: '1117011200100450002', jibun: '한강로동 45-2 (시유지)', price: 9800000, area: 12, css: 45, cssGrade: '중', lat: 37.5328, lng: 126.9751, simulated: false, reason: '배후 주거 인구의 분포 비율 및 도로 접근성을 종합 검토하여 보통 등급으로 판정된 입지입니다.' },
-    top3: { id: 3, pnu: '1117011300100120001', jibun: '이촌동 12-1 (구유지)', price: 18500000, area: 18, css: 12, cssGrade: '하', lat: 37.5255, lng: 126.9702, simulated: false, reason: '조례상 규제 구역 경계선과 다소 인접해 있으며 보행 가용폭 확인이 권장되는 필지입니다.' }
+    top1: { id: 1, pnu: '1117011200100420000', jibun: '한강로동 42-12 (국유지)', price: 14200000, area: 15, css: 78, cssGrade: '상', lat: 37.5302, lng: 126.9724, simulated: true, is_fallback: false, reason: '의사결정 우선순위인 \'대중교통 유동성\' 지표 측면에서 가장 부합하는 정량적 우수 입지입니다.' },
+    top2: { id: 2, pnu: '1117011200100450002', jibun: '한강로동 45-2 (시유지)', price: 9800000, area: 12, css: 45, cssGrade: '중', lat: 37.5328, lng: 126.9751, simulated: false, is_fallback: false, reason: '배후 주거 인구의 분포 비율 및 도로 접근성을 종합 검토하여 보통 등급으로 판정된 입지입니다.' },
+    top3: { id: 3, pnu: '1117011300100120001', jibun: '이촌동 12-1 (구유지)', price: 18500000, area: 18, css: 12, cssGrade: '하', lat: 37.5255, lng: 126.9702, simulated: false, is_fallback: false, reason: '조례상 규제 구역 경계선과 다소 인접해 있으며 보행 가용폭 확인이 권장되는 필지입니다.' },
+    top4: { id: 4, pnu: '1117011200100420001', jibun: '한강로동 42-13 (시유지)', price: 12000000, area: 20, css: 55, cssGrade: '중', lat: 37.5310, lng: 126.9730, simulated: false, is_fallback: true, reason: '법정 규제 완화 차선책으로, 규제 구역 인근의 실제 시유지 필지 중 조건이 적합한 곳을 탐색했습니다.' },
+    top5: { id: 5, pnu: '1117011200100450003', jibun: '한강로동 45-3 (구유지)', price: 15500000, area: 22, css: 30, cssGrade: '하', lat: 37.5332, lng: 126.9760, simulated: false, is_fallback: true, reason: '법정 규제 완화 차선책으로, 규제 구역 인근의 실제 구유지 필지 중 조건이 적합한 곳을 탐색했습니다.' }
   });
 
   // 3. 비주얼 HITL 보정 상태
   const [hitlJibun, setHitlJibun] = useState('');
   const [hitlLng, setHitlLng] = useState(126.9724);
   const [hitlLat, setHitlLat] = useState(37.5302);
+  const [isCommitting, setIsCommitting] = useState(false);
 
   // 4. AI 시뮬레이션 상태
   const [showSimModal, setShowSimModal] = useState(false);
@@ -349,11 +352,19 @@ export default function Home() {
       const recommendData = await recommendRes.json();
       
       // selectedParcel 업데이트
+      const cands = recommendData.candidates || {};
       setSelectedParcel({
-        top1: recommendData.candidates.top1,
-        top2: recommendData.candidates.top2,
-        top3: recommendData.candidates.top3
+        top1: cands.top1 || {},
+        top2: cands.top2 || {},
+        top3: cands.top3 || {},
+        top4: cands.top4 || {},
+        top5: cands.top5 || {}
       });
+      
+      const validKeys = Object.keys(cands).filter(k => cands[k] && cands[k].id);
+      if (validKeys.length > 0) {
+        setActiveTab(validKeys[0]);
+      }
       
       setIsAhpLocked(true);
       setPipelineStep(4);
@@ -836,6 +847,7 @@ export default function Home() {
       return;
     }
 
+    setIsCommitting(true);
     const payload = {
       filename: uploadedCsvFilename || 'unknown.csv',
       column_mapping: columnMapping,
@@ -873,6 +885,8 @@ export default function Home() {
       alert(data.message || '공간 좌표 및 지번 속성이 보정 완료되었습니다. [Step 3: AHP 인자 설정] 단계를 진행합니다.');
     } catch (error) {
       alert('보정 커밋 중 오류: ' + error.message);
+    } finally {
+      setIsCommitting(false);
     }
   };
 
@@ -1291,6 +1305,7 @@ export default function Home() {
         isAuditComplete={isAuditComplete}
         triggerFileAudit={triggerFileAudit}
         isUploading={isUploading}
+        isRecommending={isRecommending}
         auditMetadata={auditMetadata}
         inferredPurpose={inferredPurpose}
         setInferredPurpose={setInferredPurpose}
@@ -1323,6 +1338,7 @@ export default function Home() {
         hitlLat={hitlLat}
         setHitlLat={setHitlLat}
         handleHitlCommit={handleHitlCommit}
+        isCommitting={isCommitting}
         selectedParcel={selectedParcel}
         activeTab={activeTab}
         setActiveTab={setActiveTab}
@@ -1330,6 +1346,7 @@ export default function Home() {
         intensityLevel={intensityLevel}
         setIntensityLevel={setIntensityLevel}
         runSimulation={runSimulation}
+        simStep={simStep}
       />
 
       {/* AI 시뮬레이션 모달 팝업 */}

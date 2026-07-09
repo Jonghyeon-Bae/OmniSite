@@ -13,13 +13,15 @@ export default function OptimalResultPanel({
   hitlLat,
   setHitlLat,
   handleHitlCommit,
+  isCommitting,
   selectedParcel,
   activeTab,
   setActiveTab,
   criteriaList,
   intensityLevel,
   setIntensityLevel,
-  runSimulation
+  runSimulation,
+  simStep
 }) {
   const currentParcel = selectedParcel[activeTab] || {};
 
@@ -98,7 +100,7 @@ export default function OptimalResultPanel({
                   step="0.000001" 
                   value={isNaN(hitlLng) ? '' : hitlLng} 
                   onChange={(e) => setHitlLng(parseFloat(e.target.value))} 
-                  className="bg-slate-900 border border-slate-700 rounded px-2 py-1 text-white text-xs outline-none" 
+                  className="bg-slate-900 border border-slate-700 rounded px-2 py-1 text-white text-xs outline-none font-mono" 
                 />
               </div>
               <div className="flex-1 flex flex-col gap-1 text-[11px]">
@@ -108,15 +110,23 @@ export default function OptimalResultPanel({
                   step="0.000001" 
                   value={isNaN(hitlLat) ? '' : hitlLat} 
                   onChange={(e) => setHitlLat(parseFloat(e.target.value))} 
-                  className="bg-slate-900 border border-slate-700 rounded px-2 py-1 text-white text-xs outline-none" 
+                  className="bg-slate-900 border border-slate-700 rounded px-2 py-1 text-white text-xs outline-none font-mono" 
                 />
               </div>
             </div>
             <button 
               onClick={handleHitlCommit}
-              className="w-full bg-amber-600 hover:bg-amber-700 text-white font-semibold text-xs py-2 rounded-lg transition-all"
+              disabled={isCommitting}
+              className="w-full bg-amber-600 hover:bg-amber-700 text-white font-semibold text-xs py-2 rounded-lg transition-all flex items-center justify-center gap-1.5 disabled:opacity-50 cursor-pointer"
             >
-              보정 완료 및 데이터 확정 (Commit)
+              {isCommitting ? (
+                <>
+                  <span className="w-3.5 h-3.5 border-2 border-t-transparent border-white rounded-full animate-spin shrink-0" />
+                  보정 공간 데이터 확정 중...
+                </>
+              ) : (
+                '보정 완료 및 데이터 확정 (Commit)'
+              )}
             </button>
           </div>
         </div>
@@ -127,30 +137,46 @@ export default function OptimalResultPanel({
       {/* ========================================================================= */}
       {pipelineStep >= 4 ? (
         <div className="flex flex-col gap-5">
-          {/* Top 1 ~ Top 3 탭 */}
+          {/* Top 1 ~ Top 5 동적 탭 렌더링 */}
           <div className="flex bg-slate-950/60 p-1 rounded-lg border border-slate-800/80">
-            {['top1', 'top2', 'top3'].map(tab => (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={`flex-1 text-center py-1.5 text-xs font-semibold rounded-md cursor-pointer transition-all ${activeTab === tab ? 'bg-blue-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-200'}`}
-              >
-                {tab.toUpperCase()}
-              </button>
-            ))}
+            {Object.keys(selectedParcel)
+              .filter(tab => selectedParcel[tab] && Object.keys(selectedParcel[tab]).length > 0 && selectedParcel[tab].id)
+              .map(tab => (
+                <button
+                  key={tab}
+                  onClick={() => setActiveTab(tab)}
+                  className={`flex-1 text-center py-1.5 text-[10px] font-semibold rounded-md cursor-pointer transition-all ${activeTab === tab ? 'bg-blue-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-200'}`}
+                >
+                  {tab.toUpperCase()}
+                </button>
+              ))}
           </div>
 
           {/* 필지 속성 카드 */}
           <div className="flex flex-col gap-2">
             <h3 className="text-xs font-semibold text-slate-300">Step 4. 추천지 속성 정보</h3>
-            <div className="bg-slate-950/40 p-4 rounded-xl border border-slate-800/40 flex flex-col gap-2.5">
+            <div className="bg-slate-950/40 p-4 rounded-xl border border-slate-800/40 flex flex-col gap-2.5 animate-fade-in">
+              {/* 일반 부지 vs 차선책 부지 구분 뱃지 [v4.7.0] */}
+              <div className="flex justify-between items-center pb-2 border-b border-slate-900/60">
+                <span className="text-[10px] text-slate-400 font-semibold">입지 성격 구분</span>
+                {currentParcel.is_fallback ? (
+                  <span className="text-[9px] font-bold px-2 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30 animate-pulse">
+                    ⚠️ 법정 규제 완화 차선책
+                  </span>
+                ) : (
+                  <span className="text-[9px] font-bold px-2 py-0.5 rounded bg-blue-500/20 text-blue-400 border border-blue-500/30">
+                    🟢 일반 규제 준수 부지
+                  </span>
+                )}
+              </div>
+
               <div className="flex justify-between text-xs">
                 <span className="text-slate-400">지번 / 소유 구분</span>
-                <span className="text-white font-semibold">{currentParcel.jibun}</span>
+                <span className="text-white font-semibold">{currentParcel.jibun || '지정한 동 내 미확정 필지'}</span>
               </div>
               <div className="flex justify-between text-xs">
                 <span className="text-slate-400">면적(㎡)</span>
-                <span className="font-mono text-white">{currentParcel.area} ㎡</span>
+                <span className="font-mono text-white">{currentParcel.area || 0} ㎡</span>
               </div>
               <div className="flex justify-between text-xs">
                 <span className="text-slate-400">공시지가</span>
@@ -158,7 +184,7 @@ export default function OptimalResultPanel({
               </div>
               <div className="flex justify-between text-[11px] border-t border-slate-900 pt-2 text-slate-500">
                 <span>위도/경도 좌표</span>
-                <span className="font-mono">{currentParcel.lat}, {currentParcel.lng}</span>
+                <span className="font-mono">{currentParcel.lat || 0.0}, {currentParcel.lng || 0.0}</span>
               </div>
               {currentParcel.reason && (
                 <div className="flex flex-col gap-1 mt-1 border-t border-slate-900/60 pt-2">
@@ -180,7 +206,7 @@ export default function OptimalResultPanel({
                 currentParcel.cssGrade === '중' ? 'bg-amber-500/20 text-amber-400' :
                 'bg-emerald-500/20 text-emerald-400'
               }`}>
-                등급: {currentParcel.cssGrade} ({currentParcel.css}점)
+                등급: {currentParcel.cssGrade || '하'} ({currentParcel.css || 0}점)
               </span>
             </div>
 
@@ -189,7 +215,7 @@ export default function OptimalResultPanel({
                 currentParcel.cssGrade === '상' ? 'bg-rose-500' :
                 currentParcel.cssGrade === '중' ? 'bg-amber-500' :
                 'bg-emerald-500'
-              }`} style={{ width: `${currentParcel.css}%` }} />
+              }`} style={{ width: `${currentParcel.css || 0}%` }} />
             </div>
           </div>
 
@@ -266,9 +292,17 @@ export default function OptimalResultPanel({
                 setPipelineStep(5);
                 runSimulation();
               }}
-              className="w-full bg-rose-600 hover:bg-rose-700 text-white font-semibold text-xs py-3 rounded-xl transition-all cursor-pointer shadow-lg shadow-rose-900/30"
+              disabled={simStep > 0 && simStep < 6}
+              className="w-full bg-rose-600 hover:bg-rose-700 text-white font-semibold text-xs py-3 rounded-xl transition-all cursor-pointer shadow-lg shadow-rose-900/30 flex items-center justify-center gap-1.5 disabled:opacity-60"
             >
-              {activeTab.toUpperCase()} 갈등 심의 시뮬레이터 실행 (GPT-4o)
+              {simStep > 0 && simStep < 6 ? (
+                <>
+                  <span className="w-4 h-4 border-2 border-t-transparent border-white rounded-full animate-spin shrink-0" />
+                  심의 토론 에이전트 스트리밍 중...
+                </>
+              ) : (
+                `${activeTab.toUpperCase()} 갈등 심의 시뮬레이터 실행 (GPT-4o)`
+              )}
             </button>
           </div>
         </div>

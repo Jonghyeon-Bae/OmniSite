@@ -369,98 +369,54 @@ async def recommend_optimal_sites(
                     filtered_candidates_list.append(c)
             candidates = filtered_candidates_list
 
-        # 3. 실 DB 지적이 부족한 경우 (candidates < 3), 규제 저촉 필터를 해제하여 실재하는 필지를 차선책으로 긁어옴 (Second-best Query)
-        if len(candidates) < 3:
-            print(f"[Fallback Active] Real candidates count: {len(candidates)}. Triggering Second-best Query to fetch real cadastral parcels...")
+        # 3. 실 DB 지적 후보지 수집이 부족한 경우 (candidates < 15), 탐색 반경을 점진적으로 넓혀가며 실재하는 필지를 추가로 긁어옴 (Dynamic Radius Relaxing)
+        if len(candidates) < 15:
+            print(f"[Fallback Active] Real candidates count: {len(candidates)}. Triggering Radius Relaxing Search...")
             
-            # 규제 배제 조건을 완화하여 실재하는 국공유지 필지를 기준좌표 주변에서 거리 순으로 긁어옴
-            fallback_query = text("""
-                SELECT c.id, c.pnu, c.jibun, c.land_use_code, c.ownership_type, 
-                       ST_Area(c.geom::geography) AS area, 
-                       ST_X(ST_Centroid(c.geom)) AS lng, 
-                       ST_Y(ST_Centroid(c.geom)) AS lat, 
-                       c.dong_id,
-                       ST_Distance(ST_Centroid(c.geom)::geography, ST_SetSRID(ST_MakePoint(:ref_lng, :ref_lat), 4326)::geography) AS dist_from_ref
-                FROM cadastral_lands c
-                WHERE c.district_id = 1
-                  AND c.ownership_type IN ('국유지', '시유지', '구유지')
-                  AND ST_IsValid(c.geom)
-                  AND ST_DWithin(c.geom, ST_SetSRID(ST_MakePoint(:ref_lng, :ref_lat), 4326), 0.02) -- 약 2km 반경 확장
-                ORDER BY dist_from_ref ASC
-                LIMIT 30
-            """)
-            
-            fallback_rows = []
-            try:
-                fallback_rows = db.execute(fallback_query, {
-                    "ref_lng": base_lng,
-                    "ref_lat": base_lat
-                }).fetchall()
-            except Exception as fe:
-                print(f"[Second-best Query Error] {fe}")
-                
-            fallback_candidates = []
-            for r in fallback_rows:
-                # 기존 candidates 에 이미 있는 필지는 중복 회피
-                if any(existing["id"] == r[0] for existing in candidates):
-                    continue
-                fallback_candidates.append({
-                    "id": r[0], "pnu": r[1],
-                    "jibun": to_road_address(r[2], r[3]), # 실재하는 지번 주소 그대로!
-                    "land_use_code": r[3],
-                    "ownership_type": r[4], 
-                    "area": round(float(r[5]), 1),
-                    "lng": float(r[6]), 
-                    "lat": float(r[7]), 
-                    "dong_id": r[8],
-                    "is_fallback_warning": True # 차선책 부지임을 마크
-                })
-            
-            # 부족한 만큼 실제 필지로 채워넣음!
-            for fc in fallback_candidates:
-                if len(candidates) >= 3:
+            radius_steps = [0.02, 0.04, 0.08] # 약 2km -> 4km -> 8km 반경 점진 완화
+            for radius in radius_steps:
+                if len(candidates) >= 20:
                     break
-                candidates.append(fc)
-                
-            # 만약 DB(지적도) 자체가 텅 비어있어서 여전히 3개 미만인 극단적 경우에만 가상 모의 부지 난수 생성 (2단계 Fallback)
-            if len(candidates) < 3:
-                import random
-                random.seed(int(base_lat * 10000) + int(base_lng * 10000))
-                
-                dong_query = text("""
-                    SELECT id, dong_name FROM dong_boundaries 
-                    WHERE ST_Contains(geom, ST_SetSRID(ST_MakePoint(:lng, :lat), 4326))
-                    LIMIT 1
+                fallback_query = text("""
+                    SELECT c.id, c.pnu, c.jibun, c.land_use_code, c.ownership_type, 
+                           ST_Area(c.geom::geography) AS area, 
+                           ST_X(ST_Centroid(c.geom)) AS lng, 
+                           ST_Y(ST_Centroid(c.geom)) AS lat, 
+                           c.dong_id,
+                           ST_Distance(ST_Centroid(c.geom)::geography, ST_SetSRID(ST_MakePoint(:ref_lng, :ref_lat), 4326)::geography) AS dist_from_ref
+                    FROM cadastral_lands c
+                    WHERE c.district_id = 1
+                      AND c.ownership_type IN ('국유지', '시유지', '구유지')
+                      AND ST_IsValid(c.geom)
+                      AND ST_DWithin(c.geom, ST_SetSRID(ST_MakePoint(:ref_lng, :ref_lat), 4326), :radius)
+                    ORDER BY dist_from_ref ASC
+                    LIMIT 40
                 """)
-                dong_row = None
+                
+                fallback_rows = []
                 try:
-                    dong_row = db.execute(dong_query, {"lng": base_lng, "lat": base_lat}).fetchone()
-                except Exception:
-                    pass
-                
-                ref_dong_id = dong_row[0] if dong_row else 1
-                ref_dong_name = dong_row[1] if dong_row else "용산동"
-                
-                ownership_types = ["국유지", "시유지", "구유지"]
-                needed = 3 - len(candidates)
-                for i in range(needed):
-                    offset_lat = round(random.uniform(-0.003, 0.003), 4)
-                    offset_lng = round(random.uniform(-0.003, 0.003), 4)
+                    fallback_rows = db.execute(fallback_query, {
+                        "ref_lng": base_lng,
+                        "ref_lat": base_lat,
+                        "radius": radius
+                    }).fetchall()
+                except Exception as fe:
+                    print(f"[Radius Relaxing Search Error] Radius {radius}: {fe}")
+                    break
                     
-                    fake_jibun = f"[모의부지] {ref_dong_name} {42 + i * 3}-{i + 1}"
-                    fake_land_use = "잡"
-                    
+                for r in fallback_rows:
+                    if any(existing["id"] == r[0] for existing in candidates):
+                        continue
                     candidates.append({
-                        "id": 9999 + i,
-                        "pnu": f"111701{1100 + i * 100}10{42 + i * 3:04d}0000",
-                        "jibun": to_road_address(fake_jibun, fake_land_use),
-                        "land_use_code": fake_land_use,
-                        "ownership_type": ownership_types[i % len(ownership_types)],
-                        "area": round(random.uniform(80.0, 200.0), 1),
-                        "lng": round(base_lng + offset_lng, 6),
-                        "lat": round(base_lat + offset_lat, 6),
-                        "dong_id": ref_dong_id,
-                        "is_simulated_fake": True
+                        "id": r[0], "pnu": r[1],
+                        "jibun": to_road_address(r[2], r[3]),
+                        "land_use_code": r[3],
+                        "ownership_type": r[4], 
+                        "area": round(float(r[5]), 1),
+                        "lng": float(r[6]), 
+                        "lat": float(r[7]), 
+                        "dong_id": r[8],
+                        "is_fallback_warning": True
                     })
 
         # DB에서 해당 facility_type 의 rules_metadata (가/감점 점수 규칙) 조회
@@ -589,30 +545,56 @@ async def recommend_optimal_sites(
                         
             cand["total_score"] = round(total_score, 3)
 
-        # 6. 점수 내림차순 정렬 후, 공간적 중복 배제 필터링 (최소 이격거리 70m 보장)
+        # 6. 점수 내림차순 정렬 후, 공간적 중복 배제 필터링 (Dynamic Spatial Annealing)
         candidates.sort(key=lambda x: x["total_score"], reverse=True)
         
-        filtered_candidates = []
-        for cand in candidates:
-            # 이미 선택된 필지들과 0.0007도(약 70m) 이내로 겹치는 경우 배제
-            is_overlap = False
-            for selected in filtered_candidates:
-                dist = math.sqrt((cand["lat"] - selected["lat"])**2 + (cand["lng"] - selected["lng"])**2)
-                if dist < 0.0007:
-                    is_overlap = True
-                    break
-            if not is_overlap:
-                filtered_candidates.append(cand)
-                if len(filtered_candidates) >= 3:
-                    break
-                    
-        # 후보지 부족 시 원본 리스트로 보완
-        if len(filtered_candidates) < 3:
-            for cand in candidates:
-                if cand not in filtered_candidates:
-                    filtered_candidates.append(cand)
-                if len(filtered_candidates) >= 3:
-                    break
+        # 일반 후보군(regular)과 차선책 후보군(fallback) 분리
+        regular_pool = [c for c in candidates if not c.get("is_fallback_warning")]
+        fallback_pool = [c for c in candidates if c.get("is_fallback_warning")]
+        
+        # 이격거리 완화 단계: 150m(0.0015도) -> 100m(0.0010도) -> 70m(0.0007도) -> 50m(0.0005도) -> 30m(0.0003도)
+        annealing_thresholds = [0.0015, 0.0010, 0.0007, 0.0005, 0.0003]
+        final_list = []
+        
+        for threshold in annealing_thresholds:
+            filtered_regular = []
+            for cand in regular_pool:
+                is_overlap = False
+                for selected in filtered_regular:
+                    dist = math.sqrt((cand["lat"] - selected["lat"])**2 + (cand["lng"] - selected["lng"])**2)
+                    if dist < threshold:
+                        is_overlap = True
+                        break
+                if not is_overlap:
+                    filtered_regular.append(cand)
+                    if len(filtered_regular) >= 3:
+                        break
+                        
+            filtered_fallback = []
+            for cand in fallback_pool:
+                is_overlap = False
+                for selected in (filtered_regular + filtered_fallback):
+                    dist = math.sqrt((cand["lat"] - selected["lat"])**2 + (cand["lng"] - selected["lng"])**2)
+                    if dist < threshold:
+                        is_overlap = True
+                        break
+                if not is_overlap:
+                    filtered_fallback.append(cand)
+                    if len(filtered_fallback) >= 2:
+                        break
+            
+            combined = filtered_regular + filtered_fallback
+            if len(combined) >= 5 or threshold == annealing_thresholds[-1]:
+                if len(combined) < 5:
+                    for cand in candidates:
+                        if len(combined) >= 5:
+                            break
+                        if cand not in combined:
+                            combined.append(cand)
+                final_list = combined
+                break
+                
+        filtered_candidates = final_list
 
         # 7. 종합 점수를 백분위 갈등도 점수(CSS)로 환산 매핑 및 추천 사유 생성 (다목적 RAG)
         max_possible = sum(criteria_weights.values())
@@ -678,8 +660,10 @@ async def recommend_optimal_sites(
             return " ".join(reasons)
 
         results = {}
-        for idx, rank in enumerate(["top1", "top2", "top3"]):
-            cand = filtered_candidates[idx] if idx < len(filtered_candidates) else filtered_candidates[-1]
+        for idx, rank in enumerate(["top1", "top2", "top3", "top4", "top5"]):
+            if idx >= len(filtered_candidates):
+                continue
+            cand = filtered_candidates[idx]
             
             percentage = (cand["total_score"] / max_possible) * 100
             css_score = round(max(10, min(95, percentage)))
@@ -691,7 +675,8 @@ async def recommend_optimal_sites(
             else:
                 css_grade = "하"
 
-            base_price = 14200000 if rank == "top1" else (9800000 if rank == "top2" else 18500000)
+            prices = [14200000, 9800000, 18500000, 12000000, 15500000]
+            base_price = prices[idx] if idx < len(prices) else 11000000
             
             # XAI 추천 사유 빌드
             reason_text = generate_recommendation_reason(cand, facility_type)
@@ -707,6 +692,7 @@ async def recommend_optimal_sites(
                 "lat": cand["lat"],
                 "lng": cand["lng"],
                 "simulated": True if rank == "top1" else False,
+                "is_fallback": bool(cand.get("is_fallback_warning", False)),
                 "criteria_scores": cand["scores"],
                 "reason": reason_text
             }

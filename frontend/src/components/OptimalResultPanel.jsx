@@ -92,25 +92,25 @@ export default function OptimalResultPanel({
               )}
             </div>
 
-            <div className="flex gap-2">
-              <div className="flex-1 flex flex-col gap-1 text-[11px]">
+            <div className="flex gap-2 w-full">
+              <div className="flex-1 min-w-0 flex flex-col gap-1 text-[11px]">
                 <span className="text-slate-400">경도(Lng) 좌표 보정</span>
                 <input 
                   type="number" 
                   step="0.000001" 
                   value={isNaN(hitlLng) ? '' : hitlLng} 
                   onChange={(e) => setHitlLng(parseFloat(e.target.value))} 
-                  className="bg-slate-900 border border-slate-700 rounded px-2 py-1 text-white text-xs outline-none font-mono" 
+                  className="w-full min-w-0 bg-slate-900 border border-slate-700 rounded px-2 py-1 text-white text-xs outline-none font-mono" 
                 />
               </div>
-              <div className="flex-1 flex flex-col gap-1 text-[11px]">
+              <div className="flex-1 min-w-0 flex flex-col gap-1 text-[11px]">
                 <span className="text-slate-400">위도(Lat) 좌표 보정</span>
                 <input 
                   type="number" 
                   step="0.000001" 
                   value={isNaN(hitlLat) ? '' : hitlLat} 
                   onChange={(e) => setHitlLat(parseFloat(e.target.value))} 
-                  className="bg-slate-900 border border-slate-700 rounded px-2 py-1 text-white text-xs outline-none font-mono" 
+                  className="w-full min-w-0 bg-slate-900 border border-slate-700 rounded px-2 py-1 text-white text-xs outline-none font-mono" 
                 />
               </div>
             </div>
@@ -170,9 +170,23 @@ export default function OptimalResultPanel({
                 )}
               </div>
 
-              <div className="flex justify-between text-xs">
-                <span className="text-slate-400">지번 / 소유 구분</span>
-                <span className="text-white font-semibold">{currentParcel.jibun || '지정한 동 내 미확정 필지'}</span>
+              <div className="flex justify-between items-center text-xs">
+                <span className="text-slate-400 font-semibold">지번 / 소유 구분</span>
+                <div className="flex items-center gap-1">
+                  <span className="text-white font-semibold max-w-[160px] truncate" title={currentParcel.jibun}>{currentParcel.jibun || '지정한 동 내 미확정 필지'}</span>
+                  {currentParcel.jibun && (
+                    <button
+                      onClick={() => {
+                        const cleanAddr = currentParcel.jibun.split('(')[0].trim();
+                        navigator.clipboard.writeText(cleanAddr);
+                        alert(`📋 주소가 복사되었습니다: ${cleanAddr}`);
+                      }}
+                      className="text-[9px] bg-slate-900 hover:bg-slate-800 text-slate-300 px-2 py-0.5 rounded border border-slate-800 transition-all font-sans cursor-pointer flex items-center gap-1 shrink-0 ml-1.5"
+                    >
+                      <span>📋 주소 복사</span>
+                    </button>
+                  )}
+                </div>
               </div>
               <div className="flex justify-between text-xs">
                 <span className="text-slate-400">면적(㎡)</span>
@@ -182,9 +196,22 @@ export default function OptimalResultPanel({
                 <span className="text-slate-400">공시지가</span>
                 <span className="font-mono text-emerald-400">₩ {(currentParcel.price || 0).toLocaleString()} / ㎡</span>
               </div>
-              <div className="flex justify-between text-[11px] border-t border-slate-900 pt-2 text-slate-500">
+              <div className="flex justify-between items-center text-[11px] border-t border-slate-900 pt-2 text-slate-500">
                 <span>위도/경도 좌표</span>
-                <span className="font-mono">{currentParcel.lat || 0.0}, {currentParcel.lng || 0.0}</span>
+                <div className="flex items-center gap-2">
+                  <span className="font-mono">{currentParcel.lat || 0.0}, {currentParcel.lng || 0.0}</span>
+                  {currentParcel.lat && currentParcel.lng && (
+                    <button
+                      onClick={() => {
+                        const url = `https://map.kakao.com/link/roadview/${currentParcel.lat},${currentParcel.lng}`;
+                        window.open(url, '_blank');
+                      }}
+                      className="text-[9px] bg-slate-900 hover:bg-slate-800 text-slate-300 px-2 py-0.5 rounded border border-slate-800 transition-all cursor-pointer"
+                    >
+                      🗺️ 로드뷰 보기
+                    </button>
+                  )}
+                </div>
               </div>
               {currentParcel.reason && (
                 <div className="flex flex-col gap-1 mt-1 border-t border-slate-900/60 pt-2">

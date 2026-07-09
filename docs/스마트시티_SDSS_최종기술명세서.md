@@ -79,8 +79,8 @@
 *   **데이터 스왑 아키텍처:**
     1.  `infrastructure_master`: 시설물 유형(흡연부스, 옐로카펫, 전기차충전소) 정의 테이블.
     2.  `ahp_criteria_weights`: 각 시설물별 AHP 1단계(배제 버퍼 크기) 및 2단계(가점/감점 변수 가중치)를 동적으로 스왑 적재하는 마스터 설정 테이블.
-    3.  `spatial_exclusion_rules`: 시설물별 법적 저촉 구역(학교 200m, 어린이집 30m 등)을 PostgreSQL PostGIS 공간 쿼리 단에서 매개변수화하여 동적으로 버퍼를 생성하는 룰 엔진.
-    *   ➔ 차주 개발 시 백엔드(FastAPI) 엔드포인트를 `/api/v1/recommend/{infra_type}` 으로 매개변수화하여 구현함으로써, 단일 컨트롤러 내에서 스왑 엔진이 동적 공간 조인을 수행하도록 설계 가이드를 강제함.
+    3.  `spatial_exclusion_rules`: 시설물별 법적 저촉 구역(학교 200m, 어린이집 30m 등)을 PostgreSQL PostGIS 공간 쿼리 단에서 매개변수화하여 동적으로 버퍼를 생성하고, 후보지 간의 쏠림 현상을 차단하기 위해 실시간 상호 이격거리 다양성 가드(Spatial Diversity Filter)를 적용하는 룰 엔진.
+    *   ➔ 차주 개발 시 백엔드(FastAPI) 엔드포인트를 `/api/v1/spatial/recommend` 엔드포인트 내에서 DB domain_regulation_rules 및 ahp_models의 규칙 메타데이터를 쿼리해 동적으로 이격거리 환산 및 criteria 복원을 수립하는 제로-하드코딩 스왑 엔진 구현함으로써, 단일 컨트롤러 내에서 스왑 엔진이 동적 공간 조인을 수행하도록 설계 가이드를 강제함.
 
 ## 2. 전체 시스템 파이프라인 및 아키텍처 설계도 (System Architecture)
 
@@ -107,7 +107,7 @@ sequenceDiagram
     API->>DB: 10. ST_Buffer & ST_Difference 공간 조인 차집합 쿼리 가동
     DB-->>API: 11. 국공유지 기반 최적 후보 필지 정보 반환
     API->>AI: 12. AI 정책 심의 요청 (후보지 위경도 & RAG 조례 전달)
-    Note over AI: 난수 템플릿 기반 실시간 페르소나 및 위험 강도 설정
+    Note over AI: 정부/찬성/반대 3자 표준화 및 극사실주의 갈등 연출 기반 및 위험 강도 설정
     AI-->>UI: 13. [시스템 면책 고지] 및 다회차 대화 실시간 스트리밍 푸시 (SSE)
     AI-->>API: 14. 합의된 최종 심의 의견서 반환
     API->>PDF: 15. HTML에 결재선 격자란, 구청장 직인생략 발신 명의, 면책 멘트를 바인딩해 PDF 렌더링 요청

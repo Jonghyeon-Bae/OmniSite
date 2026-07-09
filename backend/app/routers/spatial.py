@@ -547,54 +547,60 @@ async def recommend_optimal_sites(
 
         # 6. 점수 내림차순 정렬 후, 공간적 중복 배제 필터링 (Dynamic Spatial Annealing)
         candidates.sort(key=lambda x: x["total_score"], reverse=True)
-        
-        # 일반 후보군(regular)과 차선책 후보군(fallback) 분리
-        regular_pool = [c for c in candidates if not c.get("is_fallback_warning")]
-        fallback_pool = [c for c in candidates if c.get("is_fallback_warning")]
-        
-        # 이격거리 완화 단계: 150m(0.0015도) -> 100m(0.0010도) -> 70m(0.0007도) -> 50m(0.0005도) -> 30m(0.0003도)
-        annealing_thresholds = [0.0015, 0.0010, 0.0007, 0.0005, 0.0003]
-        final_list = []
-        
-        for threshold in annealing_thresholds:
-            filtered_regular = []
-            for cand in regular_pool:
-                is_overlap = False
-                for selected in filtered_regular:
-                    dist = math.sqrt((cand["lat"] - selected["lat"])**2 + (cand["lng"] - selected["lng"])**2)
-                    if dist < threshold:
-                        is_overlap = True
-                        break
-                if not is_overlap:
-                    filtered_regular.append(cand)
-                    if len(filtered_regular) >= 3:
-                        break
-                        
-            filtered_fallback = []
-            for cand in fallback_pool:
-                is_overlap = False
-                for selected in (filtered_regular + filtered_fallback):
-                    dist = math.sqrt((cand["lat"] - selected["lat"])**2 + (cand["lng"] - selected["lng"])**2)
-                    if dist < threshold:
-                        is_overlap = True
-                        break
-                if not is_overlap:
-                    filtered_fallback.append(cand)
-                    if len(filtered_fallback) >= 2:
-                        break
-            
-            combined = filtered_regular + filtered_fallback
-            if len(combined) >= 5 or threshold == annealing_thresholds[-1]:
-                if len(combined) < 5:
-                    for cand in candidates:
-                        if len(combined) >= 5:
-                            break
-                        if cand not in combined:
-                            combined.append(cand)
-                final_list = combined
+
+        # [v4.9.13] DB 메타데이터 연동 상호 이격거리 다양성 가드 (Spatial Diversity Filter)
+        diversity_m = 150.0
+        try:
+            rules_meta_query = text("SELECT rules_metadata FROM domain_regulation_rules WHERE facility_type = :facility_type")
+            meta_row = db.execute(rules_meta_query, {"facility_type": facility_type}).fetchone()
+            if meta_row and meta_row[0]:
+                meta_payload = json.loads(meta_row[0]) if isinstance(meta_row[0], str) else meta_row[0]
+                if isinstance(meta_payload, dict):
+                    profile = meta_payload.get("facility_profile", {})
+                    if profile and "spatial_diversity_m" in profile:
+                        diversity_m = float(profile["spatial_diversity_m"])
+        except Exception as meta_ex:
+            print(f"[Diversity Metadata Load Error] {meta_ex}")
+
+        diversity_deg = diversity_m * 0.00001
+
+        diverse_candidates = []
+        for cand in candidates:
+            too_close = False
+            for selected in diverse_candidates:
+                dist = math.sqrt((cand["lat"] - selected["lat"])**2 + (cand["lng"] - selected["lng"])**2)
+                if dist < diversity_deg:
+                    too_close = True
+                    break
+            if not too_close:
+                diverse_candidates.append(cand)
+            if len(diverse_candidates) >= 5:
                 break
-                
-        filtered_candidates = final_list
+
+        # 다양성 필터링으로 인해 5개 미만이 될 경우 기준을 0.5배 완화하여 백업 보강
+        if len(diverse_candidates) < 5:
+            for cand in candidates:
+                if cand not in diverse_candidates:
+                    too_close = False
+                    for selected in diverse_candidates:
+                        dist = math.sqrt((cand["lat"] - selected["lat"])**2 + (cand["lng"] - selected["lng"])**2)
+                        if dist < (diversity_deg * 0.5):
+                            too_close = True
+                            break
+                    if not too_close:
+                        diverse_candidates.append(cand)
+                if len(diverse_candidates) >= 5:
+                    break
+
+        # 최종 가드: 여전히 부족하면 순서대로 채워 5개 획득 보장
+        if len(diverse_candidates) < 5:
+            for cand in candidates:
+                if cand not in diverse_candidates:
+                    diverse_candidates.append(cand)
+                if len(diverse_candidates) >= 5:
+                    break
+
+        filtered_candidates = diverse_candidates
 
         # 7. 종합 점수를 백분위 갈등도 점수(CSS)로 환산 매핑 및 추천 사유 생성 (다목적 RAG)
         max_possible = sum(criteria_weights.values())
@@ -1033,18 +1039,18 @@ async def stream_debate_sim(req: DebateRequest, db: Session = Depends(get_db)):
     if req.intensity_level == "dangerous":
         intensity_instruction = (
             f"5. 갈등 강도 설정: [위험 🟡]\n"
-            f"   - 토론 주체 간의 대립이 매우 날카롭고 감정적입니다. 격식 있는 대립 톤을 유지하되 상대방의 주장 논점을 직접 물고 늘어져야 합니다.\n"
-            f"   - {resident_name}(반대)는 '우리가 호구냐', '왜 맨날 우리 동네에만 설치를 하냐'며 주거 정주성 파괴(민원 {int(complaint_score or 0)}건, 무단투기 {int(dumping_score or 0)}개소)를 빌미로 상인대표의 경제 논리를 반박하십시오.\n"
-            f"   - {merchant_name}(찬성)는 '골목이 살아야 주민도 있는 법'이라며 유동인구 {int(transit_score or 0):,}명의 수요에 기초하여 주민의 의견이 집단 이기주의에 가깝다고 조리 있게 격앙되게 주장하십시오.\n"
-            f"   - {coordinator_name}(조정)은 감정이 격해지는 대화 핑퐁을 통제하면서 완충 이격거리 확대 및 주민 가동 정지/감찰 권한 부여 등의 구체적 타협점을 제시하십시오."
+            f"   - 토론 주체 간의 대립이 매우 날카롭고 감정적입니다. 격식 있는 대립 톤을 유지하되 상대방의 주장 논점을 직접 물고 늘어지십시오.\n"
+            f"   - {resident_name}(반대)는 '우리가 참는 것도 한계가 있다. 왜 매번 냄새나고 기피하는 시설은 죄다 우리 주택가 구석에만 슬그머니 밀어 넣냐'며 주민 정주성 훼손과 누적 민원 {int(complaint_score or 0)}건, 무단투기 {int(dumping_score or 0)}개소의 실질적 슬럼화 피해를 생생하고 격정적으로 반박하십시오.\n"
+            f"   - {merchant_name}(찬성)는 '당장 월세도 못 내고 폐업할 지경인데 상권이 살아야 동네도 존속하는 법이다'라며 유동인구 {int(transit_score or 0):,}명의 확실한 경제 수요와 생존 생업의 시급성을 강조하고, 주민들의 주장은 집단 이기주의에 지나지 않는다고 강경하고 이성적으로 응수하십시오.\n"
+            f"   - {coordinator_name}(정부)은 과열되는 양측의 감정을 통제하며, 이격거리 완충 설계 및 주민 상시 감독 권한 주입 등의 구체적 타협 조건을 제시하여 출구를 찾으십시오."
         )
     elif req.intensity_level == "extreme":
         intensity_instruction = (
             f"5. 갈등 강도 설정: [매우 위험/교착 🔴]\n"
-            f"   - 두 주체는 대화 협상의 여지를 완전히 닫은 수준의 극단적 대치를 하되, 형사 고소/고발이나 구청장 퇴진 같은 사법/행정적 위협은 완전히 배제하십시오.\n"
-            f"   - {resident_name}(반대)는 '화재 안전 대책이나 분진/쓰레기 방지벽, 위생 보강책 없이는 시설 점거 및 진입로 차단 서명 시위를 벌이겠다'고 정주권 침해 우려(민원 {int(complaint_score or 0)}건, 무단투기 {int(dumping_score or 0)}개소)를 들어 강경히 대립하십시오.\n"
-            f"   - {merchant_name}(찬성)는 '상인들의 생존권이 걸린 생업 문제를 과장된 안전 공포증으로 가로막는 행위는 이기적인 횡포이며, 안전 수칙을 명문화해 상인회 책임 하에 투명하게 상시 모니터링하겠다'고 맞서십시오.\n"
-            f"   - {coordinator_name}(조정)은 이 파국적 대치를 봉합하기 위해 소방시설(질식소화포 등) 2배 확충, 완전 차폐막 장치 의무화, 주민대표단에게 기준 위반 시 즉각 중단시키는 '상시 운영정지 및 위생 점검권'을 공식 부여하는 파격적 양보안으로 중재하십시오."
+            f"   - 협상 붕괴 및 전면 대치 국면입니다. 주민 설명회나 공청회에서 겪는 생생하고 원색적인 분노의 어조를 적극 반영하되, 사법적 협박이나 극단적 정당 퇴진 운동은 배제하십시오.\n"
+            f"   - {resident_name}(반대)는 '주변 안전 확보 대책과 화재 및 연기 유입 방지책이 100% 보장되지 않는다면 물리적 거부 시위와 강력한 반대 운동을 불사하겠다'고 단언하며, 민원 {int(complaint_score or 0)}건의 피눈물 나는 주거 고통을 들며 날 선 항변을 전개하십시오.\n"
+            f"   - {merchant_name}(찬성)는 '상가 생존권이 걸린 생업의 목줄을 실체 없는 공포심으로 옥죄고 방해하는 행위야말로 이기적인 횡포이자 생존권 침해'라며, 철저한 안전 장치 약속과 상인회 연대 보증 하에 투명하게 관리 운영할 테니 억지 주장을 멈추라고 강렬하게 정면 반박하십시오.\n"
+            f"   - {coordinator_name}(정부)은 양측의 파국적인 교착을 해소하기 위해 '소방 및 안전 차단 장비 2배 확충, 투명한 물리 차폐막 시공, 위반 시 주민대표단에게 즉각 운영 중단과 시정을 명령할 수 있는 삼진아웃 감찰권 공식 위임'이라는 파격적인 실무 합의안으로 극적 조정을 시도하십시오."
         )
     else: # normal
         intensity_instruction = (
@@ -1064,19 +1070,19 @@ async def stream_debate_sim(req: DebateRequest, db: Session = Depends(get_db)):
             f"- 갈등 민감도(CSS): {req.candidate_css}점 ({css_grade})\n"
             f"- AHP 의사결정 가중치: {ahp_text}\n\n"
         )
-        
+
         if stats_context:
             system_prompt += (
                 "## 후보지 실제 공간 통계 지표 (DB 공간 쿼리 결과)\n"
                 f"{stats_context}\n"
             )
-            
+
         if rag_context:
             system_prompt += (
                 "## 관련 자치구 조례 및 규정 (pgvector RAG 조회 결과)\n"
                 f"{rag_context}\n\n"
             )
-        
+
         system_prompt += (
             "## 토론 규칙\n"
             "1. 위 제공된 '실제 공간 통계 지표'의 실제 수치들(유동인구 수, 무단투기 다발 수, 누적 민원 건수) 및 관련 조례를 반드시 대사에 직접 인용하여 논쟁의 구체적 근거로 삼으십시오.\n"
@@ -1084,17 +1090,18 @@ async def stream_debate_sim(req: DebateRequest, db: Session = Depends(get_db)):
             "3. 각 인물의 논리적 입장:\n"
             f"   - {merchant_name} (찬성): 설치의 시급함과 경제 상권 이점(예: 높은 대중교통 유동인구 등)을 후보지 지번 및 목적을 엮어 강하게 옹호합니다.\n"
             f"   - {resident_name} (반대): 높은 갈등 민감도(CSS) 및 주거 피해 요인(예: 민원 건수, 무단투기 다발 수, 조례 상 배제 구역 침범 우려)을 들어 강력 반대합니다.\n"
-            f"   - {coordinator_name} (조정안): 양측의 수치 근거를 모두 반영하여, 조례 위반을 피하면서 이격거리 완충 설계나 정화 시설 보강 등 타협점을 제시합니다.\n"
-            "4. 반드시 각 참가자가 최소 2회 이상 의견을 피력하도록 아래 정해진 순서와 형식으로 총 6턴 이상의 유기적인 대화 대본을 출력하십시오:\n"
+            f"   - {coordinator_name} (정부): 양측의 수치 근거를 모두 반영하여, 조례 위반을 피하면서 이격거리 완충 설계나 정화 시설 보강 등 타협점을 제시합니다.\n"
+            "4. 반드시 각 참가자가 최소 2회 이상 의견을 피력하도록 아래 정해진 순서와 형식으로 총 8턴 이상의 유기적이고 극적인 대화 대본을 출력하십시오:\n"
             f"{merchant_name}: ... (1차 찬성 변론)\n"
-            f"{resident_name}: ... (상인대표 의견에 대한 반론 및 1차 반대 근거)\n"
-            f"{merchant_name}: ... (주민대표 반론에 대한 설득 및 반박)\n"
+            f"{resident_name}: ... (반대대표 의견에 대한 반론 및 1차 반대 근거)\n"
+            f"{merchant_name}: ... (반대대표 반론에 대한 설득 및 반박)\n"
             f"{resident_name}: ... (재반론 및 최종 우려 피력)\n"
-            f"{coordinator_name}: ... (중재안 제시 및 타협안 도출)\n"
+            f"{coordinator_name}: ... (정부 중재안 제시 및 타협안 도출)\n"
             f"{merchant_name}: ... (중재안 피드백 및 협조)\n"
             f"{resident_name}: ... (중재안 수용 및 관리 감독 요구)\n"
             f"{coordinator_name}: ... (최종 토론 합의 및 회의 마무리)\n\n"
             f"{intensity_instruction}\n\n"
+            "5. [극사실주의 갈등 연출 지침]: 모든 등장인물은 관료식의 딱딱한 정형 문구를 탈피하고, 실제 주민 간담회 및 공청회 현장에서 공무원을 향해 뿜어져 나오는 생생한 어휘와 아날로그적 억양을 충실히 녹여서 토론을 완성하십시오.\n"
             "가상의 수치나 뜬구름 잡는 일반론 대신, 오직 주어진 실제 컨텍스트 수치들만을 근거로 삼으십시오."
         )
         

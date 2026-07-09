@@ -1,0 +1,4 @@
+- `[x]` OptimalResultPanel.jsx 지번 주소 텍스트 복사 버튼 고도화
+- `[x]` spatial.py /recommend API 내 공간 다양성 이격 필터(Spatial Diversity Filter) 구현
+- `[x]` E2E 통합 테스트 검증 및 이격 후보지 분산 정상 동작 확인
+- `[x]` 물리 바탕화면 동기화 이관

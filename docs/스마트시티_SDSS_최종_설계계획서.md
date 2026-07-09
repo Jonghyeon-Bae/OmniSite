@@ -77,3 +77,9 @@ venv\Scripts\python scratch/ahp_spatial_test.py
 
 ### Manual Verification
 - 브라우저 상에서 컴포넌트 분리 후의 **1) 맵 렌더링 정상 가동 여부**, **2) 마커 드래그 스냅 보정 작동 여부**, **3) 전체 초기화 작동 여부**를 교차 감리하여 컴포넌트 분리로 인한 UI 회귀 버그가 없음을 보증합니다.
+
+---
+
+## 📐 v4.9.13 동적 제로-하드코딩 설계 사양 추가 (설계 리비전)
+- **공간 차집합 버퍼 degree 실시간 환산 바인딩:** RAG 조례 규격 rules_json 및 rules_metadata를 PostGIS SQL 쿼리 시점에 파라미터 매핑을 통하여 동적으로 각도(degree) 환산 주입하여 백엔드 소스 내 미터법 수치 하드코딩 영구 제거.
+- **AHP 지표 DB 메타데이터 동적 복원 가드 설계:** RAG 감리 data 내 criteria 2개 이하 결측 시 DB ahp_models 최신 가중치 테이블 이력 구조 및 domain_regulation_rules를 쿼리해 동적으로 지표를 재조립하는 제로-하드코딩 criteria 데이터 파이프라인 설계 설계 반영.

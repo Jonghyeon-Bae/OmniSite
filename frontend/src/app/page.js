@@ -43,6 +43,7 @@ export default function Home() {
   const [uploadedFilenames, setUploadedFilenames] = useState([]);
   const [fileBehaviors, setFileBehaviors] = useState({});
   const [showManualMapping, setShowManualMapping] = useState(false);
+  const [isRecommending, setIsRecommending] = useState(false);
 
   // 1. AHP 가중치 입력 상태
   const [criteriaList, setCriteriaList] = useState([
@@ -89,14 +90,14 @@ export default function Home() {
   const [userExclusionGeoJson, setUserExclusionGeoJson] = useState(null);
   const [isDrawingExclusion, setIsDrawingExclusion] = useState(false);
   const [drawnPoints, setDrawnPoints] = useState([]);
-  const [panelPosition, setPanelPosition] = useState({ x: 1000, y: 80 });
+  const [panelPosition, setPanelPosition] = useState({ x: 420, y: 80 });
   const [dragStart, setDragStart] = useState(null);
   const [mapZoom, setMapZoom] = useState(14);
 
   // 최초 서비스 마운트 시 (웹 접속 시) 데이터베이스 및 로컬 캐시 초기화
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      setPanelPosition({ x: window.innerWidth - 280, y: 80 });
+      setPanelPosition({ x: 420, y: 80 });
     }
 
     apiFetch('/api/v1/upload/clear', { method: 'POST' })
@@ -267,20 +268,40 @@ export default function Home() {
     try {
       const res = await apiFetch('/api/v1/upload/clear', { method: 'POST' });
       if (res.ok) {
-        // 모든 상태 클리어
+        // Step 1 및 파일 감리 상태 완전 초기화
         setPipelineStep(1);
+        setIsAuditComplete(false);
+        setAuditMetadata(null);
+        setInferredPurpose('');
+        setInferredDomainTag('city_feature');
+        setHitlQuestion('');
+        setInferredReasoning('');
+        setUserPurpose('');
         setUploadedCsvFilename('');
         setColumnMapping({});
         setCsvHeaders([]);
         setMissingCoordinates([]);
+        setIsUploading(false);
+        setUploadedFilenames([]);
+        setFileBehaviors({});
+        setShowManualMapping(false);
+        
+        // Step 2 보정 상태 초기화
         setHitlJibun('');
         setHitlLng(126.9724);
         setHitlLat(37.5302);
+        
+        // Step 3, 4, 5 상태 초기화
         setSimLogs([]);
         setSimStep(0);
         setIsAhpLocked(false);
-        setAuditResult(null);
-        setShowManualMapping(false);
+
+        // HTML 파일 인풋 값 강제 비우기 (처음부터 재업로드 가능하도록 지원)
+        const fileInput = document.getElementById('file-uploader');
+        if (fileInput) {
+          fileInput.value = '';
+        }
+        
         alert('🔄 플랫폼 파이프라인 및 임시 공간 데이터 초기화가 완료되었습니다. Step 1 단계부터 다시 시작하십시오.');
       } else {
         alert('❌ 초기화 API 호출 실패');
@@ -1144,6 +1165,28 @@ export default function Home() {
   return (
     <div className="relative min-h-screen overflow-hidden text-slate-100 font-sans">
       
+      {/* 글로벌 분석 로딩 오버레이 [v4.5.4] */}
+      {(isUploading || isRecommending) && (
+        <div className="fixed inset-0 bg-slate-950/75 backdrop-blur-md z-[9999] flex flex-col items-center justify-center gap-4 transition-all">
+          <div className="relative w-20 h-20">
+            {/* 외부 회전 링 */}
+            <div className="absolute inset-0 rounded-full border-4 border-t-blue-500 border-r-blue-400/30 border-b-blue-300/10 border-l-blue-400/20 animate-spin" />
+            {/* 내부 역회전 링 */}
+            <div className="absolute inset-2 rounded-full border-4 border-t-amber-500 border-l-amber-400/30 border-b-amber-300/10 border-r-amber-400/20 animate-spin" style={{ animationDirection: 'reverse', animationDuration: '1.5s' }} />
+            {/* 중앙 코어 */}
+            <div className="absolute inset-5 bg-gradient-to-tr from-blue-600 to-indigo-500 rounded-full shadow-inner animate-pulse" />
+          </div>
+          <div className="flex flex-col items-center gap-1.5 mt-2 text-center">
+            <span className="text-sm font-bold tracking-wider text-white uppercase animate-pulse">
+              {isUploading ? 'AI Ingestion & Semantic Auditing' : 'Optimal Site Spatial Ingress'}
+            </span>
+            <span className="text-[11px] text-slate-400 font-mono">
+              {isUploading ? '조례 RAG 데이터베이스 교차 대칭 검증 및 도메인 규칙 판독 중...' : 'PostGIS 공간 차집합 연산 및 AHP 가중합 댐핑 스케일러 연산 중...'}
+            </span>
+          </div>
+        </div>
+      )}
+      
       {/* 1. 상단 글로벌 네비게이션 헤더 */}
       <header className="absolute top-0 left-0 right-0 h-16 glass-panel rounded-none border-t-0 border-x-0 z-45 px-8 flex justify-between items-center">
         <div className="flex items-center gap-3">
@@ -1373,6 +1416,7 @@ export default function Home() {
           {/* AHP 잠금 버튼 -> 입지 분석 트리거 */}
           <button
             onClick={async () => {
+              setIsRecommending(true);
               try {
                 const lockRes = await apiFetch('/api/v1/ahp/lock', {
                   method: 'POST',
@@ -1388,6 +1432,7 @@ export default function Home() {
                 if (!lockRes.ok) {
                   const errData = await lockRes.json();
                   alert('AHP 모델 락 오류: ' + (errData.detail || '검증 실패'));
+                  setIsRecommending(false);
                   return;
                 }
                 const lockData = await lockRes.json();
@@ -1414,6 +1459,8 @@ export default function Home() {
                 alert('AHP 모델 일관성 검증 승인. PostGIS 다기준 공간 차집합 연산 기동 완료! [Step 4: 최적 입지 선정 결과]를 우측에서 확인하세요.');
               } catch (err) {
                 alert('오류 발생: ' + err.message);
+              } finally {
+                setIsRecommending(false);
               }
             }}
             disabled={crValue >= 0.1 || pipelineStep !== 3}
@@ -1694,24 +1741,24 @@ export default function Home() {
             <div className="flex-1 my-4 bg-slate-950/70 rounded-xl p-4 overflow-y-auto font-mono text-xs flex flex-col gap-3 border border-slate-900/80">
               {simLogs.map((log, index) => {
                 const sender = log.sender || '';
-                let badgeClass = 'text-slate-300 bg-slate-900 border border-slate-800';
+                let textClass = 'text-slate-300';
                 
                 if (sender.includes('보건') || sender.includes('구청') || sender.includes('공무원') || sender.includes('정부')) {
-                  badgeClass = 'text-sky-400 bg-sky-950/35 border border-sky-500/30';
+                  textClass = 'text-sky-400 font-medium';
                 } else if (sender.includes('상인') || sender.includes('소상공인') || sender.includes('반대') || sender.includes('번영회')) {
-                  badgeClass = 'text-rose-400 bg-rose-950/35 border border-rose-500/30';
+                  textClass = 'text-rose-400 font-medium';
                 } else if (sender.includes('주민') || sender.includes('시민') || sender.includes('찬성') || sender.includes('학부모')) {
-                  badgeClass = 'text-emerald-400 bg-emerald-950/35 border border-emerald-500/30';
+                  textClass = 'text-emerald-400 font-medium';
                 } else if (sender.includes('시스템') || sender.includes('조정') || sender.includes('중재') || sender.includes('심의')) {
-                  badgeClass = 'text-amber-400 bg-amber-950/35 border border-amber-500/30';
+                  textClass = 'text-amber-400 font-semibold';
                 }
                 
                 return (
-                  <div key={index} className="flex gap-2 items-start leading-relaxed">
-                    <span className={`shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded shadow-sm font-sans ${badgeClass}`}>
-                      {sender}
+                  <div key={index} className={`flex gap-2 items-start leading-relaxed ${textClass}`}>
+                    <span className="shrink-0 font-bold font-sans">
+                      [{sender}]
                     </span>
-                    <span className="text-slate-200 mt-0.5">{log.text}</span>
+                    <span className="mt-0.5">{log.text}</span>
                   </div>
                 );
               })}

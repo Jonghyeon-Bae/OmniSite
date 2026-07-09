@@ -87,10 +87,10 @@ def parse_csv_header(file_path: str) -> List[str]:
 # 헤더 정보만으로 매핑 및 스키마 결함 여부를 검사하는 경량 헬퍼
 def analyze_csv_header_only(headers: List[str]):
     standard_columns = {
-        "lat": ["lat", "latitude", "위도", "y"],
-        "lng": ["lng", "longitude", "경도", "x"],
-        "pnu": ["pnu", "pnu_code", "필지고유번호", "지적코드"],
-        "address": ["address", "addr", "주소", "지번", "location"]
+        "lat": ["lat", "latitude", "위도", "y", "y좌표", "y_coordinate", "위도좌표", "좌표y"],
+        "lng": ["lng", "longitude", "경도", "x", "x좌표", "x_coordinate", "경도좌표", "좌표x"],
+        "pnu": ["pnu", "pnu_code", "필지고유번호", "지적코드", "고유번호", "지번코드"],
+        "address": ["address", "addr", "주소", "지번", "location", "소재지", "위치", "도로명주소"]
     }
     
     detected_mapping = {}
@@ -187,10 +187,10 @@ def analyze_csv_data(file_path: str):
     
     # 1. 컬럼 매핑 후보군 매칭
     standard_columns = {
-        "lat": ["lat", "latitude", "위도", "y"],
-        "lng": ["lng", "longitude", "경도", "x"],
-        "pnu": ["pnu", "pnu_code", "필지고유번호", "지적코드"],
-        "address": ["address", "addr", "주소", "지번", "location"]
+        "lat": ["lat", "latitude", "위도", "y", "y좌표", "y_coordinate", "위도좌표", "좌표y"],
+        "lng": ["lng", "longitude", "경도", "x", "x좌표", "x_coordinate", "경도좌표", "좌표x"],
+        "pnu": ["pnu", "pnu_code", "필지고유번호", "지적코드", "고유번호", "지번코드"],
+        "address": ["address", "addr", "주소", "지번", "location", "소재지", "위치", "도로명주소"]
     }
     
     detected_mapping = {}
@@ -434,6 +434,7 @@ class HITLCommitRequest(BaseModel):
     corrections: List[CoordinateCorrection]
     confirmed_domain: Optional[str] = None
     file_behaviors: Optional[Dict[str, str]] = None
+    spatial_restrictions: Optional[Dict[str, float]] = None
 
 # PM 개발 철칙 2조 준수: 반드시 비동기 API(async def) 적용
 # 조례/시행규칙 규정 문서 등록 API
@@ -712,7 +713,7 @@ async def audit_upload_files(request: AuditRequest, db: Session = Depends(get_db
 5. opinion: 전체 조례 및 공간 데이터를 교차 검토하여 특정 시설물 제한 구역에 대한 감리 평가 의견
 6. rules_matched: 조례 상에서 식별해 낸 구체적인 입지 제약 조항 목록
 7. criteria: 이번 입지 분석 목적에 매칭되는 가장 연관성 높고 중요한 핵심 의사결정 평가 인자(AHP용 지표) 목록 (수량은 3~8개 사이로 유동적으로 도출하며, 각 인자마다 key, 한글 label, 그리고 이번에 업로드된 CSV 파일 목록 중 해당 인자와 가장 연관성이 높은 파일명을 'associated_file' 필드로 반드시 매칭하십시오. 만약 업로드된 파일 중에 매칭되는 데이터가 없다면 null로 비워두십시오.)
-8. spatial_restrictions: 조례 규정에서 발견된 이격거리 규제 사양 (예: 지하철역 주변 10m 혹은 어린이집 경계 30m 등). transit_station, childcare_center와 같은 영문 키와 규제 거리(미터 숫자값) 딕셔너리로 반환하십시오.
+8. spatial_restrictions: 조례 규정에서 발견된 이격거리 규제 사양 (예: 지하철역 주변 10m 혹은 어린이집 경계 30m 등). 특히 학교(school), 어린이집(childcare_center), 금연구역(nosmoking_zone)이 있다면 조례 텍스트의 규정이나 시행령/조례 최소치를 판독해 미터 숫자값 딕셔너리로 반환하십시오. 단, 학교의 경우 법령상 절대 금지되는 최소치(절대보호구역)인 50미터(school: 50.0)를 우선 추출하십시오.
 9. file_behaviors: 업로드된 각 CSV 파일이 이번 도메인 분석 목적(inferred_domain_tag) 하에서 법적/행정적 설치 금지 구역에 해당하는지("exclusion"), 아니면 단순 설치 허용/가용/권장 주차장이나 교통 노드 정보 등에 해당하는지("inclusion") 조례(RAG)를 바탕으로 판정하십시오. 파일명을 키로 하고 "exclusion" 또는 "inclusion"을 값으로 하는 객체로 반환하십시오.
 
 반드시 아래 JSON 포맷으로만 응답해야 합니다 (Markdown 없이 순수 JSON만 반환):
@@ -737,8 +738,9 @@ async def audit_upload_files(request: AuditRequest, db: Session = Depends(get_db
     }}
   ],
   "spatial_restrictions": {{
-    "transit_station": 10,
-    "childcare_center": 30
+    "school": 50.0,
+    "childcare_center": 30.0,
+    "nosmoking_zone": 10.0
   }},
   "file_behaviors": {{
     "파일명1.csv": "exclusion",
@@ -864,6 +866,7 @@ async def audit_upload_files(request: AuditRequest, db: Session = Depends(get_db
                 "schema_errors": meta.get("schema_errors", []),
                 "missing_coordinates": meta.get("missing_coordinates", []),
                 "column_mapping": meta.get("detected_mapping", {}),
+                "headers": meta.get("headers", []),
                 "rules_matched": []
             })
         else:
@@ -979,31 +982,39 @@ async def commit_hitl_data(request: HITLCommitRequest, db: Session = Depends(get
         raise HTTPException(status_code=400, detail="HITL 보정 커밋은 현재 CSV 형식만 지원합니다.")
         
     headers, rows = parse_csv_file(file_path)
+    headers = [h.strip() for h in headers if h]
     
     # 1. 컬럼 매핑 인덱스 추적 (Key-Value Inversion 방어막 적용)
     lat_idx, lng_idx, addr_idx = -1, -1, -1
+    print(f"[HITL Debug] Cleaned headers: {headers}")
+    print(f"[HITL Debug] Received mapping: {request.column_mapping}")
+    
     for k, v in request.column_mapping.items():
-        if k in ["lat", "lng", "address"] and v in headers:
-            idx = headers.index(v)
-            if k == "lat":
+        k_clean = k.strip() if k else ""
+        v_clean = v.strip() if v else ""
+        
+        if k_clean in ["lat", "lng", "address"] and v_clean in headers:
+            idx = headers.index(v_clean)
+            if k_clean == "lat":
                 lat_idx = idx
-            elif k == "lng":
+            elif k_clean == "lng":
                 lng_idx = idx
-            elif k == "address":
+            elif k_clean == "address":
                 addr_idx = idx
-        elif v in ["lat", "lng", "address"] and k in headers:
-            idx = headers.index(k)
-            if v == "lat":
+        elif v_clean in ["lat", "lng", "address"] and k_clean in headers:
+            idx = headers.index(k_clean)
+            if v_clean == "lat":
                 lat_idx = idx
-            elif v == "lng":
+            elif v_clean == "lng":
                 lng_idx = idx
-            elif v == "address":
+            elif v_clean == "address":
                 addr_idx = idx
                 
+    print(f"[HITL Debug] Resolved indices -> lat_idx: {lat_idx}, lng_idx: {lng_idx}, addr_idx: {addr_idx}")
     if lat_idx == -1 or lng_idx == -1:
         raise HTTPException(
             status_code=400, 
-            detail="위도(lat)와 경도(lng)에 대응하는 컬럼 매핑 정보가 누락되었거나 일치하지 않습니다."
+            detail=f"위도(lat)와 경도(lng)에 대응하는 컬럼 매핑 정보가 누락되었거나 일치하지 않습니다. (Resolved: lat={lat_idx}, lng={lng_idx}, Headers={headers}, Mapping={request.column_mapping})"
         )
         
     corrections_map = {c.row_index: c for c in request.corrections}
@@ -1150,6 +1161,34 @@ async def commit_hitl_data(request: HITLCommitRequest, db: Session = Depends(get
             except Exception as ex:
                 print(f"[Auto Commit Error] Failed to process other file {other_file}: {ex}")
                 
+        # [v4.4.3] AI RAG/HITL로부터 도출된 이격거리 규격이 존재하는 경우 DB domain_regulation_rules 에 upsert
+        spatial_rules = request.spatial_restrictions
+        if not spatial_rules:
+            # 넘어온 게 없으면 디폴트 규칙값 구성 (school=50m, childcare=30m, nosmoking=10m)
+            if request.confirmed_domain == "smoking_zone":
+                spatial_rules = {"school": 50.0, "childcare_center": 30.0, "nosmoking_zone": 10.0}
+            elif request.confirmed_domain == "ev_charging":
+                spatial_rules = {"school": 100.0, "childcare_center": 30.0}
+            else:
+                spatial_rules = {"school": 50.0, "childcare_center": 30.0, "nosmoking_zone": 10.0}
+
+        if request.confirmed_domain and spatial_rules:
+            try:
+                upsert_query = text("""
+                    INSERT INTO domain_regulation_rules (facility_type, rules_json, updated_at)
+                    VALUES (:facility_type, :rules_json, CURRENT_TIMESTAMP)
+                    ON CONFLICT (facility_type) 
+                    DO UPDATE SET rules_json = EXCLUDED.rules_json, updated_at = CURRENT_TIMESTAMP
+                """)
+                db.execute(upsert_query, {
+                    "facility_type": request.confirmed_domain,
+                    "rules_json": json.dumps(spatial_rules)
+                })
+                db.commit()
+                print(f"[Regulation Rules Persistent Save] Saved rules for '{request.confirmed_domain}': {spatial_rules}")
+            except Exception as dberr:
+                print(f"[Regulation Rules Persistent Save Error] {dberr}")
+                
         # 커밋 완료 후 업로드 디렉터리 내 원본 CSV 물리 파일 제거 (JSON 캐시만 유지)
         for cf in committed_files:
             try:
@@ -1191,13 +1230,14 @@ async def clear_uploaded_caches(db: Session = Depends(get_db)):
         from app.routers.spatial import _file_cache
         _file_cache.clear()
 
-        # v4.4.1 사용자 정의 금지구역 테이블 초기화 연동 (Mock 데이터 소거)
+        # v4.4.1 사용자 정의 금지구역 테이블 및 v4.4.3 규제 라이브러리 초기화 연동 (Mock 데이터 소거)
         try:
             db.execute(text("TRUNCATE TABLE user_exclusion_zones RESTART IDENTITY CASCADE"))
+            db.execute(text("TRUNCATE TABLE domain_regulation_rules RESTART IDENTITY CASCADE"))
             db.commit()
         except Exception as db_ex:
             db.rollback()
-            print(f"[DB Clear Error] user_exclusion_zones: {db_ex}")
+            print(f"[DB Clear Error] user_exclusion_zones/domain_regulation_rules: {db_ex}")
         
         return {
             "status": "success",

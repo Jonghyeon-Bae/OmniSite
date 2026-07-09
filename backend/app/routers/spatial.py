@@ -256,18 +256,17 @@ async def recommend_optimal_sites(
                   SELECT 1 FROM restricted_zones rz 
                   WHERE rz.district_id = 1
                     AND (
-                        -- 흡연구역일 때는 school(200m), childcare(30m), nosmoking(10m) 모두 차집합 배제
+                        -- 흡연구역일 때는 RAG 해독에 기반한 동적 배제
                         (:facility_type = 'smoking_zone' AND (
-                            (rz.zone_type = 'school' AND ST_DWithin(c.geom, rz.geom, 0.002)) OR
-                            (rz.zone_type = 'childcare_center' AND ST_DWithin(c.geom, rz.geom, 0.0003)) OR
-                            (rz.zone_type = 'nosmoking_zone' AND ST_DWithin(c.geom, rz.geom, 0.0001))
+                            (rz.zone_type = 'school' AND ST_DWithin(c.geom, rz.geom, :school_dist)) OR
+                            (rz.zone_type = 'childcare_center' AND ST_DWithin(c.geom, rz.geom, :childcare_dist)) OR
+                            (rz.zone_type = 'nosmoking_zone' AND ST_DWithin(c.geom, rz.geom, :nosmoking_dist))
                         )) OR
                         -- 전기차 충전소일 때는 school(100m = 약 0.001도), childcare(30m = 약 0.0003도)만 차집합 배제
                         (:facility_type = 'ev_charging' AND (
-                            (rz.zone_type = 'school' AND ST_DWithin(c.geom, rz.geom, 0.001)) OR
-                            (rz.zone_type = 'childcare_center' AND ST_DWithin(c.geom, rz.geom, 0.0003))
+                            (rz.zone_type = 'school' AND ST_DWithin(c.geom, rz.geom, :school_dist_ev)) OR
+                            (rz.zone_type = 'childcare_center' AND ST_DWithin(c.geom, rz.geom, :childcare_dist))
                         ))
-                        -- 옐로카펫 및 공용자전거 등 기타 시설은 학교/어린이집/금연구역 등에 의한 강제 차집합 배제를 적용하지 않음 (안전 구역 내 설치 촉진)
                     )
               )
               -- 흡연구역 도메인인 경우에만 버스정류장/지하철역 이격거리 규제 적용 (10m)
@@ -318,10 +317,7 @@ async def recommend_optimal_sites(
             # Remove trailing land use code characters like '대', '도', '잡', etc.
             clean_jibun = re.sub(r'[대도잡임체공학철]$', '', clean_jibun).strip()
             
-            if is_road:
-                return f"서울특별시 용산구 {clean_jibun} ({matched_road} 인근 도로 부지)"
-            else:
-                return f"서울특별시 용산구 {clean_jibun} ({matched_road} 인근 부지)"
+            return f"서울특별시 용산구 {clean_jibun}"
 
 
         candidates = []
@@ -373,46 +369,99 @@ async def recommend_optimal_sites(
                     filtered_candidates_list.append(c)
             candidates = filtered_candidates_list
 
-        # 3. 실 DB 지적이 없는 경우 HITL 마커 기준점 주변으로 동적 Fallback 후보 생성
+        # 3. 실 DB 지적이 부족한 경우 (candidates < 3), 규제 저촉 필터를 해제하여 실재하는 필지를 차선책으로 긁어옴 (Second-best Query)
         if len(candidates) < 3:
-            import random
-            random.seed(int(base_lat * 10000) + int(base_lng * 10000))  # 좌표 기반 시드로 재현 가능한 난수
+            print(f"[Fallback Active] Real candidates count: {len(candidates)}. Triggering Second-best Query to fetch real cadastral parcels...")
             
-            # dong_id 추론: 기준점 좌표가 속한 행정동 조회
-            dong_query = text("""
-                SELECT id, dong_name FROM dong_boundaries 
-                WHERE ST_Contains(geom, ST_SetSRID(ST_MakePoint(:lng, :lat), 4326))
-                LIMIT 1
+            # 규제 배제 조건을 완화하여 실재하는 국공유지 필지를 기준좌표 주변에서 거리 순으로 긁어옴
+            fallback_query = text("""
+                SELECT c.id, c.pnu, c.jibun, c.land_use_code, c.ownership_type, 
+                       ST_Area(c.geom::geography) AS area, 
+                       ST_X(ST_Centroid(c.geom)) AS lng, 
+                       ST_Y(ST_Centroid(c.geom)) AS lat, 
+                       c.dong_id,
+                       ST_Distance(ST_Centroid(c.geom)::geography, ST_SetSRID(ST_MakePoint(:ref_lng, :ref_lat), 4326)::geography) AS dist_from_ref
+                FROM cadastral_lands c
+                WHERE c.district_id = 1
+                  AND c.ownership_type IN ('국유지', '시유지', '구유지')
+                  AND ST_IsValid(c.geom)
+                  AND ST_DWithin(c.geom, ST_SetSRID(ST_MakePoint(:ref_lng, :ref_lat), 4326), 0.02) -- 약 2km 반경 확장
+                ORDER BY dist_from_ref ASC
+                LIMIT 30
             """)
-            dong_row = None
+            
+            fallback_rows = []
             try:
-                dong_row = db.execute(dong_query, {"lng": base_lng, "lat": base_lat}).fetchone()
-            except Exception:
-                pass
-            
-            ref_dong_id = dong_row[0] if dong_row else 1
-            ref_dong_name = dong_row[1] if dong_row else "용산동"
-            
-            ownership_types = ["국유지", "시유지", "구유지"]
-            candidates = []
-            for i in range(3):
-                offset_lat = round(random.uniform(-0.003, 0.003), 4)
-                offset_lng = round(random.uniform(-0.003, 0.003), 4)
+                fallback_rows = db.execute(fallback_query, {
+                    "ref_lng": base_lng,
+                    "ref_lat": base_lat
+                }).fetchall()
+            except Exception as fe:
+                print(f"[Second-best Query Error] {fe}")
                 
-                fake_jibun = f"{ref_dong_name} {42 + i * 3}-{i + 1} 도" if i == 0 else f"{ref_dong_name} {42 + i * 3}-{i + 1}"
-                fake_land_use = "도" if i == 0 else "잡"
-                
-                candidates.append({
-                    "id": i + 1,
-                    "pnu": f"111701{1100 + i * 100}10{42 + i * 3:04d}0000",
-                    "jibun": to_road_address(fake_jibun, fake_land_use),
-                    "land_use_code": fake_land_use,
-                    "ownership_type": ownership_types[i],
-                    "area": round(random.uniform(80.0, 200.0), 1),
-                    "lng": round(base_lng + offset_lng, 4),
-                    "lat": round(base_lat + offset_lat, 4),
-                    "dong_id": ref_dong_id
+            fallback_candidates = []
+            for r in fallback_rows:
+                # 기존 candidates 에 이미 있는 필지는 중복 회피
+                if any(existing["id"] == r[0] for existing in candidates):
+                    continue
+                fallback_candidates.append({
+                    "id": r[0], "pnu": r[1],
+                    "jibun": to_road_address(r[2], r[3]), # 실재하는 지번 주소 그대로!
+                    "land_use_code": r[3],
+                    "ownership_type": r[4], 
+                    "area": round(float(r[5]), 1),
+                    "lng": float(r[6]), 
+                    "lat": float(r[7]), 
+                    "dong_id": r[8],
+                    "is_fallback_warning": True # 차선책 부지임을 마크
                 })
+            
+            # 부족한 만큼 실제 필지로 채워넣음!
+            for fc in fallback_candidates:
+                if len(candidates) >= 3:
+                    break
+                candidates.append(fc)
+                
+            # 만약 DB(지적도) 자체가 텅 비어있어서 여전히 3개 미만인 극단적 경우에만 가상 모의 부지 난수 생성 (2단계 Fallback)
+            if len(candidates) < 3:
+                import random
+                random.seed(int(base_lat * 10000) + int(base_lng * 10000))
+                
+                dong_query = text("""
+                    SELECT id, dong_name FROM dong_boundaries 
+                    WHERE ST_Contains(geom, ST_SetSRID(ST_MakePoint(:lng, :lat), 4326))
+                    LIMIT 1
+                """)
+                dong_row = None
+                try:
+                    dong_row = db.execute(dong_query, {"lng": base_lng, "lat": base_lat}).fetchone()
+                except Exception:
+                    pass
+                
+                ref_dong_id = dong_row[0] if dong_row else 1
+                ref_dong_name = dong_row[1] if dong_row else "용산동"
+                
+                ownership_types = ["국유지", "시유지", "구유지"]
+                needed = 3 - len(candidates)
+                for i in range(needed):
+                    offset_lat = round(random.uniform(-0.003, 0.003), 4)
+                    offset_lng = round(random.uniform(-0.003, 0.003), 4)
+                    
+                    fake_jibun = f"[모의부지] {ref_dong_name} {42 + i * 3}-{i + 1}"
+                    fake_land_use = "잡"
+                    
+                    candidates.append({
+                        "id": 9999 + i,
+                        "pnu": f"111701{1100 + i * 100}10{42 + i * 3:04d}0000",
+                        "jibun": to_road_address(fake_jibun, fake_land_use),
+                        "land_use_code": fake_land_use,
+                        "ownership_type": ownership_types[i % len(ownership_types)],
+                        "area": round(random.uniform(80.0, 200.0), 1),
+                        "lng": round(base_lng + offset_lng, 6),
+                        "lat": round(base_lat + offset_lat, 6),
+                        "dong_id": ref_dong_id,
+                        "is_simulated_fake": True
+                    })
 
         # 4. 동적 지표 공간 집계 실행 및 편의점 근접 감점 처리 (XAI용 데이터 수집)
         keys = list(criteria_weights.keys())
@@ -532,7 +581,11 @@ async def recommend_optimal_sites(
             
         # XAI 추천 사유 생성 헬퍼 함수 (특정 시설물에 편향되지 않은 다목적 의사결정 추론)
         def generate_recommendation_reason(cand_item: Dict[str, Any], type_str: str) -> str:
-            reasons = ["어린이보호구역(200m) 및 법적 규제지역 경계선을 안전하게 우회 통과한 적격지입니다."]
+            is_fallback = cand_item.get("is_fallback_warning", False)
+            if is_fallback:
+                reasons = ["⚠️ [법정 규제 완화 차선책] 법적 규제 요건을 모두 충족하는 입지가 부족하여, 규제 경계 인근에 위치한 실제 국공유지 필지를 차선 부지로 추천했습니다. 현장 실사가 권장됩니다."]
+            else:
+                reasons = ["어린이보호구역(200m) 및 법적 규제지역 경계선을 안전하게 우회 통과한 적격지입니다."]
             scores_map = cand_item.get("scores", {})
             
             # 1. AHP 가중치 가중 최우선 인자(Max Weight Key) 동적 추출
@@ -687,14 +740,34 @@ async def check_boundary_containment(req: BoundaryCheckRequest, db: Session = De
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"경계 검증 처리 오류: {str(e)}")
 
+# [v4.4.3] AI RAG 해독 규제거리 규칙 조회 헬퍼 (데이터베이스 영구 적재 및 규칙 라이브러리 연동)
+def get_domain_regulation_rules(db: Session, facility_type: str) -> dict:
+    try:
+        query = text("""
+            SELECT rules_json 
+            FROM domain_regulation_rules 
+            WHERE facility_type = :facility_type
+        """)
+        row = db.execute(query, {"facility_type": facility_type}).fetchone()
+        if row and row[0]:
+            return dict(row[0])
+    except Exception as ex:
+        print(f"[get_domain_regulation_rules Error] {ex}")
+    
+    # DB에 적재된 규칙이 없을 시 기본 디폴트 규칙값 적용 (시행규칙/조례 최소치 디폴트 매핑)
+    # school: 절대보호구역 50m, childcare: 30m, nosmoking: 10m
+    if facility_type == "smoking_zone":
+        return {"school": 50.0, "childcare_center": 30.0, "nosmoking_zone": 10.0}
+    elif facility_type == "ev_charging":
+        return {"school": 100.0, "childcare_center": 30.0}
+    return {"school": 50.0, "childcare_center": 30.0, "nosmoking_zone": 10.0}
+
+
 # 3. 규제 시설물 좌표 조회 API (Step 2 규제 버퍼 가시화용 - restricted_zones 및 업로드된 dynamic exclusion 연동)
 @router.get("/spatial/restrictions/points")
 async def get_restriction_points(facility_type: str = "smoking_zone", db: Session = Depends(get_db)):
     try:
         # 도메인별 적용되는 기본 법정 규제 유형 분류
-        # smoking_zone: school, childcare_center, nosmoking_zone 모두 적용
-        # ev_charging: school, childcare_center 만 적용 (화재안전, 아동보호)
-        # yellow_carpet 및 public_bicycle: 기본 규제 구역 제외 없음
         allowed_types = []
         if facility_type == "smoking_zone":
             allowed_types = ["school", "childcare_center", "nosmoking_zone"]
@@ -713,18 +786,13 @@ async def get_restriction_points(facility_type: str = "smoking_zone", db: Sessio
             """)
             zone_rows = db.execute(zone_query).fetchall()
             
+            # DB/캐시에서 도메인에 해당 규칙 불러오기
+            rules = get_domain_regulation_rules(db, facility_type)
+            
             for r in zone_rows:
                 z_type = r[5]
-                # 조례 규정 및 PostGIS 이격 거리와 100% 매핑 동기화
-                real_radius = 10.0
-                if z_type == "school":
-                    real_radius = 200.0
-                elif z_type == "childcare_center":
-                    real_radius = 30.0
-                elif z_type == "nosmoking_zone":
-                    real_radius = 10.0
-                else:
-                    real_radius = float(r[4])
+                # 캐시된 법정 반경값 획득, 없을 시 DB area 컬럼값 또는 디폴트 10m 매핑
+                real_radius = rules.get(z_type, float(r[4]) if r[4] else 10.0)
 
                 points.append({
                     "id": int(r[0]),

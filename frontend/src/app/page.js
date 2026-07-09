@@ -37,6 +37,7 @@ export default function Home() {
   const [userPurpose, setUserPurpose] = useState('');
   const [uploadedCsvFilename, setUploadedCsvFilename] = useState('');
   const [columnMapping, setColumnMapping] = useState({});
+  const [csvHeaders, setCsvHeaders] = useState([]);
   const [missingCoordinates, setMissingCoordinates] = useState([]);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadedFilenames, setUploadedFilenames] = useState([]);
@@ -162,12 +163,12 @@ export default function Home() {
   const tempMarkersRef = useRef([]);
   const tempPolylineRef = useRef(null);
 
-  // [v4.4.2] 지도 줌 레벨과 법정 규제 타입에 따른 시각화 원 반경 동적 보정 (조례 사양 보존 & 시각 정화 융합)
+  // [v4.4.3] 지도 줌 레벨과 법정 규제 타입에 따른 시각화 원 반경 동적 보정 (조례 최소치 사양 보존 & 시각 정화 융합)
   const getZoomAdjustedRadius = (pt, zoom) => {
     const rawRadius = pt.radius || 20;
     if (zoom <= 14) {
-      if (pt.type === 'school') return Math.min(rawRadius, 40);
-      if (pt.type === 'childcare_center') return Math.min(rawRadius, 25);
+      if (pt.type === 'school') return Math.min(rawRadius, 30); // 50m 규제 시 줌아웃 30m 댐핑
+      if (pt.type === 'childcare_center') return Math.min(rawRadius, 20); // 30m 규제 시 줌아웃 20m 댐핑
       return Math.min(rawRadius, 10);
     }
     return rawRadius;
@@ -233,6 +234,7 @@ export default function Home() {
       if (res.ok) {
         const resData = await res.json();
         alert(`✅ 저장 완료: ${resData.message}`);
+        clearTempDrawing();
         setIsDrawingExclusion(false);
 
         const listRes = await apiFetch('/api/v1/spatial/user-exclusions');
@@ -243,6 +245,7 @@ export default function Home() {
       } else {
         const errData = await res.json();
         alert(`❌ 저장 실패: ${errData.detail || '알 수 없는 오류'}`);
+        clearTempDrawing();
         setIsDrawingExclusion(false);
       }
     } catch (err) {
@@ -468,13 +471,11 @@ export default function Home() {
           console.error("Boundary check API failed:", err);
         }
 
-        setHitlLat(parseFloat(newPos.lat.toFixed(4)));
-        setHitlLng(parseFloat(newPos.lng.toFixed(4)));
+        setHitlLat(parseFloat(newPos.lat.toFixed(6)));
+        setHitlLng(parseFloat(newPos.lng.toFixed(6)));
       });
 
       markersRef.current['temp'] = marker;
-      map.panTo([hitlLat, hitlLng]);
-
     } else if (pipelineStep >= 4) {
       // Step 4 이상: 추천 후보 3개 마커 동시 드로잉
 
@@ -575,10 +576,6 @@ export default function Home() {
         markersRef.current[key] = marker;
       });
 
-      const activeParcel = selectedParcel[activeTab];
-      if (activeParcel && isValidCoordinate(activeParcel.lat, activeParcel.lng)) {
-        map.panTo([activeParcel.lat, activeParcel.lng]);
-      }
     }
   }, [leafletLoaded, pipelineStep, districtGeoJson, restrictionPoints, spatialRestrictions, selectedParcel, userExclusionGeoJson, mapZoom]);
 
@@ -1064,6 +1061,7 @@ export default function Home() {
       if (csvResult) {
         setUploadedCsvFilename(csvResult.filename);
         setColumnMapping(csvResult.column_mapping || {});
+        setCsvHeaders(csvResult.headers || []);
         setMissingCoordinates([]);
         try {
           const geojsonRes = await apiFetch(`/api/v1/upload/geojson/${csvResult.filename}`);
@@ -1402,15 +1400,43 @@ export default function Home() {
             </div>
             
             <div className="bg-slate-950/40 p-4 rounded-xl border border-amber-500/30 flex flex-col gap-3">
+              
+              <div className="flex flex-col gap-1 text-[11px]">
+                <span className="text-slate-400 font-semibold text-amber-500">📂 위도(Lat) 컬럼 매핑</span>
+                <select
+                  value={columnMapping.lat || ''}
+                  onChange={(e) => setColumnMapping(prev => ({ ...prev, lat: e.target.value }))}
+                  className="bg-slate-900 border border-slate-700 rounded px-2 py-1.5 text-white text-xs outline-none focus:border-amber-500"
+                >
+                  <option value="">-- 위도 컬럼 선택 --</option>
+                  {csvHeaders.map(h => (
+                    <option key={h} value={h}>{h}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex flex-col gap-1 text-[11px]">
+                <span className="text-slate-400 font-semibold text-amber-500">📂 경도(Lng) 컬럼 매핑</span>
+                <select
+                  value={columnMapping.lng || ''}
+                  onChange={(e) => setColumnMapping(prev => ({ ...prev, lng: e.target.value }))}
+                  className="bg-slate-900 border border-slate-700 rounded px-2 py-1.5 text-white text-xs outline-none focus:border-amber-500"
+                >
+                  <option value="">-- 경도 컬럼 선택 --</option>
+                  {csvHeaders.map(h => (
+                    <option key={h} value={h}>{h}</option>
+                  ))}
+                </select>
+              </div>
 
               <div className="flex gap-2">
                 <div className="flex-1 flex flex-col gap-1 text-[11px]">
-                  <span className="text-slate-400">경도(Lng)</span>
-                  <input type="number" step="0.0001" value={hitlLng} onChange={(e) => setHitlLng(parseFloat(e.target.value))} className="bg-slate-900 border border-slate-700 rounded px-2 py-1 text-white text-xs" />
+                  <span className="text-slate-400">경도(Lng) 좌표 보정</span>
+                  <input type="number" step="0.000001" value={hitlLng} onChange={(e) => setHitlLng(parseFloat(e.target.value))} className="bg-slate-900 border border-slate-700 rounded px-2 py-1 text-white text-xs" />
                 </div>
                 <div className="flex-1 flex flex-col gap-1 text-[11px]">
-                  <span className="text-slate-400">위도(Lat)</span>
-                  <input type="number" step="0.0001" value={hitlLat} onChange={(e) => setHitlLat(parseFloat(e.target.value))} className="bg-slate-900 border border-slate-700 rounded px-2 py-1 text-white text-xs" />
+                  <span className="text-slate-400">위도(Lat) 좌표 보정</span>
+                  <input type="number" step="0.000001" value={hitlLat} onChange={(e) => setHitlLat(parseFloat(e.target.value))} className="bg-slate-900 border border-slate-700 rounded px-2 py-1 text-white text-xs" />
                 </div>
               </div>
               <button 
@@ -1599,18 +1625,29 @@ export default function Home() {
 
             {/* 터미널 대화 스크롤 */}
             <div className="flex-1 my-4 bg-slate-950/70 rounded-xl p-4 overflow-y-auto font-mono text-xs flex flex-col gap-3 border border-slate-900/80">
-              {simLogs.map((log, index) => (
-                <div key={index} className="flex gap-2">
-                  <span className={`font-semibold shrink-0 ${
-                    log.sender.startsWith('시스템') ? 'text-blue-400' :
-                    log.sender.includes('반대') ? 'text-rose-400' :
-                    log.sender.includes('찬성') ? 'text-emerald-400' : 'text-slate-300'
-                  }`}>
-                    [{log.sender}]
-                  </span>
-                  <span className="text-slate-200">{log.text}</span>
-                </div>
-              ))}
+              {simLogs.map((log, index) => {
+                const sender = log.sender || '';
+                let badgeClass = 'text-slate-300 bg-slate-900 border border-slate-800';
+                
+                if (sender.includes('보건') || sender.includes('구청') || sender.includes('공무원') || sender.includes('정부')) {
+                  badgeClass = 'text-sky-400 bg-sky-950/35 border border-sky-500/30';
+                } else if (sender.includes('상인') || sender.includes('소상공인') || sender.includes('반대') || sender.includes('번영회')) {
+                  badgeClass = 'text-rose-400 bg-rose-950/35 border border-rose-500/30';
+                } else if (sender.includes('주민') || sender.includes('시민') || sender.includes('찬성') || sender.includes('학부모')) {
+                  badgeClass = 'text-emerald-400 bg-emerald-950/35 border border-emerald-500/30';
+                } else if (sender.includes('시스템') || sender.includes('조정') || sender.includes('중재') || sender.includes('심의')) {
+                  badgeClass = 'text-amber-400 bg-amber-950/35 border border-amber-500/30';
+                }
+                
+                return (
+                  <div key={index} className="flex gap-2 items-start leading-relaxed">
+                    <span className={`shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded shadow-sm font-sans ${badgeClass}`}>
+                      {sender}
+                    </span>
+                    <span className="text-slate-200 mt-0.5">{log.text}</span>
+                  </div>
+                );
+              })}
               {simStep < 6 ? (
                 <div className="text-slate-500 animate-pulse">... 에이전트 심의 분석 진행 중 ...</div>
               ) : (

@@ -435,6 +435,7 @@ class HITLCommitRequest(BaseModel):
     confirmed_domain: Optional[str] = None
     file_behaviors: Optional[Dict[str, str]] = None
     spatial_restrictions: Optional[Dict[str, float]] = None
+    score_modifiers: Optional[List[Dict]] = None
 
 # PM 개발 철칙 2조 준수: 반드시 비동기 API(async def) 적용
 # 조례/시행규칙 규정 문서 등록 API
@@ -688,6 +689,7 @@ async def audit_upload_files(request: AuditRequest, db: Session = Depends(get_db
     ]
     spatial_restrictions_global = {}
     file_behaviors_global = {}
+    score_modifiers_global = []
     
     ai_success = False
     
@@ -715,6 +717,7 @@ async def audit_upload_files(request: AuditRequest, db: Session = Depends(get_db
 7. criteria: 이번 입지 분석 목적에 매칭되는 가장 연관성 높고 중요한 핵심 의사결정 평가 인자(AHP용 지표) 목록 (수량은 3~8개 사이로 유동적으로 도출하며, 각 인자마다 key, 한글 label, 그리고 이번에 업로드된 CSV 파일 목록 중 해당 인자와 가장 연관성이 높은 파일명을 'associated_file' 필드로 반드시 매칭하십시오. 만약 업로드된 파일 중에 매칭되는 데이터가 없다면 null로 비워두십시오.)
 8. spatial_restrictions: 조례 규정에서 발견된 이격거리 규제 사양 (예: 지하철역 주변 10m 혹은 어린이집 경계 30m 등). 특히 학교(school), 어린이집(childcare_center), 금연구역(nosmoking_zone)이 있다면 조례 텍스트의 규정이나 시행령/조례 최소치를 판독해 미터 숫자값 딕셔너리로 반환하십시오. 단, 학교의 경우 법령상 절대 금지되는 최소치(절대보호구역)인 50미터(school: 50.0)를 우선 추출하십시오.
 9. file_behaviors: 업로드된 각 CSV 파일이 이번 도메인 분석 목적(inferred_domain_tag) 하에서 법적/행정적 설치 금지 구역에 해당하는지("exclusion"), 아니면 단순 설치 허용/가용/권장 주차장이나 교통 노드 정보 등에 해당하는지("inclusion") 조례(RAG)를 바탕으로 판정하십시오. 파일명을 키로 하고 "exclusion" 또는 "inclusion"을 값으로 하는 객체로 반환하십시오.
+10. score_modifiers: 분석용 데이터셋의 컬럼값 또는 조례 규정에서 발견된 입지 선정 시의 특정 토지 지목이나 위치적 이점에 따른 점수 가/감점 사양을 추출하십시오. (예: 지목이 도로 '도' 이면 한전 협의 리스크로 -4.0 감점, 지목이 주차장 '차' 이거나 공원 '공' 이면 연계 편의성으로 +6.0 가점, 또는 편의점 인접 시 +5.0 가점 등). 이 가/감점 룰 리스트를 'score_modifiers' 객체 배열로 반환하십시오.
 
 반드시 아래 JSON 포맷으로만 응답해야 합니다 (Markdown 없이 순수 JSON만 반환):
 {{
@@ -745,7 +748,23 @@ async def audit_upload_files(request: AuditRequest, db: Session = Depends(get_db
   "file_behaviors": {{
     "파일명1.csv": "exclusion",
     "파일명2.csv": "inclusion"
-  }}
+  }},
+  "score_modifiers": [
+    {{
+      "target": "land_use_code",
+      "operator": "IN",
+      "values": ["도"],
+      "points": -4.0,
+      "reason": "도로 부지 사용 시 한전 배전 용량 협의 리스크 감점"
+    }},
+    {{
+      "target": "land_use_code",
+      "operator": "IN",
+      "values": ["차", "공"],
+      "points": 6.0,
+      "reason": "공영주차장 및 공원 부지 연계 편의성 가점"
+    }}
+  ]
 }}
 """
         try:
@@ -767,6 +786,7 @@ async def audit_upload_files(request: AuditRequest, db: Session = Depends(get_db
             criteria_global = result_json.get("criteria", criteria_global)
             spatial_restrictions_global = result_json.get("spatial_restrictions", {})
             file_behaviors_global = result_json.get("file_behaviors", {})
+            score_modifiers_global = result_json.get("score_modifiers", [])
             
             # 도메인 태그 유사도 기반 중복 방지 및 병합 엔진 적용
             inferred_domain_tag = get_or_create_merged_tag(inferred_domain_tag, reasoning_global, db)
@@ -799,6 +819,10 @@ async def audit_upload_files(request: AuditRequest, db: Session = Depends(get_db
                 "transit_station": 10.0,
                 "childcare_center": 30.0
             }
+            score_modifiers_global = [
+                {"target": "land_use_code", "operator": "IN", "values": ["도"], "points": -4.0, "reason": "도로 부지 사용 시 한전 배전 용량 협의 리스크 감점"},
+                {"target": "land_use_code", "operator": "IN", "values": ["차", "공"], "points": 6.0, "reason": "공영주차장 및 공원 부지 연계 편의성 가점"}
+            ]
             # 도메인 태그 유사도 기반 중복 방지 및 병합 엔진 적용 (Fallback)
             inferred_domain_tag = get_or_create_merged_tag(inferred_domain_tag, reasoning_global, db)
             
@@ -812,6 +836,10 @@ async def audit_upload_files(request: AuditRequest, db: Session = Depends(get_db
                 {"key": "grid_capacity", "label": "배후 전력 인프라", "associated_file": find_fallback_file(["전력", "그리드", "변전소", "grid", "capacity"])},
                 {"key": "park_distance", "label": "공영주차장 거리", "associated_file": find_fallback_file(["주차장", "park"])},
                 {"key": "residence_density", "label": "배후 주거 밀집도", "associated_file": find_fallback_file(["주거", "residence", "아파트", "apartment"])}
+            ]
+            score_modifiers_global = [
+                {"target": "land_use_code", "operator": "IN", "values": ["도"], "points": -6.0, "reason": "도로 부지 사용 시 통행 장애 리스크 감점"},
+                {"target": "land_use_code", "operator": "IN", "values": ["차"], "points": 8.0, "reason": "공영주차장 연계 고속 충전 효율성 가점"}
             ]
             # 도메인 태그 유사도 기반 중복 방지 및 병합 엔진 적용 (Fallback)
             inferred_domain_tag = get_or_create_merged_tag(inferred_domain_tag, reasoning_global, db)
@@ -827,6 +855,7 @@ async def audit_upload_files(request: AuditRequest, db: Session = Depends(get_db
                 {"key": "speed_violations", "label": "속도위반 빈도", "associated_file": find_fallback_file(["위반", "속도", "speed", "violation"])},
                 {"key": "youth_ratio", "label": "아동 생활밀도", "associated_file": find_fallback_file(["아동", "청소년", "어린이", "youth", "child"])}
             ]
+            score_modifiers_global = []
             # 도메인 태그 유사도 기반 중복 방지 및 병합 엔진 적용 (Fallback)
             inferred_domain_tag = get_or_create_merged_tag(inferred_domain_tag, reasoning_global, db)
 
@@ -841,6 +870,7 @@ async def audit_upload_files(request: AuditRequest, db: Session = Depends(get_db
                 {"key": "bike_path_distance", "label": "기성 자전거도로 인접성", "associated_file": find_fallback_file(["도로", "자전거도로", "path", "route"])},
                 {"key": "slope_index", "label": "지형 경사도 평탄화", "associated_file": find_fallback_file(["경사", "평탄", "slope", "elevation"])}
             ]
+            score_modifiers_global = []
             # 도메인 태그 유사도 기반 중복 방지 및 병합 엔진 적용 (Fallback)
             inferred_domain_tag = get_or_create_merged_tag(inferred_domain_tag, reasoning_global, db)
 
@@ -891,6 +921,7 @@ async def audit_upload_files(request: AuditRequest, db: Session = Depends(get_db
         "criteria": criteria_global,
         "spatial_restrictions": spatial_restrictions_global,
         "file_behaviors": file_behaviors_global,
+        "score_modifiers": score_modifiers_global,
         "results": results
     }
 
@@ -1175,17 +1206,18 @@ async def commit_hitl_data(request: HITLCommitRequest, db: Session = Depends(get
         if request.confirmed_domain and spatial_rules:
             try:
                 upsert_query = text("""
-                    INSERT INTO domain_regulation_rules (facility_type, rules_json, updated_at)
-                    VALUES (:facility_type, :rules_json, CURRENT_TIMESTAMP)
+                    INSERT INTO domain_regulation_rules (facility_type, rules_json, rules_metadata, updated_at)
+                    VALUES (:facility_type, :rules_json, :rules_metadata, CURRENT_TIMESTAMP)
                     ON CONFLICT (facility_type) 
-                    DO UPDATE SET rules_json = EXCLUDED.rules_json, updated_at = CURRENT_TIMESTAMP
+                    DO UPDATE SET rules_json = EXCLUDED.rules_json, rules_metadata = EXCLUDED.rules_metadata, updated_at = CURRENT_TIMESTAMP
                 """)
                 db.execute(upsert_query, {
                     "facility_type": request.confirmed_domain,
-                    "rules_json": json.dumps(spatial_rules)
+                    "rules_json": json.dumps(spatial_rules),
+                    "rules_metadata": json.dumps(request.score_modifiers if request.score_modifiers else [])
                 })
                 db.commit()
-                print(f"[Regulation Rules Persistent Save] Saved rules for '{request.confirmed_domain}': {spatial_rules}")
+                print(f"[Regulation Rules Persistent Save] Saved rules & modifiers for '{request.confirmed_domain}': {spatial_rules}")
             except Exception as dberr:
                 print(f"[Regulation Rules Persistent Save Error] {dberr}")
                 

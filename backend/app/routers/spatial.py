@@ -463,6 +463,22 @@ async def recommend_optimal_sites(
                         "is_simulated_fake": True
                     })
 
+        # DB에서 해당 facility_type 의 rules_metadata (가/감점 점수 규칙) 조회
+        rules_metadata = []
+        try:
+            rules_row = db.execute(
+                text("SELECT rules_metadata FROM domain_regulation_rules WHERE facility_type = :facility_type"),
+                {"facility_type": facility_type}
+            ).fetchone()
+            if rules_row and rules_row[0]:
+                import json
+                if isinstance(rules_row[0], str):
+                    rules_metadata = json.loads(rules_row[0])
+                else:
+                    rules_metadata = rules_row[0]
+        except Exception as e:
+            print(f"[Rules Metadata Load Error] {e}")
+
         # 4. 동적 지표 공간 집계 실행 및 편의점 근접 감점 처리 (XAI용 데이터 수집)
         keys = list(criteria_weights.keys())
         raw_scores = {k: [] for k in keys}
@@ -521,32 +537,56 @@ async def recommend_optimal_sites(
                 norm_val = norm_scores[k][idx]
                 total_score += criteria_weights[k] * norm_val
             
-            # [다목적 분기] 흡연구역 도메인인 경우에만 편의점 이격 및 보도 방해 감점 작동
-            if facility_type == "smoking_zone":
-                if cand.get("land_use_code") == "도":
-                    total_score -= 8.0
-                if cand.get("has_cvs"):
-                    total_score -= 12.0
-            
-            # [다목적 분기] 아동 교통안전 옐로카펫 등인 경우
-            elif facility_type == "yellow_carpet":
-                # 보도/도로 인접 필수적이므로 가점
-                if cand.get("land_use_code") == "도":
-                    total_score += 5.0
-            
-            # [다목적 분기] 전기차 충전소 등 시설물인 경우
-            elif facility_type == "ev_charging":
-                if cand.get("land_use_code") == "도":
-                    total_score -= 4.0
-                elif cand.get("land_use_code") in ["차", "공"]: # 공영주차장/잡종지 가점
-                    total_score += 6.0
-            
-            # [다목적 분기] 공용자전거 대여소(따릉이 등)인 경우
-            elif facility_type == "public_bicycle":
-                # 보도/도로 인근 및 주차장 연계가 매우 유리하므로 가점
-                if cand.get("land_use_code") in ["도", "차", "공"]:
-                    total_score += 5.0
+            # 동적 룰 메타데이터 기반 가/감점 연산 [Zero Hardcoding]
+            if isinstance(rules_metadata, list) and len(rules_metadata) > 0:
+                for mod in rules_metadata:
+                    target_col = mod.get("target")
+                    operator = mod.get("operator")
+                    values = mod.get("values", [])
+                    points = float(mod.get("points", 0.0))
                     
+                    cand_val = cand.get(target_col)
+                    
+                    # 연산자별 매칭 비교
+                    matched = False
+                    if operator == "IN":
+                        matched = (cand_val in values)
+                    elif operator == "EQUAL":
+                        matched = (str(cand_val) == str(values[0]) if values else False)
+                    elif operator == "GREATER":
+                        try:
+                            matched = (float(cand_val) > float(values[0]) if values else False)
+                        except (ValueError, TypeError):
+                            pass
+                    elif operator == "LESS":
+                        try:
+                            matched = (float(cand_val) < float(values[0]) if values else False)
+                        except (ValueError, TypeError):
+                            pass
+                    elif operator == "TRUE":
+                        matched = bool(cand_val)
+                        
+                    if matched:
+                        total_score += points
+            else:
+                # [하위 호환성 롤백 폴백] DB 규칙이 없을 경우 도메인별 기존 하드코딩 적용
+                if facility_type == "smoking_zone":
+                    if cand.get("land_use_code") == "도":
+                        total_score -= 8.0
+                    if cand.get("has_cvs"):
+                        total_score -= 12.0
+                elif facility_type == "yellow_carpet":
+                    if cand.get("land_use_code") == "도":
+                        total_score += 5.0
+                elif facility_type == "ev_charging":
+                    if cand.get("land_use_code") == "도":
+                        total_score -= 4.0
+                    elif cand.get("land_use_code") in ["차", "공"]:
+                        total_score += 6.0
+                elif facility_type == "public_bicycle":
+                    if cand.get("land_use_code") in ["도", "차", "공"]:
+                        total_score += 5.0
+                        
             cand["total_score"] = round(total_score, 3)
 
         # 6. 점수 내림차순 정렬 후, 공간적 중복 배제 필터링 (최소 이격거리 70m 보장)

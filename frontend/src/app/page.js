@@ -2,6 +2,11 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
+import LoadingOverlay from '../components/LoadingOverlay';
+import ExclusionZoneControl from '../components/ExclusionZoneControl';
+import DebateSimulatorModal from '../components/DebateSimulatorModal';
+import SidebarControl from '../components/SidebarControl';
+import OptimalResultPanel from '../components/OptimalResultPanel';
 
 const apiFetch = (url, options) => {
   const targetUrl = typeof url === 'string' && url.startsWith('/api/v1')
@@ -308,6 +313,55 @@ export default function Home() {
       }
     } catch (err) {
       alert('❌ 초기화 오류: ' + err.message);
+    }
+  };
+
+  const handleAhpLock = async () => {
+    setIsRecommending(true);
+    try {
+      const lockRes = await apiFetch('/api/v1/ahp/lock', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          district_id: 1,
+          facility_type: inferredDomainTag || 'smoking_zone',
+          criteria_weights: ahpWeights,
+          criteria_list: criteriaList,
+          uploaded_files: uploadedFilenames
+        })
+      });
+      if (!lockRes.ok) {
+        const errData = await lockRes.json();
+        alert('AHP 모델 락 오류: ' + (errData.detail || '검증 실패'));
+        setIsRecommending(false);
+        return;
+      }
+      const lockData = await lockRes.json();
+      
+      const targetLat = isNaN(hitlLat) ? 37.5302 : hitlLat;
+      const targetLng = isNaN(hitlLng) ? 126.9724 : hitlLng;
+      
+      // 추천 입지 연산 기동 (HITL 마커 좌표 기준 인근 탐색)
+      const recommendRes = await apiFetch(`/api/v1/spatial/recommend?model_id=${lockData.model_id}&ref_lat=${targetLat}&ref_lng=${targetLng}`);
+      if (!recommendRes.ok) {
+        throw new Error('공간 입지 추천 연산 실패');
+      }
+      const recommendData = await recommendRes.json();
+      
+      // selectedParcel 업데이트
+      setSelectedParcel({
+        top1: recommendData.candidates.top1,
+        top2: recommendData.candidates.top2,
+        top3: recommendData.candidates.top3
+      });
+      
+      setIsAhpLocked(true);
+      setPipelineStep(4);
+      alert('AHP 모델 일관성 검증 승인. PostGIS 다기준 공간 차집합 연산 기동 완료! [Step 4: 최적 입지 선정 결과]를 우측에서 확인하세요.');
+    } catch (err) {
+      alert('오류 발생: ' + err.message);
+    } finally {
+      setIsRecommending(false);
     }
   };
 
@@ -1166,26 +1220,7 @@ export default function Home() {
     <div className="relative min-h-screen overflow-hidden text-slate-100 font-sans">
       
       {/* 글로벌 분석 로딩 오버레이 [v4.5.4] */}
-      {(isUploading || isRecommending) && (
-        <div className="fixed inset-0 bg-slate-950/75 backdrop-blur-md z-[9999] flex flex-col items-center justify-center gap-4 transition-all">
-          <div className="relative w-20 h-20">
-            {/* 외부 회전 링 */}
-            <div className="absolute inset-0 rounded-full border-4 border-t-blue-500 border-r-blue-400/30 border-b-blue-300/10 border-l-blue-400/20 animate-spin" />
-            {/* 내부 역회전 링 */}
-            <div className="absolute inset-2 rounded-full border-4 border-t-amber-500 border-l-amber-400/30 border-b-amber-300/10 border-r-amber-400/20 animate-spin" style={{ animationDirection: 'reverse', animationDuration: '1.5s' }} />
-            {/* 중앙 코어 */}
-            <div className="absolute inset-5 bg-gradient-to-tr from-blue-600 to-indigo-500 rounded-full shadow-inner animate-pulse" />
-          </div>
-          <div className="flex flex-col items-center gap-1.5 mt-2 text-center">
-            <span className="text-sm font-bold tracking-wider text-white uppercase animate-pulse">
-              {isUploading ? 'AI Ingestion & Semantic Auditing' : 'Optimal Site Spatial Ingress'}
-            </span>
-            <span className="text-[11px] text-slate-400 font-mono">
-              {isUploading ? '조례 RAG 데이터베이스 교차 대칭 검증 및 도메인 규칙 판독 중...' : 'PostGIS 공간 차집합 연산 및 AHP 가중합 댐핑 스케일러 연산 중...'}
-            </span>
-          </div>
-        </div>
-      )}
+      <LoadingOverlay isUploading={isUploading} isRecommending={isRecommending} />
       
       {/* 1. 상단 글로벌 네비게이션 헤더 */}
       <header className="absolute top-0 left-0 right-0 h-16 glass-panel rounded-none border-t-0 border-x-0 z-45 px-8 flex justify-between items-center">
@@ -1239,591 +1274,81 @@ export default function Home() {
         <div id="interactive-map" className="map-container w-full h-full" />
         
         {/* [v4.4.1] 마우스로 끌어서 이동할 수 있는 공간 통제 영역 제어판 (Draggable Control Panel) */}
-        {pipelineStep === 2 && (
-          <div 
-            style={{ 
-              position: 'fixed', 
-              left: `${panelPosition.x}px`, 
-              top: `${panelPosition.y}px`,
-              width: '260px'
-            }}
-            className="z-[1000] glass-panel p-4 flex flex-col gap-3 shadow-xl select-none"
-          >
-            {/* 드래그용 핸들 헤더 (cursor-move) */}
-            <div 
-              onMouseDown={handleMouseDown}
-              className="border-b border-slate-800 pb-2 cursor-move flex flex-col gap-0.5 active:cursor-grabbing"
-              title="마우스로 잡고 드래그하여 위치를 조절할 수 있습니다."
-            >
-              <h3 className="text-xs font-bold text-white mb-0.5 flex items-center gap-1.5">
-                🚨 공간 통제 영역 설정
-              </h3>
-              <p className="text-[9px] text-slate-400">가상 구역 작도 및 실시간 DB 적재</p>
-            </div>
-            
-            {/* 가상 금지구역 그리기 제어 */}
-            <div className="flex flex-col gap-1.5">
-              <button
-                onClick={() => {
-                  if (isDrawingExclusion) {
-                    finishDrawingExclusion();
-                  } else {
-                    setIsDrawingExclusion(true);
-                  }
-                }}
-                className={`text-xs py-2 px-3 rounded-lg font-semibold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                  isDrawingExclusion 
-                    ? 'bg-orange-600 hover:bg-orange-700 text-white animate-pulse' 
-                    : 'bg-slate-800 hover:bg-slate-700 text-slate-200'
-                }`}
-              >
-                {isDrawingExclusion ? '⏹️ 그리기 완료 및 저장' : '✏️ 가상 금지구역 그리기'}
-              </button>
-              {isDrawingExclusion && (
-                <p className="text-[9px] text-orange-400 font-medium text-center animate-bounce leading-relaxed">
-                  ※ 지도 위 꼭짓점들을 좌클릭하고, <br/>마우스 <b>우클릭</b> 또는 <b>이 버튼을 재클릭</b>하면 <br/>명칭/메모 등록 창이 열립니다.
-                </p>
-              )}
-            </div>
-          </div>
-        )}
+        <ExclusionZoneControl 
+          pipelineStep={pipelineStep}
+          panelPosition={panelPosition}
+          handleMouseDown={handleMouseDown}
+          isDrawingExclusion={isDrawingExclusion}
+          setIsDrawingExclusion={setIsDrawingExclusion}
+          finishDrawingExclusion={finishDrawingExclusion}
+        />
       </div>
 
       {/* 3. 좌측 플로팅 패널: 일괄 업로드 및 AHP 가중치 제어 (Upload & AHP Control Panel) */}
-      <div className="floating-overlay left-6 top-20 w-96 glass-panel p-6 flex flex-col gap-6 max-h-[82vh] overflow-y-auto">
-        <div className="flex justify-between items-center">
-          <div>
-            <h2 className="text-sm font-bold text-white mb-0.5">입지선정 기준 설정</h2>
-            <p className="text-[10px] text-slate-400">데이터 적재 및 가중치 의사결정 수립</p>
-          </div>
-          <span className="text-xs bg-blue-600/20 text-blue-400 px-2.5 py-1 rounded-full font-bold">
-            Step {pipelineStep} / 5
-          </span>
-        </div>
-
-        {/* RAG 조례 업로더는 독립 모달로 분리됨 */}
-
-        {/* [Step 1] 공간 데이터 업로드 및 AI 감리 의도 검증 */}
-        <div className={`flex flex-col gap-3 transition-all duration-300 ${pipelineStep !== 1 ? 'opacity-40 pointer-events-none' : ''}`}>
-          <div className="flex justify-between items-center">
-            <label className="text-xs font-semibold text-slate-300">Step 1. 공간 데이터 수집 & AI 감리</label>
-            <span className="text-[10px] text-blue-400 font-mono">CSV 전용 (분석용)</span>
-          </div>
-
-          {!isAuditComplete ? (
-            <div 
-              onClick={triggerFileAudit}
-              className="border-2 border-dashed border-slate-700 hover:border-blue-500 rounded-xl p-5 text-center cursor-pointer transition-all bg-slate-950/40 hover:bg-slate-900/30"
-            >
-              <p className="text-xs text-slate-300 font-semibold">📁 공간 데이터 CSV 업로드 (클릭)</p>
-              <p className="text-[10px] text-slate-500 mt-1">컬럼명 및 위치 결측 검증 가동</p>
-              {isUploading && <p className="text-[10px] text-amber-400 mt-1 animate-pulse">업로드 및 AI 감리 분석 중...</p>}
-            </div>
-          ) : (
-            /* AI 감리 결과 판독 및 실무자 의도 승인 루프 */
-            <div className="bg-slate-950/60 p-4 rounded-xl border border-blue-500/30 flex flex-col gap-3">
-              <div className="flex justify-between items-center border-b border-slate-900 pb-1.5">
-                <span className="text-[11px] text-blue-400 font-bold">✓ AI 감리 결과 분석 완료</span>
-                <span className="text-[10px] text-slate-500">인프라 목적 판독</span>
-              </div>
-              <div className="text-[11px] flex flex-col gap-2.5 text-slate-300 leading-relaxed">
-                <p><strong className="text-slate-400">분석 의도 판독:</strong> {inferredPurpose}</p>
-                {inferredReasoning && (
-                  <div className="bg-slate-900/80 p-2.5 rounded border border-slate-800 text-[10px] text-slate-400 leading-normal font-mono">
-                    <strong className="text-slate-300 block mb-1">🔍 AI 감리 추론 근거 (Reasoning):</strong>
-                    {inferredReasoning}
-                  </div>
-                )}
-                {hitlQuestion && (
-                  <div className="bg-blue-950/40 p-2.5 rounded border border-blue-500/20 text-blue-300 font-medium">
-                    ❓ {hitlQuestion}
-                  </div>
-                )}
-                <div className="flex flex-col gap-1 my-1">
-                  <span className="text-slate-400">분석 목적 보정 (HITL)</span>
-                  <input
-                    type="text"
-                    value={userPurpose}
-                    onChange={(e) => {
-                      setUserPurpose(e.target.value);
-                      setInferredPurpose(e.target.value);
-                    }}
-                    className="bg-slate-900 border border-slate-700 rounded px-2.5 py-1 text-white text-[11px] outline-none focus:border-blue-500"
-                  />
-                </div>
-                <div className="flex flex-col gap-1">
-                  <span className="text-slate-400">시맨틱 도메인 태그 지정</span>
-                  <select
-                    value={inferredDomainTag}
-                    onChange={(e) => setInferredDomainTag(e.target.value)}
-                    className="bg-slate-900 border border-slate-700 rounded px-2 py-1 text-white text-[11px] outline-none focus:border-blue-500"
-                  >
-                    <option value="smoking_zone">실외 흡연구역 입지 (smoking_zone)</option>
-                    <option value="ev_charging">전기차 충전소 입지 (ev_charging)</option>
-                    <option value="yellow_carpet">어린이 보호구역 옐로카펫 (yellow_carpet)</option>
-                    <option value="city_feature">일반 스마트시티 시설물 (city_feature)</option>
-                  </select>
-                </div>
-              </div>
-              <button
-                onClick={() => setPipelineStep(2)}
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-bold py-2.5 rounded-lg transition-all"
-              >
-                의도 일치 확인 및 공간 매핑 승인 (Approve)
-              </button>
-            </div>
-          )}
-          <input 
-            type="file" 
-            multiple 
-            accept=".csv" 
-            id="file-uploader" 
-            className="hidden" 
-            onChange={handleFileChange} 
-          />
-        </div>
-
-        {/* [Step 3] AHP 슬라이더 컨트롤러 */}
-        <div className={`flex flex-col gap-4 border-t border-slate-800/80 pt-4 transition-all duration-300 ${pipelineStep < 3 ? 'hidden' : ''} ${pipelineStep > 3 ? 'opacity-40 pointer-events-none' : ''}`}>
-          <div className="flex justify-between items-center">
-            <label className="text-xs font-semibold text-slate-300">Step 3. AHP 인자별 상대 가중치</label>
-            <span className={`text-[10px] px-2 py-0.5 rounded-full font-mono font-semibold transition-all ${crValue < 0.1 ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'}`}>
-              C.R. = {crValue} ({crValue < 0.1 ? '만족' : '위배'})
-            </span>
-          </div>
-
-          <div className="flex flex-col gap-3">
-            {criteriaList.map(item => (
-              <div key={item.key} className="flex flex-col gap-1">
-                <div className="flex justify-between text-[11px] text-slate-400">
-                  <span>{item.label}</span>
-                  <span className="font-mono text-white">{ahpWeights[item.key] !== undefined ? parseFloat(ahpWeights[item.key]).toFixed(1) : '5.0'}</span>
-                </div>
-                <input
-                  type="range"
-                  min="1"
-                  max="9"
-                  step="0.1"
-                  disabled={isAhpLocked || pipelineStep !== 3}
-                  value={ahpWeights[item.key] !== undefined ? ahpWeights[item.key] : 5.0}
-                  onChange={(e) => handleSliderChange(item.key, e.target.value)}
-                  className="w-full accent-blue-500 cursor-pointer h-1 bg-slate-800 rounded-lg appearance-none"
-                />
-              </div>
-            ))}
-          </div>
-
-          {/* AHP 잠금 버튼 -> 입지 분석 트리거 */}
-          <button
-            onClick={async () => {
-              setIsRecommending(true);
-              try {
-                const lockRes = await apiFetch('/api/v1/ahp/lock', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({
-                    district_id: 1,
-                    facility_type: inferredDomainTag || 'smoking_zone',
-                    criteria_weights: ahpWeights,
-                    criteria_list: criteriaList,
-                    uploaded_files: uploadedFilenames
-                  })
-                });
-                if (!lockRes.ok) {
-                  const errData = await lockRes.json();
-                  alert('AHP 모델 락 오류: ' + (errData.detail || '검증 실패'));
-                  setIsRecommending(false);
-                  return;
-                }
-                const lockData = await lockRes.json();
-                
-                const targetLat = isNaN(hitlLat) ? 37.5302 : hitlLat;
-                const targetLng = isNaN(hitlLng) ? 126.9724 : hitlLng;
-                
-                // 추천 입지 연산 기동 (HITL 마커 좌표 기준 인근 탐색)
-                const recommendRes = await apiFetch(`/api/v1/spatial/recommend?model_id=${lockData.model_id}&ref_lat=${targetLat}&ref_lng=${targetLng}`);
-                if (!recommendRes.ok) {
-                  throw new Error('공간 입지 추천 연산 실패');
-                }
-                const recommendData = await recommendRes.json();
-                
-                // selectedParcel 업데이트
-                setSelectedParcel({
-                  top1: recommendData.candidates.top1,
-                  top2: recommendData.candidates.top2,
-                  top3: recommendData.candidates.top3
-                });
-                
-                setIsAhpLocked(true);
-                setPipelineStep(4);
-                alert('AHP 모델 일관성 검증 승인. PostGIS 다기준 공간 차집합 연산 기동 완료! [Step 4: 최적 입지 선정 결과]를 우측에서 확인하세요.');
-              } catch (err) {
-                alert('오류 발생: ' + err.message);
-              } finally {
-                setIsRecommending(false);
-              }
-            }}
-            disabled={crValue >= 0.1 || pipelineStep !== 3}
-            className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold cursor-pointer transition-all disabled:opacity-30"
-          >
-            🔒 AHP 가중치 확정 및 추천 입지 연산 (Lock)
-          </button>
-        </div>
-      </div>
+      <SidebarControl
+        pipelineStep={pipelineStep}
+        setPipelineStep={setPipelineStep}
+        isAuditComplete={isAuditComplete}
+        triggerFileAudit={triggerFileAudit}
+        isUploading={isUploading}
+        auditMetadata={auditMetadata}
+        inferredPurpose={inferredPurpose}
+        setInferredPurpose={setInferredPurpose}
+        inferredReasoning={inferredReasoning}
+        hitlQuestion={hitlQuestion}
+        userPurpose={userPurpose}
+        setUserPurpose={setUserPurpose}
+        inferredDomainTag={inferredDomainTag}
+        setInferredDomainTag={setInferredDomainTag}
+        handleFileChange={handleFileChange}
+        crValue={crValue}
+        criteriaList={criteriaList}
+        ahpWeights={ahpWeights}
+        isAhpLocked={isAhpLocked}
+        handleSliderChange={handleSliderChange}
+        handleAhpLock={handleAhpLock}
+      />
 
       {/* 4. 우측 플로팅 패널: 후보지 탭 및 속성 정보 카드 (Information & HITL Panel) */}
-      <div className="floating-overlay right-6 top-20 w-96 glass-panel p-6 flex flex-col gap-5 max-h-[82vh] overflow-y-auto">
-        
-        {/* [Step 2] 비주얼 HITL 좌표 보정 영역 */}
-        {pipelineStep === 2 && (
-          <div className="flex flex-col gap-3">
-            <div className="border-b border-slate-800 pb-2">
-              <h2 className="text-xs font-bold text-amber-500">Step 2. 비주얼 HITL 좌표 보정 중</h2>
-              <p className="text-[10px] text-slate-400 font-medium">지도의 주황색 핀을 드래그하거나 아래 좌표를 보정하세요</p>
-            </div>
-            
-            <div className="bg-slate-950/40 p-4 rounded-xl border border-amber-500/30 flex flex-col gap-3">
-              
-              {/* 수동 컬럼 매핑 아코디언 토글 */}
-              {(() => {
-                const isAutoMapped = columnMapping && columnMapping.lat && columnMapping.lng;
-                return (
-                  <div className="flex flex-col gap-2">
-                    <div className="flex items-center justify-between bg-slate-900/50 p-2 rounded border border-slate-800">
-                      {isAutoMapped ? (
-                        <span className="text-[10px] text-emerald-400 font-semibold flex items-center gap-1">
-                          🟢 위경도 열 자동 매핑 완료
-                        </span>
-                      ) : (
-                        <span className="text-[10px] text-rose-400 font-semibold flex items-center gap-1">
-                          ⚠️ 위경도 열 탐지 실패 (수동 매핑 필요)
-                        </span>
-                      )}
-                      <button
-                        type="button"
-                        onClick={() => setShowManualMapping(!showManualMapping)}
-                        className="text-[9px] bg-slate-800 hover:bg-slate-700 text-slate-300 px-2 py-0.5 rounded border border-slate-700/60 transition-all font-sans cursor-pointer"
-                      >
-                        {showManualMapping ? '접기 ▲' : '열기 ▼'}
-                      </button>
-                    </div>
-
-                    {showManualMapping && (
-                      <div className="flex flex-col gap-2.5 p-3 bg-slate-900/35 rounded-lg border border-slate-800/80 animate-fade-in">
-                        <div className="flex flex-col gap-1 text-[10px]">
-                          <span className="text-slate-400 font-medium">위도(Lat) 컬럼 매핑</span>
-                          <select
-                            value={columnMapping.lat || ''}
-                            onChange={(e) => setColumnMapping(prev => ({ ...prev, lat: e.target.value }))}
-                            className="bg-slate-950 border border-slate-800 rounded px-2 py-1 text-white text-xs outline-none focus:border-amber-500"
-                          >
-                            <option value="">-- 위도 컬럼 선택 --</option>
-                            {csvHeaders.map(h => (
-                              <option key={h} value={h}>{h}</option>
-                            ))}
-                          </select>
-                        </div>
-
-                        <div className="flex flex-col gap-1 text-[10px]">
-                          <span className="text-slate-400 font-medium">경도(Lng) 컬럼 매핑</span>
-                          <select
-                            value={columnMapping.lng || ''}
-                            onChange={(e) => setColumnMapping(prev => ({ ...prev, lng: e.target.value }))}
-                            className="bg-slate-950 border border-slate-800 rounded px-2 py-1 text-white text-xs outline-none focus:border-amber-500"
-                          >
-                            <option value="">-- 경도 컬럼 선택 --</option>
-                            {csvHeaders.map(h => (
-                              <option key={h} value={h}>{h}</option>
-                            ))}
-                          </select>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                );
-              })()}
-
-              <div className="flex gap-2">
-                <div className="flex-1 flex flex-col gap-1 text-[11px]">
-                  <span className="text-slate-400">경도(Lng) 좌표 보정</span>
-                  <input type="number" step="0.000001" value={hitlLng} onChange={(e) => setHitlLng(parseFloat(e.target.value))} className="bg-slate-900 border border-slate-700 rounded px-2 py-1 text-white text-xs" />
-                </div>
-                <div className="flex-1 flex flex-col gap-1 text-[11px]">
-                  <span className="text-slate-400">위도(Lat) 좌표 보정</span>
-                  <input type="number" step="0.000001" value={hitlLat} onChange={(e) => setHitlLat(parseFloat(e.target.value))} className="bg-slate-900 border border-slate-700 rounded px-2 py-1 text-white text-xs" />
-                </div>
-              </div>
-              <button 
-                onClick={handleHitlCommit}
-                className="w-full bg-amber-600 hover:bg-amber-700 text-white font-semibold text-xs py-2 rounded-lg transition-all"
-              >
-                보정 완료 및 데이터 확정 (Commit)
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* [Step 4 & 5] 최적 추천 후보지 리스트 정보 */}
-        {pipelineStep >= 4 ? (
-          <div className="flex flex-col gap-5">
-            {/* Top 1 ~ Top 3 탭 */}
-            <div className="flex bg-slate-950/60 p-1 rounded-lg border border-slate-800/80">
-              {['top1', 'top2', 'top3'].map(tab => (
-                <button
-                  key={tab}
-                  onClick={() => setActiveTab(tab)}
-                  className={`flex-1 text-center py-1.5 text-xs font-semibold rounded-md cursor-pointer transition-all ${activeTab === tab ? 'bg-blue-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-200'}`}
-                >
-                  {tab.toUpperCase()}
-                </button>
-              ))}
-            </div>
-
-            {/* 필지 속성 카드 */}
-            <div className="flex flex-col gap-2">
-              <h3 className="text-xs font-semibold text-slate-300">Step 4. 추천지 속성 정보</h3>
-              <div className="bg-slate-950/40 p-4 rounded-xl border border-slate-800/40 flex flex-col gap-2.5">
-                <div className="flex justify-between text-xs">
-                  <span className="text-slate-400">지번 / 소유 구분</span>
-                  <span className="text-white font-semibold">{selectedParcel[activeTab].jibun}</span>
-                </div>
-                <div className="flex justify-between text-xs">
-                  <span className="text-slate-400">면적(㎡)</span>
-                  <span className="font-mono text-white">{selectedParcel[activeTab].area} ㎡</span>
-                </div>
-                <div className="flex justify-between text-xs">
-                  <span className="text-slate-400">공시지가</span>
-                  <span className="font-mono text-emerald-400">₩ {selectedParcel[activeTab].price.toLocaleString()} / ㎡</span>
-                </div>
-                <div className="flex justify-between text-[11px] border-t border-slate-900 pt-2 text-slate-500">
-                  <span>위도/경도 좌표</span>
-                  <span className="font-mono">{selectedParcel[activeTab].lat}, {selectedParcel[activeTab].lng}</span>
-                </div>
-                {selectedParcel[activeTab].reason && (
-                  <div className="flex flex-col gap-1 mt-1 border-t border-slate-900/60 pt-2">
-                    <span className="text-[10px] text-emerald-500 font-semibold">입지 선정 사유 및 주변 환경 조언</span>
-                    <span className="text-[11px] text-slate-300 leading-relaxed bg-slate-950/30 p-2 rounded-lg border border-slate-900/50">
-                      {selectedParcel[activeTab].reason}
-                    </span>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* 갈등 민감도 카드 */}
-            <div className="flex flex-col gap-3">
-              <div className="flex justify-between items-center text-xs">
-                <span className="font-semibold text-slate-300">지역 갈등 민감도 (CSS)</span>
-                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                  selectedParcel[activeTab].cssGrade === '상' ? 'bg-rose-500/20 text-rose-400' :
-                  selectedParcel[activeTab].cssGrade === '중' ? 'bg-amber-500/20 text-amber-400' :
-                  'bg-emerald-500/20 text-emerald-400'
-                }`}>
-                  등급: {selectedParcel[activeTab].cssGrade} ({selectedParcel[activeTab].css}점)
-                </span>
-              </div>
-
-              <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
-                <div className={`h-full transition-all duration-500 ${
-                  selectedParcel[activeTab].cssGrade === '상' ? 'bg-rose-500' :
-                  selectedParcel[activeTab].cssGrade === '중' ? 'bg-amber-500' :
-                  'bg-emerald-500'
-                }`} style={{ width: `${selectedParcel[activeTab].css}%` }} />
-              </div>
-            </div>
-
-            {/* 세부 평가 지표 스펙 */}
-            {selectedParcel[activeTab].criteria_scores && (
-              <div className="flex flex-col gap-2 border-t border-slate-900/60 pt-3">
-                <span className="text-[11px] font-semibold text-slate-400">세부 평가 지표 수치 (Spatial Detail)</span>
-                <div className="bg-slate-950/20 rounded-lg p-2.5 flex flex-col gap-1.5 border border-slate-800/30">
-                  {Object.entries(selectedParcel[activeTab].criteria_scores).map(([k, val]) => {
-                    const matchedCriteria = criteriaList.find(c => c.key === k);
-                    const label = matchedCriteria ? matchedCriteria.label : k;
-                    return (
-                      <div key={k} className="flex justify-between text-[11px]">
-                        <span className="text-slate-500">{label}</span>
-                        <span className="font-mono text-slate-300 font-semibold">{typeof val === 'number' ? val.toLocaleString(undefined, {maximumFractionDigits: 1}) : val}</span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* [Step 5] AI 모의 토론 및 WeasyPrint PDF 발급 */}
-            <div className="border-t border-slate-800/80 pt-4 flex flex-col gap-2.5">
-              <div className="flex justify-between items-center">
-                <span className="text-xs font-semibold text-slate-300">Step 5. 의사결정 시뮬레이션</span>
-                <span className="text-[10px] text-slate-400 font-mono">갈등 조율 시뮬레이터</span>
-              </div>
-              
-              {/* 갈등 강도 선택 라디오 버튼 그룹 */}
-              <div className="flex flex-col gap-1.5">
-                <span className="text-[10px] text-slate-500 font-semibold">모의 토론 갈등 강도 설정</span>
-                <div className="grid grid-cols-3 gap-1.5 bg-slate-950 p-1 rounded-lg border border-slate-800/50">
-                  <button
-                    type="button"
-                    onClick={() => setIntensityLevel("normal")}
-                    className={`text-[10px] font-semibold py-1.5 rounded-md transition-all cursor-pointer ${
-                      intensityLevel === "normal"
-                        ? "bg-emerald-600/20 text-emerald-400 border border-emerald-500/30"
-                        : "text-slate-400 hover:text-slate-200"
-                    }`}
-                  >
-                    보통 🟢
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setIntensityLevel("dangerous")}
-                    className={`text-[10px] font-semibold py-1.5 rounded-md transition-all cursor-pointer ${
-                      intensityLevel === "dangerous"
-                        ? "bg-amber-600/20 text-amber-400 border border-amber-500/30"
-                        : "text-slate-400 hover:text-slate-200"
-                    }`}
-                  >
-                    위험 🟡
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setIntensityLevel("extreme")}
-                    className={`text-[10px] font-semibold py-1.5 rounded-md transition-all cursor-pointer ${
-                      intensityLevel === "extreme"
-                        ? "bg-rose-600/20 text-rose-400 border border-rose-500/30"
-                        : "text-slate-400 hover:text-slate-200"
-                    }`}
-                  >
-                    매우 위험 🔴
-                  </button>
-                </div>
-              </div>
-
-              <button 
-                onClick={() => {
-                  setPipelineStep(5);
-                  runSimulation();
-                }}
-                className="w-full bg-rose-600 hover:bg-rose-700 text-white font-semibold text-xs py-3 rounded-xl transition-all cursor-pointer shadow-lg shadow-rose-900/30"
-              >
-                {activeTab.toUpperCase()} 갈등 심의 시뮬레이터 실행 (GPT-4o)
-              </button>
-            </div>
-          </div>
-        ) : (
-          pipelineStep !== 2 && (
-            <div className="text-center py-20 text-slate-500 text-xs">
-              [Step 1] 데이터 적재 및 <br />
-              [Step 3] AHP 가중치 잠금을 진행하시면<br />
-              이곳에 공간 차집합 추천 결과가 출력됩니다.
-            </div>
-          )
-        )}
-      </div>
+      <OptimalResultPanel
+        pipelineStep={pipelineStep}
+        setPipelineStep={setPipelineStep}
+        showManualMapping={showManualMapping}
+        setShowManualMapping={setShowManualMapping}
+        columnMapping={columnMapping}
+        setColumnMapping={setColumnMapping}
+        csvHeaders={csvHeaders}
+        hitlLng={hitlLng}
+        setHitlLng={setHitlLng}
+        hitlLat={hitlLat}
+        setHitlLat={setHitlLat}
+        handleHitlCommit={handleHitlCommit}
+        selectedParcel={selectedParcel}
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        criteriaList={criteriaList}
+        intensityLevel={intensityLevel}
+        setIntensityLevel={setIntensityLevel}
+        runSimulation={runSimulation}
+      />
 
       {/* AI 시뮬레이션 모달 팝업 */}
-      {showSimModal && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-6">
-          <div className="w-[800px] h-[550px] glass-panel p-6 flex flex-col justify-between">
-            <div className="flex justify-between items-center border-b border-slate-800 pb-3">
-              <div>
-                <h3 className="text-sm font-semibold text-slate-300">OMS-01-03-001 | AI 에이전트 실시간 모의 심의 토론</h3>
-                <p className="text-[10px] text-slate-500">Target PNU: {selectedParcel[activeTab].pnu}</p>
-              </div>
-              <button 
-                onClick={() => setShowSimModal(false)}
-                className="text-slate-400 hover:text-white text-lg font-bold cursor-pointer"
-              >
-                &times;
-              </button>
-            </div>
-
-            {/* 터미널 대화 스크롤 */}
-            <div className="flex-1 my-4 bg-slate-950/70 rounded-xl p-4 overflow-y-auto font-mono text-xs flex flex-col gap-3 border border-slate-900/80">
-              {simLogs.map((log, index) => {
-                const sender = log.sender || '';
-                let textClass = 'text-slate-300';
-                
-                if (sender.includes('보건') || sender.includes('구청') || sender.includes('공무원') || sender.includes('정부')) {
-                  textClass = 'text-sky-400 font-medium';
-                } else if (sender.includes('상인') || sender.includes('소상공인') || sender.includes('반대') || sender.includes('번영회')) {
-                  textClass = 'text-rose-400 font-medium';
-                } else if (sender.includes('주민') || sender.includes('시민') || sender.includes('찬성') || sender.includes('학부모')) {
-                  textClass = 'text-emerald-400 font-medium';
-                } else if (sender.includes('시스템') || sender.includes('조정') || sender.includes('중재') || sender.includes('심의')) {
-                  textClass = 'text-amber-400 font-semibold';
-                }
-                
-                return (
-                  <div key={index} className={`flex gap-2 items-start leading-relaxed ${textClass}`}>
-                    <span className="shrink-0 font-bold font-sans">
-                      [{sender}]
-                    </span>
-                    <span className="mt-0.5">{log.text}</span>
-                  </div>
-                );
-              })}
-              {simStep < 6 ? (
-                <div className="text-slate-500 animate-pulse">... 에이전트 심의 분석 진행 중 ...</div>
-              ) : (
-                <div className="text-emerald-500 font-bold animate-pulse">✓ 에이전트 심의 분석 완료 (PDF 보고서 다운로드 가능)</div>
-              )}
-            </div>
-
-            {/* 하단 제어 바 (보고서 다운로드 포함) */}
-            <div className="flex justify-between items-center border-t border-slate-800 pt-3">
-              <span className="text-[10px] text-slate-500">
-                도로점용료 예상액: ₩ {Math.round(selectedParcel[activeTab].area * selectedParcel[activeTab].price * 0.02 * (365/365)).toLocaleString()} / 년
-              </span>
-              <div className="flex gap-3">
-                <button
-                  onClick={async () => {
-                    try {
-                      const payload = {
-                        facility_type: inferredDomainTag || "city_feature",
-                        inferred_purpose: inferredPurpose || "입지 분석",
-                        candidate_jibun: selectedParcel[activeTab]?.jibun || "용산구 미지정 부지",
-                        candidate_css: selectedParcel[activeTab]?.css || 50,
-                        candidate_lat: selectedParcel[activeTab]?.lat || 37.53,
-                        candidate_lng: selectedParcel[activeTab]?.lng || 126.97,
-                        candidate_reason: selectedParcel[activeTab]?.reason || "",
-                        ahp_weights: ahpWeights || {},
-                        debate_logs: simLogs.map(log => ({ sender: log.sender, text: log.text }))
-                      };
-                      const res = await apiFetch('/api/v1/spatial/report/download', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(payload)
-                      });
-                      if (!res.ok) throw new Error('PDF 다운로드 실패');
-                      const blob = await res.blob();
-                      const url = window.URL.createObjectURL(blob);
-                      const a = document.createElement('a');
-                      a.href = url;
-                      a.download = `OmniSite_Report_${payload.candidate_jibun.replace(/ /g, '_')}.pdf`;
-                      document.body.appendChild(a);
-                      a.click();
-                      document.body.removeChild(a);
-                      window.URL.revokeObjectURL(url);
-                    } catch (err) {
-                      alert('⚠️ PDF 보고서 발급 중 오류가 발생했습니다: ' + err.message);
-                    }
-                  }}
-                  disabled={simStep < 6}
-                  className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 text-white font-semibold text-xs px-4 py-2.5 rounded-lg transition-all cursor-pointer"
-                >
-                  📝 WeasyPrint PDF 보고서 다운로드
-                </button>
-                <button
-                  onClick={() => setShowSimModal(false)}
-                  className="bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs px-4 py-2.5 rounded-lg transition-all cursor-pointer"
-                >
-                  닫기
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <DebateSimulatorModal
+        showSimModal={showSimModal}
+        setShowSimModal={setShowSimModal}
+        selectedParcel={selectedParcel}
+        activeTab={activeTab}
+        simLogs={simLogs}
+        simStep={simStep}
+        intensityLevel={intensityLevel}
+        setIntensityLevel={setIntensityLevel}
+        setPipelineStep={setPipelineStep}
+        runSimulation={runSimulation}
+        inferredDomainTag={inferredDomainTag}
+        inferredPurpose={inferredPurpose}
+        ahpWeights={ahpWeights}
+        apiFetch={apiFetch}
+      />
 
       {/* 
       {showLoginModal && (

@@ -42,6 +42,7 @@ export default function Home() {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadedFilenames, setUploadedFilenames] = useState([]);
   const [fileBehaviors, setFileBehaviors] = useState({});
+  const [showManualMapping, setShowManualMapping] = useState(false);
 
   // 1. AHP 가중치 입력 상태
   const [criteriaList, setCriteriaList] = useState([
@@ -257,6 +258,35 @@ export default function Home() {
       if (mapRef.current) {
         mapRef.current.doubleClickZoom.enable();
       }
+    }
+  };
+
+  // 플랫폼 데이터 및 분석 파이프라인 전체 초기화
+  const handlePlatformReset = async () => {
+    if (!confirm('⚠️ 플랫폼 데이터와 분석 파이프라인 단계를 모두 초기화하고 처음부터 다시 시작하시겠습니까?')) return;
+    try {
+      const res = await apiFetch('/api/v1/upload/clear', { method: 'POST' });
+      if (res.ok) {
+        // 모든 상태 클리어
+        setPipelineStep(1);
+        setUploadedCsvFilename('');
+        setColumnMapping({});
+        setCsvHeaders([]);
+        setMissingCoordinates([]);
+        setHitlJibun('');
+        setHitlLng(126.9724);
+        setHitlLat(37.5302);
+        setSimLogs([]);
+        setSimStep(0);
+        setIsAhpLocked(false);
+        setAuditResult(null);
+        setShowManualMapping(false);
+        alert('🔄 플랫폼 파이프라인 및 임시 공간 데이터 초기화가 완료되었습니다. Step 1 단계부터 다시 시작하십시오.');
+      } else {
+        alert('❌ 초기화 API 호출 실패');
+      }
+    } catch (err) {
+      alert('❌ 초기화 오류: ' + err.message);
     }
   };
 
@@ -1140,6 +1170,12 @@ export default function Home() {
           >
             ⚖️ 법규 RAG 관리
           </button>
+          <button 
+            onClick={handlePlatformReset}
+            className="text-xs bg-rose-950/45 hover:bg-rose-900/60 border border-rose-500/30 text-rose-300 px-3.5 py-1.5 rounded-lg font-semibold cursor-pointer transition-all flex items-center gap-1.5"
+          >
+            🔄 전체 초기화
+          </button>
           {/* 
           {isLoggedIn ? (
             <span className="text-xs text-slate-300 font-medium">{department} | {municipalId}</span>
@@ -1401,33 +1437,64 @@ export default function Home() {
             
             <div className="bg-slate-950/40 p-4 rounded-xl border border-amber-500/30 flex flex-col gap-3">
               
-              <div className="flex flex-col gap-1 text-[11px]">
-                <span className="text-slate-400 font-semibold text-amber-500">📂 위도(Lat) 컬럼 매핑</span>
-                <select
-                  value={columnMapping.lat || ''}
-                  onChange={(e) => setColumnMapping(prev => ({ ...prev, lat: e.target.value }))}
-                  className="bg-slate-900 border border-slate-700 rounded px-2 py-1.5 text-white text-xs outline-none focus:border-amber-500"
-                >
-                  <option value="">-- 위도 컬럼 선택 --</option>
-                  {csvHeaders.map(h => (
-                    <option key={h} value={h}>{h}</option>
-                  ))}
-                </select>
-              </div>
+              {/* 수동 컬럼 매핑 아코디언 토글 */}
+              {(() => {
+                const isAutoMapped = columnMapping && columnMapping.lat && columnMapping.lng;
+                return (
+                  <div className="flex flex-col gap-2">
+                    <div className="flex items-center justify-between bg-slate-900/50 p-2 rounded border border-slate-800">
+                      {isAutoMapped ? (
+                        <span className="text-[10px] text-emerald-400 font-semibold flex items-center gap-1">
+                          🟢 위경도 열 자동 매핑 완료
+                        </span>
+                      ) : (
+                        <span className="text-[10px] text-rose-400 font-semibold flex items-center gap-1">
+                          ⚠️ 위경도 열 탐지 실패 (수동 매핑 필요)
+                        </span>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => setShowManualMapping(!showManualMapping)}
+                        className="text-[9px] bg-slate-800 hover:bg-slate-700 text-slate-300 px-2 py-0.5 rounded border border-slate-700/60 transition-all font-sans cursor-pointer"
+                      >
+                        {showManualMapping ? '접기 ▲' : '열기 ▼'}
+                      </button>
+                    </div>
 
-              <div className="flex flex-col gap-1 text-[11px]">
-                <span className="text-slate-400 font-semibold text-amber-500">📂 경도(Lng) 컬럼 매핑</span>
-                <select
-                  value={columnMapping.lng || ''}
-                  onChange={(e) => setColumnMapping(prev => ({ ...prev, lng: e.target.value }))}
-                  className="bg-slate-900 border border-slate-700 rounded px-2 py-1.5 text-white text-xs outline-none focus:border-amber-500"
-                >
-                  <option value="">-- 경도 컬럼 선택 --</option>
-                  {csvHeaders.map(h => (
-                    <option key={h} value={h}>{h}</option>
-                  ))}
-                </select>
-              </div>
+                    {showManualMapping && (
+                      <div className="flex flex-col gap-2.5 p-3 bg-slate-900/35 rounded-lg border border-slate-800/80 animate-fade-in">
+                        <div className="flex flex-col gap-1 text-[10px]">
+                          <span className="text-slate-400 font-medium">위도(Lat) 컬럼 매핑</span>
+                          <select
+                            value={columnMapping.lat || ''}
+                            onChange={(e) => setColumnMapping(prev => ({ ...prev, lat: e.target.value }))}
+                            className="bg-slate-950 border border-slate-800 rounded px-2 py-1 text-white text-xs outline-none focus:border-amber-500"
+                          >
+                            <option value="">-- 위도 컬럼 선택 --</option>
+                            {csvHeaders.map(h => (
+                              <option key={h} value={h}>{h}</option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div className="flex flex-col gap-1 text-[10px]">
+                          <span className="text-slate-400 font-medium">경도(Lng) 컬럼 매핑</span>
+                          <select
+                            value={columnMapping.lng || ''}
+                            onChange={(e) => setColumnMapping(prev => ({ ...prev, lng: e.target.value }))}
+                            className="bg-slate-950 border border-slate-800 rounded px-2 py-1 text-white text-xs outline-none focus:border-amber-500"
+                          >
+                            <option value="">-- 경도 컬럼 선택 --</option>
+                            {csvHeaders.map(h => (
+                              <option key={h} value={h}>{h}</option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
 
               <div className="flex gap-2">
                 <div className="flex-1 flex flex-col gap-1 text-[11px]">

@@ -89,6 +89,7 @@ export default function Home() {
   const [drawnPoints, setDrawnPoints] = useState([]);
   const [panelPosition, setPanelPosition] = useState({ x: 1000, y: 80 });
   const [dragStart, setDragStart] = useState(null);
+  const [mapZoom, setMapZoom] = useState(14);
 
   // 최초 서비스 마운트 시 (웹 접속 시) 데이터베이스 및 로컬 캐시 초기화
   useEffect(() => {
@@ -160,6 +161,17 @@ export default function Home() {
   const tempPointsRef = useRef([]);
   const tempMarkersRef = useRef([]);
   const tempPolylineRef = useRef(null);
+
+  // [v4.4.2] 지도 줌 레벨과 법정 규제 타입에 따른 시각화 원 반경 동적 보정 (조례 사양 보존 & 시각 정화 융합)
+  const getZoomAdjustedRadius = (pt, zoom) => {
+    const rawRadius = pt.radius || 20;
+    if (zoom <= 14) {
+      if (pt.type === 'school') return Math.min(rawRadius, 40);
+      if (pt.type === 'childcare_center') return Math.min(rawRadius, 25);
+      return Math.min(rawRadius, 10);
+    }
+    return rawRadius;
+  };
 
   // 위경도 결측치(Null/Zero)에 기반한 군부대/보안시설 우회 예외처리 함수
   const isValidCoordinate = (lat, lng) => {
@@ -294,6 +306,10 @@ export default function Home() {
         attribution: '&copy; OpenStreetMap contributors &copy; CARTO'
       }).addTo(map);
 
+      map.on('zoomend', () => {
+        setMapZoom(map.getZoom());
+      });
+
       mapRef.current = map;
     }
 
@@ -385,10 +401,10 @@ export default function Home() {
         markersRef.current['user_exclusion'] = userExclLayer;
       }
 
-      // 1. 규제 시설물 포인트에 따른 동적 버퍼 오버레이 생성 (limit_radius 우선 적용, 조례 기준 점선 및 0.05 투명화) [v4.4.1]
+      // 1. 규제 시설물 포인트에 따른 동적 버퍼 오버레이 생성 (limit_radius 우선 적용, 조례 기준 점선 및 0.05 투명화) [v4.4.2]
       const circles = [];
       restrictionPoints.forEach((pt, idx) => {
-        const limitRadius = pt.limit_radius || pt.radius || 20;
+        const limitRadius = getZoomAdjustedRadius(pt, mapZoom);
         
         if (limitRadius > 0) {
           const circle = L.circle([pt.lat, pt.lng], {
@@ -500,9 +516,9 @@ export default function Home() {
         markersRef.current['user_exclusion'] = userExclLayer;
       }
 
-      // 1. 규제 시설물 포인트에 따른 동적 버퍼 오버레이 생성 (점선 및 0.05 극저 투명화) [v4.4.1]
+      // 1. 규제 시설물 포인트에 따른 동적 버퍼 오버레이 생성 (점선 및 0.05 극저 투명화) [v4.4.2]
       restrictionPoints.forEach((pt, idx) => {
-        const limitRadius = pt.limit_radius || pt.radius || 20;
+        const limitRadius = getZoomAdjustedRadius(pt, mapZoom);
         
         if (limitRadius > 0) {
           const circle = L.circle([pt.lat, pt.lng], {
@@ -564,7 +580,7 @@ export default function Home() {
         map.panTo([activeParcel.lat, activeParcel.lng]);
       }
     }
-  }, [leafletLoaded, pipelineStep, districtGeoJson, restrictionPoints, spatialRestrictions, selectedParcel, userExclusionGeoJson]);
+  }, [leafletLoaded, pipelineStep, districtGeoJson, restrictionPoints, spatialRestrictions, selectedParcel, userExclusionGeoJson, mapZoom]);
 
   // [v4.4.1] 사용자 정의 금지구역 마우스 드로잉 이벤트 연동
   useEffect(() => {

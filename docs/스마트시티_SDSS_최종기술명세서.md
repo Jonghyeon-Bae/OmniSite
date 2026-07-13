@@ -351,7 +351,7 @@ CREATE TABLE boards (
 );
 CREATE INDEX idx_boards_type ON boards(board_type);
 
--- 21. 사용자 정의 가상 금지구역 테이블 (v4.4.1 공간 핫픽스 패키지)
+-- 21. 사용자 정의 가상 금지구역 테이블 (v4.9.37 릴리즈)
 CREATE TABLE user_exclusion_zones (
     id SERIAL PRIMARY KEY,
     zone_name VARCHAR(150) NOT NULL,
@@ -361,7 +361,7 @@ CREATE TABLE user_exclusion_zones (
 );
 CREATE INDEX idx_user_exclusion_geom ON user_exclusion_zones USING GIST(geom);
 
--- 22. AI RAG 조례 해독 규제 규칙 라이브러리 테이블 (v4.4.3 아키텍처 스케일업)
+-- 22. AI RAG 조례 해독 규제 규칙 라이브러리 테이블 (v4.9.37 릴리즈)
 CREATE TABLE domain_regulation_rules (
     id SERIAL PRIMARY KEY,
     facility_type VARCHAR(100) UNIQUE NOT NULL,
@@ -370,3 +370,16 @@ CREATE TABLE domain_regulation_rules (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 ```
+
+---
+
+
+- **실시간 주변 상권 분석 파이프라인:** PostGIS 공간 쿼리로 후보지 반경 150m 내 `commercial_shops` 테이블을 실시간 공간 조인하여 상점 개수를 집계하고, gpt-4o 랜드마크 요약 분석을 수행해 `/spatial/analyze-address` API로 도출.
+- **"지성인 vs 일반인 vs 정부" 논쟁 아키텍처:** 데이터와 상권 분석 수치를 적극 인용해 입지를 옹호하는 지성인(찬성), 민원과 무단투기 실태 등 주민 생활 고충과 안전을 호소하는 일반인(반대), RAG 조례 및 중재안으로 완충안을 가결하는 관료(정부)의 3자 극사실주의 갈등 심의 연출 설계.
+
+---
+
+## 📈 v4.9.37 금역 검증 강화, 일괄 배치 RAG 상권 캐싱 및 가로 2열 병렬 UI 갱신 (추가 리비전)
+- **금지구역 배제 완전성 보완:** 반경 완화 탐색(Radius Relaxing Search) 시 발생하는 `fallback_query` 공간 조인부에도 사용자 정의 금지구역 및 조례 restricted_zones 배제 필터를 기식 완료하여 침범 원천 차단.
+- **일괄 상권 분석(Batch) 탑재:** `/spatial/recommend` 기동 시 Top 1~5 후보지 전체에 대해 PostGIS 상가 집계 및 LLM 지리 맥락 브리핑을 한 번에 일괄 생성 및 동적 리턴하도록 바인딩. 프론트엔드는 추천 시점에 수집된 리포트 데이터를 로컬 React 상태에서 바로 읽으므로, 추가적인 API 호출 토큰 소모가 0(Zero)으로 전멸하고 탭 클릭 시 0초 만에 요약이 렌더링되도록 최적화.
+- **가로 2열 패널 UI 설계:** `OptimalResultPanel.jsx` 우측 패널의 너비를 `w-[820px]` 로 확장하고 내부를 가로 2열 그리드로 스플릿하여 스크롤 해소. (좌측 열: Step 4 입지 세부 정보 및 캐시된 AI 상권 분석 리포트, 우측 열: Step 5 의사결정 시뮬레이터(CSS, 갈등 강도, 토론 버튼))

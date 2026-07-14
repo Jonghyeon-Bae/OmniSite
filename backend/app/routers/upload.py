@@ -54,20 +54,21 @@ def get_embedding(text_input: str) -> Optional[List[float]]:
         print(f"[Embedding Error] {e}")
         return None
 
-# CSV 파일 첫 라인(헤더)만 스트리밍하는 경량 헬퍼
-def parse_csv_header(file_path: str) -> List[str]:
+def detect_csv_encoding(file_path: str) -> str:
     encodings = ["utf-8", "cp949", "utf-8-sig"]
-    correct_enc = "utf-8"
     for enc in encodings:
         try:
             with open(file_path, "r", encoding=enc) as f:
                 reader = csv.reader(f)
                 next(reader, None)
-                correct_enc = enc
-                break
+                return enc
         except (UnicodeDecodeError, PermissionError):
             continue
-            
+    return "utf-8"
+
+# CSV 파일 첫 라인(헤더)만 스트리밍하는 경량 헬퍼
+def parse_csv_header(file_path: str) -> List[str]:
+    correct_enc = detect_csv_encoding(file_path)
     try:
         with open(file_path, "r", encoding=correct_enc, errors="replace") as f:
             reader = csv.reader(f)
@@ -117,18 +118,7 @@ def analyze_csv_header_only(headers: List[str]):
 
 # CSV 파일 인코딩 탐색 및 파싱 헬퍼
 def parse_csv_file(file_path: str):
-    encodings = ["utf-8", "cp949", "utf-8-sig"]
-    correct_enc = "utf-8"
-    for enc in encodings:
-        try:
-            with open(file_path, "r", encoding=enc) as f:
-                reader = csv.reader(f)
-                next(reader, None)
-                correct_enc = enc
-                break
-        except (UnicodeDecodeError, PermissionError):
-            continue
-            
+    correct_enc = detect_csv_encoding(file_path)
     try:
         with open(file_path, "r", encoding=correct_enc, errors="replace") as f:
             reader = csv.reader(f)

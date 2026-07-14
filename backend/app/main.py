@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from app.database import get_db
+from app.config import settings
 from app.routers.upload import router as upload_router
 from app.routers.ahp import router as ahp_router
 from app.routers.spatial import router as spatial_router
@@ -18,15 +19,11 @@ app.include_router(upload_router)
 app.include_router(ahp_router)
 app.include_router(spatial_router)
 
-# Next.js 연동을 위한 CORS 미들웨어 개설 (Credentials 허용을 위해 와일드카드 *를 명시적 Origin으로 치환)
+# Next.js 연동을 위한 CORS 미들웨어 개설 (CORS_ORIGINS 환경변수 파싱 적용)
+cors_origins = [origin.strip() for origin in settings.CORS_ORIGINS.split(",") if origin.strip()]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-        "http://localhost:3001",
-        "http://127.0.0.1:3001"
-    ],
+    allow_origins=cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

@@ -9,11 +9,9 @@ import SidebarControl from '../../components/SidebarControl';
 import OptimalResultPanel from '../../components/OptimalResultPanel';
 
 const apiFetch = (url, options) => {
-  const targetUrl = typeof url === 'string' && url.startsWith('/api/v1')
-    ? `http://127.0.0.1:8000${url}`
-    : url;
+  // Next.js next.config.mjs의 rewrites 프록시 룰을 존중하도록 호스트 하드코딩 제거 (상대경로 매핑)
   const nativeFetch = typeof window !== 'undefined' ? window.fetch : (typeof globalThis !== 'undefined' ? globalThis.fetch : null);
-  return nativeFetch ? nativeFetch(targetUrl, options) : Promise.reject(new Error('Fetch not available'));
+  return nativeFetch ? nativeFetch(url, options) : Promise.reject(new Error('Fetch not available'));
 };
 
 export default function Home() {

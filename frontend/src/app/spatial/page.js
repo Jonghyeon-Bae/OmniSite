@@ -205,7 +205,6 @@ export default function Home() {
     }
   }, [pipelineStep, inferredDomainTag, userDistrictId]);
 
-  // 5. 로그인/로그아웃 상태 관리 및 핸들러 정의 (B2G 세션스토리지 보안 지향)
   // 컴포넌트 마운트 시 세션스토리지 기반 자동 로그인 복구 (SSR window is not defined 크래시 예방)
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -219,7 +218,8 @@ export default function Home() {
         setMunicipalId(savedUser);
         setUserRole(savedRole || 'user');
         setDepartment(savedDept || '스마트도시과');
-        setUserDistrictId(savedDistrict ? parseInt(savedDistrict, 10) : 1);
+        const parsedDistrict = savedDistrict ? parseInt(savedDistrict, 10) : 1;
+        setUserDistrictId(!isNaN(parsedDistrict) && parsedDistrict ? parsedDistrict : 1);
       }
     }
   }, []);
@@ -507,11 +507,12 @@ export default function Home() {
   const handleAhpLock = async () => {
     setIsRecommending(true);
     try {
+      const finalDistrictId = !isNaN(parseInt(userDistrictId, 10)) ? parseInt(userDistrictId, 10) : 1;
       const lockRes = await apiFetch('/api/v1/ahp/lock', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          district_id: userDistrictId,
+          district_id: finalDistrictId,
           facility_type: inferredDomainTag || 'smoking_zone',
           criteria_weights: ahpWeights,
           criteria_list: criteriaList,
@@ -520,8 +521,15 @@ export default function Home() {
       });
       if (!lockRes.ok) {
         const errData = await lockRes.json();
-        const detailMsg = typeof errData.detail === 'object' ? JSON.stringify(errData.detail) : (errData.detail || '검증 실패');
-        alert('AHP 모델 락 오류: ' + detailMsg);
+        let errMsg = '검증 실패';
+        if (errData && errData.detail) {
+          if (typeof errData.detail === 'string') {
+            errMsg = errData.detail;
+          } else {
+            errMsg = JSON.stringify(errData.detail);
+          }
+        }
+        alert('AHP 모델 락 오류: ' + errMsg);
         setIsRecommending(false);
         return;
       }
@@ -531,7 +539,7 @@ export default function Home() {
       const targetLng = isNaN(hitlLng) ? 126.9724 : hitlLng;
       
       // 추천 입지 연산 기동 (HITL 마커 좌표 기준 인근 탐색, 동적 자치구 ID 및 가변 limit 6개 매핑)
-      const recommendRes = await apiFetch(`/api/v1/spatial/recommend?model_id=${lockData.model_id}&ref_lat=${targetLat}&ref_lng=${targetLng}&district_id=${userDistrictId}&limit=6`);
+      const recommendRes = await apiFetch(`/api/v1/spatial/recommend?model_id=${lockData.model_id}&ref_lat=${targetLat}&ref_lng=${targetLng}&district_id=${finalDistrictId}&limit=6`);
       if (!recommendRes.ok) {
         throw new Error('공간 입지 추천 연산 실패');
       }
@@ -1081,11 +1089,12 @@ export default function Home() {
     
     window.ahpCalcTimeout = setTimeout(async () => {
       try {
+        const finalDistrictId = !isNaN(parseInt(userDistrictId, 10)) ? parseInt(userDistrictId, 10) : 1;
         const res = await apiFetch('/api/v1/ahp/calculate', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            district_id: 1,
+            district_id: finalDistrictId,
             facility_type: inferredDomainTag || 'smoking_zone',
             criteria_weights: updatedWeights
           })

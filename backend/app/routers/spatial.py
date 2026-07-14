@@ -384,8 +384,7 @@ async def recommend_optimal_sites(
               -- 개별 규제지 버퍼 저촉 여부를 geometry 인덱스(GIST)로 고속 감지
               AND NOT EXISTS (
                   SELECT 1 FROM restricted_zones rz 
-                  WHERE rz.district_id = :district_id
-                    AND (
+                  WHERE (
                         -- 흡연구역일 때는 RAG 해독에 기반한 동적 배제 (지리 오차 왜곡 차단 위해 구면 geography 실제 미터로 연산)
                         (:facility_type = 'smoking_zone' AND (
                             (rz.zone_type = 'school' AND ST_DWithin(c.geom::geography, rz.geom::geography, :school_m)) OR
@@ -427,10 +426,13 @@ async def recommend_optimal_sites(
                       WHERE ST_DWithin(c.geom, cs.geom, 0.0015)
                   )
               )
-              -- 사용자 지정 가상 금지구역(Exclusion Polygon)에 저촉되는 필지 실시간 제외 [v4.4.0]
+              -- 사용자 지정 가상 금지구역(Exclusion Polygon/Circle)에 저촉되는 필지 실시간 제외 [v4.4.0]
               AND NOT EXISTS (
                   SELECT 1 FROM user_exclusion_zones uez
                   WHERE ST_Intersects(c.geom, uez.geom)
+                     OR ST_Within(c.geom, uez.geom)
+                     OR ST_Contains(uez.geom, c.geom)
+                     OR ST_DWithin(c.geom::geography, uez.geom::geography, 0.0)
               )
               -- [v4.9.33] 차도/지하차도/선로 램프 형태학적 극단선 필터 (종횡비 8.0 이상 차단)
               AND (
@@ -1354,6 +1356,24 @@ async def stream_debate_sim(req: DebateRequest, db: Session = Depends(get_db)):
     ahp_text = ", ".join([f"{k}: {v}" for k, v in req.ahp_weights.items()]) if req.ahp_weights else "기본 균등 가중치"
     css_grade = "상(높음)" if req.candidate_css >= 70 else ("중(보통)" if req.candidate_css >= 40 else "하(낮음)")
 
+    # [XAI ML-to-LLM Feature Fusion] XGBoost CSS 점수에 따른 실시간 페르소나 갈등 태세 지침 동적 산출
+    css_score = req.candidate_css
+    if css_score >= 70:
+        css_stance_instruction = (
+            f"- 갈등 민감도 영향: XGBoost ML 예측 갈등 점수가 {css_score}점(위험도: 상)으로 매우 높습니다. "
+            f"반대측 에이전트는 타협을 강경하게 거부하고 결사항전의 반대 목소리를 내며, 정부측의 1차 중재안을 가차없이 거절하여 토론 후반부까지 격렬한 긴장감을 연출하십시오."
+        )
+    elif css_score >= 40:
+        css_stance_instruction = (
+            f"- 갈등 민감도 영향: XGBoost ML 예측 갈등 점수가 {css_score}점(위험도: 중)이므로 팽팽한 논리 대립을 이어가되, "
+            f"정부측이 제시하는 위생/화재/안전펜스 설계 보장 및 주민 상시 시정명령 감찰권을 전제로 최종 극적으로 타결하십시오."
+        )
+    else:
+        css_stance_instruction = (
+            f"- 갈등 민감도 영향: XGBoost ML 예측 갈등 점수가 {css_score}점(위험도: 하)으로 극히 안전하고 주민 친화적인 입지입니다. "
+            f"반대측은 우려를 빠르게 해소하고 찬성측 및 상인회와 상생 협력하는 따뜻하고 조속한 찬성 타결 기조로 협상하십시오."
+        )
+
     # [v4.9.17] 조장님 지침에 따라 찬성측/반대측/정부측 3대 Role 이름 심플 고정
     resident_name = "반대측"
     merchant_name = "찬성측"
@@ -1410,7 +1430,8 @@ async def stream_debate_sim(req: DebateRequest, db: Session = Depends(get_db)):
             f"- 갈등 민감도(CSS): {req.candidate_css}점 ({css_grade})\n"
             f"- AHP 의사결정 가중치: {ahp_text}\n"
             f"- 입지 선정 사유: {req.selection_reason if req.selection_reason else '공공 지리정보 기반 최적 입지 조건 충족'}\n"
-            f"- AI 지리 및 상권 분석 리포트: {req.address_analysis if req.address_analysis else '정보 미비'}\n\n"
+            f"- AI 지리 및 상권 분석 리포트: {req.address_analysis if req.address_analysis else '정보 미비'}\n"
+            f"{css_stance_instruction}\n\n"
             "## 인물 지정 및 극명한 3자 논리 구도 (Role 고정)\n"
             f"1. 찬성 측 ({merchant_name}) - [지성인 / 데이터 전문가형]:\n"
             f"   - 단순히 영업 편의나 일반 상권론을 넘어, AHP 가중합 지표 우수성, 교통 유동인구 통계, 그리고 상기 'AI 지리 및 상권 분석 리포트'의 정량 수치와 실제 상가 개수를 논리적/공학적 근거로 들이대어 입지의 정당성을 옹호하십시오.\n"

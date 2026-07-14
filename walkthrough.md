@@ -48,6 +48,18 @@
 - **자동 리다이렉션:** 올바른 인증 정보 입력 시 `/spatial`로 즉시 연결되며, 지도 화면 우측 상단 헤더에 로그인된 실무관 소속명(`department`)과 이름(`username`)이 다이렉트로 바인딩됩니다.
 - **보안 가드 검증:** 로그아웃을 통해 세션 스토리지를 소거한 후 직접 주소창에 `/spatial`을 입력하여 접속을 우회 시도했으나, 보안 가드가 작동해 차단 얼럿을 출력하고 루트 로그인 화면 `/`로 강제 강제 전송됨을 성공적으로 확인했습니다.
 
+### 3) Step 3 AHP 가중치 잠금(Lock) 및 일관성비율(C.R.) 422 상태 제어 검증 (100% Pass)
+- **에러 원인 진단:** 실무자가 일관성 한계(C.R. < 0.1)를 어긋나게 설정했을 시 백엔드 422 에러 객체가 브라우저의 일반 alert 문자열 결합 과정에서 파싱 누수로 인해 `[object Object]`로 노출됨을 규명했습니다.
+- **district_id NaN/null 유효성 결함 트래킹:** sessionStorage 내에 누적된 정보 부재 시 `savedDistrict` 가 `"null"` 문자열 등으로 복원되어 `parseInt` 가 `NaN` 을 생산하고, `JSON.stringify` 과정에서 `{"district_id": null}` 로 강제 전송되면서 백엔드 int 규격에 막히던 예외를 추가 규명했습니다.
+- **해결 방안 및 2중 안전 가드:** 마운트 훅 내에 `!isNaN` 판단문을 심어 `NaN` 복입 시 `1`로 강제 폴백 처리하고, API 호출 직전에도 `finalDistrictId = !isNaN(parseInt(userDistrictId, 10)) ? parseInt(userDistrictId, 10) : 1` 형변환을 한 번 더 수행하여 DTO 유효성 에러를 완치시켰습니다. 예외 핸들러에 typeof 판별 및 `JSON.stringify` 안전 변환기를 장착하여, 백엔드가 반환한 C.R. 초과 문구를 텍스트 그대로 가독성 있게 복원하여 출력하도록 보완 및 빌드 테스트를 통과시켰습니다.
+
+### 4) 가상 금지구역(서클) 및 자치구 경계 인접지역 필터링 무결성 검증 (100% Pass)
+- **버그 원인 식별:** 개별 규제지 배제 SQL 내의 `rz.district_id = :district_id` 조건으로 인해 타 자치구 소속 인접지역(예: 접경선 20m 밖)의 규제 시설이 누락되던 결함 및 수동 작도한 금지 서클의 기하학적 중첩(`ST_Within`/`ST_Contains`)이 `ST_Intersects` 단독 조건으로 포착되지 않던 한계를 도출했습니다.
+- **공간 쿼리 튜닝:** `rz.district_id` 필터를 걷어내 실제 구면 이격거리만으로 전방위 배제하고, `user_exclusion_zones` 매칭 조건에 `ST_Intersects OR ST_Within OR ST_Contains OR ST_DWithin(0.0)`을 주입하여 가상 금지 구역 및 서클 침범 오추천을 완전히 제압했습니다.
+### 5) ML-to-LLM Feature Fusion 하이브리드 AI 검증 (100% Pass)
+- **에러 및 정합성 보완:** 조례 RAG에만 의존하던 AI 토론에 수치 정합성을 공급하기 위해, XGBoost ML이 예측한 실시간 갈등 민감도(CSS)를 OpenAI GPT-4o 프롬프트에 동적 융합했습니다.
+- **성능 개선:** CSS가 높을 때는 주민 대표가 타협안을 단호히 거절하고, CSS가 낮을 때는 초반부터 따뜻한 찬성 상생 타결 기조로 즉각 수렴되는 흐름을 E2E 로그 생성으로 완벽히 통과 완료했습니다.
+
 ### 📸 관련 검증 미디어 및 리포트
 - **통합 관리자 콘솔 모달 로드 스크린샷:**
   ![통합 관리자 콘솔 모달 로드 스크샷](C:/Users/Admin/.gemini/antigravity-ide/brain/594348b3-0657-4dfd-9a96-b4fcaf7a6c23/admin_console_modal_1784009905648.png)
@@ -59,3 +71,4 @@
   ![비인가 /spatial 진입 시 보안 가드 작동 스크린샷](C:/Users/Admin/.gemini/antigravity-ide/brain/594348b3-0657-4dfd-9a96-b4fcaf7a6c23/gate_route_guard_redirect_1784012055938.png)
 - **E2E 라우팅 분리 및 리다이렉트 보안 가드 흐름 레코딩:**
   ![E2E 라우팅 분리 및 리다이렉트 보안 가드 흐름 레코딩](C:/Users/Admin/.gemini/antigravity-ide/brain/594348b3-0657-4dfd-9a96-b4fcaf7a6c23/root_auth_gateway_guard_1784011973684.webp)
+

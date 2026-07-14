@@ -1202,9 +1202,14 @@ export default function Home() {
           selection_reason: selectedParcel[activeTab]?.reason || ""
         };
 
-        const res = await apiFetch('/api/v1/spatial/debate', {
+        // Next.js BFF Proxy의 스트림 버퍼링 렉을 차단하기 위해, 백엔드 포트(8000)로 다이렉트 브라우저 SSE 통신 수행
+        const backendBaseUrl = process.env.NEXT_PUBLIC_BACKEND_API_URL || 'http://localhost:8000';
+        const res = await fetch(`${backendBaseUrl}/api/v1/spatial/debate`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${sessionStorage.getItem('jwtToken') || ''}`
+          },
           body: JSON.stringify(payload)
         });
 

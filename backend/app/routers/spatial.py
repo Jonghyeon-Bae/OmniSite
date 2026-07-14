@@ -385,17 +385,12 @@ async def recommend_optimal_sites(
               AND NOT EXISTS (
                   SELECT 1 FROM restricted_zones rz 
                   WHERE (
-                        -- 흡연구역일 때는 RAG 해독에 기반한 동적 배제 (지리 오차 왜곡 차단 위해 구면 geography 실제 미터로 연산)
-                        (:facility_type = 'smoking_zone' AND (
-                            (rz.zone_type = 'school' AND ST_DWithin(c.geom::geography, rz.geom::geography, :school_m)) OR
-                            (rz.zone_type = 'childcare_center' AND ST_DWithin(c.geom::geography, rz.geom::geography, :childcare_m)) OR
-                            (rz.zone_type = 'nosmoking_zone' AND ST_DWithin(c.geom::geography, rz.geom::geography, :nosmoking_m))
-                        )) OR
-                        -- 전기차 충전소일 때는 school, childcare만 차집합 배제
-                        (:facility_type = 'ev_charging' AND (
-                            (rz.zone_type = 'school' AND ST_DWithin(c.geom::geography, rz.geom::geography, :school_ev_m)) OR
-                            (rz.zone_type = 'childcare_center' AND ST_DWithin(c.geom::geography, rz.geom::geography, :childcare_m))
-                        ))
+                        -- [공통 절대 규제 가드] 시설 도메인과 무관하게 학교(200m) 및 어린이집(50m) 보호구역은 무조건 실시간 공통 배제
+                        (rz.zone_type = 'school' AND ST_DWithin(c.geom::geography, rz.geom::geography, :school_m)) OR
+                        (rz.zone_type = 'childcare_center' AND ST_DWithin(c.geom::geography, rz.geom::geography, :childcare_m)) OR
+                        
+                        -- 흡연구역 도메인일 경우 금연구역(10m) 추가 배제 룰 동적 인가
+                        (:facility_type = 'smoking_zone' AND rz.zone_type = 'nosmoking_zone' AND ST_DWithin(c.geom::geography, rz.geom::geography, :nosmoking_m))
                     )
               )
               -- 흡연구역 도메인인 경우에만 버스정류장/지하철역 이격거리 규제 적용 (지구 타원체 기준 10m 구면 geography 정확 매핑)
@@ -1205,6 +1200,38 @@ async def analyze_address_endpoint(req: AnalyzeAddressRequest, db: Session = Dep
     # [PEP8 Inline Import Cleaned]
     client = get_openai_client()
     
+    # 0. PostGIS 기반 필지 메타 데이터 (지목, 소유구분, 실측면적) 동적 조회 [v4.9.40]
+    land_use = "정보 없음"
+    ownership = "정보 없음"
+    area_sqm = 0.0
+    try:
+        parcel_query = text("""
+            SELECT land_use_code, ownership_type, ST_Area(geom::geography) 
+            FROM cadastral_lands 
+            WHERE ST_Contains(geom, ST_SetSRID(ST_MakePoint(:lng, :lat), 4326)) 
+            LIMIT 1
+        """)
+        p_row = db.execute(parcel_query, {"lng": req.candidate_lng, "lat": req.candidate_lat}).fetchone()
+        if p_row:
+            land_code_map = {
+                "대": "대지 (주거용/상업용 건축용지)",
+                "도": "도로 (공공 보도 및 차로 부지)",
+                "잡": "잡종지 (다목적 야적/가용 나대지)",
+                "학": "학교용지",
+                "주": "주차장",
+                "체": "체육용지",
+                "공": "공원용지",
+                "철": "철도용지",
+                "천": "하천부지",
+                "구": "구거(도랑)부지"
+            }
+            raw_code = p_row[0].strip() if p_row[0] else ""
+            land_use = land_code_map.get(raw_code, f"{raw_code} (기타 지목)")
+            ownership = p_row[1] if p_row[1] else "사유지"
+            area_sqm = float(p_row[2]) if p_row[2] else 0.0
+    except Exception as e:
+        print(f"[Parcel Meta Info Query Error] {e}")
+
     # 1. PostGIS ST_DWithin 기반 반경 150m 내 상가 데이터(commercial_shops) 집계
     shops_summary = "감지된 주변 상점 통계 없음 (비상업 구역)"
     try:
@@ -1228,13 +1255,15 @@ async def analyze_address_endpoint(req: AnalyzeAddressRequest, db: Session = Dep
                 "당신은 스마트시티 지리/상권 분석 전문가입니다. 아래 후보지 정보를 토대로, 해당 위치 주변의 실제 지형지물, "
                 "인근 주요 랜드마크(지하철역, 관공서, 학교 등), 상권 발달 정도(고밀도 상업지, 조용한 배후 주택가, 이면도로 등)를 "
                 "사실적이고 정교하게 3~4줄로 묘사해 주십시오.\n\n"
-                "※ 뜬구름 잡는 일반론을 배제하고, 실제 해당 지번 일대(용산구)의 로컬 지형적 성격을 충실히 서술하십시오. "
-                "만약 세부 정보가 부족하다면, 주택가 이면도로인지 대로변인지 위경도 위치 및 상가 통계를 기반으로 합리적으로 추론하여 "
-                "현장 실사 보고서처럼 실감나게 서술해 주십시오. 과장이나 환각(상권이 없는데 대형상권이라고 속이는 것 등)은 절대 금지합니다."
+                "※ 특히 실측 지목이 '도로'이거나 상가 통계가 많다면 이를 상업적 용도로 정확히 매핑하여 묘사하고, "
+                "반대로 주택가이거나 상가가 없다면 한적한 구역으로 구별하십시오. 지목과 상가 분포 통계 간에 모순(예: 상가 분포가 밀집되어 있는데 비상업지라고 묘사하는 것)이 없도록 절대적 사실 위주로 서술하십시오."
             )
             user_msg = (
                 f"- 후보지 주소: {req.candidate_jibun}\n"
                 f"- 위도: {req.candidate_lat}, 경도: {req.candidate_lng}\n"
+                f"- 실측 지목: {land_use}\n"
+                f"- 소유자 구분: {ownership}\n"
+                f"- 필지 면적: {area_sqm:.2f}㎡\n"
                 f"- 반경 150m 이내 실제 상가 분포 (DB 공간 통계): {shops_summary}\n"
             )
             response = client.chat.completions.create(
@@ -1455,12 +1484,13 @@ async def stream_debate_sim(req: DebateRequest, db: Session = Depends(get_db)):
 
         system_prompt += (
             "## 토론 규칙\n"
-            "1. 위 제공된 '실제 공간 통계 지표'의 실제 수치들(유동인구 수, 무단투기 다발 수, 누적 민원 건수) 및 관련 조례를 반드시 대사에 직접 인용하여 논쟁의 구체적 근거로 삼으십시오.\n"
+            "1. 위 제공된 '실제 공간 통계 지표'의 실제 수치들, 관련 조례, 그리고 **AHP 의사결정 가중치 정보와 CSS 점수 수치**를 반드시 대사 내에 직접 숫자로 인용하여 논쟁의 구체적 근거로 삼으십시오.\n"
+            f"   - 예시: 'AHP 분석 결과 유동인구 가중치가 0.35로 책정되었으니 이 입지가 최선입니다', 'XGBoost 갈등 예측 CSS 점수가 {req.candidate_css}점에 달하는데 대안도 없이 설치를 추진합니까?' 등 구체적 수치 수송 언급 필수.\n"
             "2. 찬성 측, 반대 측, 조정안의 세 발언자가 서로 다회차(Multi-turn)로 번갈아 가며 질문을 주고받고 반론을 제기하는 심도 있는 토론을 구성하십시오.\n"
             "3. 각 인물의 논리적 입장:\n"
-            f"   - {merchant_name} (찬성): 설치의 시급함과 경제 상권 이점(예: 높은 대중교통 유동인구 등)을 후보지 지번 및 목적을 엮어 강하게 옹호합니다.\n"
-            f"   - {resident_name} (반대): 높은 갈등 민감도(CSS) 및 주거 피해 요인(예: 민원 건수, 무단투기 다발 수, 조례 상 배제 구역 침범 우려)을 들어 강력 반대합니다.\n"
-            f"   - {coordinator_name} (정부): 양측의 수치 근거를 모두 반영하여, 조례 위반을 피하면서 이격거리 완충 설계나 정화 시설 보강 등 타협점을 제시합니다.\n"
+            f"   - {merchant_name} (찬성): AHP 가중합 최종 점수의 우수성과 지적 지표(유동인구 {transit_val:,}명)를 근거로 입지의 시급함과 정당성을 옹호하며, AHP 가중치 수치를 대사에서 적극 인용하십시오.\n"
+            f"   - {resident_name} (반대): 높은 갈등 민감도(CSS) {req.candidate_css}점과 AHP 가중치 분석 상 특정 주민 안전/불편 지표 가중치가 높게 수립된 사실을 들어 강력 반대하십시오.\n"
+            f"   - {coordinator_name} (정부): 양측의 수치 근거를 모두 조율하며, 조례 위반을 피하면서 이격거리 완충 설계나 정화 시설 보강 등 타협점을 제시합니다.\n"
             "4. 반드시 각 참가자가 최소 2회 이상 의견을 피력하도록 아래 정해진 순서와 형식으로 총 8턴 이상의 유기적이고 극적인 대화 대본을 출력하십시오:\n"
             f"{merchant_name}: ... (1차 찬성 변론)\n"
             f"{resident_name}: ... (반대대표 의견에 대한 반론 및 1차 반대 근거)\n"

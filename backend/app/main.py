@@ -7,6 +7,7 @@ from app.config import settings
 from app.routers.upload import router as upload_router
 from app.routers.ahp import router as ahp_router
 from app.routers.spatial import router as spatial_router
+from app.routers.auth import router as auth_router
 
 app = FastAPI(
     title="OmniSite SDSS API Backend",
@@ -15,6 +16,7 @@ app = FastAPI(
 )
 
 # 라우터 등록
+app.include_router(auth_router)
 app.include_router(upload_router)
 app.include_router(ahp_router)
 app.include_router(spatial_router)

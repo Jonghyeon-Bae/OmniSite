@@ -16,8 +16,46 @@
   - **국유재산 영역 (더 연하게):** `fillOpacity`를 `0.16`에서 **`0.05`**로 대폭 낮추고, 면과 테두리 선의 채도를 은은한 색상(`#bae6fd`, `#38bdf8`)으로 재설정하여 지도 배경의 명확한 가시성을 복원하였습니다.
   - **금지 구역 / 규제 서클 (더 진하게):** 사용자 지정 금역의 `fillOpacity`를 **`0.28`**로, 법정 규제 서클 버퍼의 `fillOpacity`를 **`0.18`**로 대폭 상향 조율하고 두꺼운 테두리를 둘러 위험 경고의 강도와 차단 시각성을 극대화하였습니다.
 
+### 6. 입지 추천 알고리즘 내 5대 잔존 하드코딩 요소 완전 청소 및 제로 하드코딩화 (Completed)
+- **DB 마이그레이션 및 자치구 ID 동적 연계 (`district_id`):**
+  - `users` 테이블 스키마에 `district_id` 컬럼을 신설하여 기존 관리자/실무관 계정에 기본값 `1`을 안전하게 적재하는 DB 스키마 마이그레이션을 단행했습니다.
+  - 로그인(`/api/v1/auth/login`) 및 회원가입(`/api/v1/auth/register`), 토큰 검증 미들웨어에서 `district_id` 데이터를 함께 select 및 반환하도록 통제했습니다.
+  - 프론트엔드는 로그인 성공 시 전달받은 `district_id`를 `sessionStorage`에 실시간 캐싱하고, 입지 추천 API(`/api/v1/spatial/recommend`) 호출 시 `district_id` 파라미터를 넘기며 SQL의 `c.district_id = :district_id` 와 동적 연동하여 하드코딩을 100% 해소했습니다.
+- **주소지 자치구명 동적 바인딩:**
+  - `to_road_address` 내부에서 용산구 동-도로명 하드코딩 사전(`road_map`)을 완전 제거하고, 로그인한 사용자의 `district_id`를 기반으로 `districts` 테이블 내 `district_name` 컬럼을 DB에서 실시간 조회하여 `서울특별시 {district_name} {지번}` 형태로 주소를 안전하고 일관성 있게 조립합니다.
+- **편의점 이격거리 및 분류 매핑 정합:**
+  - `commercial_shops` 테이블 조회 시 이름 Like 매칭에 `이마트24`, `미니스톱` 및 업종 카테고리명(`category_name LIKE '%편의점%'`) OR 검색을 추가하여 편의점 누락 오류를 종식시켰습니다.
+  - 이격 감점 탐색 반경은 조례 RAG 테이블의 `nosmoking_m` 설정값을 동적으로 degree 단위로 비례 환산(`cvs_dist_deg`)하여 파라미터 바인딩 처리했습니다.
+- **국공유재산 가점 및 지수 감쇠 상수 스케일링:**
+  - 소유권 프리미엄 점수(+8.0점, +4.0점 등)를 하드코딩하지 않고, 조례 규칙 DB 내의 `ownership_premiums` 설정값에 연동하고 없을 시에만 폴백하도록 조율했습니다.
+  - 마커 중심점 기준 Edge Effect 해소용 지수 감쇠 곡선 반감 거리(`decay_factor = 150.0`)는 사용자의 가변 탐색 반경(`search_radius` / 0.003 * 150.0)에 비례하게 동적 스케일링 연산되도록 수식을 고도화했습니다.
+  - 최종 추천 수량 제한(5개)은 API 파라미터 `limit`를 동적 수신하여 슬라이싱 및 중복 다양성 필터링 개수를 유연하게 제어하도록 가변 바인딩을 완료했습니다.
+
 ---
 
 ## 🧪 E2E 통합 테스트 검증 결과
 - **테스트 커맨드:** `backend\venv\Scripts\python scratch/ahp_spatial_test.py`
 - **결과:** **13개 시나리오 전항목 ALL PASS**를 획득하여 무결성을 확보했습니다.
+
+### 1) 백엔드 7단계 API 보안 격리 테스트 (100% Pass)
+- 잘못된 패스워드 로그인 ➔ `400 Bad Request` 정상 차단.
+- 비인가 사용자의 어드민 API 접근 ➔ `401 Unauthorized` 정상 차단.
+- 일반 스마트도시과 실무관(`officer`)의 어드민 API 접근 ➔ `403 Forbidden` 정상 차단.
+- 시스템 관리자(`admin`)의 어드민 API 접근 ➔ `200 OK` 정상 허용.
+
+### 2) 프론트엔드 포털 게이트 및 라우터 가드 E2E 검증 (100% Pass)
+- **포털 게이트웨이 테스트:** 비인가 상태로 접속 시 로그인 폼이 정상 로드됩니다.
+- **자동 리다이렉션:** 올바른 인증 정보 입력 시 `/spatial`로 즉시 연결되며, 지도 화면 우측 상단 헤더에 로그인된 실무관 소속명(`department`)과 이름(`username`)이 다이렉트로 바인딩됩니다.
+- **보안 가드 검증:** 로그아웃을 통해 세션 스토리지를 소거한 후 직접 주소창에 `/spatial`을 입력하여 접속을 우회 시도했으나, 보안 가드가 작동해 차단 얼럿을 출력하고 루트 로그인 화면 `/`로 강제 강제 전송됨을 성공적으로 확인했습니다.
+
+### 📸 관련 검증 미디어 및 리포트
+- **통합 관리자 콘솔 모달 로드 스크린샷:**
+  ![통합 관리자 콘솔 모달 로드 스크샷](C:/Users/Admin/.gemini/antigravity-ide/brain/594348b3-0657-4dfd-9a96-b4fcaf7a6c23/admin_console_modal_1784009905648.png)
+- **E2E 로그인/로그아웃/콘솔 진입 흐름 레코딩:**
+  ![E2E 로그인/로그아웃/콘솔 진입 흐름 레코딩](C:/Users/Admin/.gemini/antigravity-ide/brain/594348b3-0657-4dfd-9a96-b4fcaf7a6c23/jwt_auth_admin_console_flow_1784009769288.webp)
+- **리팩토링 후 로그인 포털 게이트 스크린샷:**
+  ![리팩토링 후 로그인 포털 게이트 스크린샷](C:/Users/Admin/.gemini/antigravity-ide/brain/594348b3-0657-4dfd-9a96-b4fcaf7a6c23/login_portal_gate_1784012000607.png)
+- **비인가 /spatial 진입 시 보안 가드 작동 스크린샷:**
+  ![비인가 /spatial 진입 시 보안 가드 작동 스크린샷](C:/Users/Admin/.gemini/antigravity-ide/brain/594348b3-0657-4dfd-9a96-b4fcaf7a6c23/gate_route_guard_redirect_1784012055938.png)
+- **E2E 라우팅 분리 및 리다이렉트 보안 가드 흐름 레코딩:**
+  ![E2E 라우팅 분리 및 리다이렉트 보안 가드 흐름 레코딩](C:/Users/Admin/.gemini/antigravity-ide/brain/594348b3-0657-4dfd-9a96-b4fcaf7a6c23/root_auth_gateway_guard_1784011973684.webp)

@@ -262,6 +262,8 @@ async def recommend_optimal_sites(
     model_id: Optional[int] = None,
     ref_lat: Optional[float] = None,
     ref_lng: Optional[float] = None,
+    district_id: Optional[int] = 1,
+    limit: Optional[int] = 5,
     db: Session = Depends(get_db)
 ):
     try:
@@ -279,6 +281,11 @@ async def recommend_optimal_sites(
         base_lng = 126.9724
         if ref_lng is not None and not math.isnan(ref_lng) and 124.0 <= ref_lng <= 132.0:
             base_lng = ref_lng
+
+        # [Zero Hardcoding] districts 테이블에서 district_id 기반 자치구 명칭 동적 조회
+        dist_name_query = text("SELECT district_name FROM districts WHERE id = :dist_id")
+        dist_name_row = db.execute(dist_name_query, {"dist_id": district_id}).fetchone()
+        district_name = dist_name_row[0] if dist_name_row else "용산구"
 
         # 1. AHP 모델 가중치 조회
         if model_id:
@@ -370,14 +377,14 @@ async def recommend_optimal_sites(
                 ORDER BY ST_Centroid(c.geom) <-> rz.geom 
                 LIMIT 1
             ) nc ON TRUE
-            WHERE c.district_id = 1
+            WHERE c.district_id = :district_id
               AND c.ownership_type IN ('국유지', '시유지', '구유지')
               AND ST_IsValid(c.geom)
               AND ST_DWithin(c.geom, ST_SetSRID(ST_MakePoint(:ref_lng, :ref_lat), 4326), :search_radius)
               -- 개별 규제지 버퍼 저촉 여부를 geometry 인덱스(GIST)로 고속 감지
               AND NOT EXISTS (
                   SELECT 1 FROM restricted_zones rz 
-                  WHERE rz.district_id = 1
+                  WHERE rz.district_id = :district_id
                     AND (
                         -- 흡연구역일 때는 RAG 해독에 기반한 동적 배제 (지리 오차 왜곡 차단 위해 구면 geography 실제 미터로 연산)
                         (:facility_type = 'smoking_zone' AND (
@@ -446,35 +453,13 @@ async def recommend_optimal_sites(
         
         # 도로명 주소 매핑 및 도로 꼬리표 결합 헬퍼
         def to_road_address(jibun: str, land_use_code: Optional[str] = None) -> str:
-            # [PEP8 Inline Import Cleaned]
-            is_road = False
-            # 지목이 '도'(도로)이거나 지번에 '도'가 단독 포함된 경우 도로 인근 부지로 간주
-            if land_use_code == '도' or (jibun and (jibun.endswith('도') or jibun.split()[-1] == '도')):
-                is_road = True
-                
             clean_jibun = jibun.replace(" 도", "").strip() if jibun else ""
-            if clean_jibun.endswith("대"):
-                clean_jibun = clean_jibun[:-1]
-                
-            road_map = {
-                "한강로": "한강대로", "청파동": "청파로", "서계동": "만리재로", "효창동": "효창원로",
-                "이태원": "이태원로", "한남동": "한남대로", "보광동": "보광로", "원효로": "원효로",
-                "신계동": "백범로", "문배동": "백범로", "용산동": "신흥로", "주성동": "서빙고로",
-                "동빙고": "장문로", "서빙고": "서빙고로", "이촌동": "이촌로", "갈월동": "한강대로",
-                "남영동": "한강대로", "후암동": "후암로", "도원동": "새창로", "산천동": "효창원로",
-                "신창동": "원효로"
-            }
             
-            matched_road = "용산로"
-            for dong, road in road_map.items():
-                if dong in clean_jibun:
-                    matched_road = road
-                    break
-            
-            # Remove trailing land use code characters like '대', '도', '잡', etc.
+            # 지목 관련 후행 수식 문자 제거
             clean_jibun = re.sub(r'[대도잡임체공학철]$', '', clean_jibun).strip()
             
-            return f"서울특별시 용산구 {clean_jibun}"
+            # [Zero Hardcoding] 자치구 동적 바인딩 주소 전환
+            return f"서울특별시 {district_name} {clean_jibun}"
 
 
         # [v4.9.21] 사용자가 보정한 기준 마커 기준으로 최대 300m(0.003도) 범위 최정밀 보행권 고속 검색
@@ -491,7 +476,8 @@ async def recommend_optimal_sites(
                 "school_m": school_m,
                 "childcare_m": childcare_m,
                 "nosmoking_m": nosmoking_m,
-                "school_ev_m": school_ev_m
+                "school_ev_m": school_ev_m,
+                "district_id": district_id
             }).fetchall()
             
             for r in rows:
@@ -595,17 +581,31 @@ async def recommend_optimal_sites(
                 cand["scores"][k] = score
                 raw_scores[k].append(score)
             
-            # 편의점/슈퍼마켓 근접 10m 이격 검사 (ST_DWithin 0.0001)
+            # 편의점/슈퍼마켓 이격 감점 검사 (조례 RAG nosmoking_m 또는 기본 10m(0.0001도) 동적 바인딩)
+            cvs_dist_deg = (nosmoking_m if nosmoking_m > 0 else 10.0) * 0.00001
             cvs_query = text("""
                 SELECT shop_name FROM commercial_shops
-                WHERE district_id = 1 
-                  AND ST_DWithin(geom, ST_SetSRID(ST_MakePoint(:lng, :lat), 4326), 0.0001)
-                  AND (shop_name LIKE '%편의점%' OR shop_name LIKE '%CU%' OR shop_name LIKE '%GS25%' OR shop_name LIKE '%세븐%')
+                WHERE district_id = :district_id 
+                  AND ST_DWithin(geom, ST_SetSRID(ST_MakePoint(:lng, :lat), 4326), :cvs_dist_deg)
+                  AND (
+                      shop_name LIKE '%편의점%' OR 
+                      shop_name LIKE '%CU%' OR 
+                      shop_name LIKE '%GS25%' OR 
+                      shop_name LIKE '%세븐%' OR 
+                      shop_name LIKE '%이마트24%' OR 
+                      shop_name LIKE '%미니스톱%' OR
+                      category_name LIKE '%편의점%'
+                  )
                 LIMIT 1
             """)
             cvs_row = None
             try:
-                cvs_row = db.execute(cvs_query, {"lng": cand["lng"], "lat": cand["lat"]}).fetchone()
+                cvs_row = db.execute(cvs_query, {
+                    "lng": cand["lng"], 
+                    "lat": cand["lat"],
+                    "district_id": district_id,
+                    "cvs_dist_deg": cvs_dist_deg
+                }).fetchone()
             except Exception:
                 pass
             
@@ -669,20 +669,29 @@ async def recommend_optimal_sites(
                 # [하위 호환성 롤백 폴백] DB 규칙이 없을 경우 가감점 처리 생략
                 pass
                         
-            # [v4.9.37] 국유지 적극 활용을 위한 국공유재산 행정 적격 프리미엄 가산점 부여
+            # [Zero Hardcoding] 국공유재산 적격 프리미엄 점수 동적 적하 (RAG Rules 설정 연동)
+            state_land_premium = 8.0
+            shared_land_premium = 4.0
+            land_use_bonus = 4.0
+            
+            if isinstance(rules_metadata, dict):
+                # rules_metadata 가 딕셔너리형 설정 데이터셋을 포함하는 경우
+                premiums = rules_metadata.get("ownership_premiums", {})
+                state_land_premium = float(premiums.get("state_land", 8.0))
+                shared_land_premium = float(premiums.get("shared_land", 4.0))
+                land_use_bonus = float(premiums.get("land_use_bonus", 4.0))
+                
             if cand.get("ownership_type") == "국유지":
-                # 기본 국유지 소유 프리미엄 부여 (+8.0점)
-                total_score += 8.0
-                # 설치 및 사용 위탁이 용이한 지목(대지, 잡종지, 공원, 주차장)에 대한 가중 보너스 (+4.0점)
+                total_score += state_land_premium
                 if cand.get("land_use_code") in ["대", "잡", "공", "차"]:
-                    total_score += 4.0
+                    total_score += land_use_bonus
             elif cand.get("ownership_type") in ["시유지", "구유지"]:
-                # 지자체 소유지 프리미엄 (+4.0점)
-                total_score += 4.0
+                total_score += shared_land_premium
 
             # [v4.9.21] 지수 거리 감쇠 함수 스코어링 적용 (경계선 단절 왜곡 Edge Effect 해소)
             # 기준점 좌표와의 거리(dist_from_ref, 미터 단위)가 멀어질수록 점수를 감쇠하여 반경 인근 부지를 정밀 계측
-            decay_factor = 150.0  # 감쇠 반감 기준 거리 150m (300m 한계 최적화)
+            # [Zero Hardcoding] 탐색 반경에 비례한 감쇠 기준 스케일링 (기본 300m 반경일 때 150m)
+            decay_factor = (search_radius / 0.003) * 150.0
             dist_val = float(cand.get("dist_from_ref", 0.0))
             
             # math.exp 패널티 연산
@@ -721,11 +730,11 @@ async def recommend_optimal_sites(
                     break
             if not too_close:
                 diverse_candidates.append(cand)
-            if len(diverse_candidates) >= 5:
+            if len(diverse_candidates) >= limit:
                 break
 
         # 다양성 필터링으로 인해 5개 미만이 될 경우 기준을 0.5배 완화하여 백업 보강
-        if len(diverse_candidates) < 5:
+        if len(diverse_candidates) < limit:
             for cand in candidates:
                 if cand not in diverse_candidates:
                     too_close = False
@@ -736,15 +745,15 @@ async def recommend_optimal_sites(
                             break
                     if not too_close:
                         diverse_candidates.append(cand)
-                if len(diverse_candidates) >= 5:
+                if len(diverse_candidates) >= limit:
                     break
 
         # 최종 가드: 여전히 부족하면 순서대로 채워 5개 획득 보장
-        if len(diverse_candidates) < 5:
+        if len(diverse_candidates) < limit:
             for cand in candidates:
                 if cand not in diverse_candidates:
                     diverse_candidates.append(cand)
-                if len(diverse_candidates) >= 5:
+                if len(diverse_candidates) >= limit:
                     break
 
         filtered_candidates = diverse_candidates

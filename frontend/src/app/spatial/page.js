@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import LoadingOverlay from '../../components/LoadingOverlay';
 import ExclusionZoneControl from '../../components/ExclusionZoneControl';
@@ -8,13 +9,30 @@ import DebateSimulatorModal from '../../components/DebateSimulatorModal';
 import SidebarControl from '../../components/SidebarControl';
 import OptimalResultPanel from '../../components/OptimalResultPanel';
 
-const apiFetch = (url, options) => {
-  // Next.js next.config.mjs의 rewrites 프록시 룰을 존중하도록 호스트 하드코딩 제거 (상대경로 매핑)
+const apiFetch = (url, options = {}) => {
+  const token = typeof window !== 'undefined' ? sessionStorage.getItem('token') : null;
+  const headers = {
+    ...options.headers,
+    ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+  };
   const nativeFetch = typeof window !== 'undefined' ? window.fetch : (typeof globalThis !== 'undefined' ? globalThis.fetch : null);
-  return nativeFetch ? nativeFetch(url, options) : Promise.reject(new Error('Fetch not available'));
+  return nativeFetch ? nativeFetch(url, { ...options, headers }) : Promise.reject(new Error('Fetch not available'));
 };
 
 export default function Home() {
+  const router = useRouter();
+
+  // 🔒 행정망 인증 세션 가드 (JWT to SessionStorage 검사 및 미인가 차단)
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const token = sessionStorage.getItem('token');
+      if (!token) {
+        alert("🔒 행정 인증 세션이 존재하지 않거나 만료되었습니다. 로그인 페이지로 이동합니다.");
+        router.push('/');
+      }
+    }
+  }, [router]);
+
   // 플랫폼 단계별 상태 제어 (Pipeline Wizard Steps)
   // Step 1: 데이터 일괄 업로드 및 감리 (Ingestion & AI Audit)
   // Step 2: 비주얼 HITL 좌표 보정 (Visual HITL Alignment)
@@ -22,6 +40,29 @@ export default function Home() {
   // Step 4: 최적 입지 선정 및 갈등도 평가 (PostGIS Filtering & CSS)
   // Step 5: AI 모의 심의 및 PDF 보고서 (AI Simulation & PDF Report)
   const [pipelineStep, setPipelineStep] = useState(1);
+
+  // 🔒 로그인/로그아웃/자치구 상태 변수 (최상단 이동으로 ReferenceError 방지)
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [municipalId, setMunicipalId] = useState('');
+  const [userRole, setUserRole] = useState('user');
+  const [department, setDepartment] = useState('스마트도시과');
+  const [userDistrictId, setUserDistrictId] = useState(1); // 동적 자치구 ID (Default: 1)
+
+  // [Phase 2] 관리자 콘솔 및 시드 데이터 적재 상태
+  const [showAdminConsoleModal, setShowAdminConsoleModal] = useState(false);
+  const [seedTable, setSeedTable] = useState('cadastral_lands');
+  const [isSeeding, setIsSeeding] = useState(false);
+  
+  // ML 모델 업로드 관련 상태
+  const [modelDomain, setModelDomain] = useState('city_feature');
+  const [isModelUploading, setIsModelUploading] = useState(false);
+
+  // [Phase 2] 신규 실무관 등록용 상태 (최고관리자 콘솔 내 자동 연동)
+  const [regUsername, setRegUsername] = useState('');
+  const [regPassword, setRegPassword] = useState('');
+  const [regRole, setRegRole] = useState('user');
+  const [regDept, setRegDept] = useState('스마트도시과');
+  const [isRegistering, setIsRegistering] = useState(false);
 
   // Step 1 AI 감리 및 실무자 의도 매핑 검증 상태
   const [isAuditComplete, setIsAuditComplete] = useState(false);
@@ -145,7 +186,7 @@ export default function Home() {
   // Step 2 진입 시 관할 경계 GeoJSON 및 규제 시설물 목록 로드
   useEffect(() => {
     if (pipelineStep === 2) {
-      apiFetch('/api/v1/spatial/district-boundary/1')
+      apiFetch(`/api/v1/spatial/district-boundary/${userDistrictId}`)
         .then(res => res.ok ? res.json() : null)
         .then(data => { if (data) setDistrictGeoJson(data); });
         
@@ -162,13 +203,154 @@ export default function Home() {
         .then(res => res.ok ? res.json() : null)
         .then(data => { if (data) setNationalPropertiesGeoJson(data); });
     }
-  }, [pipelineStep, inferredDomainTag]);
+  }, [pipelineStep, inferredDomainTag, userDistrictId]);
 
-  // 5. 로그인 모달 상태
-  const [showLoginModal, setShowLoginModal] = useState(false);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [municipalId, setMunicipalId] = useState('');
-  const [department, setDepartment] = useState('스마트도시과');
+  // 5. 로그인/로그아웃 상태 관리 및 핸들러 정의 (B2G 세션스토리지 보안 지향)
+  // 컴포넌트 마운트 시 세션스토리지 기반 자동 로그인 복구 (SSR window is not defined 크래시 예방)
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const token = sessionStorage.getItem('token');
+      const savedUser = sessionStorage.getItem('username');
+      const savedRole = sessionStorage.getItem('role');
+      const savedDept = sessionStorage.getItem('department');
+      const savedDistrict = sessionStorage.getItem('district_id');
+      if (token && savedUser) {
+        setIsLoggedIn(true);
+        setMunicipalId(savedUser);
+        setUserRole(savedRole || 'user');
+        setDepartment(savedDept || '스마트도시과');
+        setUserDistrictId(savedDistrict ? parseInt(savedDistrict, 10) : 1);
+      }
+    }
+  }, []);
+
+
+
+  const handleLogout = () => {
+    if (typeof window !== 'undefined') {
+      sessionStorage.clear();
+      setIsLoggedIn(false);
+      setUserRole('user');
+      setMunicipalId('');
+      alert("정상적으로 행정 세션이 로그아웃(휘발 소거)되었습니다.");
+      router.push('/');
+    }
+  };
+
+  const handleSeedUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    const ext = file.name.split('.').pop().toLowerCase();
+    if (ext !== 'csv') {
+      alert('⚠️ 시드 데이터는 오직 CSV 형식만 지원합니다.');
+      return;
+    }
+    
+    if (!confirm(`[ADMIN ALERT] 선택한 CSV 파일을 '${seedTable}' 테이블에 벌크 적재하겠습니까?\n이 작업은 데이터베이스 인스턴스 DDL에 영향을 주며 공간 인덱스(GIST)가 강제 빌드됩니다.`)) {
+      return;
+    }
+    
+    setIsSeeding(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      const res = await apiFetch(`/api/v1/upload/seed-spatial?target_table=${seedTable}&if_exists=append`, {
+        method: 'POST',
+        body: formData
+      });
+      
+      if (res.ok) {
+        const data = await res.json();
+        alert(`✓ 벌크 적재 성공!\n테이블: ${seedTable}\n적재 메시지: ${data.message}\n공간 지오메트리 빌드: ${data.spatial_geometry_built ? "성공 (Point/4326)" : "없음"}`);
+        setShowAdminConsoleModal(false);
+      } else {
+        const err = await res.json();
+        throw new Error(err.detail || '벌크 적재 실패');
+      }
+    } catch (err) {
+      alert(`벌크 적재 중 치명적 오류 발생: ${err.message}`);
+    } finally {
+      setIsSeeding(false);
+    }
+  };
+
+  const handleModelUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    const ext = file.name.split('.').pop().toLowerCase();
+    if (ext !== 'pkl') {
+      alert('⚠️ 모델 파일은 오직 .pkl 확장자만 허용됩니다.');
+      return;
+    }
+    
+    if (!confirm(`[ADMIN ALERT] '${modelDomain}' 도메인의 예측 모델(.pkl)을 강제 업로드하여 핫 바인딩하겠습니까?\n이 작업은 실시간 입지 선정 예측 추천 스코어 모델 가중치를 영구 변경합니다.`)) {
+      return;
+    }
+    
+    setIsModelUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      const res = await apiFetch(`/api/v1/upload/model?domain_tag=${modelDomain}`, {
+        method: 'POST',
+        body: formData
+      });
+      
+      if (res.ok) {
+        alert(`✓ ML 예측 모델 업로드 및 실시간 핫 바인딩 성공!\n도메인: ${modelDomain}`);
+        setShowAdminConsoleModal(false);
+      } else {
+        const err = await res.json();
+        throw new Error(err.detail || '모델 적재 실패');
+      }
+    } catch (err) {
+      alert(`모델 적재 중 오류 발생: ${err.message}`);
+    } finally {
+      setIsModelUploading(false);
+    }
+  };
+
+  const handleRegisterSubmit = async (e) => {
+    e.preventDefault();
+    if (!regUsername || !regPassword) {
+      alert("등록할 아이디와 비밀번호를 입력해 주십시오.");
+      return;
+    }
+
+    setIsRegistering(true);
+    try {
+      // apiFetch는 sessionStorage 내의 어드민 JWT 토큰을 자동으로 헤더에 바인딩합니다!
+      const res = await apiFetch('/api/v1/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          username: regUsername,
+          password: regPassword,
+          role: regRole,
+          department: regDept
+        })
+      });
+
+      if (res.ok) {
+        alert(`✓ 신규 실무자 계정 [${regUsername}]이 성공적으로 등록되었습니다.\n부서: ${regDept} | 직위: ${regRole === 'admin' ? '관리자' : '실무관'}`);
+        setRegUsername('');
+        setRegPassword('');
+        setRegRole('user');
+        setRegDept('스마트도시과');
+      } else {
+        const errData = await res.json();
+        throw new Error(errData.detail || "등록 처리 실패");
+      }
+    } catch (err) {
+      alert(`실무자 계정 등록 중 오류 발생: ${err.message}`);
+    } finally {
+      setIsRegistering(false);
+    }
+  };
 
   // Leaflet 지도 인스턴스 참조
   const mapRef = useRef(null);
@@ -329,7 +511,7 @@ export default function Home() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          district_id: 1,
+          district_id: userDistrictId,
           facility_type: inferredDomainTag || 'smoking_zone',
           criteria_weights: ahpWeights,
           criteria_list: criteriaList,
@@ -338,7 +520,8 @@ export default function Home() {
       });
       if (!lockRes.ok) {
         const errData = await lockRes.json();
-        alert('AHP 모델 락 오류: ' + (errData.detail || '검증 실패'));
+        const detailMsg = typeof errData.detail === 'object' ? JSON.stringify(errData.detail) : (errData.detail || '검증 실패');
+        alert('AHP 모델 락 오류: ' + detailMsg);
         setIsRecommending(false);
         return;
       }
@@ -347,8 +530,8 @@ export default function Home() {
       const targetLat = isNaN(hitlLat) ? 37.5302 : hitlLat;
       const targetLng = isNaN(hitlLng) ? 126.9724 : hitlLng;
       
-      // 추천 입지 연산 기동 (HITL 마커 좌표 기준 인근 탐색)
-      const recommendRes = await apiFetch(`/api/v1/spatial/recommend?model_id=${lockData.model_id}&ref_lat=${targetLat}&ref_lng=${targetLng}`);
+      // 추천 입지 연산 기동 (HITL 마커 좌표 기준 인근 탐색, 동적 자치구 ID 및 가변 limit 6개 매핑)
+      const recommendRes = await apiFetch(`/api/v1/spatial/recommend?model_id=${lockData.model_id}&ref_lat=${targetLat}&ref_lng=${targetLng}&district_id=${userDistrictId}&limit=6`);
       if (!recommendRes.ok) {
         throw new Error('공간 입지 추천 연산 실패');
       }
@@ -1121,16 +1304,7 @@ export default function Home() {
     };
   }, [showSimModal, activeTab, intensityLevel]);
 
-  // 로그인 처리
-  const handleLogin = (e) => {
-    e.preventDefault();
-    if (!municipalId.trim()) {
-      alert('공무원 ID를 입력해주세요.');
-      return;
-    }
-    setIsLoggedIn(true);
-    setShowLoginModal(false);
-  };
+
 
   // 조례 목록 비동기 조회
   const fetchRegulations = async () => {
@@ -1327,7 +1501,7 @@ export default function Home() {
       {/* 글로벌 분석 로딩 오버레이 [v4.5.4] */}
       <LoadingOverlay isUploading={isUploading} isRecommending={isRecommending} />
       
-      {/* 1. 상단 글로벌 네비게이션 헤더 */}
+      {/* 1. 상단 글로벌 네비게이션 헤더 (JWT Session-aware) */}
       <header className="absolute top-0 left-0 right-0 h-16 glass-panel rounded-none border-t-0 border-x-0 z-45 px-8 flex justify-between items-center">
         <div className="flex items-center gap-3">
           <span className="text-xl font-bold tracking-tight text-white">OmniSite</span>
@@ -1337,7 +1511,7 @@ export default function Home() {
           <Link href="/spatial" className="text-white border-b-2 border-blue-500 pb-1">입지분석 메인 (Map)</Link>
           <Link href="/dashboard" className="text-slate-400 hover:text-white transition-all pb-1">이력 대시보드 (Analytics)</Link>
         </nav>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
           <button 
             onClick={() => {
               setShowRegulationListModal(true);
@@ -1347,19 +1521,39 @@ export default function Home() {
           >
             📋 조례 목록 조회
           </button>
-          <button 
-            onClick={() => setShowRagModal(true)}
-            className="text-xs bg-slate-800 hover:bg-slate-700 border border-slate-700/80 text-slate-200 px-3.5 py-1.5 rounded-lg font-semibold cursor-pointer transition-all flex items-center gap-1.5"
-          >
-            ⚖️ 법규 RAG 관리
-          </button>
-          <button 
-            onClick={handlePlatformReset}
-            className="text-xs bg-rose-950/45 hover:bg-rose-900/60 border border-rose-500/30 text-rose-300 px-3.5 py-1.5 rounded-lg font-semibold cursor-pointer transition-all flex items-center gap-1.5"
-          >
-            🔄 전체 초기화
-          </button>
 
+          {isLoggedIn ? (
+            <div className="flex items-center gap-3">
+              {/* 소속 부서 및 실무관 식별 */}
+              <span className="text-[10px] bg-slate-800/80 border border-slate-700/80 text-slate-300 px-3 py-1.5 rounded-lg font-medium">
+                🏢 {department} | <span className="font-bold text-white">{municipalId}</span> 실무관
+              </span>
+              
+              {/* 관리자(Admin) 권한 가드 ⚙️ 버튼 동적 렌더링 */}
+              {userRole === 'admin' && (
+                <button 
+                  onClick={() => setShowAdminConsoleModal(true)}
+                  className="text-xs bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-amber-400 px-3.5 py-1.5 rounded-lg font-bold cursor-pointer transition-all flex items-center gap-1.5"
+                >
+                  ⚙️ 관리자 콘솔
+                </button>
+              )}
+
+              <button 
+                onClick={handleLogout}
+                className="text-xs bg-rose-950/45 hover:bg-rose-900/60 border border-rose-500/30 text-rose-300 px-3.5 py-1.5 rounded-lg font-semibold cursor-pointer transition-all flex items-center gap-1.5"
+              >
+                🔓 로그아웃
+              </button>
+            </div>
+          ) : (
+            <button 
+              onClick={() => setShowLoginModal(true)}
+              className="text-xs bg-blue-600 hover:bg-blue-700 text-white px-4 py-1.5 rounded-lg font-bold cursor-pointer transition-all flex items-center gap-1.5 shadow-md shadow-blue-500/10"
+            >
+              🔒 행정망 로그인
+            </button>
+          )}
         </div>
       </header>
 
@@ -1566,6 +1760,193 @@ export default function Home() {
         </div>
       )}
 
-    </div>
+    
+
+
+      {/* ⚙️ 관리자 전용 제어 콘솔 모달 */}
+      {showAdminConsoleModal && (
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="glass-panel w-full max-w-md p-6 flex flex-col gap-4 relative animate-fade-in">
+            <button 
+              onClick={() => setShowAdminConsoleModal(false)}
+              className="absolute top-4 right-4 text-slate-400 hover:text-white font-bold cursor-pointer"
+            >
+              ✕
+            </button>
+            <div>
+              <span className="text-[10px] bg-amber-500/10 border border-amber-500/30 text-amber-400 px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider">
+                System Administrator Console
+              </span>
+              <h3 className="text-sm font-bold text-white mt-2">⚙️ 통합 관리자 콘솔</h3>
+              <p className="text-[10px] text-slate-400">데이터베이스 벌크 적재, 초기화 및 법규 라이브러리 관리를 수행합니다.</p>
+            </div>
+            
+            <div className="border border-slate-800 rounded-lg p-4 bg-slate-900/40 flex flex-col gap-4">
+              
+              {/* RAG 관리 파트 통합 적재 */}
+              <div className="flex flex-col gap-2">
+                <label className="text-[11px] font-bold text-slate-200">⚖️ RAG 법규 라이브러리 적재</label>
+                <div 
+                  onClick={() => document.getElementById('seed-regulation-uploader').click()}
+                  className="border-2 border-dashed border-slate-700 hover:border-blue-500 rounded-xl p-4 text-center cursor-pointer transition-all bg-slate-950/40 hover:bg-slate-900/30 flex flex-col items-center justify-center gap-1"
+                >
+                  <span className="text-lg">⚖️</span>
+                  <p className="text-[11px] text-slate-300 font-semibold">조례 PDF 파일 등록</p>
+                  <p className="text-[9px] text-slate-500">PDF RAG 임베딩 DB 벡터화를 진행합니다.</p>
+                  {isRegulationUploading && <p className="text-[10px] text-amber-400 mt-1 animate-pulse">RAG 적재 및 벡터 캐싱 중...</p>}
+                </div>
+                {ragUploadSuccess && (
+                  <div className="bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] p-2 rounded-lg text-center font-medium">
+                    ✓ 조례 법규의 RAG 벡터 적재가 성공적으로 완료되었습니다!
+                  </div>
+                )}
+                <input 
+                  type="file" 
+                  multiple 
+                  accept=".pdf" 
+                  id="seed-regulation-uploader" 
+                  className="hidden" 
+                  onChange={handleRegulationFileChange} 
+                />
+              </div>
+
+              {/* 기능 1: 공간/행정 데이터 벌크 적재 */}
+              <div className="flex flex-col gap-2 border-t border-slate-800 pt-3">
+                <label className="text-[11px] font-bold text-slate-200">🚀 원천 데이터 벌크 적재 (PostGIS Seed)</label>
+                <div className="flex gap-2">
+                  <select 
+                    value={seedTable} 
+                    onChange={(e) => setSeedTable(e.target.value)}
+                    className="bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-white outline-none cursor-pointer w-full font-semibold"
+                  >
+                    <option value="cadastral_lands">지적 필지 정보 (cadastral_lands)</option>
+                    <option value="civil_complaints">주민 민원 데이터 (civil_complaints)</option>
+                    <option value="commercial_shops">상권 점포 정보 (commercial_shops)</option>
+                    <option value="user_exclusion_zones">물리 장애물 금역 (user_exclusion_zones)</option>
+                  </select>
+                </div>
+                <div 
+                  onClick={() => document.getElementById('seed-csv-uploader').click()}
+                  className="border-2 border-dashed border-slate-700 hover:border-amber-500 rounded-xl p-4 text-center cursor-pointer transition-all bg-slate-950/40 hover:bg-slate-900/30 flex flex-col items-center justify-center gap-1"
+                >
+                  <span className="text-lg">📁</span>
+                  <p className="text-[11px] text-slate-300 font-semibold">벌크 CSV 데이터 업로드</p>
+                  <p className="text-[9px] text-slate-500">지정 테이블에 to_sql 자동 공간 맵핑 적재를 실행합니다.</p>
+                  {isSeeding && <p className="text-[10px] text-amber-400 mt-1 animate-pulse">PostGIS 벌크 시딩 및 GIST 인덱싱 가동 중...</p>}
+                </div>
+                <input 
+                  type="file" 
+                  accept=".csv" 
+                  id="seed-csv-uploader" 
+                  className="hidden" 
+                  onChange={handleSeedUpload} 
+                />
+              </div>
+
+              {/* 기능 3: ML 모델 (.pkl) 업로드 및 핫 바인딩 */}
+              <div className="flex flex-col gap-2 border-t border-slate-800 pt-3">
+                <label className="text-[11px] font-bold text-slate-200">🤖 ML 예측 모델 (.pkl) 핫 업로드</label>
+                <div className="flex gap-2">
+                  <select 
+                    value={modelDomain} 
+                    onChange={(e) => setModelDomain(e.target.value)}
+                    className="bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-white outline-none cursor-pointer w-full font-semibold"
+                  >
+                    <option value="city_feature">기본 도시 시설 도메인 (city_feature)</option>
+                    <option value="smoking_zone">실외 흡연구역 도메인 (smoking_zone)</option>
+                    <option value="ev_charging">전기차 충전소 도메인 (ev_charging)</option>
+                  </select>
+                </div>
+                <div 
+                  onClick={() => document.getElementById('seed-model-uploader').click()}
+                  className="border-2 border-dashed border-slate-700 hover:border-amber-500 rounded-xl p-4 text-center cursor-pointer transition-all bg-slate-950/40 hover:bg-slate-900/30 flex flex-col items-center justify-center gap-1"
+                >
+                  <span className="text-lg">🤖</span>
+                  <p className="text-[11px] text-slate-300 font-semibold">모델 파일 (.pkl) 업로드</p>
+                  <p className="text-[9px] text-slate-500">지정 도메인에 XGBoost 예측 모델을 핫 로드합니다.</p>
+                  {isModelUploading && <p className="text-[10px] text-amber-400 mt-1 animate-pulse">모델 리로드 및 메모리 리인덱싱 중...</p>}
+                </div>
+                <input 
+                  type="file" 
+                  accept=".pkl" 
+                  id="seed-model-uploader" 
+                  className="hidden" 
+                  onChange={handleModelUpload} 
+                />
+              </div>
+
+              {/* 기능 4: 신규 실무자 (공무원) 추가 등록 폼 (최고관리자 토큰 자동 맵핑) */}
+              <div className="flex flex-col gap-2 border-t border-slate-800 pt-3">
+                <label className="text-[11px] font-bold text-slate-200">➕ 신규 실무자 (공무원) 계정 추가 등록</label>
+                <form onSubmit={handleRegisterSubmit} className="flex flex-col gap-2 bg-slate-950/40 p-3 rounded-lg border border-slate-800/80">
+                  <div className="flex gap-2">
+                    <input 
+                      type="text"
+                      placeholder="신규 ID 입력"
+                      value={regUsername}
+                      onChange={(e) => setRegUsername(e.target.value)}
+                      className="bg-slate-950 border border-slate-800 rounded-lg p-2 text-[11px] text-white outline-none w-1/2 font-semibold"
+                    />
+                    <input 
+                      type="password"
+                      placeholder="비밀번호 설정"
+                      value={regPassword}
+                      onChange={(e) => setRegPassword(e.target.value)}
+                      className="bg-slate-950 border border-slate-800 rounded-lg p-2 text-[11px] text-white outline-none w-1/2 font-semibold"
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <select 
+                      value={regRole} 
+                      onChange={(e) => setRegRole(e.target.value)}
+                      className="bg-slate-950 border border-slate-800 rounded-lg p-2 text-[10px] text-white outline-none cursor-pointer w-1/2 font-semibold"
+                    >
+                      <option value="user">일반 실무자 (User)</option>
+                      <option value="admin">최고 관리자 (Admin)</option>
+                    </select>
+                    <select 
+                      value={regDept} 
+                      onChange={(e) => setRegDept(e.target.value)}
+                      className="bg-slate-950 border border-slate-800 rounded-lg p-2 text-[10px] text-white outline-none cursor-pointer w-1/2 font-semibold"
+                    >
+                      <option value="스마트도시과">스마트도시과</option>
+                      <option value="도시행정정보과">도시행정정보과</option>
+                      <option value="맑은환경과">맑은환경과</option>
+                    </select>
+                  </div>
+                  <button 
+                    type="submit"
+                    className="w-full bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-bold py-2 rounded-lg transition-all shadow-md cursor-pointer mt-1"
+                  >
+                    {isRegistering ? "등록 요청 전송 중..." : "➕ 신규 실무관 승인 발급"}
+                  </button>
+                </form>
+              </div>
+
+              {/* 기능 2: 전체 리셋 단추 */}
+              <div className="border-t border-slate-800 pt-3 flex justify-between items-center">
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-[11px] font-bold text-rose-400">🚨 시스템 데이터베이스 리셋</span>
+                  <span className="text-[9px] text-slate-500">임시 캐시 및 저장 조례를 전역 삭제합니다.</span>
+                </div>
+                <button 
+                  onClick={handlePlatformReset}
+                  className="text-[10px] bg-rose-950/50 hover:bg-rose-900 border border-rose-500/30 text-rose-300 px-3.5 py-2 rounded-lg font-bold cursor-pointer transition-all"
+                >
+                  전체 리셋 실행
+                </button>
+              </div>
+            </div>
+            
+            <button 
+              onClick={() => setShowAdminConsoleModal(false)}
+              className="w-full bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white text-xs font-bold py-2.5 rounded-lg transition-all"
+            >
+              콘솔 닫기
+            </button>
+          </div>
+        </div>
+      )}
+</div>
   );
 }

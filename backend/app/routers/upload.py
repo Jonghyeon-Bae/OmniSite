@@ -11,6 +11,9 @@ from sqlalchemy.orm import Session
 from sqlalchemy import text
 from app.config import settings
 from app.database import get_db
+from app.utils.auth import get_current_admin
+import pandas as pd
+from app.database import engine
 
 router = APIRouter(prefix="/api/v1", tags=["upload"])
 
@@ -430,7 +433,7 @@ class HITLCommitRequest(BaseModel):
 # PM 개발 철칙 2조 준수: 반드시 비동기 API(async def) 적용
 # 조례/시행규칙 규정 문서 등록 API
 @router.post("/upload/regulation")
-async def upload_regulation_files(files: List[UploadFile] = File(...), db: Session = Depends(get_db)):
+async def upload_regulation_files(files: List[UploadFile] = File(...), db: Session = Depends(get_db), current_admin: dict = Depends(get_current_admin)):
     uploaded_info = []
 
     for file in files:
@@ -506,7 +509,7 @@ async def list_regulations():
 
 # 등록된 조례/시행규칙 규정 삭제 API
 @router.delete("/upload/regulations/{filename}")
-async def delete_regulation(filename: str):
+async def delete_regulation(filename: str, current_admin: dict = Depends(get_current_admin)):
     try:
         file_path = os.path.join(UPLOAD_DIR, filename)
         if not os.path.exists(file_path):
@@ -1304,7 +1307,7 @@ async def commit_hitl_data(request: HITLCommitRequest, db: Session = Depends(get
 
 # --- [Step 1-0] 캐시 파일 일괄 제거 API ---
 @router.post("/upload/clear")
-async def clear_uploaded_caches(db: Session = Depends(get_db)):
+async def clear_uploaded_caches(db: Session = Depends(get_db), current_admin: dict = Depends(get_current_admin)):
     try:
         purged_files = []
         if os.path.exists(UPLOAD_DIR):
@@ -1339,3 +1342,142 @@ async def clear_uploaded_caches(db: Session = Depends(get_db)):
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"임시 캐시 초기화 중 오류 발생: {str(e)}")
+
+# --- [Phase 2] 관리자 전용 원천 공간/행정 데이터 벌크 적재 API ---
+class SeedSpatialRequest(BaseModel):
+    target_table: str
+    if_exists: Optional[str] = "append" # "append" or "replace"
+
+@router.post("/upload/seed-spatial")
+async def seed_spatial_data(
+    target_table: str,
+    if_exists: Optional[str] = "append",
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_admin: dict = Depends(get_current_admin)
+):
+    # 1. 허용 테이블 화이트리스트 검사 (SQL Injection 예방)
+    allowed_tables = [
+        "cadastral_lands",
+        "civil_complaints",
+        "commercial_shops",
+        "district_regulations",
+        "registered_domain_tags",
+        "user_exclusion_zones"
+    ]
+    if target_table not in allowed_tables:
+        raise HTTPException(
+            status_code=400,
+            detail=f"허용되지 않은 적재 테이블명입니다. 허용군: {allowed_tables}"
+        )
+        
+    filename = file.filename
+    try:
+        filename = filename.encode('latin-1').decode('utf-8')
+    except Exception:
+        pass
+        
+    ext = filename.split(".")[-1].lower() if "." in filename else ""
+    if ext != "csv":
+        raise HTTPException(
+            status_code=400,
+            detail="시드 데이터는 오직 CSV 형식만 업로드할 수 있습니다."
+        )
+        
+    temp_path = os.path.join(UPLOAD_DIR, f"temp_seed_{filename}")
+    try:
+        # 파일 임시 쓰기
+        with open(temp_path, "wb") as buffer:
+            while chunk := await file.read(1024 * 1024):
+                buffer.write(chunk)
+                
+        # 인코딩 디텍션 후 Pandas 로딩
+        correct_enc = detect_csv_encoding(temp_path)
+        df = pd.read_csv(temp_path, encoding=correct_enc, errors="replace")
+        
+        # 2. Pandas to_sql 벌크 적재 진행
+        df.to_sql(name=target_table, con=engine, if_exists=if_exists, index=False)
+        
+        # 3. 위도/경도가 존재할 시 PostGIS geom 공간 지오메트리 빌드 & GIST 인덱싱 트리거
+        columns = [c.lower() for c in df.columns]
+        lat_candidates = ["lat", "latitude", "위도", "y", "y좌표"]
+        lng_candidates = ["lng", "longitude", "경도", "x", "x좌표"]
+        
+        lat_col = next((c for c in df.columns if c.lower() in lat_candidates), None)
+        lng_col = next((c for c in df.columns if c.lower() in lng_candidates), None)
+        
+        spatial_migrated = False
+        if lat_col and lng_col:
+            # geom 기하 컬럼 추가, 포인트 형성 및 GIST 인덱스 빌드 (PostGIS 기능 바인딩)
+            db.execute(text(f"ALTER TABLE {target_table} ADD COLUMN IF NOT EXISTS geom geometry(Point, 4326);"))
+            db.execute(text(f"UPDATE {target_table} SET geom = ST_SetSRID(ST_MakePoint(CAST(\"{lng_col}\" AS double precision), CAST(\"{lat_col}\" AS double precision)), 4326) WHERE geom IS NULL;"))
+            db.execute(text(f"CREATE INDEX IF NOT EXISTS idx_{target_table}_geom_gist ON {target_table} USING GIST(geom);"))
+            db.commit()
+            spatial_migrated = True
+            
+        return {
+            "status": "success",
+            "message": f"성공적으로 {len(df)}건의 레코드를 '{target_table}' 테이블에 벌크 적재 완료했습니다.",
+            "filename": filename,
+            "spatial_geometry_built": spatial_migrated
+        }
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail=f"원천 시드 데이터 벌크 적재 중 치명적인 서버 오류가 발생했습니다: {str(e)}"
+        )
+    finally:
+        # 임시 파일 소거
+        if os.path.exists(temp_path):
+            try:
+                os.remove(temp_path)
+            except Exception:
+                pass
+
+# --- [Phase 2] 관리자 전용 예측 머신러닝 모델(.pkl) 핫 업로드 API ---
+@router.post("/upload/model")
+async def upload_ml_model(
+    domain_tag: str,
+    file: UploadFile = File(...),
+    current_admin: dict = Depends(get_current_admin)
+):
+    filename = file.filename
+    ext = filename.split(".")[-1].lower()
+    if ext != "pkl":
+        raise HTTPException(
+            status_code=400,
+            detail="오직 머신러닝 예측 모델 파일(.pkl) 형식만 업로드할 수 있습니다."
+        )
+        
+    from app.routers.spatial import registry_path, model_registry
+    os.makedirs(registry_path, exist_ok=True)
+    
+    # {domain_tag}_v_latest.pkl 로 강제 타겟팅하여 명명
+    save_name = f"{domain_tag}_v_latest.pkl"
+    save_path = os.path.join(registry_path, save_name)
+    
+    # 기존 파일 삭제 처리
+    if os.path.exists(save_path):
+        try:
+            os.remove(save_path)
+        except Exception:
+            pass
+            
+    try:
+        with open(save_path, "wb") as buffer:
+            while chunk := await file.read(1024 * 1024):
+                buffer.write(chunk)
+                
+        # 레지스트리 핫 로딩 트리거
+        model_registry.load_models()
+        
+        return {
+            "status": "success",
+            "message": f"성공적으로 {domain_tag} 도메인의 머신러닝 모델(.pkl) 업로드 및 실시간 핫 바인딩을 완료했습니다."
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"모델 업로드 또는 적재 중 치명적 런타임 장해가 발생했습니다: {str(e)}"
+        )

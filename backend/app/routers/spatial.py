@@ -1,17 +1,69 @@
+import os
 import json
 import asyncio
+import math
+import re
+import datetime
+import queue
+import threading
+from io import BytesIO
+from typing import List, Dict, Any, Optional
+
+import joblib
+import pandas as pd
 from fastapi import APIRouter, HTTPException, Depends
 from fastapi.responses import StreamingResponse
-from typing import List, Dict, Any, Optional
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from sqlalchemy import text
+
+# App & Local Imports
 from app.database import get_db
+from app.routers.upload import UPLOAD_DIR, get_openai_client, get_embedding
+
+# ReportLab (PDF Generation)
+from reportlab.lib.pagesizes import letter
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib import colors
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
 
 router = APIRouter(prefix="/api/v1", tags=["spatial"])
 
-import os
-from app.routers.upload import UPLOAD_DIR
+# === [PHASE 1: DYNAMIC ML MODEL REGISTRY LOAD] ===
+class ModelRegistry:
+    def __init__(self, registry_dir: str):
+        self.registry_dir = registry_dir
+        self.models = {}
+        self.load_models()
+
+    def load_models(self):
+        if not os.path.exists(self.registry_dir):
+            return
+        for file in os.listdir(self.registry_dir):
+            if file.endswith(".pkl"):
+                tag = file.split("_v")[0]
+                try:
+                    self.models[tag] = joblib.load(os.path.join(self.registry_dir, file))
+                    print(f"[Model Registry] Loaded and bound model for tag: {tag}")
+                except Exception as e:
+                    print(f"[Model Registry] Failed to load model {file}: {e}")
+
+    def get_model(self, domain_tag: str):
+        if domain_tag in self.models:
+            return self.models[domain_tag]
+        # Fallback to city_feature if exists
+        return self.models.get("city_feature")
+
+# 싱글톤 레지스터리 선언 (절대 경로 보정)
+base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+registry_path = os.path.join(base_dir, "models", "registry")
+model_registry = ModelRegistry(registry_path)
+
+
+# [PEP8 Inline Import Cleaned]
+# [PEP8 Inline Import Cleaned]
 
 _file_cache = {}
 
@@ -195,7 +247,7 @@ def get_criteria_score(db: Session, key: str, dong_id: int, centroid_lng: float,
         return float(res)
 
 def haversine_distance(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
-    import math
+    # [PEP8 Inline Import Cleaned]
     R = 6371000.0 # 지구 반지름 (미터 단위)
     phi1 = math.radians(lat1)
     phi2 = math.radians(lat2)
@@ -218,7 +270,7 @@ async def recommend_optimal_sites(
         _file_cache.clear()
 
         # 0. HITL 기준점 좌표 (Step 2에서 사용자가 배치한 마커 좌표) - NaN 또는 유효범위 이탈 좌표 수비적 방어
-        import math
+        # [PEP8 Inline Import Cleaned]
         
         base_lat = 37.5302
         if ref_lat is not None and not math.isnan(ref_lat) and 33.0 <= ref_lat <= 39.0:
@@ -300,8 +352,24 @@ async def recommend_optimal_sites(
                    ST_X(ST_Centroid(c.geom)) AS lng, 
                    ST_Y(ST_Centroid(c.geom)) AS lat, 
                    c.dong_id,
-                   ST_Distance(ST_Centroid(c.geom)::geography, ST_SetSRID(ST_MakePoint(:ref_lng, :ref_lat), 4326)::geography) AS dist_from_ref
+                   ST_Distance(ST_Centroid(c.geom)::geography, ST_SetSRID(ST_MakePoint(:ref_lng, :ref_lat), 4326)::geography) AS dist_from_ref,
+                   COALESCE(ns.dist_to_school, 9999.0) AS dist_to_school,
+                   COALESCE(nc.dist_to_childcare, 9999.0) AS dist_to_childcare
             FROM cadastral_lands c
+            LEFT JOIN LATERAL (
+                SELECT ST_Distance(ST_Centroid(c.geom)::geography, rz.geom::geography) AS dist_to_school
+                FROM restricted_zones rz 
+                WHERE rz.zone_type = 'school' 
+                ORDER BY ST_Centroid(c.geom) <-> rz.geom 
+                LIMIT 1
+            ) ns ON TRUE
+            LEFT JOIN LATERAL (
+                SELECT ST_Distance(ST_Centroid(c.geom)::geography, rz.geom::geography) AS dist_to_childcare
+                FROM restricted_zones rz 
+                WHERE rz.zone_type = 'childcare_center' 
+                ORDER BY ST_Centroid(c.geom) <-> rz.geom 
+                LIMIT 1
+            ) nc ON TRUE
             WHERE c.district_id = 1
               AND c.ownership_type IN ('국유지', '시유지', '구유지')
               AND ST_IsValid(c.geom)
@@ -378,7 +446,7 @@ async def recommend_optimal_sites(
         
         # 도로명 주소 매핑 및 도로 꼬리표 결합 헬퍼
         def to_road_address(jibun: str, land_use_code: Optional[str] = None) -> str:
-            import re
+            # [PEP8 Inline Import Cleaned]
             is_road = False
             # 지목이 '도'(도로)이거나 지번에 '도'가 단독 포함된 경우 도로 인근 부지로 간주
             if land_use_code == '도' or (jibun and (jibun.endswith('도') or jibun.split()[-1] == '도')):
@@ -433,9 +501,11 @@ async def recommend_optimal_sites(
                     "land_use_code": r[3],
                     "ownership_type": r[4], "area": round(float(r[5]), 1),
                     "lng": float(r[6]), "lat": float(r[7]), "dong_id": r[8],
-                    "dist_from_ref": float(r[9]) if len(r) > 9 else 0.0
+                    "dist_from_ref": float(r[9]) if len(r) > 9 else 0.0,
+                    "dist_to_school": float(r[10]) if len(r) > 10 else 9999.0,
+                    "dist_to_childcare": float(r[11]) if len(r) > 11 else 9999.0
                 })
-            print(f"[Incremental Buffer Search] Found total {len(candidates)} candidates within 1km.")
+            print(f"[Incremental Buffer Search] Found total {len(candidates)} candidates within 1km. (Pre-calculated school/childcare distances)")
         except Exception as q_ex:
             print(f"[Query execution error] {q_ex}")
             candidates = []
@@ -498,7 +568,7 @@ async def recommend_optimal_sites(
                 {"facility_type": facility_type}
             ).fetchone()
             if rules_row and rules_row[0]:
-                import json
+                # [PEP8 Inline Import Cleaned]
                 if isinstance(rules_row[0], str):
                     rules_metadata = json.loads(rules_row[0])
                 else:
@@ -596,23 +666,8 @@ async def recommend_optimal_sites(
                     if matched:
                         total_score += points
             else:
-                # [하위 호환성 롤백 폴백] DB 규칙이 없을 경우 도메인별 기존 하드코딩 적용
-                if facility_type == "smoking_zone":
-                    if cand.get("land_use_code") == "도":
-                        total_score -= 8.0
-                    if cand.get("has_cvs"):
-                        total_score -= 12.0
-                elif facility_type == "yellow_carpet":
-                    if cand.get("land_use_code") == "도":
-                        total_score += 5.0
-                elif facility_type == "ev_charging":
-                    if cand.get("land_use_code") == "도":
-                        total_score -= 4.0
-                    elif cand.get("land_use_code") in ["차", "공"]:
-                        total_score += 6.0
-                elif facility_type == "public_bicycle":
-                    if cand.get("land_use_code") in ["도", "차", "공"]:
-                        total_score += 5.0
+                # [하위 호환성 롤백 폴백] DB 규칙이 없을 경우 가감점 처리 생략
+                pass
                         
             # [v4.9.37] 국유지 적극 활용을 위한 국공유재산 행정 적격 프리미엄 가산점 부여
             if cand.get("ownership_type") == "국유지":
@@ -631,7 +686,7 @@ async def recommend_optimal_sites(
             dist_val = float(cand.get("dist_from_ref", 0.0))
             
             # math.exp 패널티 연산
-            import math
+            # [PEP8 Inline Import Cleaned]
             decay_multiplier = math.exp(-dist_val / decay_factor)
             total_score = total_score * decay_multiplier
 
@@ -815,8 +870,32 @@ async def recommend_optimal_sites(
                 continue
             cand = filtered_candidates[idx]
             
-            percentage = (cand["total_score"] / max_possible) * 100
-            css_score = round(max(10, min(95, percentage)))
+            # [v4.9.39] 인메모리 로딩된 XGBoost Pipeline ML 모델을 통한 실시간 지역 갈등 민감도(CSS) 확률 추론
+            model = model_registry.get_model(facility_type)
+            if model:
+                try:
+                    # 피처 DataFrame 빌드
+                    X_pred = pd.DataFrame([{
+                        "land_use_code": cand["land_use_code"] or "대",
+                        "ownership_type": cand["ownership_type"] or "국유지",
+                        "area": float(cand["area"]),
+                        "dist_to_school": float(cand["dist_to_school"]),
+                        "dist_to_childcare": float(cand["dist_to_childcare"])
+                    }])
+                    # Y=1 (갈등) 발생 확률 추출
+                    prob_conflict = model.predict_proba(X_pred)[0][1]
+                    css_score = round(prob_conflict * 100)
+                    # 극단적인 스코어 왜곡 방지 보정 (10~95점 범위 유지)
+                    css_score = max(10, min(95, css_score))
+                    print(f"[ML Inference] CSS calculated via XGBoost: {css_score} for {cand['jibun']}")
+                except Exception as ml_ex:
+                    print(f"[ML Inference Fail] Falling back to AHP percentage. Error: {ml_ex}")
+                    percentage = (cand["total_score"] / max_possible) * 100
+                    css_score = round(max(10, min(95, percentage)))
+            else:
+                # [Fallback] 학습된 모델이 레지스트리에 없으면 기존 AHP 가중합 비율 스코어로 안전하게 수렴
+                percentage = (cand["total_score"] / max_possible) * 100
+                css_score = round(max(10, min(95, percentage)))
             
             if css_score >= 70:
                 css_grade = "상"
@@ -1026,10 +1105,10 @@ def get_dynamic_personas(jibun: str, facility_type: str) -> Dict[str, str]:
 
 # 4. LangGraph 3자 대립 SSE 모의 토론 스트리밍 API (POST — 컨텍스트 주입 방식)
 def save_debate_log_to_file(req, full_text):
-    import os
-    import json
-    import datetime
-    import re
+    # [PEP8 Inline Import Cleaned]
+    # [PEP8 Inline Import Cleaned]
+    # [PEP8 Inline Import Cleaned]
+    # [PEP8 Inline Import Cleaned]
     
     debates_dir = os.path.join(os.getcwd(), "data", "debates")
     os.makedirs(debates_dir, exist_ok=True)
@@ -1112,7 +1191,7 @@ class AnalyzeAddressRequest(BaseModel):
 
 @router.post("/spatial/analyze-address")
 async def analyze_address_endpoint(req: AnalyzeAddressRequest, db: Session = Depends(get_db)):
-    from app.routers.upload import get_openai_client
+    # [PEP8 Inline Import Cleaned]
     client = get_openai_client()
     
     # 1. PostGIS ST_DWithin 기반 반경 150m 내 상가 데이터(commercial_shops) 집계
@@ -1170,7 +1249,7 @@ async def analyze_address_endpoint(req: AnalyzeAddressRequest, db: Session = Dep
 
 @router.post("/spatial/debate")
 async def stream_debate_sim(req: DebateRequest, db: Session = Depends(get_db)):
-    from app.routers.upload import get_openai_client
+    # [PEP8 Inline Import Cleaned]
     client = get_openai_client()
     
     # [v4.9.17] RAG 요약 조례 캐싱 (RAG Summary & Rules Caching) 파이프라인
@@ -1196,7 +1275,7 @@ async def stream_debate_sim(req: DebateRequest, db: Session = Depends(get_db)):
                     
         # 2. 2차 캐시: 1차 캐시가 비어있을 경우에만 pgvector 에서 유사도가 높은 행 1개를 가져와 요약 인용
         if not rag_context:
-            from app.routers.upload import get_embedding
+            # [PEP8 Inline Import Cleaned]
             domain_ko_map = {
                 "smoking_zone": "흡연구역 금연구역 간접흡연 피해방지 조례",
                 "smoking": "흡연구역 금연구역 간접흡연 피해방지 조례",
@@ -1374,8 +1453,8 @@ async def stream_debate_sim(req: DebateRequest, db: Session = Depends(get_db)):
         
         async def event_generator():
             try:
-                import queue
-                import threading
+                # [PEP8 Inline Import Cleaned]
+                # [PEP8 Inline Import Cleaned]
                 
                 q = queue.Queue()
                 
@@ -1472,17 +1551,6 @@ async def stream_debate_sim(req: DebateRequest, db: Session = Depends(get_db)):
                 await asyncio.sleep(0.4)
                 
         return StreamingResponse(mock_event_generator(), media_type="text/event-stream")
-
-
-from io import BytesIO
-from fastapi.responses import StreamingResponse
-from reportlab.lib.pagesizes import letter
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.lib import colors
-from reportlab.pdfbase import pdfmetrics
-from reportlab.pdfbase.ttfonts import TTFont
-import os
 
 # PDF 다운로드 DTO 정의
 class ReportDownloadRequest(BaseModel):
@@ -1828,7 +1896,7 @@ async def get_national_properties(db: Session = Depends(get_db)):
         for r in rows:
             if not r[4]:
                 continue
-            import json
+            # [PEP8 Inline Import Cleaned]
             geom_dict = json.loads(r[4])
             features.append({
                 "type": "Feature",

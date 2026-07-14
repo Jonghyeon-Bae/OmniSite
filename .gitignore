@@ -38,3 +38,6 @@ backend/data/raw/
 backend/data/processed/
 create_pdf_raw.py
 test_regulation.pdf
+
+# Exclude heavy raw geospatial datasets from Git tracking
+Datasets/

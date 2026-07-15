@@ -2,6 +2,7 @@ import os
 import csv
 import re
 import json
+import joblib
 from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
 from typing import List, Dict, Any, Optional
 from pydantic import BaseModel
@@ -814,6 +815,7 @@ async def audit_upload_files(request: AuditRequest, db: Session = Depends(get_db
             }
             score_modifiers_global = [
                 {"target": "land_use_code", "operator": "IN", "values": ["도"], "points": -4.0, "reason": "도로 부지 사용 시 한전 배전 용량 협의 리스크 감점"},
+        
                 {"target": "land_use_code", "operator": "IN", "values": ["차", "공"], "points": 6.0, "reason": "공영주차장 및 공원 부지 연계 편의성 가점"}
             ]
             # 도메인 태그 유사도 기반 중복 방지 및 병합 엔진 적용 (Fallback)
@@ -902,6 +904,64 @@ async def audit_upload_files(request: AuditRequest, db: Session = Depends(get_db
                 "missing_coordinates": [],
                 "rules_matched": []
             })
+
+    # --- [ML-to-AHP Slider Feature Fusion] XGBoost 피처 기여도 분석 및 AHP 슬라이더 가중치 초기화 동적 연동 ---
+    def get_model_feature_importances(domain_tag: str) -> Dict[str, float]:
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        registry_path = os.path.join(base_dir, "models", "registry")
+        
+        model_file = None
+        if os.path.exists(registry_path):
+            for file in os.listdir(registry_path):
+                if file.endswith(".pkl") and file.startswith(domain_tag):
+                    model_file = os.path.join(registry_path, file)
+                    break
+            if not model_file:
+                for file in os.listdir(registry_path):
+                    if file.endswith(".pkl") and file.startswith("city_feature"):
+                        model_file = os.path.join(registry_path, file)
+                        break
+                        
+        importances = {}
+        if model_file and os.path.exists(model_file):
+            try:
+                pipeline = joblib.load(model_file)
+                classifier = pipeline.named_steps.get('classifier')
+                preprocessor = pipeline.named_steps.get('preprocessor')
+                if classifier and hasattr(classifier, 'feature_importances_'):
+                    numeric_features = ['area', 'dist_to_school', 'dist_to_childcare']
+                    categorical_features = ['land_use_code', 'ownership_type']
+                    
+                    try:
+                        onehot_cols = preprocessor.named_transformers_['cat'].named_steps['onehot'].get_feature_names_out(categorical_features)
+                        feature_names = numeric_features + list(onehot_cols)
+                    except Exception:
+                        feature_names = numeric_features
+                        
+                    importances_raw = classifier.feature_importances_
+                    for name, imp in zip(feature_names, importances_raw):
+                        importances[name] = float(imp)
+            except Exception as e:
+                print(f"[Feature Importance Extract Fail] {e}")
+        return importances
+
+    importances_map = get_model_feature_importances(inferred_domain_tag)
+    
+    # 5대 지표별 기여도 매핑
+    feature_mapping = {
+        "traffic": importances_map.get("land_use_code_도", 0.0) + importances_map.get("land_use_code_ö", 0.0) + 0.1,
+        "complaint": importances_map.get("dist_to_school", 0.0) * 0.4 + importances_map.get("dist_to_childcare", 0.0) * 0.4,
+        "dumping": importances_map.get("land_use_code_대", 0.0) + importances_map.get("land_use_code_잡", 0.0) + 0.1,
+        "population": importances_map.get("area", 0.0) + 0.1,
+        "youth": importances_map.get("dist_to_school", 0.0) * 0.6 + importances_map.get("dist_to_childcare", 0.0) * 0.6
+    }
+    
+    # 1.0 ~ 9.0 스케일 변환 및 criteria 아이템 바인딩
+    for c_item in criteria_global:
+        key = c_item.get("key")
+        importance_weight = feature_mapping.get(key, 0.1)
+        slider_initial = 3.0 + (importance_weight * 12.0)
+        c_item["initial_weight"] = round(max(1.0, min(9.0, slider_initial)), 1)
 
     # [v4.9.34] AI 감리가 조례/법규 텍스트 매핑 분석을 통해 연관성 입증 성공 유무(rag_applied) 기준으로 동적 감지
     has_regulations = False

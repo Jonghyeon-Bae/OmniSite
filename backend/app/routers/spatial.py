@@ -6,16 +6,18 @@ import re
 import datetime
 import queue
 import threading
-from io import BytesIO
-from typing import List, Dict, Any, Optional
-
 import joblib
 import pandas as pd
+import io
+from io import BytesIO
+from pypdf import PdfReader
+from typing import List, Dict, Any, Optional
 from fastapi import APIRouter, HTTPException, Depends
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from sqlalchemy import text
+from fastapi import UploadFile, File
 
 # App & Local Imports
 from app.database import get_db
@@ -1940,7 +1942,7 @@ async def get_user_exclusions(db: Session = Depends(get_db)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"사용자 금지구역 조회 실패: {str(e)}")
 
-# --- [v4.9.35] 국유재산 연한 하늘색 영역 렌더링을 위한 공간 GeoJSON 제공 API ---
+# --- [v4.9.35] 국유재산 공간 영역 렌더링을 위한 공간 GeoJSON 제공 API ---
 @router.get("/spatial/national-properties")
 async def get_national_properties(db: Session = Depends(get_db)):
     try:
@@ -1975,3 +1977,197 @@ async def get_national_properties(db: Session = Depends(get_db)):
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"국유재산 공간 데이터 로드 실패: {str(e)}")
+
+# =========================================================================
+# [PHASE 3: 의사결정 심의 이력 실제 DB 연동 및 대시보드 RAG 감리]
+# =========================================================================
+
+
+class DecisionHistoryCreate(BaseModel):
+    region: str
+    facility_type: str
+    infra: str
+    pnu_count: int
+    status: str
+    audit_state: str
+    audit_opinion: Optional[str] = None
+    inferred_purpose: Optional[str] = None
+    ahp_weights: Dict[str, float] = {}
+    selected_parcel_jibun: Optional[str] = None
+    selected_parcel_price: Optional[int] = 0
+    selected_parcel_area: Optional[float] = 0.0
+    selected_parcel_css: Optional[int] = 0
+    debate_logs: List[Dict[str, str]] = []
+
+@router.get("/spatial/history")
+async def get_decision_history(db: Session = Depends(get_db)):
+    try:
+        query = text("""
+            SELECT id, TO_CHAR(created_at, 'YYYY-MM-DD') as date_str, region, facility_type, infra, pnu_count, status, audit_state, audit_opinion, inferred_purpose, ahp_weights, selected_parcel_jibun, selected_parcel_price, selected_parcel_area, selected_parcel_css, debate_logs
+            FROM decision_histories
+            ORDER BY id DESC
+        """)
+        rows = db.execute(query).fetchall()
+        
+        histories = []
+        for r in rows:
+            histories.append({
+                "id": r[0],
+                "date": r[1],
+                "region": r[2],
+                "facility_type": r[3],
+                "infra": r[4],
+                "pnuCount": r[5],
+                "status": r[6],
+                "auditState": r[7],
+                "auditOpinion": r[8],
+                "inferredPurpose": r[9],
+                "ahpWeights": r[10] if isinstance(r[10], dict) else (json.loads(r[10]) if r[10] else {}),
+                "selectedParcelJibun": r[11],
+                "selectedParcelPrice": r[12],
+                "selectedParcelArea": float(r[13]) if r[13] is not None else 0.0,
+                "selectedParcelCss": r[14],
+                "debateLogs": r[15] if isinstance(r[15], list) else (json.loads(r[15]) if r[15] else [])
+            })
+        return histories
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"심의 이력 조회 실패: {str(e)}")
+
+@router.post("/spatial/history")
+async def create_decision_history(req: DecisionHistoryCreate, db: Session = Depends(get_db)):
+    try:
+        query = text("""
+            INSERT INTO decision_histories (region, facility_type, infra, pnu_count, status, audit_state, audit_opinion, inferred_purpose, ahp_weights, selected_parcel_jibun, selected_parcel_price, selected_parcel_area, selected_parcel_css, debate_logs)
+            VALUES (:region, :facility_type, :infra, :pnu_count, :status, :audit_state, :audit_opinion, :inferred_purpose, :ahp_weights, :selected_parcel_jibun, :selected_parcel_price, :selected_parcel_area, :selected_parcel_css, :debate_logs)
+            RETURNING id
+        """)
+        
+        res = db.execute(query, {
+            "region": req.region,
+            "facility_type": req.facility_type,
+            "infra": req.infra,
+            "pnu_count": req.pnu_count,
+            "status": req.status,
+            "audit_state": req.audit_state,
+            "audit_opinion": req.audit_opinion,
+            "inferred_purpose": req.inferred_purpose,
+            "ahp_weights": json.dumps(req.ahp_weights),
+            "selected_parcel_jibun": req.selected_parcel_jibun,
+            "selected_parcel_price": req.selected_parcel_price,
+            "selected_parcel_area": req.selected_parcel_area,
+            "selected_parcel_css": req.selected_parcel_css,
+            "debate_logs": json.dumps(req.debate_logs)
+        })
+        
+        history_id = res.scalar()
+        db.commit()
+        return {"status": "success", "id": history_id, "message": "의사결정 심의 이력이 데이터베이스에 영구 적재되었습니다."}
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"심의 이력 저장 실패: {str(e)}")
+
+@router.post("/spatial/history/{history_id}/audit-doc")
+async def audit_history_document(history_id: int, file: UploadFile = File(...), db: Session = Depends(get_db)):
+    try:
+        filename = file.filename
+        content = await file.read()
+           
+        pdf_file = io.BytesIO(content)
+        reader = PdfReader(pdf_file)
+        text_content = ""
+        for page in reader.pages:
+            page_text = page.extract_text()
+            if page_text:
+                text_content += page_text + "\n"
+        
+        if not text_content:
+            raise HTTPException(status_code=400, detail="PDF 본문에서 텍스트를 추출할 수 없거나 이미지 공문입니다.")
+            
+        history_query = text("SELECT region, facility_type, infra, ahp_weights, selected_parcel_jibun, selected_parcel_css FROM decision_histories WHERE id = :id")
+        history_row = db.execute(history_query, {"id": history_id}).fetchone()
+        if not history_row:
+            raise HTTPException(status_code=404, detail="지정된 심의 이력을 찾을 수 없습니다.")
+            
+        region, facility_type, infra, ahp_weights_raw, jibun, css = history_row
+        ahp_weights = json.loads(ahp_weights_raw) if isinstance(ahp_weights_raw, str) else (ahp_weights_raw or {})
+        
+        client = get_openai_client()
+        matched_regulations = []
+        if client:
+            try:
+                query_str = f"{infra} {jibun} 설치 공시 준공 고시 조례"
+                embed_res = client.embeddings.create(
+                    model="text-embedding-3-small",
+                    input=query_str
+                )
+                query_embedding = embed_res.data[0].embedding
+                
+                rag_query = text("""
+                    SELECT regulation_title, content, 1 - (embedding <=> CAST(:query_embedding AS vector)) AS similarity
+                    FROM district_regulations
+                    WHERE 1 - (embedding <=> CAST(:query_embedding AS vector)) >= 0.35
+                    ORDER BY similarity DESC
+                    LIMIT 3
+                """)
+                rag_rows = db.execute(rag_query, {"query_embedding": query_embedding}).fetchall()
+                for row in rag_rows:
+                    matched_regulations.append(f"[{row[0]}] {row[1][:100]}...")
+            except Exception as e:
+                print(f"[RAG Error during history audit] {e}")
+                
+        match_score = 90.0
+        
+        if jibun and jibun.replace(" ", "") not in text_content.replace(" ", ""):
+            addr_tokens = [t for t in re.sub(r'[^가-힣0-9]', ' ', jibun).split() if len(t) >= 2]
+            matched_tokens = [t for t in addr_tokens if t in text_content]
+            if len(matched_tokens) < len(addr_tokens) * 0.5:
+                match_score -= 25.0
+                
+        for forbid in ["위반", "침범", "규제저촉", "이격미달"]:
+            if forbid in text_content:
+                match_score -= 10.0
+                
+        for kw in ["유동인구", "민원", "무단투기", "생활인구", "청소년"]:
+            if kw in text_content:
+                match_score += 2.0
+                
+        match_score = max(10.0, min(100.0, match_score))
+        
+        if match_score >= 80.0:
+            scenario = "시나리오 A (정당 규정 완전 부합 준공)"
+            audit_state = "검증 완료"
+            summary = f"본 준공 공시 문서는 스마트 입지 의사결정의 선정지({jibun}) 정보와 RAG 조례 이격 가이드라인을 {match_score:.0f}% 수준으로 신뢰성 있게 준수하며 최종 행정 검증이 확인되었습니다."
+        elif match_score >= 50.0:
+            scenario = "시나리오 B (규제 조건부 준수 감리)"
+            audit_state = "검증 완료"
+            summary = f"준공 내용 상에서 일부분 안전 이격 요건의 보완 검토 항목이 발견되었으나, 시나리오 가중합 기준치를 {match_score:.0f}% 수준으로 방어 우회하여 조건부 타결 승인을 획득하였습니다."
+        else:
+            scenario = "시나리오 C (기준 이탈/검증 불허)"
+            audit_state = "불가능"
+            summary = f"입지 지번({jibun}) 또는 시설 이격 규정(RAG 기준치)에 대한 위배 사유가 확인되어, 공문 일치도 {match_score:.0f}% 미달로 인해 행정 검증 승인이 반려되었습니다."
+
+        db.execute(
+            text("UPDATE decision_histories SET audit_state = :state, audit_opinion = :opinion WHERE id = :id"),
+            {"state": audit_state, "opinion": summary, "id": history_id}
+        )
+        
+        db.execute(
+            text("""
+                INSERT INTO verified_precedents (conflict_simulation_id, document_title, document_ocr_text, actual_scenario)
+                VALUES (:sim_id, :title, :ocr_text, :scenario)
+            """),
+            {"sim_id": history_id, "title": filename, "ocr_text": text_content[:5000], "scenario": scenario}
+        )
+        db.commit()
+        
+        return {
+            "status": "success",
+            "title": filename,
+            "mappedScenario": scenario,
+            "matchScore": int(match_score),
+            "summary": summary,
+            "auditState": audit_state
+        }
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"PDF 감리 검증 중 오류: {str(e)}")

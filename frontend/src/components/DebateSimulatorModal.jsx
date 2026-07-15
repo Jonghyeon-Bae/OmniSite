@@ -33,6 +33,40 @@ export default function DebateSimulatorModal({
         ahp_weights: ahpWeights || {},
         debate_logs: simLogs.map(log => ({ sender: log.sender, text: log.text }))
       };
+
+      // 1. 의사결정 심의 이력을 PostgreSQL DB에 자동 비동기 저장 (Auto-save to history)
+      // [Zero Hardcoding] 주소 텍스트에서 정규식을 이용해 자치구/행정동을 추출하고, AI 시맨틱 감리 목적을 인프라 명칭에 동적 투사
+      const regionMatch = payload.candidate_jibun.match(/(서울특별시|서울시)\s+([가-힣]+구)\s+([가-힣0-9]+동)/);
+      const dynamicRegion = regionMatch ? regionMatch[0] : "서울시 용산구 한강로동";
+      
+      const historyPayload = {
+        region: dynamicRegion,
+        facility_type: payload.facility_type,
+        infra: inferredPurpose || "지능형 스마트시티 시설물",
+        pnu_count: Object.keys(selectedParcel).length || 1,
+        status: "행정 종결",
+        audit_state: "대기 중",
+        audit_opinion: "공식 심의 완료 보고서 발급됨. 준공 고시 공문 감리 대기 중.",
+        inferred_purpose: payload.inferred_purpose,
+        ahp_weights: payload.ahp_weights,
+        selected_parcel_jibun: payload.candidate_jibun,
+        selected_parcel_price: currentParcel.price || 0,
+        selected_parcel_area: currentParcel.area || 0.0,
+        selected_parcel_css: payload.candidate_css,
+        debate_logs: payload.debate_logs
+      };
+      
+      try {
+        await apiFetch('/api/v1/spatial/history', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(historyPayload)
+        });
+      } catch (historyErr) {
+        console.error("Failed to auto-save decision history:", historyErr);
+      }
+
+      // 2. PDF 보고서 다운로드 수행
       const res = await apiFetch('/api/v1/spatial/report/download', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

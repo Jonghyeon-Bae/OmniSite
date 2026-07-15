@@ -1,16 +1,22 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 
+// Next.js API Fetch 래퍼 (JWT 세션 자동 바인딩)
+const apiFetch = (url, options = {}) => {
+  const token = typeof window !== 'undefined' ? sessionStorage.getItem('token') : null;
+  const headers = {
+    ...options.headers,
+    ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+  };
+  const nativeFetch = typeof window !== 'undefined' ? window.fetch : (typeof globalThis !== 'undefined' ? globalThis.fetch : null);
+  return nativeFetch ? nativeFetch(url, { ...options, headers }) : Promise.reject(new Error('Fetch not available'));
+};
+
 export default function Dashboard() {
-  // 가상의 과거 의사결정 이력 데이터 (크레딧 필드 제거)
-  const [historyList, setHistoryList] = useState([
-    { id: 104, date: '2026-06-28', region: '서울시 용산구 한강로동', infra: '스마트 쉼터형 부스', pnuCount: 3, status: '행정 종결', auditState: '검증 완료' },
-    { id: 103, date: '2026-06-15', region: '서울시 마포구 공덕동', infra: '옐로카펫 보행 정화지', pnuCount: 1, status: '행정 종결', auditState: '대기 중' },
-    { id: 102, date: '2026-06-02', region: '서울시 용산구 이태원동', infra: '전기차 화재방지 충전소', pnuCount: 2, status: '심의 중', auditState: '불가능' },
-    { id: 101, date: '2026-05-19', region: '서울시 서대문구 신촌동', infra: '다목적 방범 스마트부스', pnuCount: 3, status: '행정 종결', auditState: '검증 완료' }
-  ]);
+  const [historyList, setHistoryList] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   // Audit AI 폼 상태
   const [activeHistoryId, setActiveHistoryId] = useState(null);
@@ -22,8 +28,27 @@ export default function Dashboard() {
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [selectedHistory, setSelectedHistory] = useState(null);
 
-  // 파일 업로드 및 분석 시뮬레이션
-  const handleAuditUpload = (e) => {
+  // 과거 의사결정 심의 이력 실제 DB 조회 API 연계
+  const fetchHistory = async () => {
+    try {
+      const res = await apiFetch('/api/v1/spatial/history');
+      if (res.ok) {
+        const data = await res.json();
+        setHistoryList(data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch history:", err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchHistory();
+  }, []);
+
+  // 실제 공문서 파일 업로드 검증 감리 API 연동 (RAG Audit)
+  const handleAuditUpload = async (e) => {
     const file = e.target.files[0];
     if (!file || !activeHistoryId) return;
 
@@ -31,23 +56,41 @@ export default function Dashboard() {
     setIsParsing(true);
     setAuditResult(null);
 
-    setTimeout(() => {
-      setIsParsing(false);
-      setAuditResult({
-        title: '서울시 용산구 한강로동 스마트쉼터 설치 준공 고시 공문',
-        mappedScenario: '시나리오 A (일반적 우호 타결)',
-        matchScore: 94,
-        summary: '부스 여과 필터링 시간(08시~22시) 및 인근 3.0m 소방 통로 준수 규정이 1단계 AHP 의사결정 모델 설계 가이드라인에 94% 부합하여 행정 종결 승인 완료.'
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      const res = await apiFetch(`/api/v1/spatial/history/${activeHistoryId}/audit-doc`, {
+        method: 'POST',
+        body: formData
       });
-
-      // 해당 역사 행의 검증 상태 업데이트
-      setHistoryList(prev => prev.map(item => {
-        if (item.id === activeHistoryId) {
-          return { ...item, auditState: '검증 완료' };
-        }
-        return item;
-      }));
-    }, 2000);
+      
+      if (res.ok) {
+        const data = await res.json();
+        setAuditResult(data);
+        
+        // 해당 심의 역사 행 검증 상태 업데이트
+        setHistoryList(prev => prev.map(item => {
+          if (item.id === activeHistoryId) {
+            return { 
+              ...item, 
+              auditState: data.auditState, 
+              auditOpinion: data.summary 
+            };
+          }
+          return item;
+        }));
+        
+        alert(`✓ RAG 교차 감리 완료!\n일치율: ${data.matchScore}%\n시나리오 판정: ${data.mappedScenario}`);
+      } else {
+        const err = await res.json();
+        alert(`감리 분석 실패: ${err.detail || '알 수 없는 오류'}`);
+      }
+    } catch (err) {
+      alert(`감리 문서 업로드 중 오류 발생: ${err.message}`);
+    } finally {
+      setIsParsing(false);
+    }
   };
 
   // 과거 토론 로그 목업 조회
@@ -399,7 +442,10 @@ export default function Dashboard() {
               <div className="text-[11px] text-blue-400 font-bold border-b border-slate-900 pb-1.5">
                 ⚡ [AI 모의 심의 토론 아카이브]
               </div>
-              {getMockDebateLogs(selectedHistory.infra).map((log, index) => (
+              {(selectedHistory.debateLogs && selectedHistory.debateLogs.length > 0
+                ? selectedHistory.debateLogs
+                : getMockDebateLogs(selectedHistory.infra)
+              ).map((log, index) => (
                 <div key={index} className="flex gap-2 leading-relaxed">
                   <span className={`font-semibold shrink-0 ${
                     log.sender.includes('반대') ? 'text-rose-400' :

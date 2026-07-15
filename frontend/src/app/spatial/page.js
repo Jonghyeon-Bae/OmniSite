@@ -1449,7 +1449,7 @@ export default function Home() {
         setCriteriaList(auditData.criteria);
         const initialWeights = {};
         auditData.criteria.forEach(c => {
-          initialWeights[c.key] = 5.0;
+          initialWeights[c.key] = c.initial_weight !== undefined ? c.initial_weight : 5.0;
         });
         setAhpWeights(initialWeights);
       }

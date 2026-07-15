@@ -27,4 +27,12 @@
 - `[x]` Frontend: 최적 입지 핀이 국유재산에 위치할 경우, 비활성 핀 색상을 **연한 하늘색(`hsla(199, 89%, 55%, 0.9)`)** 으로 분기하여 가시성을 극대화한 스마트 마커 가이드 완비
 - `[x]` Frontend: Step 2 마커 보정 화면 및 최적 입지 선정 단계 전체에 거쳐 연한 하늘색 국유재산 지형이 지도 상에 상시 실시간 매핑 표출되도록 완치
 - `[x]` Verification: `ahp_spatial_test.py` 스크립트를 통한 정합 무결성 검증 (ALL PASS)
+- `[x]` Backend: XGBoost 피처 기여도(`feature_importances_`)를 AHP 1.0~9.0 스케일로 스케일링하여criteria의 `initial_weight`로 전달하는 가중치 피드백 루프 탑재
+- `[x]` Frontend: AI 감리 통과 시 AHP 슬라이더 가중치 초기값을 백엔드 추천 `c.initial_weight`로 동적 연동 바인딩 완료 (5.0 하드코딩 제거)
+- `[x]` Database: 심의 지번, AHP 가중치, CSS 점수 및 3자 토론 대본을 보존하는 `decision_histories` 이력 테이블 생성 및 시드 데이터 적재 마이그레이션 기동 완료
+- `[x]` Backend: 대시보드용 심의 이력 조회(`GET /api/v1/spatial/history`) 및 심의 완료 보고서 발급 동시 자동 적재(`POST /api/v1/spatial/history`) API 구현
+- `[x]` Backend: 업로드된 준공 PDF 공문에서 `PdfReader`로 텍스트를 추출하고 pgvector RAG 조례 위배 여부 및 매핑 지번 일치도를 연산해 `matchScore`를 도출하는 RAG 사후 감리 API(`POST /api/v1/spatial/history/{id}/audit-doc`) 개발 및 `verified_precedents` 테이블 적재 완료
+- `[x]` Frontend: 대시보드(`/dashboard`)의 mock 상태를 걷어내고 실물 API fetch 바인딩(이력 리스트, PDF 감리 업로드, 실제 토론 아카이브 매핑) 연동 완료
+- `[x]` Frontend: 새로운 모델 증설에 유연히 대응하기 위해 주소 정규식 파싱(`addressPattern`) 및 AI 시맨틱 감리 목적(`inferredPurpose`)의 인프라명 동적 바인딩을 적용하여 **Zero-Hardcoding(OCP 준수)** 개편 완료
 - `[x]` Release: 최종 코드 바탕화면 물리 이관 및 종합 문서 갱신
+

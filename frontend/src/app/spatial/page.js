@@ -50,6 +50,8 @@ export default function Home() {
 
   // [Phase 2] 관리자 콘솔 및 시드 데이터 적재 상태
   const [showAdminConsoleModal, setShowAdminConsoleModal] = useState(false);
+  const [adminTab, setAdminTab] = useState('bulk'); // 'bulk' or 'users'
+  const [adminUsers, setAdminUsers] = useState([]);
   const [seedTable, setSeedTable] = useState('cadastral_lands');
   const [isSeeding, setIsSeeding] = useState(false);
   
@@ -63,6 +65,13 @@ export default function Home() {
   const [regRole, setRegRole] = useState('user');
   const [regDept, setRegDept] = useState('스마트도시과');
   const [isRegistering, setIsRegistering] = useState(false);
+
+  // 비밀번호 자가 변경 상태
+  const [showPasswordChangeModal, setShowPasswordChangeModal] = useState(false);
+  const [oldPassword, setOldPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [newPasswordConfirm, setNewPasswordConfirm] = useState('');
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
 
   // Step 1 AI 감리 및 실무자 의도 매핑 검증 상태
   const [isAuditComplete, setIsAuditComplete] = useState(false);
@@ -237,42 +246,83 @@ export default function Home() {
     }
   };
 
-  const handleSeedUpload = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
+  const handleSeedFileChange = async (e) => {
+    const files = Array.from(e.target.files);
+    if (files.length === 0) return;
     
-    const ext = file.name.split('.').pop().toLowerCase();
-    if (ext !== 'csv') {
-      alert('⚠️ 시드 데이터는 오직 CSV 형식만 지원합니다.');
-      return;
-    }
+    const hasShp = files.some(f => f.name.endsWith('.shp'));
+    const hasCsv = files.some(f => f.name.endsWith('.csv'));
     
-    if (!confirm(`[ADMIN ALERT] 선택한 CSV 파일을 '${seedTable}' 테이블에 벌크 적재하겠습니까?\n이 작업은 데이터베이스 인스턴스 DDL에 영향을 주며 공간 인덱스(GIST)가 강제 빌드됩니다.`)) {
-      return;
-    }
-    
-    setIsSeeding(true);
-    try {
-      const formData = new FormData();
-      formData.append('file', file);
+    if (hasShp) {
+      const shpFile = files.find(f => f.name.endsWith('.shp'));
+      const dbfFile = files.find(f => f.name.endsWith('.dbf'));
+      const shxFile = files.find(f => f.name.endsWith('.shx'));
       
-      const res = await apiFetch(`/api/v1/upload/seed-spatial?target_table=${seedTable}&if_exists=append`, {
-        method: 'POST',
-        body: formData
-      });
-      
-      if (res.ok) {
-        const data = await res.json();
-        alert(`✓ 벌크 적재 성공!\n테이블: ${seedTable}\n적재 메시지: ${data.message}\n공간 지오메트리 빌드: ${data.spatial_geometry_built ? "성공 (Point/4326)" : "없음"}`);
-        setShowAdminConsoleModal(false);
-      } else {
-        const err = await res.json();
-        throw new Error(err.detail || '벌크 적재 실패');
+      if (!shpFile || !dbfFile || !shxFile) {
+        alert('⚠️ Shapefile 적재를 위해서는 .shp, .dbf, .shx 파일들이 모두 한꺼번에 선택되어 업로드되어야 합니다.');
+        return;
       }
-    } catch (err) {
-      alert(`벌크 적재 중 치명적 오류 발생: ${err.message}`);
-    } finally {
-      setIsSeeding(false);
+      
+      if (!confirm(`[ADMIN ALERT] 선택한 Shapefile 셋(.shp, .dbf, .shx)을 '${seedTable}' 테이블에 공간 지오메트리 변환 적재하겠습니까?\n이 작업은 PostGIS 구면 좌표계 변환 트랜잭션을 강제 실행합니다.`)) {
+        return;
+      }
+      
+      setIsSeeding(true);
+      try {
+        const formData = new FormData();
+        files.forEach(file => {
+          formData.append('files', file);
+        });
+        
+        const res = await apiFetch(`/api/v1/upload/seed-shapefile?target_table=${seedTable}`, {
+          method: 'POST',
+          body: formData
+        });
+        
+        if (res.ok) {
+          const data = await res.json();
+          alert(`✓ Shapefile 벌크 적재 성공!\n결과: ${data.message}`);
+          setShowAdminConsoleModal(false);
+        } else {
+          const err = await res.json();
+          throw new Error(err.detail || 'Shapefile 적재 실패');
+        }
+      } catch (err) {
+        alert(`Shapefile 적재 중 오류 발생: ${err.message}`);
+      } finally {
+        setIsSeeding(false);
+      }
+    } else if (hasCsv) {
+      const file = files.find(f => f.name.endsWith('.csv'));
+      if (!confirm(`[ADMIN ALERT] 선택한 CSV 파일을 '${seedTable}' 테이블에 벌크 적재하겠습니까?\n이 작업은 데이터베이스 인스턴스 DDL에 영향을 주며 공간 인덱스(GIST)가 강제 빌드됩니다.`)) {
+        return;
+      }
+      
+      setIsSeeding(true);
+      try {
+        const formData = new FormData();
+        formData.append('file', file);
+        
+        const res = await apiFetch(`/api/v1/upload/seed-spatial?target_table=${seedTable}&if_exists=append`, {
+          method: 'POST',
+          body: formData
+        });
+        
+        if (res.ok) {
+          const data = await res.json();
+          alert(`✓ 벌크 적재 성공!\n테이블: ${seedTable}\n적재 메시지: ${data.message}\n공간 지오메트리 빌드: ${data.spatial_geometry_built ? "성공 (Point/4326)" : "없음"}`);
+          setShowAdminConsoleModal(false);
+        } else {
+          const err = await res.json();
+          throw new Error(err.detail || '벌크 적재 실패');
+        }
+      } catch (err) {
+        alert(`벌크 적재 중 치명적 오류 발생: ${err.message}`);
+      } finally {
+        setIsSeeding(false);
+      }
+    } else {
+      alert('⚠️ 허용되지 않는 파일 확장자입니다. .csv 또는 .shp/.dbf/.shx 셋을 업로드해 주십시오.');
     }
   };
 
@@ -314,6 +364,66 @@ export default function Home() {
     }
   };
 
+  // 관리자 전용 사용자 계정 목록 조회
+  const fetchAdminUsers = async () => {
+    try {
+      const res = await apiFetch('/api/v1/auth/users');
+      if (res.ok) {
+        const data = await res.json();
+        setAdminUsers(data);
+      }
+    } catch (err) {
+      console.error('사용자 계정 목록 로드 실패:', err);
+    }
+  };
+
+  // 사용자 계정 삭제
+  const handleUserDelete = async (userId, username) => {
+    if (!confirm(`[ADMIN CONFIRM] 사용자 계정 '${username}'을 강제 영구 탈퇴/삭제하겠습니까?`)) {
+      return;
+    }
+    try {
+      const res = await apiFetch(`/api/v1/auth/users/${userId}`, {
+        method: 'DELETE'
+      });
+      if (res.ok) {
+        alert(`✓ 계정 '${username}'이 정상 삭제되었습니다.`);
+        fetchAdminUsers();
+      } else {
+        const err = await res.json();
+        alert(err.detail || '삭제 실패');
+      }
+    } catch (err) {
+      alert('사용자 삭제 중 오류 발생');
+    }
+  };
+
+  // 사용자 비밀번호 초기화
+  const handleUserPasswordReset = async (userId, username) => {
+    const newPwd = prompt(`계정 '${username}'에 적용할 신규 보안 비밀번호를 입력해 주십시오.`);
+    if (newPwd === null) return;
+    if (newPwd.length < 4) {
+      alert('비밀번호는 최소 4자 이상이어야 합니다.');
+      return;
+    }
+    
+    try {
+      const res = await apiFetch(`/api/v1/auth/users/${userId}/reset-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ new_password: newPwd })
+      });
+      if (res.ok) {
+        alert(`✓ 계정 '${username}'의 비밀번호가 성공적으로 변경되었습니다.`);
+      } else {
+        const err = await res.json();
+        alert(err.detail || '비밀번호 재설정 실패');
+      }
+    } catch (err) {
+      alert('비밀번호 재설정 중 오류 발생');
+    }
+  };
+
   const handleRegisterSubmit = async (e) => {
     e.preventDefault();
     if (!regUsername || !regPassword) {
@@ -323,7 +433,6 @@ export default function Home() {
 
     setIsRegistering(true);
     try {
-      // apiFetch는 sessionStorage 내의 어드민 JWT 토큰을 자동으로 헤더에 바인딩합니다!
       const res = await apiFetch('/api/v1/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -331,7 +440,8 @@ export default function Home() {
           username: regUsername,
           password: regPassword,
           role: regRole,
-          department: regDept
+          department: regDept,
+          district_id: userDistrictId
         })
       });
 
@@ -341,6 +451,7 @@ export default function Home() {
         setRegPassword('');
         setRegRole('user');
         setRegDept('스마트도시과');
+        fetchAdminUsers(); // 목록 새로고침
       } else {
         const errData = await res.json();
         throw new Error(errData.detail || "등록 처리 실패");
@@ -351,6 +462,59 @@ export default function Home() {
       setIsRegistering(false);
     }
   };
+
+  // 본인 비밀번호 자가 변경
+  const handleSelfPasswordChangeSubmit = async (e) => {
+    e.preventDefault();
+    if (!oldPassword || !newPassword || !newPasswordConfirm) {
+      alert('모든 비밀번호 필드를 입력해 주십시오.');
+      return;
+    }
+    if (newPassword !== newPasswordConfirm) {
+      alert('새 비밀번호와 비밀번호 확인이 일치하지 않습니다.');
+      return;
+    }
+    if (newPassword.length < 4) {
+      alert('새 비밀번호는 최소 4자 이상이어야 합니다.');
+      return;
+    }
+
+    setIsChangingPassword(true);
+    try {
+      const res = await apiFetch('/api/v1/auth/change-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          old_password: oldPassword, 
+          new_password: newPassword 
+        })
+      });
+
+      if (res.ok) {
+        alert('✓ 비밀번호 변경이 정상 완료되었습니다. 세션 보안을 위해 다시 로그인해 주십시오.');
+        sessionStorage.clear();
+        router.push('/');
+      } else {
+        const err = await res.json();
+        alert(err.detail || '비밀번호 변경 실패');
+      }
+    } catch (err) {
+      alert('비밀번호 변경 중 오류 발생');
+    } finally {
+      setIsChangingPassword(false);
+      setShowPasswordChangeModal(false);
+      setOldPassword('');
+      setNewPassword('');
+      setNewPasswordConfirm('');
+    }
+  };
+
+  // 모달 활성화 시 관리자 사용자 목록 동기화
+  useEffect(() => {
+    if (showAdminConsoleModal && userRole === 'admin') {
+      fetchAdminUsers();
+    }
+  }, [showAdminConsoleModal, userRole]);
 
   // Leaflet 지도 인스턴스 참조
   const mapRef = useRef(null);
@@ -1554,6 +1718,13 @@ export default function Home() {
               )}
 
               <button 
+                onClick={() => setShowPasswordChangeModal(true)}
+                className="text-xs bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 px-3.5 py-1.5 rounded-lg font-semibold cursor-pointer transition-all flex items-center gap-1.5"
+              >
+                🔑 비밀번호 변경
+              </button>
+
+              <button 
                 onClick={handleLogout}
                 className="text-xs bg-rose-950/45 hover:bg-rose-900/60 border border-rose-500/30 text-rose-300 px-3.5 py-1.5 rounded-lg font-semibold cursor-pointer transition-all flex items-center gap-1.5"
               >
@@ -1780,7 +1951,7 @@ export default function Home() {
       {/* ⚙️ 관리자 전용 제어 콘솔 모달 */}
       {showAdminConsoleModal && (
         <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="glass-panel w-full max-w-md p-6 flex flex-col gap-4 relative animate-fade-in">
+          <div className="glass-panel w-full max-w-lg p-6 flex flex-col gap-4 relative animate-fade-in max-h-[90vh] overflow-y-auto text-slate-100">
             <button 
               onClick={() => setShowAdminConsoleModal(false)}
               className="absolute top-4 right-4 text-slate-400 hover:text-white font-bold cursor-pointer"
@@ -1792,165 +1963,238 @@ export default function Home() {
                 System Administrator Console
               </span>
               <h3 className="text-sm font-bold text-white mt-2">⚙️ 통합 관리자 콘솔</h3>
-              <p className="text-[10px] text-slate-400">데이터베이스 벌크 적재, 초기화 및 법규 라이브러리 관리를 수행합니다.</p>
+              <p className="text-[10px] text-slate-400">데이터베이스 벌크 적재, 예측 추천 모델 갱신 및 계정 생명주기를 통합 조립합니다.</p>
             </div>
             
-            <div className="border border-slate-800 rounded-lg p-4 bg-slate-900/40 flex flex-col gap-4">
-              
-              {/* RAG 관리 파트 통합 적재 */}
-              <div className="flex flex-col gap-2">
-                <label className="text-[11px] font-bold text-slate-200">⚖️ RAG 법규 라이브러리 적재</label>
-                <div 
-                  onClick={() => document.getElementById('seed-regulation-uploader').click()}
-                  className="border-2 border-dashed border-slate-700 hover:border-blue-500 rounded-xl p-4 text-center cursor-pointer transition-all bg-slate-950/40 hover:bg-slate-900/30 flex flex-col items-center justify-center gap-1"
-                >
-                  <span className="text-lg">⚖️</span>
-                  <p className="text-[11px] text-slate-300 font-semibold">조례 PDF 파일 등록</p>
-                  <p className="text-[9px] text-slate-500">PDF RAG 임베딩 DB 벡터화를 진행합니다.</p>
-                  {isRegulationUploading && <p className="text-[10px] text-amber-400 mt-1 animate-pulse">RAG 적재 및 벡터 캐싱 중...</p>}
-                </div>
-                {ragUploadSuccess && (
-                  <div className="bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] p-2 rounded-lg text-center font-medium">
-                    ✓ 조례 법규의 RAG 벡터 적재가 성공적으로 완료되었습니다!
-                  </div>
-                )}
-                <input 
-                  type="file" 
-                  multiple 
-                  accept=".pdf" 
-                  id="seed-regulation-uploader" 
-                  className="hidden" 
-                  onChange={handleRegulationFileChange} 
-                />
-              </div>
+            {/* 탭 네비게이터 */}
+            <div className="flex border-b border-slate-800">
+              <button 
+                onClick={() => setAdminTab('bulk')}
+                className={`flex-1 pb-2 text-xs font-bold text-center border-b-2 transition-all cursor-pointer ${adminTab === 'bulk' ? 'border-amber-500 text-amber-400' : 'border-transparent text-slate-400 hover:text-slate-200'}`}
+              >
+                📊 데이터 벌크 적재
+              </button>
+              <button 
+                onClick={() => setAdminTab('users')}
+                className={`flex-1 pb-2 text-xs font-bold text-center border-b-2 transition-all cursor-pointer ${adminTab === 'users' ? 'border-amber-500 text-amber-400' : 'border-transparent text-slate-400 hover:text-slate-200'}`}
+              >
+                👥 실무자 계정 관리
+              </button>
+            </div>
 
-              {/* 기능 1: 공간/행정 데이터 벌크 적재 */}
-              <div className="flex flex-col gap-2 border-t border-slate-800 pt-3">
-                <label className="text-[11px] font-bold text-slate-200">🚀 원천 데이터 벌크 적재 (PostGIS Seed)</label>
-                <div className="flex gap-2">
-                  <select 
-                    value={seedTable} 
-                    onChange={(e) => setSeedTable(e.target.value)}
-                    className="bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-white outline-none cursor-pointer w-full font-semibold"
+            {adminTab === 'bulk' ? (
+              <div className="border border-slate-800 rounded-lg p-4 bg-slate-900/40 flex flex-col gap-4">
+                {/* RAG 관리 파트 통합 적재 */}
+                <div className="flex flex-col gap-2">
+                  <label className="text-[11px] font-bold text-slate-200">⚖️ RAG 법규 라이브러리 적재</label>
+                  <div 
+                    onClick={() => document.getElementById('seed-regulation-uploader').click()}
+                    className="border-2 border-dashed border-slate-700 hover:border-blue-500 rounded-xl p-4 text-center cursor-pointer transition-all bg-slate-950/40 hover:bg-slate-900/30 flex flex-col items-center justify-center gap-1"
                   >
-                    <option value="cadastral_lands">지적 필지 정보 (cadastral_lands)</option>
-                    <option value="civil_complaints">주민 민원 데이터 (civil_complaints)</option>
-                    <option value="commercial_shops">상권 점포 정보 (commercial_shops)</option>
-                    <option value="user_exclusion_zones">물리 장애물 금역 (user_exclusion_zones)</option>
-                  </select>
-                </div>
-                <div 
-                  onClick={() => document.getElementById('seed-csv-uploader').click()}
-                  className="border-2 border-dashed border-slate-700 hover:border-amber-500 rounded-xl p-4 text-center cursor-pointer transition-all bg-slate-950/40 hover:bg-slate-900/30 flex flex-col items-center justify-center gap-1"
-                >
-                  <span className="text-lg">📁</span>
-                  <p className="text-[11px] text-slate-300 font-semibold">벌크 CSV 데이터 업로드</p>
-                  <p className="text-[9px] text-slate-500">지정 테이블에 to_sql 자동 공간 맵핑 적재를 실행합니다.</p>
-                  {isSeeding && <p className="text-[10px] text-amber-400 mt-1 animate-pulse">PostGIS 벌크 시딩 및 GIST 인덱싱 가동 중...</p>}
-                </div>
-                <input 
-                  type="file" 
-                  accept=".csv" 
-                  id="seed-csv-uploader" 
-                  className="hidden" 
-                  onChange={handleSeedUpload} 
-                />
-              </div>
-
-              {/* 기능 3: ML 모델 (.pkl) 업로드 및 핫 바인딩 */}
-              <div className="flex flex-col gap-2 border-t border-slate-800 pt-3">
-                <label className="text-[11px] font-bold text-slate-200">🤖 ML 예측 모델 (.pkl) 핫 업로드</label>
-                <div className="flex gap-2">
-                  <select 
-                    value={modelDomain} 
-                    onChange={(e) => setModelDomain(e.target.value)}
-                    className="bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-white outline-none cursor-pointer w-full font-semibold"
-                  >
-                    <option value="city_feature">기본 도시 시설 도메인 (city_feature)</option>
-                    <option value="smoking_zone">실외 흡연구역 도메인 (smoking_zone)</option>
-                    <option value="ev_charging">전기차 충전소 도메인 (ev_charging)</option>
-                  </select>
-                </div>
-                <div 
-                  onClick={() => document.getElementById('seed-model-uploader').click()}
-                  className="border-2 border-dashed border-slate-700 hover:border-amber-500 rounded-xl p-4 text-center cursor-pointer transition-all bg-slate-950/40 hover:bg-slate-900/30 flex flex-col items-center justify-center gap-1"
-                >
-                  <span className="text-lg">🤖</span>
-                  <p className="text-[11px] text-slate-300 font-semibold">모델 파일 (.pkl) 업로드</p>
-                  <p className="text-[9px] text-slate-500">지정 도메인에 XGBoost 예측 모델을 핫 로드합니다.</p>
-                  {isModelUploading && <p className="text-[10px] text-amber-400 mt-1 animate-pulse">모델 리로드 및 메모리 리인덱싱 중...</p>}
-                </div>
-                <input 
-                  type="file" 
-                  accept=".pkl" 
-                  id="seed-model-uploader" 
-                  className="hidden" 
-                  onChange={handleModelUpload} 
-                />
-              </div>
-
-              {/* 기능 4: 신규 실무자 (공무원) 추가 등록 폼 (최고관리자 토큰 자동 맵핑) */}
-              <div className="flex flex-col gap-2 border-t border-slate-800 pt-3">
-                <label className="text-[11px] font-bold text-slate-200">➕ 신규 실무자 (공무원) 계정 추가 등록</label>
-                <form onSubmit={handleRegisterSubmit} className="flex flex-col gap-2 bg-slate-950/40 p-3 rounded-lg border border-slate-800/80">
-                  <div className="flex gap-2">
-                    <input 
-                      type="text"
-                      placeholder="신규 ID 입력"
-                      value={regUsername}
-                      onChange={(e) => setRegUsername(e.target.value)}
-                      className="bg-slate-950 border border-slate-800 rounded-lg p-2 text-[11px] text-white outline-none w-1/2 font-semibold"
-                    />
-                    <input 
-                      type="password"
-                      placeholder="비밀번호 설정"
-                      value={regPassword}
-                      onChange={(e) => setRegPassword(e.target.value)}
-                      className="bg-slate-950 border border-slate-800 rounded-lg p-2 text-[11px] text-white outline-none w-1/2 font-semibold"
-                    />
+                    <span className="text-lg">⚖️</span>
+                    <p className="text-[11px] text-slate-300 font-semibold">조례 PDF 파일 등록</p>
+                    <p className="text-[9px] text-slate-500">PDF RAG 임베딩 DB 벡터화를 진행합니다.</p>
+                    {isRegulationUploading && <p className="text-[10px] text-amber-400 mt-1 animate-pulse">RAG 적재 및 벡터 캐싱 중...</p>}
                   </div>
+                  {ragUploadSuccess && (
+                    <div className="bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] p-2 rounded-lg text-center font-medium">
+                      ✓ 조례 법규의 RAG 벡터 적재가 성공적으로 완료되었습니다!
+                    </div>
+                  )}
+                  <input 
+                    type="file" 
+                    multiple 
+                    accept=".pdf" 
+                    id="seed-regulation-uploader" 
+                    className="hidden" 
+                    onChange={handleRegulationFileChange} 
+                  />
+                </div>
+
+                {/* 기능 1: 공간/행정 데이터 벌크 적재 */}
+                <div className="flex flex-col gap-2 border-t border-slate-800 pt-3">
+                  <label className="text-[11px] font-bold text-slate-200">🚀 원천 데이터 벌크 적재 (PostGIS CSV/Shapefile Seed)</label>
                   <div className="flex gap-2">
                     <select 
-                      value={regRole} 
-                      onChange={(e) => setRegRole(e.target.value)}
-                      className="bg-slate-950 border border-slate-800 rounded-lg p-2 text-[10px] text-white outline-none cursor-pointer w-1/2 font-semibold"
+                      value={seedTable} 
+                      onChange={(e) => setSeedTable(e.target.value)}
+                      className="bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-white outline-none cursor-pointer w-full font-semibold"
                     >
-                      <option value="user">일반 실무자 (User)</option>
-                      <option value="admin">최고 관리자 (Admin)</option>
+                      <option value="cadastral_lands">지적 필지 정보 (cadastral_lands)</option>
+                      <option value="civil_complaints">주민 민원 데이터 (civil_complaints)</option>
+                      <option value="commercial_shops">상권 점포 정보 (commercial_shops)</option>
+                      <option value="restricted_zones">용도제한 보호구역 (restricted_zones)</option>
+                      <option value="user_exclusion_zones">물리 장애물 금역 (user_exclusion_zones)</option>
+                      <option value="city_spatial_features">범용 공간 피처 (city_spatial_features)</option>
                     </select>
+                  </div>
+                  <div 
+                    onClick={() => document.getElementById('seed-csv-uploader').click()}
+                    className="border-2 border-dashed border-slate-700 hover:border-amber-500 rounded-xl p-4 text-center cursor-pointer transition-all bg-slate-950/40 hover:bg-slate-900/30 flex flex-col items-center justify-center gap-1"
+                  >
+                    <span className="text-lg">📁</span>
+                    <p className="text-[11px] text-slate-300 font-semibold">벌크 CSV 또는 Shapefile 셋 업로드</p>
+                    <p className="text-[9px] text-slate-500">CSV 한 개 또는 Shapefile 셋(.shp,.dbf,.shx)을 드래그하여 공간 변환 적재합니다.</p>
+                    {isSeeding && <p className="text-[10px] text-amber-400 mt-1 animate-pulse">PostGIS 벌크 시딩 및 GIST 인덱싱 가동 중...</p>}
+                  </div>
+                  <input 
+                    type="file" 
+                    multiple
+                    accept=".csv,.shp,.dbf,.shx" 
+                    id="seed-csv-uploader" 
+                    className="hidden" 
+                    onChange={handleSeedFileChange} 
+                  />
+                </div>
+
+                {/* 기능 3: ML 모델 (.pkl) 업로드 및 핫 바인딩 */}
+                <div className="flex flex-col gap-2 border-t border-slate-800 pt-3">
+                  <label className="text-[11px] font-bold text-slate-200">🤖 ML 예측 모델 (.pkl) 핫 업로드</label>
+                  <div className="flex gap-2">
                     <select 
-                      value={regDept} 
-                      onChange={(e) => setRegDept(e.target.value)}
-                      className="bg-slate-950 border border-slate-800 rounded-lg p-2 text-[10px] text-white outline-none cursor-pointer w-1/2 font-semibold"
+                      value={modelDomain} 
+                      onChange={(e) => setModelDomain(e.target.value)}
+                      className="bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-white outline-none cursor-pointer w-full font-semibold"
                     >
-                      <option value="스마트도시과">스마트도시과</option>
-                      <option value="도시행정정보과">도시행정정보과</option>
-                      <option value="맑은환경과">맑은환경과</option>
+                      <option value="city_feature">기본 도시 시설 도메인 (city_feature)</option>
+                      <option value="smoking_zone">실외 흡연구역 도메인 (smoking_zone)</option>
+                      <option value="ev_charging">전기차 충전소 도메인 (ev_charging)</option>
                     </select>
+                  </div>
+                  <div 
+                    onClick={() => document.getElementById('seed-model-uploader').click()}
+                    className="border-2 border-dashed border-slate-700 hover:border-amber-500 rounded-xl p-4 text-center cursor-pointer transition-all bg-slate-950/40 hover:bg-slate-900/30 flex flex-col items-center justify-center gap-1"
+                  >
+                    <span className="text-lg">🤖</span>
+                    <p className="text-[11px] text-slate-300 font-semibold">모델 파일 (.pkl) 업로드</p>
+                    <p className="text-[9px] text-slate-500">지정 도메인에 XGBoost 예측 모델을 핫 로드합니다.</p>
+                    {isModelUploading && <p className="text-[10px] text-amber-400 mt-1 animate-pulse">모델 리로드 및 메모리 리인덱싱 중...</p>}
+                  </div>
+                  <input 
+                    type="file" 
+                    accept=".pkl" 
+                    id="seed-model-uploader" 
+                    className="hidden" 
+                    onChange={handleModelUpload} 
+                  />
+                </div>
+
+                {/* 기능 2: 전체 리셋 단추 */}
+                <div className="border-t border-slate-800 pt-3 flex justify-between items-center">
+                  <div className="flex flex-col gap-0.5">
+                    <span className="text-[11px] font-bold text-rose-400">🚨 시스템 데이터베이스 리셋</span>
+                    <span className="text-[9px] text-slate-500">임시 캐시 및 저장 조례를 전역 삭제합니다.</span>
                   </div>
                   <button 
-                    type="submit"
-                    className="w-full bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-bold py-2 rounded-lg transition-all shadow-md cursor-pointer mt-1"
+                    onClick={handlePlatformReset}
+                    className="text-[10px] bg-rose-950/50 hover:bg-rose-900 border border-rose-500/30 text-rose-300 px-3.5 py-2 rounded-lg font-bold cursor-pointer transition-all"
                   >
-                    {isRegistering ? "등록 요청 전송 중..." : "➕ 신규 실무관 승인 발급"}
+                    전체 리셋 실행
                   </button>
-                </form>
-              </div>
-
-              {/* 기능 2: 전체 리셋 단추 */}
-              <div className="border-t border-slate-800 pt-3 flex justify-between items-center">
-                <div className="flex flex-col gap-0.5">
-                  <span className="text-[11px] font-bold text-rose-400">🚨 시스템 데이터베이스 리셋</span>
-                  <span className="text-[9px] text-slate-500">임시 캐시 및 저장 조례를 전역 삭제합니다.</span>
                 </div>
-                <button 
-                  onClick={handlePlatformReset}
-                  className="text-[10px] bg-rose-950/50 hover:bg-rose-900 border border-rose-500/30 text-rose-300 px-3.5 py-2 rounded-lg font-bold cursor-pointer transition-all"
-                >
-                  전체 리셋 실행
-                </button>
               </div>
-            </div>
+            ) : (
+              <div className="border border-slate-800 rounded-lg p-4 bg-slate-900/40 flex flex-col gap-4">
+                
+                {/* 등록된 실무자 목록 테이블 */}
+                <div className="flex flex-col gap-2">
+                  <label className="text-[11px] font-bold text-slate-200">👥 승인된 행정망 사용자 디렉토리</label>
+                  <div className="max-h-60 overflow-y-auto border border-slate-800 rounded-lg bg-slate-950/50">
+                    <table className="w-full text-left border-collapse text-[10px]">
+                      <thead>
+                        <tr className="border-b border-slate-800 bg-slate-900/60 text-slate-400 font-bold">
+                          <th className="p-2">아이디</th>
+                          <th className="p-2">부서</th>
+                          <th className="p-2">권한</th>
+                          <th className="p-2 text-right">관리</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {adminUsers.length === 0 ? (
+                          <tr>
+                            <td colSpan="4" className="text-center py-6 text-slate-500">조회된 계정이 없습니다.</td>
+                          </tr>
+                        ) : (
+                          adminUsers.map(u => (
+                            <tr key={u.id} className="border-b border-slate-900 hover:bg-slate-900/20 text-slate-300">
+                              <td className="p-2 font-semibold font-mono">{u.username}</td>
+                              <td className="p-2">{u.department}</td>
+                              <td className="p-2">
+                                <span className={`px-1.5 py-0.5 rounded text-[8px] font-bold ${u.role === 'admin' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' : 'bg-blue-500/10 text-blue-400 border border-blue-500/20'}`}>
+                                  {u.role === 'admin' ? '관리자' : '실무관'}
+                                </span>
+                              </td>
+                              <td className="p-2 text-right flex gap-1 justify-end">
+                                <button 
+                                  onClick={() => handleUserPasswordReset(u.id, u.username)}
+                                  className="bg-slate-800 hover:bg-slate-700 text-slate-300 px-2 py-0.5 rounded border border-slate-700 cursor-pointer"
+                                >
+                                  재설정
+                                </button>
+                                <button 
+                                  onClick={() => handleUserDelete(u.id, u.username)}
+                                  className="bg-rose-950/40 hover:bg-rose-900 text-rose-400 px-2 py-0.5 rounded border border-rose-500/20 cursor-pointer"
+                                >
+                                  삭제
+                                </button>
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* 신규 실무자 추가 폼 */}
+                <div className="flex flex-col gap-2 border-t border-slate-800 pt-3">
+                  <label className="text-[11px] font-bold text-slate-200">➕ 신규 실무자 (공무원) 계정 추가 등록</label>
+                  <form onSubmit={handleRegisterSubmit} className="flex flex-col gap-2 bg-slate-950/40 p-3 rounded-lg border border-slate-800/80">
+                    <div className="flex gap-2">
+                      <input 
+                        type="text"
+                        placeholder="신규 ID 입력"
+                        value={regUsername}
+                        onChange={(e) => setRegUsername(e.target.value)}
+                        className="bg-slate-950 border border-slate-800 rounded-lg p-2 text-[11px] text-white outline-none w-1/2 font-semibold"
+                      />
+                      <input 
+                        type="password"
+                        placeholder="비밀번호 설정"
+                        value={regPassword}
+                        onChange={(e) => setRegPassword(e.target.value)}
+                        className="bg-slate-950 border border-slate-800 rounded-lg p-2 text-[11px] text-white outline-none w-1/2 font-semibold"
+                      />
+                    </div>
+                    <div className="flex gap-2">
+                      <select 
+                        value={regRole} 
+                        onChange={(e) => setRegRole(e.target.value)}
+                        className="bg-slate-950 border border-slate-800 rounded-lg p-2 text-[10px] text-white outline-none cursor-pointer w-1/2 font-semibold"
+                      >
+                        <option value="user">일반 실무자 (User)</option>
+                        <option value="admin">최고 관리자 (Admin)</option>
+                      </select>
+                      <select 
+                        value={regDept} 
+                        onChange={(e) => setRegDept(e.target.value)}
+                        className="bg-slate-950 border border-slate-800 rounded-lg p-2 text-[10px] text-white outline-none cursor-pointer w-1/2 font-semibold"
+                      >
+                        <option value="스마트도시과">스마트도시과</option>
+                        <option value="도시행정정보과">도시행정정보과</option>
+                        <option value="맑은환경과">맑은환경과</option>
+                      </select>
+                    </div>
+                    <button 
+                      type="submit"
+                      className="w-full bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-bold py-2 rounded-lg transition-all shadow-md cursor-pointer mt-1"
+                    >
+                      {isRegistering ? "등록 요청 전송 중..." : "➕ 신규 실무관 승인 발급"}
+                    </button>
+                  </form>
+                </div>
+              </div>
+            )}
             
             <button 
               onClick={() => setShowAdminConsoleModal(false)}
@@ -1958,6 +2202,72 @@ export default function Home() {
             >
               콘솔 닫기
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* 🔑 비밀번호 자가 변경 모달 */}
+      {showPasswordChangeModal && (
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="glass-panel w-full max-w-sm p-6 flex flex-col gap-4 relative animate-fade-in text-slate-100">
+            <button 
+              onClick={() => {
+                setShowPasswordChangeModal(false);
+                setOldPassword('');
+                setNewPassword('');
+                setNewPasswordConfirm('');
+              }}
+              className="absolute top-4 right-4 text-slate-400 hover:text-white font-bold cursor-pointer"
+            >
+              ✕
+            </button>
+            <div>
+              <h3 className="text-sm font-bold text-white mb-1">🔑 비밀번호 자가 변경</h3>
+              <p className="text-[10px] text-slate-400">보안 등급 유지를 위해 주기적으로 비밀번호를 변경해 주십시오.</p>
+            </div>
+
+            <form onSubmit={handleSelfPasswordChangeSubmit} className="flex flex-col gap-3">
+              <div className="flex flex-col gap-1">
+                <label className="text-[10px] text-slate-400">기존 비밀번호</label>
+                <input 
+                  type="password"
+                  value={oldPassword}
+                  onChange={(e) => setOldPassword(e.target.value)}
+                  className="bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-white outline-none"
+                  placeholder="기존 비밀번호 입력"
+                />
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <label className="text-[10px] text-slate-400">새 비밀번호</label>
+                <input 
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  className="bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-white outline-none"
+                  placeholder="새 비밀번호 입력 (4자 이상)"
+                />
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <label className="text-[10px] text-slate-400">새 비밀번호 확인</label>
+                <input 
+                  type="password"
+                  value={newPasswordConfirm}
+                  onChange={(e) => setNewPasswordConfirm(e.target.value)}
+                  className="bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-white outline-none"
+                  placeholder="새 비밀번호 재입력"
+                />
+              </div>
+
+              <button 
+                type="submit"
+                disabled={isChangingPassword}
+                className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-xs font-bold py-2.5 rounded-lg transition-all mt-2 cursor-pointer"
+              >
+                {isChangingPassword ? "비밀번호 변경 중..." : "🔑 비밀번호 변경 및 적용"}
+              </button>
+            </form>
           </div>
         </div>
       )}

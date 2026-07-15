@@ -11,6 +11,12 @@ export default function GatewayPage() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(true);
 
+  // 최초 로그인 시 패스워드 강제 변경 모달 제어
+  const [showResetModal, setShowResetModal] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
+  const [newPasswordConfirm, setNewPasswordConfirm] = useState('');
+  const [resetLoading, setResetLoading] = useState(false);
+
   // 1. 이미 로그인된 상태일 경우 자동 지도 페이지로 리다이렉트
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -48,8 +54,15 @@ export default function GatewayPage() {
         sessionStorage.setItem('department', data.user.department);
         sessionStorage.setItem('district_id', data.user.district_id);
         
-        alert(`✓ ${data.user.username} 실무관님, 행정망 인증 성공. 소속: ${data.user.department}`);
-        router.push('/spatial');
+        if (data.require_password_change) {
+          // 최초 로그인 패스워드 강제 변경 유도 가동
+          alert(`⚠️ 보안 수칙 경고: 최초 로그인(혹은 기본 비밀번호 감출) 상태입니다. 안전을 위해 관리자 인증 비밀번호를 즉시 변경해야 합니다.`);
+          setShowResetModal(true);
+          setLoading(false);
+        } else {
+          alert(`✓ ${data.user.username} 실무관님, 행정망 인증 성공. 소속: ${data.user.department}`);
+          router.push('/spatial');
+        }
       } else {
         const errData = await res.json();
         alert(errData.detail || "로그인 인증에 실패했습니다. 정보를 재검토하십시오.");
@@ -58,6 +71,55 @@ export default function GatewayPage() {
     } catch (err) {
       alert("서버 연결에 실패했습니다. 백엔드 기동 여부를 확인해 주십시오.");
       setLoading(false);
+    }
+  };
+
+  // 3. 강제 패스워드 변경 처리 핸들러
+  const handleForcePasswordChange = async (e) => {
+    e.preventDefault();
+    if (!newPassword || !newPasswordConfirm) {
+      alert("신규 비밀번호를 입력해 주십시오.");
+      return;
+    }
+    if (newPassword !== newPasswordConfirm) {
+      alert("신규 비밀번호와 비밀번호 확인이 일치하지 않습니다.");
+      return;
+    }
+    if (newPassword === "admin1234") {
+      alert("보안 정책상 기본 비밀번호('admin1234')는 재사용할 수 없습니다.");
+      return;
+    }
+    if (newPassword.length < 4) {
+      alert("안전한 구동을 위해 4자리 이상의 비밀번호로 셋업하십시오.");
+      return;
+    }
+
+    setResetLoading(true);
+    try {
+      const token = sessionStorage.getItem('token');
+      const res = await fetch('/api/v1/auth/change-password', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ 
+          old_password: password, // 로그인 시 입력한 패스워드
+          new_password: newPassword 
+        })
+      });
+
+      if (res.ok) {
+        alert("✓ 보안 비밀번호 변경 완료. 안전한 행정망 세션으로 플랫폼을 기동합니다.");
+        router.push('/spatial');
+      } else {
+        const errData = await res.json();
+        alert(errData.detail || "비밀번호 변경에 실패했습니다. 다시 시도하십시오.");
+        setResetLoading(false);
+      }
+    } catch (err) {
+      alert("서버 연결 실패. 비밀번호 변경 중 통신 에러가 발생했습니다.");
+      setResetLoading(false);
     }
   };
 
@@ -130,6 +192,56 @@ export default function GatewayPage() {
         </span>
 
       </div>
+
+      {/* 최초 로그인 강제 비밀번호 변경 모달 */}
+      {showResetModal && (
+        <div className="fixed inset-0 bg-slate-950/90 backdrop-blur-md z-50 flex items-center justify-center p-4">
+          <div className="glass-panel w-full max-w-md p-8 rounded-2xl border border-slate-800 bg-slate-900/60 flex flex-col gap-6 shadow-2xl relative animate-fade-in text-slate-100">
+            <div className="text-center">
+              <span className="text-[10px] bg-rose-500/15 border border-rose-500/30 text-rose-400 px-3 py-1 rounded-full font-bold uppercase tracking-wider">
+                Security Enforce Gate
+              </span>
+              <h2 className="text-lg font-bold text-white mt-3">🔒 비밀번호 변경 의무화</h2>
+              <p className="text-[10px] text-slate-400 mt-1">
+                초기 비밀번호를 사용 중인 최고 관리자 또는 최초 로그인 계정입니다.<br />
+                행정망 보안 수칙에 따라 신규 패스워드로 변경한 후 로그인을 완료하십시오.
+              </p>
+            </div>
+
+            <form onSubmit={handleForcePasswordChange} className="flex flex-col gap-4">
+              <div className="flex flex-col gap-1">
+                <label className="text-[10px] text-slate-400 font-semibold">새 비밀번호 입력</label>
+                <input 
+                  type="password"
+                  placeholder="새로운 비밀번호 (4자 이상)"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  className="bg-slate-950/60 border border-slate-800 focus:border-rose-500/80 rounded-lg p-2.5 text-xs text-white outline-none transition-all"
+                />
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <label className="text-[10px] text-slate-400 font-semibold">새 비밀번호 확인</label>
+                <input 
+                  type="password"
+                  placeholder="새 비밀번호 재입력"
+                  value={newPasswordConfirm}
+                  onChange={(e) => setNewPasswordConfirm(e.target.value)}
+                  className="bg-slate-950/60 border border-slate-800 focus:border-rose-500/80 rounded-lg p-2.5 text-xs text-white outline-none transition-all"
+                />
+              </div>
+
+              <button 
+                type="submit"
+                disabled={resetLoading}
+                className="w-full bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white text-xs font-bold py-3 rounded-lg transition-all shadow-lg hover:shadow-rose-500/10 cursor-pointer mt-2"
+              >
+                {resetLoading ? "비밀번호 변경 처리 중..." : "🔑 보안 비밀번호 변경 및 적용"}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

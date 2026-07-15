@@ -3,6 +3,7 @@ import csv
 import re
 import math
 import shapefile
+import bcrypt
 from collections import defaultdict
 from sqlalchemy import create_engine, text
 from shapely.geometry import Polygon, MultiPolygon, shape
@@ -488,6 +489,22 @@ def seed():
                 })
                 rest_count += 1
             print(f"    Seeded {rest_count} restricted zones.")
+
+            # [11] Seed default admin user if not exists
+            print("[11] Seeding default admin account...")
+            user_exists = conn.execute(text("SELECT COUNT(*) FROM users WHERE username = 'admin'")).scalar()
+            if not user_exists:
+                pwd_bytes = "admin1234".encode('utf-8')
+                salt = bcrypt.gensalt()
+                hashed = bcrypt.hashpw(pwd_bytes, salt).decode('utf-8')
+                
+                conn.execute(text("""
+                    INSERT INTO users (username, password_hash, role, department, district_id)
+                    VALUES ('admin', :pwd_hash, 'admin', '스마트도시과', 1)
+                """), {"pwd_hash": hashed})
+                print("    Default admin account seeded successfully. (ID: admin / PW: admin1234)")
+            else:
+                print("    Admin account already exists. Skipping.")
 
             trans.commit()
             print("[+] Seeding completed successfully!")

@@ -111,9 +111,9 @@ export default function DebateSimulatorModal({
             
             if (sender.includes('보건') || sender.includes('구청') || sender.includes('공무원') || sender.includes('정부')) {
               textClass = 'text-sky-400 font-medium';
-            } else if (sender.includes('상인') || sender.includes('소상공인') || sender.includes('반대') || sender.includes('번영회')) {
+            } else if (sender.includes('상인') || sender.includes('소상공인') || sender.includes('찬성') || sender.includes('번영회')) {
               textClass = 'text-rose-400 font-medium';
-            } else if (sender.includes('주민') || sender.includes('시민') || sender.includes('찬성') || sender.includes('학부모')) {
+            } else if (sender.includes('주민') || sender.includes('시민') || sender.includes('반대') || sender.includes('학부모')) {
               textClass = 'text-emerald-400 font-medium';
             } else if (sender.includes('시스템') || sender.includes('조정') || sender.includes('중재') || sender.includes('심의')) {
               textClass = 'text-amber-400 font-semibold';

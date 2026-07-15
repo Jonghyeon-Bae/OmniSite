@@ -15,6 +15,8 @@ from app.database import get_db
 from app.utils.auth import get_current_admin
 import pandas as pd
 from app.database import engine
+import shapefile
+from shapely.geometry import shape
 
 router = APIRouter(prefix="/api/v1", tags=["upload"])
 
@@ -1541,3 +1543,180 @@ async def upload_ml_model(
             status_code=500,
             detail=f"모델 업로드 또는 적재 중 치명적 런타임 장해가 발생했습니다: {str(e)}"
         )
+
+# --- [Phase 3] 관리자 전용 공간정보 Shapefile 벌크 적재 API ---
+@router.post("/upload/seed-shapefile")
+async def seed_shapefile(
+    target_table: str = "city_spatial_features",
+    files: List[UploadFile] = File(...),
+    db: Session = Depends(get_db),
+    current_admin: dict = Depends(get_current_admin)
+):
+    temp_dir = os.path.join(UPLOAD_DIR, "temp_shp")
+    os.makedirs(temp_dir, exist_ok=True)
+    
+    saved_paths = {}
+    base_name = None
+    
+    for file in files:
+        filename = file.filename
+        ext = filename.split(".")[-1].lower()
+        if ext not in ["shp", "dbf", "shx", "prj"]:
+            continue
+            
+        cur_base = ".".join(filename.split(".")[:-1])
+        if base_name is None:
+            base_name = cur_base
+        
+        save_path = os.path.join(temp_dir, filename)
+        with open(save_path, "wb") as buffer:
+            while chunk := await file.read(1024 * 1024):
+                buffer.write(chunk)
+        saved_paths[ext] = save_path
+        
+    if "shp" not in saved_paths or "dbf" not in saved_paths or "shx" not in saved_paths:
+        # 임시 디렉토리 정리
+        import shutil
+        if os.path.exists(temp_dir):
+            try:
+                shutil.rmtree(temp_dir)
+            except Exception:
+                pass
+        raise HTTPException(
+            status_code=400,
+            detail="Shapefile 적재를 위해선 .shp, .dbf, .shx 파일셋이 모두 필요합니다."
+        )
+        
+    shp_file_path = saved_paths["shp"]
+    
+    try:
+        sf = shapefile.Reader(shp_file_path, encoding="cp949")
+        records = sf.records()
+        shapes = sf.shapes()
+        
+        if not shapes:
+            raise HTTPException(status_code=400, detail="Shapefile 내에 공간 데이터가 존재하지 않습니다.")
+            
+        first_shape = shapes[0]
+        xmin = first_shape.bbox[0]
+        
+        src_srid = 4326
+        if 120.0 <= xmin <= 132.0:
+            src_srid = 4326
+        elif 150000.0 <= xmin <= 250000.0:
+            src_srid = 5186
+        elif 800000.0 <= xmin <= 1100000.0:
+            src_srid = 5179
+            
+        print(f"[Auto-SRID] Detected coordinate scale xmin={xmin}, assigning SRID={src_srid}")
+        
+        fields = [f[0] for f in sf.fields[1:]]
+        success_count = 0
+        
+        for i, shp in enumerate(shapes):
+            rec = records[i]
+            geom_obj = shape(shp)
+            wkt = geom_obj.wkt
+            
+            properties = {}
+            for idx, field_name in enumerate(fields):
+                val = rec[idx]
+                if isinstance(val, bytes):
+                    try:
+                        val = val.decode("cp949", errors="replace")
+                    except Exception:
+                        val = str(val)
+                properties[field_name] = val
+                
+            if target_table == "cadastral_lands":
+                pnu = properties.get("PNU") or properties.get("pnu") or f"TEMP_{i}"
+                jibun = properties.get("JIBUN") or properties.get("jibun") or ""
+                land_use = properties.get("LDC") or properties.get("ldc") or "대"
+                ownership = "국유지" if properties.get("buysable") == "TRUE" or properties.get("OWNER") == "국" else "사유지"
+                
+                insert_query = text("""
+                    INSERT INTO cadastral_lands (district_id, dong_id, pnu, jibun, land_use_code, ownership_type, geom)
+                    VALUES (
+                        1, 
+                        COALESCE((SELECT id FROM municipal_dongs WHERE ST_Contains(geom, ST_Centroid(ST_Transform(ST_SetSRID(ST_GeomFromText(:wkt), :src_srid), 4326))) LIMIT 1), 1),
+                        :pnu, 
+                        :jibun, 
+                        :land_use, 
+                        :ownership, 
+                        ST_Multi(ST_Transform(ST_SetSRID(ST_GeomFromText(:wkt), :src_srid), 4326))
+                    )
+                """)
+                db.execute(insert_query, {
+                    "wkt": wkt,
+                    "src_srid": src_srid,
+                    "pnu": pnu,
+                    "jibun": jibun,
+                    "land_use": land_use,
+                    "ownership": ownership
+                })
+            elif target_table == "restricted_zones":
+                zone_name = properties.get("NAME") or properties.get("name") or "제한구역"
+                address = properties.get("ADDR") or properties.get("address") or ""
+                zone_type = properties.get("ZONE_TYPE") or properties.get("zone_type") or "nosmoking_zone"
+                area = float(properties.get("RADIUS") or properties.get("radius") or properties.get("area") or 10.0)
+                
+                insert_query = text("""
+                    INSERT INTO restricted_zones (district_id, dong_id, zone_name, address, geom, zone_type, area)
+                    VALUES (
+                        1,
+                        COALESCE((SELECT id FROM municipal_dongs WHERE ST_Contains(geom, ST_Centroid(ST_Transform(ST_SetSRID(ST_GeomFromText(:wkt), :src_srid), 4326))) LIMIT 1), 1),
+                        :zone_name,
+                        :address,
+                        ST_Transform(ST_SetSRID(ST_GeomFromText(:wkt), :src_srid), 4326),
+                        :zone_type,
+                        :area
+                    )
+                """)
+                db.execute(insert_query, {
+                    "wkt": wkt,
+                    "src_srid": src_srid,
+                    "zone_name": zone_name,
+                    "address": address,
+                    "zone_type": zone_type,
+                    "area": area
+                })
+            else:
+                feature_name = properties.get("NAME") or properties.get("name") or base_name or "uploaded_feature"
+                feature_type = properties.get("TYPE") or properties.get("type") or target_table
+                
+                insert_query = text("""
+                    INSERT INTO city_spatial_features (feature_type, feature_name, geom, properties)
+                    VALUES (
+                        :feature_type, 
+                        :feature_name, 
+                        ST_Transform(ST_SetSRID(ST_GeomFromText(:wkt), :src_srid), 4326), 
+                        :properties
+                    )
+                """)
+                db.execute(insert_query, {
+                    "feature_type": feature_type,
+                    "feature_name": feature_name,
+                    "wkt": wkt,
+                    "src_srid": src_srid,
+                    "properties": json.dumps(properties, ensure_ascii=False)
+                })
+            success_count += 1
+            
+        db.commit()
+        return {
+            "status": "success",
+            "message": f"Shapefile의 {success_count}개 공간 객체를 '{target_table}' 테이블에 자동 변환 적재 성공했습니다. (감지된 원본 SRID: {src_srid})"
+        }
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Shapefile 적재 중 에러가 발생했습니다: {str(e)}"
+        )
+    finally:
+        import shutil
+        if os.path.exists(temp_dir):
+            try:
+                shutil.rmtree(temp_dir)
+            except Exception:
+                pass

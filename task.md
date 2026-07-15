@@ -1,38 +1,19 @@
-# 태스크 체크리스트 (v4.9.36)
+# [v1.1-stable] 구현 체크리스트
 
-- `[x]` Backend: `spatial.py` 내 추천 쿼리를 최대 300m(`ST_DWithin` 0.003도) 거리순으로 단 1회 쿼리 후 슬라이싱 및 지수 거리 감쇠식 분모 인자 보정 (`150.0`) 적용
-- `[x]` Frontend: `OptimalResultPanel.jsx` 내 0개 예외 안내 텍스트 300m 사양으로 보정 반영
-- `[x]` Frontend: `page.js` 내 `getZoomAdjustedRadius` 헬퍼 함수를 실제 법정 규제 미터(학교 200m, 어린이집 50m, 금연구역 10m) 실크기로 1:1 환원 매핑 (시각적 정보 불일치 완치)
-- `[x]` Backend: `upload.py` 내 `/upload/hitl/commit` 완료 시의 원본 CSV 파일 강제 물리 삭제(`os.remove`) 코드를 주석 비활성화 (Step 2 복귀 시의 재커밋 데이터 소실 완전 해결)
-- `[x]` Backend: `spatial.py` 내 비합리적인 도로 지목 면적 제한 조건(`ST_Area > 800`) 전면 삭제 및 도심 적격 보도 전원 복원
-- `[x]` Frontend: `OptimalResultPanel.jsx` 내 `[◀ Step 2 기준점 재보정하러 가기]` 복구 버튼 완전 삭제 Pruning (AHP 락 꼬임 완치 및 초기화 UX 단일화)
-- `[x]` R&D: 사유지(Private Land) 추천 확장 시 직면하는 법률/행정/소송 공학 리스크 진단 수립
-- `[x]` Backend: `spatial.py` 내 상가 데이터 공백 시 도로를 몰살시키던 오동작 완치용 `EXISTS (SELECT 1 FROM commercial_shops)` 쿼리 가드 이식
-- `[x]` Backend: `spatial.py` 내 RAG 해독 반정 시의 딕셔너리 중첩 경로 오류 완치 및 학교 200m 법정 금지 반경 강제 인가 (금지구역 내부 오추천 원천 소멸 완치)
-- `[x]` Backend: `spatial.py` 내 한강로3가 2-14 지하차도 입구 필지 지번(`NOT LIKE '%한강로3가 2-14%'`) 직접 매칭 및 오염 PNU 양방향 차단을 통한 영구 배제
-- `[x]` Backend: `upload.py` 내 `/upload/clear` 시 `user_exclusion_zones` 테이블 `TRUNCATE` 전면 해제 및 가상 금지구역 보존
-- `[x]` Backend: `upload.py` 내 공간 데이터 보정 완료 시 지목이 `'철'` 이거나 지번에 `'지하/고가/터널'` 을 포함한 필지 주변 30m 반경 금역 다각형을 자동 생성하여 적재하는 **자동 감리 불가 구역 생성기(Auto Exclusion Generator)** 탑재
-- `[x]` Backend: `upload.py` 내 자동 금역 생성 시 거대 철도 부지 완충 범위(ST_Buffer) 팽창에 의한 주변 일반 보도 필지 몰살 탈락 모순 완치
-- `[x]` Backend: `spatial.py` 내 위경도 각도 변환 오차에 의한 핑크색 규제 원 내부 침범 현상(3번 핀 침범 오추천) 완치를 위한 구면 geography 메트릭 ST_DWithin 정확 연산 전환 및 파라미터 바인딩 스코프 선언 보완
-- `[x]` Backend: `spatial.py` 내 실시간 최신 업로드 규제 파일들의 좌표를 파싱 캐싱하여 하버사인 공식 기준 반경 내 후보지들을 파이썬 레벨에서 즉시 강제 소거시키는 **실시간 규제 좌표 하드 드롭 필터(Realtime Hard Drop Exclusions)** 구축
-- `[x]` Database: 데이터베이스 `restricted_zones` 내 위도-경도가 전적으로 뒤바뀌어 오염 시딩되었던 338건의 비정상 공간 데이터 전수 발굴 및 구면 스왑 복구 완료
-- `[x]` Backend: `upload.py` 내 CSV 보정 완료(`/upload/hitl/commit`) 시점에 캐시 JSON 내의 최신 위경도 규제 좌표들을 DB `restricted_zones` 로 1:1 자동 전적 덮어쓰기 업데이트해 주는 **실시간 규제 동기화 파이프라인(Realtime restricted_zones Sync)** 통합 탑재 완료
-- `[x]` Frontend: RAG 조례 데이터 부재 시 AI 감리 카드에 **"관련 자료 부재로 인한 정확도가 낮을 수 있습니다."** 노란색 경고 창을 동적으로 출력하는 감지 플래그 및 배너 구축
-- `[x]` Backend: 추천 후보지의 가장 인접한 규제원과의 구면 하버사인 물리적 거리와 안전 여유폭 마진을 소수점 한자리 미터 단위로 계측해 XAI 사유에 즉각 포함시켜 동적 근거를 설명해 주는 **랭킹 사유 XAI 지능형 근거 엔진** 탑재 완료
-- `[x]` Frontend & Backend: 쓸모없는 요약을 반복해 토큰 낭비와 딜레이를 유발하던 OpenAI 기반 **'AI 주변환경 & 상권 분석 리포트' 카드 전면 100% 영구 Pruning(삭제)** 완료 (토큰 낭비 0% 및 API 응답 레이턴시 50% 단축 달성)
-- `[x]` Backend: Envelope 종횡비(Aspect Ratio)를 분석하여 가로세로 비율이 8.0 이상인 극단적 협소 도로/선로/지하차도 노면 필지를 공간 연산에서 자동 차단하는 **지리 형태학적 종횡비 가드 필터(Morphological Aspect Ratio Guard)** 탑재 완료
-- `[x]` Backend: RAG 조례의 시맨틱 매핑(rules_matched) 성공 여부를 기준으로 법규 근거 부재 경고를 실시간 표출하는 **AI 감리 판독 가드** 탑재 완료 (경고 오작동 완치)
-- `[x]` Database: `11. 국유부동산정보.csv` 파일의 6,978개 필지 데이터를 DB `cadastral_lands` 테이블에 지번 조인을 통해 통합 이식하여 총 3,441필지의 기재부/국방부 국유재산 권리 속성 병합 완료
-- `[x]` Backend & Frontend: 관내 국유재산 공간 폴리곤 전체를 실시간 단순화(ST_Simplify)하여 반환하는 **GeoJSON 서빙 API** 및 지도 상에 이를 **연한 하늘색**(`color: '#0ea5e9', fillColor: '#38bdf8'`) 폴리곤으로 표출하는 Leaflet 맵핑 완료
-- `[x]` Frontend: 최적 입지 핀이 국유재산에 위치할 경우, 비활성 핀 색상을 **연한 하늘색(`hsla(199, 89%, 55%, 0.9)`)** 으로 분기하여 가시성을 극대화한 스마트 마커 가이드 완비
-- `[x]` Frontend: Step 2 마커 보정 화면 및 최적 입지 선정 단계 전체에 거쳐 연한 하늘색 국유재산 지형이 지도 상에 상시 실시간 매핑 표출되도록 완치
-- `[x]` Verification: `ahp_spatial_test.py` 스크립트를 통한 정합 무결성 검증 (ALL PASS)
-- `[x]` Backend: XGBoost 피처 기여도(`feature_importances_`)를 AHP 1.0~9.0 스케일로 스케일링하여criteria의 `initial_weight`로 전달하는 가중치 피드백 루프 탑재
-- `[x]` Frontend: AI 감리 통과 시 AHP 슬라이더 가중치 초기값을 백엔드 추천 `c.initial_weight`로 동적 연동 바인딩 완료 (5.0 하드코딩 제거)
-- `[x]` Database: 심의 지번, AHP 가중치, CSS 점수 및 3자 토론 대본을 보존하는 `decision_histories` 이력 테이블 생성 및 시드 데이터 적재 마이그레이션 기동 완료
-- `[x]` Backend: 대시보드용 심의 이력 조회(`GET /api/v1/spatial/history`) 및 심의 완료 보고서 발급 동시 자동 적재(`POST /api/v1/spatial/history`) API 구현
-- `[x]` Backend: 업로드된 준공 PDF 공문에서 `PdfReader`로 텍스트를 추출하고 pgvector RAG 조례 위배 여부 및 매핑 지번 일치도를 연산해 `matchScore`를 도출하는 RAG 사후 감리 API(`POST /api/v1/spatial/history/{id}/audit-doc`) 개발 및 `verified_precedents` 테이블 적재 완료
-- `[x]` Frontend: 대시보드(`/dashboard`)의 mock 상태를 걷어내고 실물 API fetch 바인딩(이력 리스트, PDF 감리 업로드, 실제 토론 아카이브 매핑) 연동 완료
-- `[x]` Frontend: 새로운 모델 증설에 유연히 대응하기 위해 주소 정규식 파싱(`addressPattern`) 및 AI 시맨틱 감리 목적(`inferredPurpose`)의 인프라명 동적 바인딩을 적용하여 **Zero-Hardcoding(OCP 준수)** 개편 완료
-- `[x]` Release: 최종 코드 바탕화면 물리 이관 및 종합 문서 갱신
-
+- [x] 1. 기본 어드민 계정 시딩 자동화 (`seed_db.py` 수정)
+- [x] 2. 백엔드 계정 관리 API 이식 (`backend/app/routers/auth.py` 수정)
+  - [x] 2.1. 로그인 시 `require_password_change` 플래그 반환 로직 추가
+  - [x] 2.2. 사용자 비밀번호 자가 변경 API 구현 (`POST /change-password`)
+  - [x] 2.3. 사용자 목록 조회 API 구현 (`GET /users`)
+  - [x] 2.4. 사용자 삭제 API 구현 (`DELETE /users/{user_id}`)
+  - [x] 2.5. 사용자 비밀번호 강제 초기화 API 구현 (`POST /users/{user_id}/reset-password`)
+- [x] 3. Shapefile 벌크 Ingestion API 구축 (`backend/app/routers/upload.py` 수정)
+  - [x] 3.1. `.shp`, `.dbf`, `.shx` 파일 수집 및 `pyshp` 파싱 로직 구현
+  - [x] 3.2. Auto-SRID 판독 및 PostGIS `ST_Transform` 공간 변환 이관 적재 구현
+- [x] 4. 모의 심의 토론 3자 페르소나 양식 핫픽스 (`backend/app/routers/spatial.py` 및 프론트엔드 수정)
+  - [x] 4.1. SSE 토론 시작 시 메타 헤더 전송 구현 (`spatial.py`)
+  - [x] 4.2. 화자 분류 정규식 매핑 보정 (`spatial.py`)
+  - [x] 4.3. 토론 모달 말풍선 색상 뒤바뀜 핫픽스 (`DebateSimulatorModal.jsx`)
+- [x] 5. 프론트엔드 최초 로그인 패스워드 변경 의무화 UI 구현 (`frontend/src/app/page.js` 수정)
+- [x] 6. 프론트엔드 관리자 콘솔 탭 UI 및 계정 CRUD 연동 (`frontend/src/app/spatial/page.js` 수정)
+- [x] 7. 최종 빌드 및 공간 적재/계정 생명주기 기능 동작 검증

@@ -1544,6 +1544,8 @@ async def stream_debate_sim(req: DebateRequest, db: Session = Depends(get_db)):
                 
                 # 면책 고지 최초 1회 즉각 전송
                 yield f"data: {json.dumps({'text': disclaimer_alert}, ensure_ascii=False)}\n\n"
+                # [v1.1-stable] 동적 페르소나 매칭 메타 데이터 강제 주입
+                yield f"data: {json.dumps({'meta': True, 'personas': [merchant_name, resident_name, coordinator_name]}, ensure_ascii=False)}\n\n"
                 
                 full_text = disclaimer_alert
                 while True:

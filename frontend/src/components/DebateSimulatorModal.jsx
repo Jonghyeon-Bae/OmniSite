@@ -14,7 +14,8 @@ export default function DebateSimulatorModal({
   inferredDomainTag,
   inferredPurpose,
   ahpWeights,
-  apiFetch
+  apiFetch,
+  districtId
 }) {
   if (!showSimModal) return null;
 
@@ -23,6 +24,7 @@ export default function DebateSimulatorModal({
   const handlePdfDownload = async () => {
     try {
       const payload = {
+        district_id: districtId || 1,
         facility_type: inferredDomainTag || "city_feature",
         inferred_purpose: inferredPurpose || "입지 분석",
         candidate_jibun: currentParcel.jibun || "용산구 미지정 부지",

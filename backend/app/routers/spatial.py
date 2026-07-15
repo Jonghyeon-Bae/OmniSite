@@ -1030,7 +1030,7 @@ def get_domain_regulation_rules(db: Session, facility_type: str) -> dict:
 
 # 3. 규제 시설물 좌표 조회 API (Step 2 규제 버퍼 가시화용 - restricted_zones 및 업로드된 dynamic exclusion 연동)
 @router.get("/spatial/restrictions/points")
-async def get_restriction_points(facility_type: str = "smoking_zone", db: Session = Depends(get_db)):
+async def get_restriction_points(facility_type: str = "smoking_zone", district_id: int = 1, db: Session = Depends(get_db)):
     try:
         # 도메인별 적용되는 기본 법정 규제 유형 분류
         allowed_types = []
@@ -1047,9 +1047,9 @@ async def get_restriction_points(facility_type: str = "smoking_zone", db: Sessio
             zone_query = text(f"""
                 SELECT id, zone_name, ST_X(geom), ST_Y(geom), COALESCE(area, 10.0), zone_type 
                 FROM restricted_zones 
-                WHERE district_id = 1 AND zone_type IN ({types_str})
+                WHERE district_id = :district_id AND zone_type IN ({types_str})
             """)
-            zone_rows = db.execute(zone_query).fetchall()
+            zone_rows = db.execute(zone_query, {"district_id": district_id}).fetchall()
             
             # DB/캐시에서 도메인에 해당 규칙 불러오기
             rules = get_domain_regulation_rules(db, facility_type)
@@ -1627,10 +1627,17 @@ class ReportDownloadRequest(BaseModel):
     candidate_reason: str = ""
     ahp_weights: Dict[str, float] = {}
     debate_logs: List[Dict[str, str]] = []
+    district_id: Optional[int] = 1
 
 @router.post("/spatial/report/download")
 async def download_report_pdf(req: ReportDownloadRequest, db: Session = Depends(get_db)):
     try:
+        # [Zero Hardcoding] 자치구 동적 바인딩 조회
+        dist_id = req.district_id or 1
+        dist_name_query = text("SELECT district_name FROM districts WHERE id = :dist_id")
+        dist_name_row = db.execute(dist_name_query, {"dist_id": dist_id}).fetchone()
+        district_name = dist_name_row[0] if dist_name_row else "용산구"
+
         # 1. 맑은 고딕 한글 폰트 등록
         font_path = "C:\\Windows\\Fonts\\malgun.ttf"
         font_name = "MalgunGothic"
@@ -1852,7 +1859,7 @@ async def download_report_pdf(req: ReportDownloadRequest, db: Session = Depends(
         # 4. 종합 행정 고시
         story.append(Paragraph("4. 종합 검토 고시 및 권고사항", section_style))
         notice_text = (
-            "본 보고서는 용산구 스마트시티 의사결정지원시스템(SDSS) OmniSite의 AI 갈등 진단 엔진에 의거하여 "
+            f"본 보고서는 {district_name} 스마트시티 의사결정지원시스템(SDSS) OmniSite의 AI 갈등 진단 엔진에 의거하여 "
             "작성된 참고 서류입니다. 수록된 주민 심의 의견 및 중재안은 공간 빅데이터와 관련 자치 조례 RAG 임베딩에 "
             "기반해 가상 구현된 결과물로, 법적 구속력을 갖지 않으며 실제 공사 시행 전 구의회 보고 및 주민 주민설명회의 "
             "사전 행정 절차를 필수적으로 이행해야 합니다."
@@ -1861,7 +1868,12 @@ async def download_report_pdf(req: ReportDownloadRequest, db: Session = Depends(
         story.append(Spacer(1, 15))
         
         # 5. 하단 발신 명의 및 면책 고지
-        story.append(Paragraph("<b>서울특별시 용산구청장</b> <font size=10 color='#64748B'>(직인생략)</font>", sender_style))
+        clean_dist_name = district_name
+        if clean_dist_name.endswith("구"):
+            district_chief = f"서울특별시 {clean_dist_name}청장"
+        else:
+            district_chief = f"서울특별시 {clean_dist_name}구청장"
+        story.append(Paragraph(f"<b>{district_chief}</b> <font size=10 color='#64748B'>(직인생략)</font>", sender_style))
         story.append(Paragraph("※ 본 보고서의 입지분석 및 모의 심의 결과는 가상 AI 페르소나의 역할 수행 결과로, 실제 인물이나 사실과는 무관합니다.", disclaimer_style))
         
         # PDF 빌드
@@ -1946,15 +1958,15 @@ async def get_user_exclusions(db: Session = Depends(get_db)):
 
 # --- [v4.9.35] 국유재산 공간 영역 렌더링을 위한 공간 GeoJSON 제공 API ---
 @router.get("/spatial/national-properties")
-async def get_national_properties(db: Session = Depends(get_db)):
+async def get_national_properties(district_id: int = 1, db: Session = Depends(get_db)):
     try:
         query = text("""
             SELECT id, jibun, land_use_code, ownership_type,
                    ST_AsGeoJSON(ST_Simplify(geom, 0.00001)) as geojson
             FROM cadastral_lands
-            WHERE district_id = 1 AND ownership_type = '국유지'
+            WHERE district_id = :district_id AND ownership_type = '국유지'
         """)
-        rows = db.execute(query).fetchall()
+        rows = db.execute(query, {"district_id": district_id}).fetchall()
         
         features = []
         for r in rows:

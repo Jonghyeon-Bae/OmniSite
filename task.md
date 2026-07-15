@@ -17,3 +17,11 @@
 - [x] 5. 프론트엔드 최초 로그인 패스워드 변경 의무화 UI 구현 (`frontend/src/app/page.js` 수정)
 - [x] 6. 프론트엔드 관리자 콘솔 탭 UI 및 계정 CRUD 연동 (`frontend/src/app/spatial/page.js` 수정)
 - [x] 7. 최종 빌드 및 공간 적재/계정 생명주기 기능 동작 검증
+- [x] 8. 백엔드 초기 구동 공간 마스터 적재 API 구현 (`POST /api/v1/upload/seed-spatial`)
+  - [x] 8.1. 시군구 SHP -> districts 동적 SIG_CD 및 지역명 자동 판독/생성
+  - [x] 8.2. 읍면동 SHP -> dong_boundaries 동적 자동 매핑 생성
+  - [x] 8.3. 법정동-행정동 연계 CSV 파싱 및 동적 맵 결합 적재
+  - [x] 8.4. 연속지적도 SHP + 국유부동산 CSV 동적 병합 및 ST_Transform 변환 적재
+- [x] 9. 프론트엔드 관리자 콘솔 내 "초기 구동 설정" UI 및 다지역 설치 가이드라인 가시화 (`frontend/src/app/spatial/page.js` 수정)
+- [x] 10. 백엔드 소스코드(recommend.py, spatial.py 등) 내에 하드코딩된 '용산구' / '11170' 등 정적 지역 제한 요소 전면 철폐 및 파라미터화
+- [x] 11. 마스터 연구노트 `Rev 62` 기재 및 최종 상영상태 빌드 검증

@@ -73,6 +73,11 @@ export default function Home() {
   const [newPasswordConfirm, setNewPasswordConfirm] = useState('');
   const [isChangingPassword, setIsChangingPassword] = useState(false);
 
+  // 초기 구동 설정 (Cold Start) 상태
+  const [coldStartFile, setColdStartFile] = useState(null);
+  const [isColdStarting, setIsColdStarting] = useState(false);
+  const [coldStartResult, setColdStartResult] = useState(null);
+
   // Step 1 AI 감리 및 실무자 의도 매핑 검증 상태
   const [isAuditComplete, setIsAuditComplete] = useState(false);
   const [auditMetadata, setAuditMetadata] = useState(null);
@@ -361,6 +366,52 @@ export default function Home() {
       alert(`모델 적재 중 오류 발생: ${err.message}`);
     } finally {
       setIsModelUploading(false);
+    }
+  };
+
+  const handleColdStartUpload = async () => {
+    if (!coldStartFile) {
+      alert("업로드할 ZIP 파일셋을 선택해 주십시오.");
+      return;
+    }
+    if (!confirm("⚠️ 주의: 이 작업은 전체 데이터베이스의 지반 공간 정보(행정동, 지적도 등)를 완전히 파괴하고 새로 빌드합니다. 계속 진행하시겠습니까?")) {
+      return;
+    }
+    
+    setIsColdStarting(true);
+    setColdStartResult(null);
+    
+    const formData = new FormData();
+    formData.append("file", coldStartFile);
+    
+    try {
+      const res = await apiFetch("/api/v1/upload/init-coldstart", {
+        method: "POST",
+        body: formData
+      });
+      
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.detail || "인프라 초기 설정 중 서버 장애가 발생했습니다.");
+      }
+      
+      setColdStartResult({
+        status: "success",
+        message: data.message,
+        district: data.district,
+        sig_cd: data.sig_cd,
+        dongs: data.dongs_seeded,
+        parcels: data.parcels_seeded
+      });
+      alert(`✓ 인프라 초기 설정이 성공적으로 완공되었습니다!\n대상 지자체: ${data.district} (${data.sig_cd})`);
+    } catch (err) {
+      alert(`❌ 에러 발생: ${err.message}`);
+      setColdStartResult({
+        status: "error",
+        message: err.message
+      });
+    } finally {
+      setIsColdStarting(false);
     }
   };
 
@@ -1826,6 +1877,7 @@ export default function Home() {
         inferredPurpose={inferredPurpose}
         ahpWeights={ahpWeights}
         apiFetch={apiFetch}
+        districtId={userDistrictId}
       />
 
 
@@ -1972,17 +2024,23 @@ export default function Home() {
                 onClick={() => setAdminTab('bulk')}
                 className={`flex-1 pb-2 text-xs font-bold text-center border-b-2 transition-all cursor-pointer ${adminTab === 'bulk' ? 'border-amber-500 text-amber-400' : 'border-transparent text-slate-400 hover:text-slate-200'}`}
               >
-                📊 데이터 벌크 적재
+                📊 데이터 벌크
               </button>
               <button 
                 onClick={() => setAdminTab('users')}
                 className={`flex-1 pb-2 text-xs font-bold text-center border-b-2 transition-all cursor-pointer ${adminTab === 'users' ? 'border-amber-500 text-amber-400' : 'border-transparent text-slate-400 hover:text-slate-200'}`}
               >
-                👥 실무자 계정 관리
+                👥 계정 관리
+              </button>
+              <button 
+                onClick={() => setAdminTab('coldstart')}
+                className={`flex-1 pb-2 text-xs font-bold text-center border-b-2 transition-all cursor-pointer ${adminTab === 'coldstart' ? 'border-amber-500 text-amber-400' : 'border-transparent text-slate-400 hover:text-slate-200'}`}
+              >
+                🛠️ 초기 구동 설정 (Cold Start)
               </button>
             </div>
 
-            {adminTab === 'bulk' ? (
+            {adminTab === 'bulk' && (
               <div className="border border-slate-800 rounded-lg p-4 bg-slate-900/40 flex flex-col gap-4">
                 {/* RAG 관리 파트 통합 적재 */}
                 <div className="flex flex-col gap-2">
@@ -2093,7 +2151,9 @@ export default function Home() {
                   </button>
                 </div>
               </div>
-            ) : (
+            )}
+
+            {adminTab === 'users' && (
               <div className="border border-slate-800 rounded-lg p-4 bg-slate-900/40 flex flex-col gap-4">
                 
                 {/* 등록된 실무자 목록 테이블 */}
@@ -2193,6 +2253,90 @@ export default function Home() {
                     </button>
                   </form>
                 </div>
+              </div>
+            )}
+
+            {adminTab === 'coldstart' && (
+              <div className="border border-slate-800 rounded-lg p-4 bg-slate-900/40 flex flex-col gap-4">
+                <div className="bg-rose-500/10 border border-rose-500/30 text-rose-400 p-3 rounded-lg flex flex-col gap-1.5">
+                  <span className="text-[11px] font-bold flex items-center gap-1">
+                    ⚠️ 데이터 파괴적 초기화 경고 (Cold Start Reset)
+                  </span>
+                  <p className="text-[9px] text-rose-300/80 leading-relaxed font-semibold">
+                    이 도구는 신규 지자체에 솔루션을 처음 설치하거나 배포 환경을 공백 상태에서 구성할 때 사용하는 자동 시딩 도구입니다. 
+                    ZIP 파일을 업로드하면 기존의 행정구역 경계(`emd_boundary`) 및 필지 데이터(`cadastral_map`)가 전역 삭제(Truncate)된 뒤 파싱 복원됩니다.
+                  </p>
+                </div>
+
+                <div className="flex flex-col gap-2">
+                  <label className="text-[11px] font-bold text-slate-200">📦 지자체 공간정보 ZIP 압축셋 업로드</label>
+                  <p className="text-[9px] text-slate-500 leading-normal">
+                    압축 파일(*.zip) 내부에는 반드시 <strong>emd.shp, emd.dbf, emd.shx, emd.prj</strong> 및 
+                    <strong>parcel.shp, parcel.dbf, parcel.shx, parcel.prj</strong> 파일이 평면 구조로 동시 포함되어야 합니다.
+                  </p>
+                  
+                  <div 
+                    onClick={() => !isColdStarting && document.getElementById('seed-coldstart-uploader').click()}
+                    className={`border-2 border-dashed rounded-xl p-6 text-center transition-all bg-slate-950/40 flex flex-col items-center justify-center gap-2 ${isColdStarting ? 'border-amber-500 bg-amber-500/5 cursor-wait' : 'border-slate-700 hover:border-amber-500 cursor-pointer hover:bg-slate-900/30'}`}
+                  >
+                    <span className="text-2xl">📦</span>
+                    <p className="text-[11px] text-slate-300 font-semibold">공간정보 ZIP 패키지 등록</p>
+                    <p className="text-[9px] text-slate-500">지자체 공간정보 벌크 오토인제스천</p>
+                    
+                    {coldStartFile && (
+                      <div className="bg-slate-900 px-3 py-1.5 rounded-lg border border-slate-800 text-[10px] text-amber-400 font-mono mt-1 max-w-xs truncate">
+                        {coldStartFile.name} ({(coldStartFile.size / 1024 / 1024).toFixed(2)} MB)
+                      </div>
+                    )}
+                    
+                    {isColdStarting && (
+                      <div className="flex flex-col items-center gap-1 mt-2">
+                        <p className="text-[10px] text-amber-400 font-bold animate-pulse">📦 공간정보 파이프라인 구동 중...</p>
+                        <p className="text-[8px] text-slate-500">ZIP 압축 해제, ESRI 파싱, CRS 판독 및 ST_Transform 트랜잭션 처리 중</p>
+                      </div>
+                    )}
+                  </div>
+                  
+                  <input 
+                    type="file" 
+                    accept=".zip" 
+                    id="seed-coldstart-uploader" 
+                    className="hidden" 
+                    onChange={(e) => {
+                      if (e.target.files && e.target.files[0]) {
+                        setColdStartFile(e.target.files[0]);
+                      }
+                    }} 
+                    disabled={isColdStarting}
+                  />
+                </div>
+
+                {coldStartFile && !isColdStarting && (
+                  <button
+                    onClick={handleColdStartUpload}
+                    className="w-full bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-bold py-2 rounded-lg transition-all shadow-lg"
+                  >
+                    🚀 초기화 파이프라인 구동 시작
+                  </button>
+                )}
+
+                {coldStartResult && (
+                  <div className={`p-3 rounded-lg border text-[10px] flex flex-col gap-2 ${coldStartResult.status === 'success' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' : 'bg-rose-500/10 border-rose-500/20 text-rose-400'}`}>
+                    <div className="font-bold flex items-center gap-1">
+                      {coldStartResult.status === 'success' ? '✓ 파이프라인 완공 성공' : '❌ 파이프라인 중단 에러'}
+                    </div>
+                    <p className="text-[9px] text-slate-300 font-medium">{coldStartResult.message}</p>
+                    
+                    {coldStartResult.status === 'success' && (
+                      <div className="grid grid-cols-2 gap-2 mt-1 border-t border-slate-800/80 pt-2 text-[9px] text-slate-400">
+                        <div>대상 지자체: <span className="text-slate-200 font-semibold">{coldStartResult.district}</span></div>
+                        <div>법정동 코드 prefix: <span className="text-slate-200 font-semibold font-mono">{coldStartResult.sig_cd}</span></div>
+                        <div>행정동(EMD) 인제스천: <span className="text-emerald-400 font-bold font-mono">{coldStartResult.dongs} 개</span></div>
+                        <div>지적도(Parcel) 인제스천: <span className="text-emerald-400 font-bold font-mono">{coldStartResult.parcels} 개</span></div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             )}
             

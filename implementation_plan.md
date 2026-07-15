@@ -29,9 +29,15 @@
     *   `POST /api/v1/auth/users/{user_id}/reset-password`: 특정 사용자 비밀번호 관리자 강제 재설정 (어드민 전용 가드).
 
 #### [MODIFY] [seed_db.py](file:///c:/Users/Admin/Desktop/빅프로젝트 관련자료/최종1차/1.0-prototype/seed_db.py)
+*   **DB 스키마 경량화 및 불필요 테이블 제거:**
+    *   현재 적재량 0건으로 비어 있고 임시 파일 런타임 업로드로 전향하기로 합의된 세 개의 불필요한 테이블 `childcare_centers`, `commercial_shops`, `trash_bins`를 데이터베이스 기동 시점에 `DROP TABLE IF EXISTS ... CASCADE;` 문을 실행해 전격 삭제하고 SQLAlchemy 모델 바인딩을 제거합니다.
 *   데이터베이스 시딩 완료 시점에 `users` 테이블을 검사하고, 기본 관리자 계정(`admin`/`admin1234`)이 존재하지 않을 시 bcrypt 해싱을 가동해 자동 주입 적재하는 방어 모듈을 주입합니다.
 
 #### [MODIFY] [upload.py](file:///c:/Users/Admin/Desktop/빅프로젝트 관련자료/최종1차/1.0-prototype/backend/app/routers/upload.py)
+*   **초기 구동 공간 마스터 적재 API 추가 (`POST /api/v1/upload/seed-spatial`):**
+    *   **다지역 동적 확장(Multi-Region Initializer):** 자치구(districts)나 읍면동(dong_boundaries) 및 연속지적도(cadastral_lands) 데이터를 ZIP 혹은 멀티파트 폼으로 한 번에 수신합니다.
+    *   **자치구명 및 행정구코드 동적 판독:** 업로드된 자치구 SHP/DBF 레코드로부터 `SIG_CD` (예: 용산구 11170) 및 `SIG_KOR_NM` (용산구)을 런타임에 파싱하여 `districts` 테이블에 `INSERT ... ON CONFLICT (sig_cd)` 처리합니다. 이를 통해 기존의 용산구 하드코딩 시딩 구조를 전면 철폐하고, **전국 어떤 지자체라도 공간 파일만 올리면 자동으로 마스터 메타데이터가 자체 완공**되는 다지역 확장 구조를 완성합니다.
+    *   **행정동 및 연속지적도 조인 적재:** 행정동 SHP 및 동 매핑 CSV가 올라오면 이들을 읽어 `dong_boundaries`에 다각형 및 코드를 시딩하고, 지적도 적재 시점에 `11. 국유부동산정보.csv` 와 지번 조인을 수행해 소유권 정보를 실시간 병합합니다.
 *   **Shapefile 마스터 벌크 적재 API 추가 및 Ingestion 모드 구현 (`POST /api/v1/upload/seed-shapefile`):**
     *   관리자 콘솔에서 업로드한 `.shp`, `.dbf`, `.shx` 파일 셋을 병렬 수집하고, `pyshp`를 기동하여 공간 지오메트리를 추출합니다.
     *   **Auto-SRID 감지 알고리즘:** X 좌표 범위가 120~132 이면 EPSG:4326, 15만~25만 이면 EPSG:5186 (중부원점), 80만~110만 이면 EPSG:5179 (UTM-K)로 감지하여 PostGIS `ST_Transform` 쿼리를 통해 `city_spatial_features` 혹은 `cadastral_lands` 테이블에 다각형 geom을 정합 이관 적재합니다.
@@ -63,7 +69,10 @@
 
 #### [MODIFY] [page.js](file:///c:/Users/Admin/Desktop/빅프로젝트 관련자료/최종1차/1.0-prototype/frontend/src/app/spatial/page.js)
 *   **관리자 콘솔 UI 구조 변경:**
-    *   통합 관리자 콘솔 모달 내부를 **"📊 데이터 벌크 적재"**, **"👥 실무자 계정 관리"**, **"🤖 ML 모델 재학습"**의 3개 탭 레이아웃으로 확장 개편합니다.
+    *   통합 관리자 콘솔 모달 내부를 **"🛠️ 초기 구동 설정"**, **"📊 데이터 벌크 적재"**, **"👥 실무자 계정 관리"**, **"🤖 ML 모델 재학습"**의 4개 탭 레이아웃으로 확장 개편합니다.
+    *   **초기 구동 설정 (Cold Start) 탭 (신규):**
+        *   신규 지자체 이식 또는 플랫폼 최초 시동 시, 시군구(districts) SHP 세트, 행정동(dong_boundaries) SHP 세트, 동매핑 CSV, 연속지적도(cadastral_lands) SHP 세트 + 국유부동산 CSV 파일을 순차적 혹은 zip 압축하여 일괄 업로드할 수 있는 **"🛠️ 자치구 공간정보 초기 인프라 구축"** 드롭존 인터페이스를 배포합니다.
+        *   업로드 진행 시 백엔드 `/upload/seed-spatial` API를 기동하여 공간 DB 뼈대를 자치구명과 SIG_CD를 자동 감지(Auto-Region Parsing)하여 자동 세팅하고, 적재 현황(예: "용산구 적재 완료 - 행정동 16개, 필지 11,245개 완료")을 모달 화면에 역동적인 프로그레스바로 시각화해 줍니다.
     *   **데이터 벌크 적재 탭:**
         *   CSV/Shapefile 업로드 제어판 상단에 **"적재 옵션"** 라벨과 함께 **"기존 데이터 비우고 덮어쓰기 (Replace)"** 및 **"기존 데이터에 덧붙이기 (Append)"** 라디오 버튼 컴포넌트를 설계하여 백엔드 `/upload/seed-shapefile` 에 `mode` 쿼리 파라미터를 연동 전달합니다.
         *   데이터 종류 선택 셀렉트박스의 기계적 테이블 명칭(예: `cadastral_lands`)을 **"🗺️ 토지 지적도 및 필지 정보"**, **"🚫 법정 용도제한 보호구역"**, **"🛍️ 소상공인 상권 점포 분포"**, **"💬 주민 불편 민원 접수 대장"** 등 직관적인 한글 행정 명칭으로 교체합니다.

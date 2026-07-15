@@ -68,23 +68,24 @@ sequenceDiagram
 | :--- | :--- | :--- | :--- | :--- |
 | **1** | `districts` | 자치구역 마스터 테이블 | `sig_cd` (행정구코드), `district_name` | SQL Seed / `.csv` |
 | **2** | `dong_boundaries` | 행정동 공간 경계 폴리곤 | `dong_code`, `dong_name`, `geom` (MultiPolygon 4326) | `.shp`, `.dbf`, `.shx` |
-| **3** | `cadastral_lands` | 국토교통부 연속지적도 | `pnu` (19자리 고유코드), `jibun`, `geom` (MultiPolygon 4326) | `.shp`, `.dbf`, `.shx` |
+| **3** | `cadastral_lands` | 국토교통부 연속지적도 | `pnu` (19자리 고유코드), `jibun`, `ownership_type` (국유부동산 조인 매핑), `geom` (MultiPolygon 4326) | `.shp`, `.dbf`, `.shx` + `11. 국유부동산정보.csv` |
 
 > [!WARNING]
 > * `cadastral_lands` 가 완전히 비어 있는 경우, 추천 API(`/spatial/recommend`) 호출 시 추천 후보 대상 필지가 0건으로 탐색되어 추천 엔진이 정상 작동하지 않습니다.
+> * 또한 지적도 적재 시점에 `11. 국유부동산정보.csv` 가 누락되면, 소유권 정보가 모두 `사유지` 로 기본값 쏠림 처리되어 지도 상의 연한 하늘색 국유재산 가시화와 **AHP 국유지 가산 프리미엄(+8.0점)** 이 완전히 마비됩니다. 반드시 동봉하여 함께 병합하십시오.
+
 
 ---
 
 ### [Phase B] 도메인 특화 및 피처 데이터 (선택적 / 런타임 로드)
-입지 추천의 정합성과 다기준 의사결정(AHP) 가중치를 연산하기 위해 필요한 지리 및 통계 지표들입니다.
+입지 추천의 정합성과 다기준 의사결정(AHP) 가중치를 연산하기 위해 필요한 지리 및 통계 지표들입니다. (불필요한 `childcare_centers`, `commercial_shops`, `trash_bins` 테이블은 DB 다이어트 정리에 의해 Drop 제거되었습니다)
 
 | 대상 테이블 (물리명) | 행정 순화 명칭 | 도메인별 활용 범위 | 필요 파일 포맷 |
 | :--- | :--- | :--- | :--- |
 | `restricted_zones` | 🚫 법정 용도제한 보호구역 | 흡연구역의 학교/어린이집 정화구역(200m/30m) 차집합 배제 연산에 활용 | `.shp` 세트 또는 `.csv` |
-| `civil_complaints` | 💬 주민 불편 민원 접수 대장 | 동별 민원 빈도 가중합 스코어 산출에 활용 | `.csv` |
 | `population_stats` | 👥 생활인구 통계 정보 | 동별/시간대별 유동인구 가중합 연산에 활용 | `.csv` |
-| `commercial_shops` | 🛍️ 소상공인 상권 점포 분포 | 편의점/마트 등 인접 영업권 감점 분석에 활용 | `.csv` |
 | `transit_stations` | 📍 대중교통 역사 분포도 | 버스/지하철 인접성 보행 편의성 분석에 활용 | `.csv` 또는 `.shp` |
+| `transit_passengers`| 🚌 대중교통 승하객 통계 정보| 대중교통 이용객 빈도수 연산 조인에 활용 | `.csv` |
 
 ---
 

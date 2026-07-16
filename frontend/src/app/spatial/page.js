@@ -563,7 +563,7 @@ export default function Home() {
     markersRef.current = {};
 
     // 파이프라인 단계별 시각 요소 렌더링
-    if (pipelineStep === 2) {
+    if (pipelineStep === 3) {
       const markerIcon = L.divIcon({
         className: 'custom-marker',
         html: `<div style="
@@ -728,8 +728,8 @@ export default function Home() {
       });
 
       markersRef.current['temp'] = marker;
-    } else if (pipelineStep >= 4) {
-      // Step 4 이상: 추천 후보 3개 마커 동시 드로잉
+    } else if (pipelineStep >= 5) {
+      // Step 5 이상: 추천 후보 3개 마커 동시 드로잉
 
       // 0. 관할 자치구 경계 GeoJSON 레이어 오버레이
       if (districtGeoJson) {
@@ -1031,16 +1031,16 @@ export default function Home() {
     }, 250);
   };
 
-  // HITL 폼 동기화 (v4.9.19 | Step 2 일 때만 기동하여 Step 4/5 보정 기준점의 강제 오염 덮어쓰기 방지)
+  // HITL 폼 동기화 (v4.9.19 | Step 3 일 때만 기동하여 Step 4/5/6 보정 기준점의 강제 오염 덮어쓰기 방지)
   useEffect(() => {
-    if (pipelineStep !== 2) return;
+    if (pipelineStep !== 3) return;
     const active = selectedParcel[activeTab];
     if (active) {
       setHitlJibun(active.jibun || '');
       setHitlLng(active.lng || 126.9724);
       setHitlLat(active.lat || 37.5302);
     }
-  }, [activeTab, selectedParcel]);
+  }, [activeTab, selectedParcel, pipelineStep]);
 
   // HITL 보정 완료
   const handleHitlCommit = async () => {
@@ -1083,8 +1083,8 @@ export default function Home() {
           lng: hitlLng
         }
       }));
-      setPipelineStep(3);
-      alert(data.message || '공간 좌표 및 지번 속성이 보정 완료되었습니다. [Step 3: AHP 인자 설정] 단계를 진행합니다.');
+      setPipelineStep(4);
+      alert(data.message || '공간 좌표 및 지번 속성이 보정 완료되었습니다. [Step 4: AHP 인자 설정] 단계를 진행합니다.');
     } catch (error) {
       alert('보정 커밋 중 오류: ' + error.message);
     } finally {

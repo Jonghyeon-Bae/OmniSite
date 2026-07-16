@@ -1608,6 +1608,18 @@ async def stream_debate_sim(req: DebateRequest, db: Session = Depends(get_db)):
                 await asyncio.sleep(0.4)
         return StreamingResponse(mock_event_generator(), media_type="text/event-stream")
 
+class ReportDownloadRequest(BaseModel):
+    district_id: Optional[int] = 1
+    facility_type: str = "city_feature"
+    inferred_purpose: str = ""
+    candidate_jibun: str = ""
+    candidate_css: int = 50
+    candidate_lat: float = 37.53
+    candidate_lng: float = 126.97
+    candidate_reason: Optional[str] = ""
+    ahp_weights: Dict[str, float] = {}
+    debate_logs: List[Dict[str, str]] = []
+
 @router.post("/spatial/report/download")
 async def download_report_pdf(req: ReportDownloadRequest, db: Session = Depends(get_db)):
     try:

@@ -1,27 +1,14 @@
-# [v1.1-stable] 구현 체크리스트
+# [v1.2-alpha-Enhancement] 구현 작업 목록
 
-- [x] 1. 기본 어드민 계정 시딩 자동화 (`seed_db.py` 수정)
-- [x] 2. 백엔드 계정 관리 API 이식 (`backend/app/routers/auth.py` 수정)
-  - [x] 2.1. 로그인 시 `require_password_change` 플래그 반환 로직 추가
-  - [x] 2.2. 사용자 비밀번호 자가 변경 API 구현 (`POST /change-password`)
-  - [x] 2.3. 사용자 목록 조회 API 구현 (`GET /users`)
-  - [x] 2.4. 사용자 삭제 API 구현 (`DELETE /users/{user_id}`)
-  - [x] 2.5. 사용자 비밀번호 강제 초기화 API 구현 (`POST /users/{user_id}/reset-password`)
-- [x] 3. Shapefile 벌크 Ingestion API 구축 (`backend/app/routers/upload.py` 수정)
-  - [x] 3.1. `.shp`, `.dbf`, `.shx` 파일 수집 및 `pyshp` 파싱 로직 구현
-  - [x] 3.2. Auto-SRID 판독 및 PostGIS `ST_Transform` 공간 변환 이관 적재 구현
-- [x] 4. 모의 심의 토론 3자 페르소나 양식 핫픽스 (`backend/app/routers/spatial.py` 및 프론트엔드 수정)
-  - [x] 4.1. SSE 토론 시작 시 메타 헤더 전송 구현 (`spatial.py`)
-  - [x] 4.2. 화자 분류 정규식 매핑 보정 (`spatial.py`)
-  - [x] 4.3. 토론 모달 말풍선 색상 뒤바뀜 핫픽스 (`DebateSimulatorModal.jsx`)
-- [x] 5. 프론트엔드 최초 로그인 패스워드 변경 의무화 UI 구현 (`frontend/src/app/page.js` 수정)
-- [x] 6. 프론트엔드 관리자 콘솔 탭 UI 및 계정 CRUD 연동 (`frontend/src/app/spatial/page.js` 수정)
-- [x] 7. 최종 빌드 및 공간 적재/계정 생명주기 기능 동작 검증
-- [x] 8. 백엔드 초기 구동 공간 마스터 적재 API 구현 (`POST /api/v1/upload/seed-spatial`)
-  - [x] 8.1. 시군구 SHP -> districts 동적 SIG_CD 및 지역명 자동 판독/생성
-  - [x] 8.2. 읍면동 SHP -> dong_boundaries 동적 자동 매핑 생성
-  - [x] 8.3. 법정동-행정동 연계 CSV 파싱 및 동적 맵 결합 적재
-  - [x] 8.4. 연속지적도 SHP + 국유부동산 CSV 동적 병합 및 ST_Transform 변환 적재
-- [x] 9. 프론트엔드 관리자 콘솔 내 "초기 구동 설정" UI 및 다지역 설치 가이드라인 가시화 (`frontend/src/app/spatial/page.js` 수정)
-- [x] 10. 백엔드 소스코드(recommend.py, spatial.py 등) 내에 하드코딩된 '용산구' / '11170' 등 정적 지역 제한 요소 전면 철폐 및 파라미터화
-- [x] 11. 마스터 연구노트 `Rev 62` 기재 및 최종 상영상태 빌드 검증
+- [x] 1. 백엔드 멀티에이전트(Multi-agent) 토론 스트리밍 파이프라인 구현 (`backend/app/routers/spatial.py`)
+  - [x] 1.1. 찬성측, 반대측, 정부측 3대 독립 에이전트 시스템 프롬프트 세분화
+  - [x] 1.2. `chat_history`를 컨텍스트로 전달하는 8턴 연쇄 스트리밍 루프 개발
+  - [x] 1.3. Mock Fallback 역시 턴 단위 지연 스트리밍 방식으로 멀티에이전트처럼 작동하도록 통일
+- [x] 2. 프론트엔드 UI/UX 개조 및 이쁜 커스텀 토스트 알림 적용 (`frontend/src/app/spatial/page.js`)
+  - [x] 2.1. `toast` 상태 및 `showToast(msg, type)` 커스텀 디자인 팝업 컴포넌트 추가
+  - [x] 2.2. 모달 내 `alert()` 호출부들을 전량 커스텀 토스트로 교체
+  - [x] 2.3. 통합 관리자 콘솔 모달 크기 확장 (`max-w-lg` ➔ `max-w-4xl`)
+  - [x] 2.4. 데이터 벌크 탭 내 `🚀 원천 데이터 벌크 적재` 우측에 호버 툴팁 가이드 인포 단추 신설
+- [x] 3. 전체 시스템 연동 빌드 테스트 및 마스터 연구노트 `Rev 64` 갱신
+  - [x] 3.1. Next.js Turbopack 빌드 및 FastAPI Uvicorn 구동 성공 여부 테스트
+  - [x] 3.2. 연구노트 내 `Rev 64` 기록 추가 및 자치구청장 동적 PDF 연동 최종 점검

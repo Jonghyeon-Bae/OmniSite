@@ -8,6 +8,7 @@ from app.routers.upload import router as upload_router
 from app.routers.ahp import router as ahp_router
 from app.routers.spatial import router as spatial_router
 from app.routers.auth import router as auth_router
+from app.routers.model import router as model_router
 
 app = FastAPI(
     title="OmniSite SDSS API Backend",
@@ -20,6 +21,7 @@ app.include_router(auth_router)
 app.include_router(upload_router)
 app.include_router(ahp_router)
 app.include_router(spatial_router)
+app.include_router(model_router)
 
 # Next.js 연동을 위한 CORS 미들웨어 개설 (CORS_ORIGINS 환경변수 파싱 적용)
 cors_origins = [origin.strip() for origin in settings.CORS_ORIGINS.split(",") if origin.strip()]

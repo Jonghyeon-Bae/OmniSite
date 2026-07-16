@@ -21,7 +21,7 @@ from fastapi import UploadFile, File
 
 # App & Local Imports
 from app.database import get_db
-from app.routers.upload import UPLOAD_DIR, get_openai_client, get_embedding
+from app.routers.upload import UPLOAD_DIR, get_openai_client, get_embedding, get_async_openai_client
 
 # ReportLab (PDF Generation)
 from reportlab.lib.pagesizes import letter
@@ -1288,11 +1288,10 @@ async def analyze_address_endpoint(req: AnalyzeAddressRequest, db: Session = Dep
         "shops_summary": shops_summary,
         "address_analysis": address_report
     }
-
 @router.post("/spatial/debate")
 async def stream_debate_sim(req: DebateRequest, db: Session = Depends(get_db)):
-    # [PEP8 Inline Import Cleaned]
-    client = get_openai_client()
+    # [PEP8 Cleaned]
+    client = get_async_openai_client()
     
     # [v4.9.17] RAG 요약 조례 캐싱 (RAG Summary & Rules Caching) 파이프라인
     rag_context = ""
@@ -1302,7 +1301,7 @@ async def stream_debate_sim(req: DebateRequest, db: Session = Depends(get_db)):
         rules_row = db.execute(rules_query, {"facility_type": req.facility_type}).fetchone()
         
         if rules_row and rules_row[1]:
-            # 캐싱된 rules_metadata/rules_json 에서 핵심 배제 조건 추출하여 초압축 컨텍스트 생성 (토큰 누수 제거 & 퀄리티 보존)
+            # 캐싱된 rules_metadata/rules_json 에서 핵심 배제 조건 추출하여 초압축 컨텍스트 생성
             meta_data = json.loads(rules_row[1]) if isinstance(rules_row[1], str) else rules_row[1]
             if isinstance(meta_data, dict):
                 ex_rules = meta_data.get("exclusion_rules", {})
@@ -1317,7 +1316,6 @@ async def stream_debate_sim(req: DebateRequest, db: Session = Depends(get_db)):
                     
         # 2. 2차 캐시: 1차 캐시가 비어있을 경우에만 pgvector 에서 유사도가 높은 행 1개를 가져와 요약 인용
         if not rag_context:
-            # [PEP8 Inline Import Cleaned]
             domain_ko_map = {
                 "smoking_zone": "흡연구역 금연구역 간접흡연 피해방지 조례",
                 "smoking": "흡연구역 금연구역 간접흡연 피해방지 조례",
@@ -1405,12 +1403,10 @@ async def stream_debate_sim(req: DebateRequest, db: Session = Depends(get_db)):
             f"반대측은 우려를 빠르게 해소하고 찬성측 및 상인회와 상생 협력하는 따뜻하고 조속한 찬성 타결 기조로 협상하십시오."
         )
 
-    # [v4.9.17] 조장님 지침에 따라 찬성측/반대측/정부측 3대 Role 이름 심플 고정
     resident_name = "반대측"
     merchant_name = "찬성측"
     coordinator_name = "정부측" 
 
-    # [v4.9.16] 실측 공간 데이터가 0인 지표에 대해 억지로 고충을 창조해내 호소하는 모순(환각)을 제거하는 조건적 프롬프트 연출
     complaint_val = int(complaint_score or 0)
     dumping_val = int(dumping_score or 0)
     transit_val = int(transit_score or 0)
@@ -1423,7 +1419,6 @@ async def stream_debate_sim(req: DebateRequest, db: Session = Depends(get_db)):
     elif dumping_val > 0:
         resident_grievance = f"주변 반경에만 쓰레기 상습 무단투기가 {dumping_val}개소나 검출되는 상황입니다. 현장의 오염과 관리 부실 실태를 보고도 추가적인 환경 저해 시설물을 얹으려 하십니까"
     else:
-        # 민원도 없고 무단투기도 0인 경우
         resident_grievance = "주변에 공공 민원이나 쓰레기 무단투기가 일절 없는 매우 조용하고 깨끗한 청정 골목 주거 배후지입니다. 이런 평화로운 지역 한복판에 기피 시설물을 설치해 정주 환경과 아이들 안전을 훼손하려 하십니까"
 
     intensity_instruction = ""
@@ -1451,120 +1446,118 @@ async def stream_debate_sim(req: DebateRequest, db: Session = Depends(get_db)):
 
     disclaimer_alert = "[시스템 면책 고지] 본 모의 심의 토론 내용은 AI 페르소나 엔진에 의해 생성된 가상의 시나리오이며, 실제 인물이나 단체, 사실관계와는 전혀 무관합니다.\n\n"
 
+    base_context = (
+        f"## 토론 대상 입지 및 맥락 정보\n"
+        f"- 대상 후보지: {req.candidate_jibun} (위도 {req.candidate_lat}, 경도 {req.candidate_lng})\n"
+        f"- 시설 유형(도메인): {req.facility_type}\n"
+        f"- 설치 목적: {req.inferred_purpose}\n"
+        f"- 갈등 민감도(CSS): {req.candidate_css}점 ({css_grade})\n"
+        f"- AHP 의사결정 가중치: {ahp_text}\n"
+        f"- 추천 선정 근거: {req.selection_reason if req.selection_reason else '공공 지리정보 기반 최적 입지 조건 충족'}\n"
+        f"- AI 지리 및 상권 분석 리포트: {req.address_analysis if req.address_analysis else '정보 미비'}\n"
+        f"- 자치구 법령 조례 RAG: {rag_context if rag_context else '없음'}\n"
+        f"- 공간 통계: {stats_context if stats_context else '없음'}\n"
+        f"{css_stance_instruction}\n"
+    )
+
+    merchant_system_prompt = (
+        "당신은 스마트시티 입지 선정 토론에서 [찬성 측 (상인대표)] 역할을 담당하는 독립 AI 에이전트입니다.\n\n"
+        "## 역할 특성\n"
+        "1. 데이터 분석 및 공학 전문가 기조: 감정적 호소를 배제하고, AHP 가중치 수치와 대중교통 유동인구 통계 수치를 직접 제시하며 정량적 시너지를 설득하십시오.\n"
+        "2. 상인들의 경제적 곤궁과 필수적 인프라 시급함을 이성적으로 대변하며 주민들의 불안이 다소 과도함을 지적하십시오.\n"
+        "3. 절대로 대사 맨 처음에 마크다운 기호 `**`를 사용하지 마십시오. (예: `**찬성측:**` 금지)\n"
+        "4. 오직 자신의 의견만을 한 턴 분량으로 뱉고 다른 화자의 대사까지 지어내지 마십시오.\n\n"
+        f"{base_context}"
+    )
+
+    resident_system_prompt = (
+        "당신은 스마트시티 입지 선정 토론에서 [반대 측 (주민대표)] 역할을 담당하는 독립 AI 에이전트입니다.\n\n"
+        "## 역할 특성\n"
+        "1. 생활 밀착형 거주자 기조: 찬성 측의 차가운 정량 통계에 주눅 들지 마십시오.\n"
+        "2. 해당 관할동의 실제 누적 민원 수와 무단투기 개소 수치를 직접 대사에 언급하며 정주 환경 파괴와 아동의 보행 위험을 격렬하게 항변하십시오.\n"
+        "3. 주민자치 설명회에서 나올 법한 격앙된 어조와 날 선 표현을 통해 현실적인 생활 고충을 전달하십시오.\n"
+        "4. 절대로 대사 맨 처음에 마크다운 기호 `**`를 사용하지 마십시오. (예: `**반대측:**` 금지)\n"
+        "5. 오직 자신의 의견만을 한 턴 분량으로 뱉고 다른 화자의 대사까지 지어내지 마십시오.\n\n"
+        f"{base_context}"
+    )
+
+    coordinator_system_prompt = (
+        "당신은 스마트시티 입지 선정 토론에서 [정부 측 (갈등조정관)] 역할을 담당하는 독립 AI 에이전트입니다.\n\n"
+        "## 역할 특성\n"
+        "1. 합리적 중재자 기조: 주민과 상인대표 간의 극단적 충돌을 막기 위해 법령 조례(RAG)의 수치를 짚어주며 양측의 합의를 이끌어내는 조정안을 제시하십시오.\n"
+        "2. 조정 조건으로 '이격거리 1.5배 후퇴 설계', '소방안전 장비 및 차폐막 강화 보강', '주민대표단에게 위생/화재 위반 시 즉각 가동정지를 명령할 수 있는 삼진아웃권 부여' 등을 파격적으로 활용해 상생 결론을 마무리하십시오.\n"
+        "3. 절대로 대사 맨 처음에 마크다운 기호 `**`를 사용하지 마십시오. (예: `**정부측:**` 금지)\n"
+        "4. 오직 자신의 의견만을 한 턴 분량으로 뱉고 다른 화자의 대사까지 지어내지 마십시오.\n\n"
+        f"{base_context}"
+    )
+
     if client:
-        system_prompt = (
-            "당신은 스마트시티 주민 갈등 조정 위원회 모의 토론기입니다.\n\n"
-            "## 토론 맥락 정보\n"
-            f"- 시설 유형(도메인): {req.facility_type}\n"
-            f"- 사업 목적: {req.inferred_purpose}\n"
-            f"- 선정 후보지: {req.candidate_jibun} (위도 {req.candidate_lat}, 경도 {req.candidate_lng})\n"
-            f"- 갈등 민감도(CSS): {req.candidate_css}점 ({css_grade})\n"
-            f"- AHP 의사결정 가중치: {ahp_text}\n"
-            f"- 입지 선정 사유: {req.selection_reason if req.selection_reason else '공공 지리정보 기반 최적 입지 조건 충족'}\n"
-            f"- AI 지리 및 상권 분석 리포트: {req.address_analysis if req.address_analysis else '정보 미비'}\n"
-            f"{css_stance_instruction}\n\n"
-            "## 인물 지정 및 극명한 3자 논리 구도 (Role 고정)\n"
-            f"1. 찬성 측 ({merchant_name}) - [지성인 / 데이터 전문가형]:\n"
-            f"   - 단순히 영업 편의나 일반 상권론을 넘어, AHP 가중합 지표 우수성, 교통 유동인구 통계, 그리고 상기 'AI 지리 및 상권 분석 리포트'의 정량 수치와 실제 상가 개수를 논리적/공학적 근거로 들이대어 입지의 정당성을 옹호하십시오.\n"
-            f"2. 반대 측 ({resident_name}) - [생활 체감형 일반 주민 / 일반인형]:\n"
-            f"   - 지성인인 찬성 측의 차가운 통계 분석에 주눅 들지 않고, 관할동 민원 건수 및 무단투기 개소 등의 삶의 터전 훼손 지표를 적극 짚어 비판하십시오. 'CCTV나 정화 필터 장치는 설치를 위한 변명일 뿐, 악취와 위험 요소가 침범할 우려가 크다'며 실체적 생활 고충과 안전에 대한 불안을 주민들의 간절하고 격앙된 아날로그적 억양으로 호소하십시오.\n"
-            f"3. 정부 측 ({coordinator_name}) - [합리적 관료 / 중재자형]:\n"
-            f"   - 감정적으로 맞서는 주민과 냉철한 찬성 측 사이에서, pgvector RAG 조례 내용 및 PostGIS 공간 차집합 분석 결과를 객관적으로 상기시켜 법적 정합성을 확인하십시오. 이어 '소방안전 설비 2배 증설, 이격거리 추가 후퇴 설계, 주민 자치회단에 상시 가동정지 점검권 부여' 등 실무적으로 합의 가능한 중재안을 매끄럽게 제안하여 타결을 이끄십시오.\n\n"
-        )
-
-        if stats_context:
-            system_prompt += (
-                "## 후보지 실제 공간 통계 지표 (DB 공간 쿼리 결과)\n"
-                f"{stats_context}\n"
-            )
-
-        if rag_context:
-            system_prompt += (
-                "## 관련 자치구 조례 및 규정 (pgvector RAG 조회 결과)\n"
-                f"{rag_context}\n\n"
-            )
-
-        system_prompt += (
-            "## 토론 규칙\n"
-            "1. 위 제공된 '실제 공간 통계 지표'의 실제 수치들, 관련 조례, 그리고 **AHP 의사결정 가중치 정보와 CSS 점수 수치**를 반드시 대사 내에 직접 숫자로 인용하여 논쟁의 구체적 근거로 삼으십시오.\n"
-            f"   - 예시: 'AHP 분석 결과 유동인구 가중치가 0.35로 책정되었으니 이 입지가 최선입니다', 'XGBoost 갈등 예측 CSS 점수가 {req.candidate_css}점에 달하는데 대안도 없이 설치를 추진합니까?' 등 구체적 수치 수송 언급 필수.\n"
-            "2. 찬성 측, 반대 측, 조정안의 세 발언자가 서로 다회차(Multi-turn)로 번갈아 가며 질문을 주고받고 반론을 제기하는 심도 있는 토론을 구성하십시오.\n"
-            "3. 각 인물의 논리적 입장:\n"
-            f"   - {merchant_name} (찬성): AHP 가중합 최종 점수의 우수성과 지적 지표(유동인구 {transit_val:,}명)를 근거로 입지의 시급함과 정당성을 옹호하며, AHP 가중치 수치를 대사에서 적극 인용하십시오.\n"
-            f"   - {resident_name} (반대): 높은 갈등 민감도(CSS) {req.candidate_css}점과 AHP 가중치 분석 상 특정 주민 안전/불편 지표 가중치가 높게 수립된 사실을 들어 강력 반대하십시오.\n"
-            f"   - {coordinator_name} (정부): 양측의 수치 근거를 모두 조율하며, 조례 위반을 피하면서 이격거리 완충 설계나 정화 시설 보강 등 타협점을 제시합니다.\n"
-            "4. 반드시 각 참가자가 최소 2회 이상 의견을 피력하도록 아래 정해진 순서와 형식으로 총 8턴 이상의 유기적이고 극적인 대화 대본을 출력하십시오:\n"
-            f"{merchant_name}: ... (1차 찬성 변론)\n"
-            f"{resident_name}: ... (반대대표 의견에 대한 반론 및 1차 반대 근거)\n"
-            f"{merchant_name}: ... (반대대표 반론에 대한 설득 및 반박)\n"
-            f"{resident_name}: ... (재반론 및 최종 우려 피력)\n"
-            f"{coordinator_name}: ... (정부 중재안 제시 및 타협안 도출)\n"
-            f"{merchant_name}: ... (중재안 피드백 및 협조)\n"
-            f"{resident_name}: ... (중재안 수용 및 관리 감독 요구)\n"
-            f"{coordinator_name}: ... (최종 토론 합의 및 회의 마무리)\n\n"
-            f"{intensity_instruction}\n\n"
-            "5. [극사실주의 갈등 연출 지침]: 모든 등장인물은 관료식의 딱딱한 정형 문구를 탈피하고, 실제 주민 간담회 및 공청회 현장에서 공무원을 향해 뿜어져 나오는 생생한 어휘와 아날로그적 억양을 충실히 녹여서 토론을 완성하십시오.\n"
-            "가상의 수치나 뜬구름 잡는 일반론 대신, 오직 주어진 실제 컨텍스트 수치들만을 근거로 삼으십시오."
-        )
-        
-        user_message = (
-            f"'{req.candidate_jibun}' 부지에 '{req.inferred_purpose}' 목적의 "
-            f"'{req.facility_type}' 시설을 설치하는 것에 대해 "
-            f"갈등 민감도 {req.candidate_css}점({css_grade})을 고려한 갈등 해소 및 조정 토론을 시작해 주세요."
-        )
-        
         async def event_generator():
             try:
-                # [PEP8 Inline Import Cleaned]
-                # [PEP8 Inline Import Cleaned]
-                
-                q = queue.Queue()
-                
-                def run_openai():
-                    try:
-                        response = client.chat.completions.create(
-                            model="gpt-4o",
-                            messages=[
-                                {"role": "system", "content": system_prompt},
-                                {"role": "user", "content": user_message}
-                            ],
-                            stream=True
-                        )
-                        for chunk in response:
-                            content = chunk.choices[0].delta.content
-                            if content:
-                                q.put(content)
-                        q.put(None)
-                    except Exception as e:
-                        q.put(f"토론 중 에러 발생: {str(e)}")
-                        q.put(None)
-                
-                thread = threading.Thread(target=run_openai, daemon=True)
-                thread.start()
-                
-                # 면책 고지 최초 1회 즉각 전송
+                turns = [
+                    (merchant_name, merchant_system_prompt),
+                    (resident_name, resident_system_prompt),
+                    (merchant_name, merchant_system_prompt),
+                    (resident_name, resident_system_prompt),
+                    (coordinator_name, coordinator_system_prompt),
+                    (merchant_name, merchant_system_prompt),
+                    (resident_name, resident_system_prompt),
+                    (coordinator_name, coordinator_system_prompt)
+                ]
+
                 yield f"data: {json.dumps({'text': disclaimer_alert}, ensure_ascii=False)}\n\n"
-                # [v1.1-stable] 동적 페르소나 매칭 메타 데이터 강제 주입
                 yield f"data: {json.dumps({'meta': True, 'personas': [merchant_name, resident_name, coordinator_name]}, ensure_ascii=False)}\n\n"
                 
+                chat_history = []
                 full_text = disclaimer_alert
-                while True:
-                    content = await asyncio.to_thread(q.get)
-                    if content is None:
-                        try:
-                            save_debate_log_to_file(req, full_text)
-                        except Exception as fs_err:
-                            print(f"[File Log Save Error] {fs_err}")
-                        break
-                    full_text += content
-                    yield f"data: {json.dumps({'text': content}, ensure_ascii=False)}\n\n"
-                    
+
+                for step_idx, (role_name, agent_system_prompt) in enumerate(turns):
+                    prefix = f"\n\n{role_name}: "
+                    yield f"data: {json.dumps({'text': prefix}, ensure_ascii=False)}\n\n"
+                    full_text += prefix
+
+                    messages = [{"role": "system", "content": agent_system_prompt}]
+                    for hist in chat_history:
+                        messages.append(hist)
+
+                    if step_idx == 0:
+                        user_directive = f"'{req.candidate_jibun}' 입지에 대해 {role_name}의 1차 기조 발언을 시작해 주세요."
+                    elif step_idx == 7:
+                        user_directive = f"상대방의 의견들을 최종 조율하여 합의를 공식 결정하고 [모의 심의 완료] 문구를 덧붙여 종결해주십시오."
+                    else:
+                        user_directive = f"직전의 의견을 논박하고 {role_name}의 입장에서 대화를 이어가십시오."
+
+                    messages.append({"role": "user", "content": user_directive})
+
+                    response = await client.chat.completions.create(
+                        model="gpt-4o",
+                        messages=messages,
+                        stream=True
+                    )
+
+                    turn_text = ""
+                    async for chunk in response:
+                        content = chunk.choices[0].delta.content
+                        if content:
+                            if not turn_text and (content.strip().startswith("**") or content.strip().startswith(role_name)):
+                                continue
+                            turn_text += content
+                            yield f"data: {json.dumps({'text': content}, ensure_ascii=False)}\n\n"
+
+                    chat_history.append({"role": "assistant" if role_name == coordinator_name else "user", "content": f"{role_name}: {turn_text}"})
+                    full_text += turn_text
+                    await asyncio.sleep(0.4)
+
+                try:
+                    save_debate_log_to_file(req, full_text)
+                except Exception as fs_err:
+                    print(f"[File Log Save Error] {fs_err}")
+
             except Exception as e:
                 yield f"data: {json.dumps({'text': f'토론 중 에러 발생: {str(e)}'}, ensure_ascii=False)}\n\n"
-                
+
         return StreamingResponse(event_generator(), media_type="text/event-stream")
     else:
-        # Mock Fallback: 컨텍스트 기반 대사 생성 (동적 페르소나 및 자극적 대사 리팩토링)
         async def mock_event_generator():
             if req.intensity_level == "dangerous":
                 dialogue = [
@@ -1613,21 +1606,7 @@ async def stream_debate_sim(req: DebateRequest, db: Session = Depends(get_db)):
                     yield f"data: {json.dumps({'text': chunk}, ensure_ascii=False)}\n\n"
                     await asyncio.sleep(0.03)
                 await asyncio.sleep(0.4)
-                
         return StreamingResponse(mock_event_generator(), media_type="text/event-stream")
-
-# PDF 다운로드 DTO 정의
-class ReportDownloadRequest(BaseModel):
-    facility_type: str = ""
-    inferred_purpose: str = ""
-    candidate_jibun: str = ""
-    candidate_css: int = 50
-    candidate_lat: float = 37.53
-    candidate_lng: float = 126.97
-    candidate_reason: str = ""
-    ahp_weights: Dict[str, float] = {}
-    debate_logs: List[Dict[str, str]] = []
-    district_id: Optional[int] = 1
 
 @router.post("/spatial/report/download")
 async def download_report_pdf(req: ReportDownloadRequest, db: Session = Depends(get_db)):
@@ -1956,8 +1935,25 @@ async def get_user_exclusions(db: Session = Depends(get_db)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"사용자 금지구역 조회 실패: {str(e)}")
 
+# 6.5. 사용자 가상 금지구역 삭제 API [v1.1-stable]
+@router.delete("/spatial/user-exclusions/{zone_id}")
+async def delete_user_exclusion(zone_id: int, db: Session = Depends(get_db)):
+    try:
+        query = text("DELETE FROM user_exclusion_zones WHERE id = :zone_id")
+        result = db.execute(query, {"zone_id": zone_id})
+        db.commit()
+        if result.rowcount == 0:
+            raise HTTPException(status_code=404, detail="해당 금지구역을 찾을 수 없습니다.")
+        return {"status": "success", "message": f"성공적으로 금지구역(ID: {zone_id})을 삭제했습니다."}
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"사용자 금지구역 삭제 실패: {str(e)}")
+
 # --- [v4.9.35] 국유재산 공간 영역 렌더링을 위한 공간 GeoJSON 제공 API ---
 @router.get("/spatial/national-properties")
+
 async def get_national_properties(district_id: int = 1, db: Session = Depends(get_db)):
     try:
         query = text("""

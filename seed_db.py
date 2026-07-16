@@ -496,14 +496,45 @@ def seed():
 
             # 9. Seed restricted_zones
             print("[10] Seeding restricted_zones...")
-                    "address": addr,
-                    "lng": lng,
-                    "lat": lat,
-                    "zone_type": "childcare_center" if "어린이집" in category or "유치원" in category else ("school" if "학교" in category or "초등학교" in category else "nosmoking_zone"),
-                    "area": radius
-                })
-                rest_count += 1
-            print(f"    Seeded {rest_count} restricted zones.")
+            try:
+                rest_headers, rest_rows = load_csv_data(sources["restricted_zones"])
+                rest_count = 0
+                for row in rest_rows:
+                    if not row or len(row) < 6:
+                        continue
+                    name = row[0]
+                    category = row[1]
+                    addr = row[2]
+                    try:
+                        lng = float(row[3])
+                        lat = float(row[4])
+                        radius_str = row[5]
+                        radius = float(re.sub(r'[^0-9.]', '', radius_str))
+                    except ValueError:
+                        continue
+                        
+                    if not (33.0 <= lat <= 39.0 and 124.0 <= lng <= 132.0):
+                        continue
+                        
+                    dong_id, _, _ = get_dong_by_coord(lng, lat)
+                    
+                    conn.execute(text("""
+                        INSERT INTO restricted_zones (district_id, dong_id, zone_name, address, geom, zone_type, restriction_radius)
+                        VALUES (:district_id, :dong_id, :zone_name, :address, ST_SetSRID(ST_MakePoint(:lng, :lat), 4326), :zone_type, :area)
+                    """), {
+                        "district_id": district_id,
+                        "dong_id": dong_id,
+                        "zone_name": name,
+                        "address": addr,
+                        "lng": lng,
+                        "lat": lat,
+                        "zone_type": "childcare_center" if "어린이집" in category or "유치원" in category else ("school" if "학교" in category or "초등학교" in category else "nosmoking_zone"),
+                        "area": radius
+                    })
+                    rest_count += 1
+                print(f"    Seeded {rest_count} restricted zones.")
+            except Exception as e:
+                print(f"    [Skipped] restricted_zones seeding skipped: {e}")
 
             # [11] Seed default admin user if not exists
             print("[11] Seeding default admin account...")

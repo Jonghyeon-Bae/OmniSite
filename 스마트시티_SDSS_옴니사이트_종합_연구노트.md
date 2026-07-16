@@ -505,5 +505,32 @@
     - **오픈소스 OSM 마이닝:** 국가 공식망과 별개로, 전 세계 크라우드소싱 지형 데이터베이스인 OpenStreetMap(OSM)의 Overpass API를 연동하여 `landuse=military` 또는 `boundary=national_park` 태그를 필터링해 용산구 내외의 절대 배제 영역을 동적 GeoJSON으로 추출 및 상시 보정함.
     - **주소 기반 지오코딩(Geocoding) 융합:** 위경도가 누락된 군사 보안 지목이더라도 텍스트 주소가 존재하는 경우, 국토부 브이월드(Vworld) API를 거쳐 위경도로 자동 환산한 뒤 `is_exclusion` 속성을 주입하여 2단계 지도에 규제 레이어로 자동 편입함.
 
+### [1.2.0-alpha-Rev63] 4단계 순차적 멀티업로드 위저드 개편 및 웹 UI 기반 ML 모델 재학습 핫스왑 (v1.2-alpha 릴리즈)
+*   **연구 내용:** 기존 일괄 zip 방식 초기 구동 인프라의 예외 관리 한계를 극복하기 위해 단계별 순차 위저드(Wizard) 업로드 체계를 구축하고, CLI 의존성이 높던 XGBoost ML 모델의 학습을 어드민 웹 UI 상에서 직접 구동 및 핫스왑할 수 있는 E2E 파이프라인을 구축하였습니다.
+*   **주요 의사결정:**
+    - **4단계 순차적 멀티업로드 위저드:** 백엔드에 단계별 개별 적재 엔드포인트 `/upload/seed-spatial-step1` (뼈대 구축), `...-step2` (지적도 contains 구축), `...-step3` (4대 핵심 지수 분기 적재 및 개별 트랜잭션 관리), `...-step4` (최종 락 해제 및 활성화)을 개설하고, 프론트엔드 모달 내에 단계별 드롭존과 프로그레스바 및 3단계 건너뛰기(Skip) 유연성 제어를 반영함.
+    - **어드민 콘솔 ML 재학습 핫스왑:** 백엔드에 `/model/retrain` (BackgroundTasks 기반 비동기 XGBoost 훈련) 및 `/model/status` (성공 메트릭 및 Feature Importance 중요도 리턴) API를 개설함. 모델 생성 완료 시 메모리 레지스트리에 핫스왑 리로드되도록 연동하고, 프론트엔드 어드민 탭에 3초 주기 자동 폴링 프로그레스 바 및 가로형 기여도 막대 차트를 구현함.
+    - **E2E 연동 빌드 검증:** Next.js 최적화 빌드(`npm run build`) 및 FastAPI(Uvicorn) 구동 검증을 성공적으로 거치며 컴파일 및 런타임 타입 무결성을 최종 완비함.
 
+### [1.2.0-alpha-Rev64] AI 모의 토론 멀티에이전트 3대 독립 세션 구축, 콘솔 UI 가로폭 확장 및 커스텀 토스트 알림 적용 (v1.2-alpha-Enhancement)
+*   **연구 내용:** 기존 단일 추출 시나리오의 화자 뭉침 한계를 해소하고자 백엔드에 3인 AI 독립 페르소나 세션을 완성하고, 어드민 콘솔 모달의 UX 가독성 보완 및 브라우저 alert 팝업을 커스텀 유리모피즘 토스트 알림으로 대대적으로 전환하였습니다.
+*   **주요 의사결정:**
+    - **독립 멀티에이전트 스트리밍 턴 루프 장착:** 찬성(상인대표), 반대(주민대표), 정부(갈등조정관)의 시스템 프롬프트를 완전 격리하고, 매 턴의 생성 텍스트를 `chat_history` 컨텍스트에 연쇄 상속하여 Context Window가 보존되는 8턴 동적 토론 루프를 `/spatial/debate` 백엔드에 빌드 완료함. (Mock Fallback 또한 턴제 딜레이 스트리밍으로 정밀 고정 동기화)
+    - **통합 관리자 콘솔 모달 X축 확장:** 다중 파일 적재 현황과 모델 폴링 로그 등을 한눈에 모니터링하기 위해 관리자 모달 클래스의 가로폭 제한을 `max-w-lg`에서 `max-w-4xl`로 상향 조정해 가독성 공간을 넓힘.
+    - **원천 데이터 벌크 적재 ⓘ 도움말 툴팁 신설:** 데이터 벌크 탭 내 타이틀 우측에 `ⓘ` 인포 버튼 마크업을 신설하고, 마우스 호버 시 각 테이블에 입력할 필수 컬럼(PNU, JIBUN, 위경도 등) 사양을 동적으로 표출해 가이드를 실체화함.
+    - **커스텀 토스트 알림 도입:** 네온-글래스 테마 디자인 시스템과 완벽한 일치를 이루는 `showToast` 공통 상태 및 알림 뷰어를 최하단에 주입하고, 기존의 투박한 브라우저 `alert()` 호출부들을 성공/경고/에러/정보 유형별 컬러가 적용된 토스트 팝업으로 일괄 개편 완료함 (Leaflet 싱글톤 스크립트 로드 및 마커 드래그 스로틀링 동결 룰은 완벽 고수).
+    - **E2E 연동 빌드 검증 및 핫픽스:** `spatial.py` 내의 Non-UTF8 꼬임 문자열 및 newline double-escape 구문 에러를 파이썬 스크립트 치유 필터로 복원하고 백엔드 health endpoint 검증 및 Next.js Turbopack 최적화 번들 빌드를 100% 정상 통과 처리함.
 
+### [1.2.0-alpha-Rev65] 어드민 콘솔 모달 React 컴포넌트화 분리 및 AI 토론 3자 독립 페르소나 명칭 픽스 (v1.2-alpha-Enhancement)
+*   **연구 내용:** page.js의 비대한 모듈 결합도를 낮추기 위해 통합 관리자 콘솔을 React 컴포넌트로 분리하고, AI 갈등 모의 심의 토론 주체들의 페르소나 명칭을 직관적인 3자 명칭으로 픽스하여 시스템 일관성을 확보하였습니다.
+*   **주요 의사결정:**
+    - **어드민 콘솔 컴포넌트 분리 완공:** `frontend/src/app/spatial/page.js` 내부의 576라인 모달 마크업과 341라인의 시딩/ML재학습/사용자관리 이벤트 핸들러, 23종의 로컬 상태 변수들을 전량 [AdminConsoleModal.jsx](file:///c:/Users/Admin/Desktop/빅프로젝트 관련자료/최종1차/1.0-prototype/frontend/src/components/AdminConsoleModal.jsx) 컴포넌트로 완전 캡슐화 분리 이관하여 가독성과 모듈 확장성을 극대화함.
+    - **AI 모의 심의 토론 3자 독립 페르소나 명칭 픽스:** AI 모의 심의 시 발화자 식별 혼선을 방지하기 위해, 에이전트 명칭을 "상인대표 번영회장", "주민대표 회장" 등 동적 지번 템플릿 대신 무조건 **"찬성측"**, **"반대측"**, **"정부측"**으로만 픽스하여 시스템 대화 스레드 정합성을 확립함.
+    - **컴파일/빌드 무결성 확보:** 모달 분리 후 React Props 연계 및 API Fetch 헬퍼의 참조 무결성을 확인하고자 Next.js Turbopack 프로덕션 빌드를 수행해 에러 없는 컴파일 완료 및 정적 라우트 Prerender 성공을 검증함.
+
+### [1.2.0-alpha-Rev66] 프론트엔드 모달 구조 완전 다이어트, ML 기여도 차트 Null 예외 가드 및 모의 토론 비동기 SSE 스트리밍 복원 (v1.2-alpha-Enhancement-2)
+*   **연구 내용:** `page.js`에 남아있던 나머지 모달 2종을 컴포넌트로 완전히 떼어내고, ML 재학습 탭의 `feature_importances` 미정의 런타임 Null 에러를 해결하며, 동기식 OpenAI completions 루프 차단으로 지연되던 AI 갈등 예측 토론의 SSE 스트리밍 성능을 완벽히 복원하였습니다.
+*   **주요 의사결정:**
+    - **비밀번호 변경 및 RAG 조례 관리 모달 컴포넌트화:** [PasswordChangeModal.jsx](file:///c:/Users/Admin/Desktop/빅프로젝트 관련자료/최종1차/1.0-prototype/frontend/src/components/PasswordChangeModal.jsx) 및 [RagRegulationModal.jsx](file:///c:/Users/Admin/Desktop/빅프로젝트 관련자료/최종1차/1.0-prototype/frontend/src/components/RagRegulationModal.jsx) 독립 컴포넌트화를 완성하고 Props 연계를 완료하여, 메인 공간 분석 페이지의 복잡성을 대폭 낮추었습니다.
+    - **ML 피처 기여도 Null 방어 패치:** ML 재학습 결과가 아직 없는 초기 미학습 상태에서 기여도 오브젝트를 읽어올 때 `Cannot convert undefined or null to object` 에러가 나며 렌더링이 중단되던 예외를, 널 병합 기본값(`Object.keys(mlStatus?.feature_importances || {})`)으로 안전하게 우회하도록 [AdminConsoleModal.jsx](file:///c:/Users/Admin/Desktop/빅프로젝트 관련자료/최종1차/1.0-prototype/frontend/src/components/AdminConsoleModal.jsx)를 보완하였습니다.
+    - **비동기 Non-blocking OpenAI SSE 스트리밍 복원:** 백엔드 `spatial.py` 내의 `/spatial/debate` 토론 API가 비동기 라우터 스레드 내부에서 동기 OpenAI API를 블로킹 호출하던 부분을 `get_async_openai_client()` 및 `async for chunk in response` 루프 구조로 전면 전환하여, 렉 현상 없이 타자 치는 실시간 스트리밍이 프론트엔드에 다이렉트 전송되도록 고정 및 가속화시켰습니다.

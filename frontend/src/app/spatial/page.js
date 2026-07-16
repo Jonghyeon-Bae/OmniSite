@@ -8,6 +8,9 @@ import ExclusionZoneControl from '../../components/ExclusionZoneControl';
 import DebateSimulatorModal from '../../components/DebateSimulatorModal';
 import SidebarControl from '../../components/SidebarControl';
 import OptimalResultPanel from '../../components/OptimalResultPanel';
+import AdminConsoleModal from '../../components/AdminConsoleModal';
+import PasswordChangeModal from '../../components/PasswordChangeModal';
+import RagRegulationModal from '../../components/RagRegulationModal';
 
 const apiFetch = (url, options = {}) => {
   const token = typeof window !== 'undefined' ? sessionStorage.getItem('token') : null;
@@ -50,33 +53,32 @@ export default function Home() {
 
   // [Phase 2] 관리자 콘솔 및 시드 데이터 적재 상태
   const [showAdminConsoleModal, setShowAdminConsoleModal] = useState(false);
-  const [adminTab, setAdminTab] = useState('bulk'); // 'bulk' or 'users'
-  const [adminUsers, setAdminUsers] = useState([]);
-  const [seedTable, setSeedTable] = useState('cadastral_lands');
-  const [isSeeding, setIsSeeding] = useState(false);
-  
-  // ML 모델 업로드 관련 상태
-  const [modelDomain, setModelDomain] = useState('city_feature');
-  const [isModelUploading, setIsModelUploading] = useState(false);
+  const [mlStatus, setMlStatus] = useState({ is_training: false });
+  const fetchMlStatus = async () => {
+    try {
+      const res = await apiFetch('/api/v1/model/status');
+      if (res.ok) {
+        const data = await res.json();
+        setMlStatus(data);
+        return data;
+      }
+    } catch (err) {
+      console.error('ML 상태 로드 실패:', err);
+    }
+    return null;
+  };
 
-  // [Phase 2] 신규 실무관 등록용 상태 (최고관리자 콘솔 내 자동 연동)
-  const [regUsername, setRegUsername] = useState('');
-  const [regPassword, setRegPassword] = useState('');
-  const [regRole, setRegRole] = useState('user');
-  const [regDept, setRegDept] = useState('스마트도시과');
-  const [isRegistering, setIsRegistering] = useState(false);
+  // 커스텀 토스트 알림 상태 및 헬퍼 함수
+  const [toast, setToast] = useState({ show: false, message: '', type: 'info' });
+  const showToast = (message, type = 'info') => {
+    setToast({ show: true, message, type });
+    setTimeout(() => {
+      setToast(prev => ({ ...prev, show: false }));
+    }, 3000);
+  };
 
   // 비밀번호 자가 변경 상태
   const [showPasswordChangeModal, setShowPasswordChangeModal] = useState(false);
-  const [oldPassword, setOldPassword] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [newPasswordConfirm, setNewPasswordConfirm] = useState('');
-  const [isChangingPassword, setIsChangingPassword] = useState(false);
-
-  // 초기 구동 설정 (Cold Start) 상태
-  const [coldStartFile, setColdStartFile] = useState(null);
-  const [isColdStarting, setIsColdStarting] = useState(false);
-  const [coldStartResult, setColdStartResult] = useState(null);
 
   // Step 1 AI 감리 및 실무자 의도 매핑 검증 상태
   const [isAuditComplete, setIsAuditComplete] = useState(false);
@@ -88,8 +90,6 @@ export default function Home() {
   const [hitlQuestion, setHitlQuestion] = useState('');
   const [inferredReasoning, setInferredReasoning] = useState('');
   const [showRagModal, setShowRagModal] = useState(false);
-  const [ragUploadSuccess, setRagUploadSuccess] = useState(false);
-  const [isRegulationUploading, setIsRegulationUploading] = useState(false);
   const [showRegulationListModal, setShowRegulationListModal] = useState(false);
   const [regulationList, setRegulationList] = useState([]);
   const [userPurpose, setUserPurpose] = useState('');
@@ -251,321 +251,8 @@ export default function Home() {
     }
   };
 
-  const handleSeedFileChange = async (e) => {
-    const files = Array.from(e.target.files);
-    if (files.length === 0) return;
-    
-    const hasShp = files.some(f => f.name.endsWith('.shp'));
-    const hasCsv = files.some(f => f.name.endsWith('.csv'));
-    
-    if (hasShp) {
-      const shpFile = files.find(f => f.name.endsWith('.shp'));
-      const dbfFile = files.find(f => f.name.endsWith('.dbf'));
-      const shxFile = files.find(f => f.name.endsWith('.shx'));
-      
-      if (!shpFile || !dbfFile || !shxFile) {
-        alert('⚠️ Shapefile 적재를 위해서는 .shp, .dbf, .shx 파일들이 모두 한꺼번에 선택되어 업로드되어야 합니다.');
-        return;
-      }
-      
-      if (!confirm(`[ADMIN ALERT] 선택한 Shapefile 셋(.shp, .dbf, .shx)을 '${seedTable}' 테이블에 공간 지오메트리 변환 적재하겠습니까?\n이 작업은 PostGIS 구면 좌표계 변환 트랜잭션을 강제 실행합니다.`)) {
-        return;
-      }
-      
-      setIsSeeding(true);
-      try {
-        const formData = new FormData();
-        files.forEach(file => {
-          formData.append('files', file);
-        });
-        
-        const res = await apiFetch(`/api/v1/upload/seed-shapefile?target_table=${seedTable}`, {
-          method: 'POST',
-          body: formData
-        });
-        
-        if (res.ok) {
-          const data = await res.json();
-          alert(`✓ Shapefile 벌크 적재 성공!\n결과: ${data.message}`);
-          setShowAdminConsoleModal(false);
-        } else {
-          const err = await res.json();
-          throw new Error(err.detail || 'Shapefile 적재 실패');
-        }
-      } catch (err) {
-        alert(`Shapefile 적재 중 오류 발생: ${err.message}`);
-      } finally {
-        setIsSeeding(false);
-      }
-    } else if (hasCsv) {
-      const file = files.find(f => f.name.endsWith('.csv'));
-      if (!confirm(`[ADMIN ALERT] 선택한 CSV 파일을 '${seedTable}' 테이블에 벌크 적재하겠습니까?\n이 작업은 데이터베이스 인스턴스 DDL에 영향을 주며 공간 인덱스(GIST)가 강제 빌드됩니다.`)) {
-        return;
-      }
-      
-      setIsSeeding(true);
-      try {
-        const formData = new FormData();
-        formData.append('file', file);
-        
-        const res = await apiFetch(`/api/v1/upload/seed-spatial?target_table=${seedTable}&if_exists=append`, {
-          method: 'POST',
-          body: formData
-        });
-        
-        if (res.ok) {
-          const data = await res.json();
-          alert(`✓ 벌크 적재 성공!\n테이블: ${seedTable}\n적재 메시지: ${data.message}\n공간 지오메트리 빌드: ${data.spatial_geometry_built ? "성공 (Point/4326)" : "없음"}`);
-          setShowAdminConsoleModal(false);
-        } else {
-          const err = await res.json();
-          throw new Error(err.detail || '벌크 적재 실패');
-        }
-      } catch (err) {
-        alert(`벌크 적재 중 치명적 오류 발생: ${err.message}`);
-      } finally {
-        setIsSeeding(false);
-      }
-    } else {
-      alert('⚠️ 허용되지 않는 파일 확장자입니다. .csv 또는 .shp/.dbf/.shx 셋을 업로드해 주십시오.');
-    }
-  };
 
-  const handleModelUpload = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    
-    const ext = file.name.split('.').pop().toLowerCase();
-    if (ext !== 'pkl') {
-      alert('⚠️ 모델 파일은 오직 .pkl 확장자만 허용됩니다.');
-      return;
-    }
-    
-    if (!confirm(`[ADMIN ALERT] '${modelDomain}' 도메인의 예측 모델(.pkl)을 강제 업로드하여 핫 바인딩하겠습니까?\n이 작업은 실시간 입지 선정 예측 추천 스코어 모델 가중치를 영구 변경합니다.`)) {
-      return;
-    }
-    
-    setIsModelUploading(true);
-    try {
-      const formData = new FormData();
-      formData.append('file', file);
-      
-      const res = await apiFetch(`/api/v1/upload/model?domain_tag=${modelDomain}`, {
-        method: 'POST',
-        body: formData
-      });
-      
-      if (res.ok) {
-        alert(`✓ ML 예측 모델 업로드 및 실시간 핫 바인딩 성공!\n도메인: ${modelDomain}`);
-        setShowAdminConsoleModal(false);
-      } else {
-        const err = await res.json();
-        throw new Error(err.detail || '모델 적재 실패');
-      }
-    } catch (err) {
-      alert(`모델 적재 중 오류 발생: ${err.message}`);
-    } finally {
-      setIsModelUploading(false);
-    }
-  };
 
-  const handleColdStartUpload = async () => {
-    if (!coldStartFile) {
-      alert("업로드할 ZIP 파일셋을 선택해 주십시오.");
-      return;
-    }
-    if (!confirm("⚠️ 주의: 이 작업은 전체 데이터베이스의 지반 공간 정보(행정동, 지적도 등)를 완전히 파괴하고 새로 빌드합니다. 계속 진행하시겠습니까?")) {
-      return;
-    }
-    
-    setIsColdStarting(true);
-    setColdStartResult(null);
-    
-    const formData = new FormData();
-    formData.append("file", coldStartFile);
-    
-    try {
-      const res = await apiFetch("/api/v1/upload/init-coldstart", {
-        method: "POST",
-        body: formData
-      });
-      
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.detail || "인프라 초기 설정 중 서버 장애가 발생했습니다.");
-      }
-      
-      setColdStartResult({
-        status: "success",
-        message: data.message,
-        district: data.district,
-        sig_cd: data.sig_cd,
-        dongs: data.dongs_seeded,
-        parcels: data.parcels_seeded
-      });
-      alert(`✓ 인프라 초기 설정이 성공적으로 완공되었습니다!\n대상 지자체: ${data.district} (${data.sig_cd})`);
-    } catch (err) {
-      alert(`❌ 에러 발생: ${err.message}`);
-      setColdStartResult({
-        status: "error",
-        message: err.message
-      });
-    } finally {
-      setIsColdStarting(false);
-    }
-  };
-
-  // 관리자 전용 사용자 계정 목록 조회
-  const fetchAdminUsers = async () => {
-    try {
-      const res = await apiFetch('/api/v1/auth/users');
-      if (res.ok) {
-        const data = await res.json();
-        setAdminUsers(data);
-      }
-    } catch (err) {
-      console.error('사용자 계정 목록 로드 실패:', err);
-    }
-  };
-
-  // 사용자 계정 삭제
-  const handleUserDelete = async (userId, username) => {
-    if (!confirm(`[ADMIN CONFIRM] 사용자 계정 '${username}'을 강제 영구 탈퇴/삭제하겠습니까?`)) {
-      return;
-    }
-    try {
-      const res = await apiFetch(`/api/v1/auth/users/${userId}`, {
-        method: 'DELETE'
-      });
-      if (res.ok) {
-        alert(`✓ 계정 '${username}'이 정상 삭제되었습니다.`);
-        fetchAdminUsers();
-      } else {
-        const err = await res.json();
-        alert(err.detail || '삭제 실패');
-      }
-    } catch (err) {
-      alert('사용자 삭제 중 오류 발생');
-    }
-  };
-
-  // 사용자 비밀번호 초기화
-  const handleUserPasswordReset = async (userId, username) => {
-    const newPwd = prompt(`계정 '${username}'에 적용할 신규 보안 비밀번호를 입력해 주십시오.`);
-    if (newPwd === null) return;
-    if (newPwd.length < 4) {
-      alert('비밀번호는 최소 4자 이상이어야 합니다.');
-      return;
-    }
-    
-    try {
-      const res = await apiFetch(`/api/v1/auth/users/${userId}/reset-password`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ new_password: newPwd })
-      });
-      if (res.ok) {
-        alert(`✓ 계정 '${username}'의 비밀번호가 성공적으로 변경되었습니다.`);
-      } else {
-        const err = await res.json();
-        alert(err.detail || '비밀번호 재설정 실패');
-      }
-    } catch (err) {
-      alert('비밀번호 재설정 중 오류 발생');
-    }
-  };
-
-  const handleRegisterSubmit = async (e) => {
-    e.preventDefault();
-    if (!regUsername || !regPassword) {
-      alert("등록할 아이디와 비밀번호를 입력해 주십시오.");
-      return;
-    }
-
-    setIsRegistering(true);
-    try {
-      const res = await apiFetch('/api/v1/auth/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          username: regUsername,
-          password: regPassword,
-          role: regRole,
-          department: regDept,
-          district_id: userDistrictId
-        })
-      });
-
-      if (res.ok) {
-        alert(`✓ 신규 실무자 계정 [${regUsername}]이 성공적으로 등록되었습니다.\n부서: ${regDept} | 직위: ${regRole === 'admin' ? '관리자' : '실무관'}`);
-        setRegUsername('');
-        setRegPassword('');
-        setRegRole('user');
-        setRegDept('스마트도시과');
-        fetchAdminUsers(); // 목록 새로고침
-      } else {
-        const errData = await res.json();
-        throw new Error(errData.detail || "등록 처리 실패");
-      }
-    } catch (err) {
-      alert(`실무자 계정 등록 중 오류 발생: ${err.message}`);
-    } finally {
-      setIsRegistering(false);
-    }
-  };
-
-  // 본인 비밀번호 자가 변경
-  const handleSelfPasswordChangeSubmit = async (e) => {
-    e.preventDefault();
-    if (!oldPassword || !newPassword || !newPasswordConfirm) {
-      alert('모든 비밀번호 필드를 입력해 주십시오.');
-      return;
-    }
-    if (newPassword !== newPasswordConfirm) {
-      alert('새 비밀번호와 비밀번호 확인이 일치하지 않습니다.');
-      return;
-    }
-    if (newPassword.length < 4) {
-      alert('새 비밀번호는 최소 4자 이상이어야 합니다.');
-      return;
-    }
-
-    setIsChangingPassword(true);
-    try {
-      const res = await apiFetch('/api/v1/auth/change-password', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          old_password: oldPassword, 
-          new_password: newPassword 
-        })
-      });
-
-      if (res.ok) {
-        alert('✓ 비밀번호 변경이 정상 완료되었습니다. 세션 보안을 위해 다시 로그인해 주십시오.');
-        sessionStorage.clear();
-        router.push('/');
-      } else {
-        const err = await res.json();
-        alert(err.detail || '비밀번호 변경 실패');
-      }
-    } catch (err) {
-      alert('비밀번호 변경 중 오류 발생');
-    } finally {
-      setIsChangingPassword(false);
-      setShowPasswordChangeModal(false);
-      setOldPassword('');
-      setNewPassword('');
-      setNewPasswordConfirm('');
-    }
-  };
-
-  // 모달 활성화 시 관리자 사용자 목록 동기화
-  useEffect(() => {
-    if (showAdminConsoleModal && userRole === 'admin') {
-      fetchAdminUsers();
-    }
-  }, [showAdminConsoleModal, userRole]);
 
   // Leaflet 지도 인스턴스 참조
   const mapRef = useRef(null);
@@ -1547,65 +1234,7 @@ export default function Home() {
     }
   };
 
-  // 조례 물리 삭제 및 캐시 수거 처리
-  const handleDeleteRegulation = async (filename) => {
-    if (!confirm(`정말로 '${filename}' 조례를 삭제하시겠습니까?\n삭제된 법규는 RAG 감리 데이터베이스에서 영구 제외됩니다.`)) {
-      return;
-    }
-    try {
-      const response = await apiFetch(`/api/v1/upload/regulations/${encodeURIComponent(filename)}`, {
-        method: 'DELETE'
-      });
-      if (!response.ok) {
-        const err = await response.json();
-        throw new Error(err.detail || '삭제 실패');
-      }
-      const data = await response.json();
-      alert(data.message || '조례가 삭제되었습니다.');
-      fetchRegulations();
-    } catch (error) {
-      alert('조례 삭제 중 오류: ' + error.message);
-    }
-  };
 
-  // 조례 및 규제 법령 PDF 개별 등록 이벤트 핸들러 (다중 업로드 지원)
-  const handleRegulationFileChange = async (e) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
-    
-    for (let i = 0; i < files.length; i++) {
-      const ext = files[i].name.split('.').pop().toLowerCase();
-      if (ext !== 'pdf') {
-        alert('⚠️ 조례/규칙 문서는 오직 PDF 형식만 업로드 가능합니다.');
-        return;
-      }
-    }
-
-    setIsRegulationUploading(true);
-    setRagUploadSuccess(false);
-    try {
-      const formData = new FormData();
-      for (let i = 0; i < files.length; i++) {
-        formData.append('files', files[i]);
-      }
-
-      const response = await apiFetch('/api/v1/upload/regulation', {
-        method: 'POST',
-        body: formData
-      });
-      if (!response.ok) {
-        const err = await response.json();
-        throw new Error(err.detail || '조례 업로드 실패');
-      }
-      const data = await response.json();
-      setRagUploadSuccess(true);
-      fetchRegulations(); // 업로드 성공 시 목록 갱신
-    } catch (error) {
-      alert('조례 등록 중 오류: ' + error.message);
-    } finally {
-      setIsRegulationUploading(false);
-    }
-  };
 
   // 실제 공간 데이터(CSV) 파일 선택 이벤트 핸들러 및 AI 감리 API 트리거 (다중 업로드 지원)
   const handleFileChange = async (e) => {
@@ -1882,539 +1511,41 @@ export default function Home() {
 
 
 
-      {/* ⚖️ 법규 RAG 관리 모달 (Ingestion Modal) */}
-      {showRagModal && (
-        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="glass-panel w-full max-w-md p-6 flex flex-col gap-4 relative animate-fade-in">
-            <button 
-              onClick={() => {
-                setShowRagModal(false);
-                setRagUploadSuccess(false);
-              }}
-              className="absolute top-4 right-4 text-slate-400 hover:text-white font-bold cursor-pointer"
-            >
-              ✕
-            </button>
-            <div>
-              <h3 className="text-sm font-bold text-white mb-1">⚖️ 법규 RAG 데이터베이스 관리</h3>
-              <p className="text-[11px] text-slate-400">조례 및 시행령 PDF 문서를 텍스트로 벡터 캐싱하여 RAG 지식베이스를 구축합니다.</p>
-            </div>
-            
-            <div className="border border-slate-800 rounded-lg p-4 bg-slate-900/40 flex flex-col gap-3">
-              <div 
-                onClick={() => document.getElementById('modal-regulation-uploader').click()}
-                className="border-2 border-dashed border-slate-700 hover:border-blue-500 rounded-xl p-6 text-center cursor-pointer transition-all bg-slate-950/40 hover:bg-slate-900/30 flex flex-col items-center justify-center gap-1.5"
-              >
-                <span className="text-xl">⚖️</span>
-                <p className="text-xs text-slate-300 font-semibold">조례 및 법규 PDF 파일 등록</p>
-                <p className="text-[10px] text-slate-500">클릭하여 PDF 파일을 선택해 주세요.</p>
-                {isRegulationUploading && <p className="text-[10px] text-amber-400 mt-1 animate-pulse">RAG 적재 및 텍스트 벡터 캐싱 중...</p>}
-              </div>
-              
-              {ragUploadSuccess && (
-                <div className="bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[11px] p-2.5 rounded-lg text-center font-medium animate-pulse">
-                  ✓ 법규 문서의 RAG DB 적재가 성공적으로 완료되었습니다!
-                </div>
-              )}
-              
-              <input 
-                type="file" 
-                multiple 
-                accept=".pdf" 
-                id="modal-regulation-uploader" 
-                className="hidden" 
-                onChange={handleRegulationFileChange} 
-              />
-            </div>
-            
-            <button 
-              onClick={() => {
-                setShowRagModal(false);
-                setRagUploadSuccess(false);
-              }}
-              className="w-full bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white text-xs font-bold py-2.5 rounded-lg transition-all"
-            >
-              확인 및 닫기
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* 📋 등록된 조례 목록 조회 모달 */}
-      {showRegulationListModal && (
-        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="glass-panel w-full max-w-md p-6 flex flex-col gap-4 relative animate-fade-in">
-            <button 
-              onClick={() => {
-                setShowRegulationListModal(false);
-              }}
-              className="absolute top-4 right-4 text-slate-400 hover:text-white font-bold cursor-pointer"
-            >
-              ✕
-            </button>
-            <div>
-              <h3 className="text-sm font-bold text-white mb-1">📋 등록된 조례/법규 목록</h3>
-              <p className="text-[11px] text-slate-400">RAG 지식베이스에 적재되어 공간 감리에 반영되고 있는 조례 문서들입니다.</p>
-            </div>
-            
-            <div className="border border-slate-800 rounded-lg p-3 bg-slate-900/40 flex flex-col gap-2">
-              <div className="max-h-60 overflow-y-auto pr-1 flex flex-col gap-2">
-                {regulationList.length === 0 ? (
-                  <p className="text-center py-8 text-xs text-slate-500 font-medium">등록된 조례/시행규칙이 없습니다.</p>
-                ) : (
-                  regulationList.map((reg) => (
-                    <div key={reg.filename} className="flex justify-between items-center bg-slate-950/50 border border-slate-800/80 p-2.5 rounded-lg">
-                      <div className="flex flex-col gap-0.5 max-w-[80%]">
-                        <span className="text-[11px] font-semibold text-slate-200 truncate" title={reg.filename}>
-                          {reg.filename}
-                        </span>
-                        <span className="text-[9px] text-slate-500 font-mono">
-                          {(reg.size_bytes / 1024).toFixed(1)} KB
-                        </span>
-                      </div>
-                      <button
-                        onClick={() => handleDeleteRegulation(reg.filename)}
-                        className="text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 p-1.5 rounded-md transition-all shrink-0 cursor-pointer"
-                        title="조례 삭제"
-                      >
-                        🗑️
-                      </button>
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
-            
-            <button 
-              onClick={() => {
-                setShowRegulationListModal(false);
-              }}
-              className="w-full bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white text-xs font-bold py-2.5 rounded-lg transition-all"
-            >
-              닫기
-            </button>
-          </div>
-        </div>
-      )}
+      {/* ⚖️ 법규 RAG 관리 및 조례 목록 모달 */}
+      <RagRegulationModal
+        showUpload={showRagModal}
+        showList={showRegulationListModal}
+        onCloseUpload={() => setShowRagModal(false)}
+        onCloseList={() => setShowRegulationListModal(false)}
+        apiFetch={apiFetch}
+        showToast={showToast}
+        regulationList={regulationList}
+        fetchRegulations={fetchRegulations}
+      />
 
     
 
 
       {/* ⚙️ 관리자 전용 제어 콘솔 모달 */}
-      {showAdminConsoleModal && (
-        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="glass-panel w-full max-w-lg p-6 flex flex-col gap-4 relative animate-fade-in max-h-[90vh] overflow-y-auto text-slate-100">
-            <button 
-              onClick={() => setShowAdminConsoleModal(false)}
-              className="absolute top-4 right-4 text-slate-400 hover:text-white font-bold cursor-pointer"
-            >
-              ✕
-            </button>
-            <div>
-              <span className="text-[10px] bg-amber-500/10 border border-amber-500/30 text-amber-400 px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider">
-                System Administrator Console
-              </span>
-              <h3 className="text-sm font-bold text-white mt-2">⚙️ 통합 관리자 콘솔</h3>
-              <p className="text-[10px] text-slate-400">데이터베이스 벌크 적재, 예측 추천 모델 갱신 및 계정 생명주기를 통합 조립합니다.</p>
-            </div>
-            
-            {/* 탭 네비게이터 */}
-            <div className="flex border-b border-slate-800">
-              <button 
-                onClick={() => setAdminTab('bulk')}
-                className={`flex-1 pb-2 text-xs font-bold text-center border-b-2 transition-all cursor-pointer ${adminTab === 'bulk' ? 'border-amber-500 text-amber-400' : 'border-transparent text-slate-400 hover:text-slate-200'}`}
-              >
-                📊 데이터 벌크
-              </button>
-              <button 
-                onClick={() => setAdminTab('users')}
-                className={`flex-1 pb-2 text-xs font-bold text-center border-b-2 transition-all cursor-pointer ${adminTab === 'users' ? 'border-amber-500 text-amber-400' : 'border-transparent text-slate-400 hover:text-slate-200'}`}
-              >
-                👥 계정 관리
-              </button>
-              <button 
-                onClick={() => setAdminTab('coldstart')}
-                className={`flex-1 pb-2 text-xs font-bold text-center border-b-2 transition-all cursor-pointer ${adminTab === 'coldstart' ? 'border-amber-500 text-amber-400' : 'border-transparent text-slate-400 hover:text-slate-200'}`}
-              >
-                🛠️ 초기 구동 설정 (Cold Start)
-              </button>
-            </div>
-
-            {adminTab === 'bulk' && (
-              <div className="border border-slate-800 rounded-lg p-4 bg-slate-900/40 flex flex-col gap-4">
-                {/* RAG 관리 파트 통합 적재 */}
-                <div className="flex flex-col gap-2">
-                  <label className="text-[11px] font-bold text-slate-200">⚖️ RAG 법규 라이브러리 적재</label>
-                  <div 
-                    onClick={() => document.getElementById('seed-regulation-uploader').click()}
-                    className="border-2 border-dashed border-slate-700 hover:border-blue-500 rounded-xl p-4 text-center cursor-pointer transition-all bg-slate-950/40 hover:bg-slate-900/30 flex flex-col items-center justify-center gap-1"
-                  >
-                    <span className="text-lg">⚖️</span>
-                    <p className="text-[11px] text-slate-300 font-semibold">조례 PDF 파일 등록</p>
-                    <p className="text-[9px] text-slate-500">PDF RAG 임베딩 DB 벡터화를 진행합니다.</p>
-                    {isRegulationUploading && <p className="text-[10px] text-amber-400 mt-1 animate-pulse">RAG 적재 및 벡터 캐싱 중...</p>}
-                  </div>
-                  {ragUploadSuccess && (
-                    <div className="bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] p-2 rounded-lg text-center font-medium">
-                      ✓ 조례 법규의 RAG 벡터 적재가 성공적으로 완료되었습니다!
-                    </div>
-                  )}
-                  <input 
-                    type="file" 
-                    multiple 
-                    accept=".pdf" 
-                    id="seed-regulation-uploader" 
-                    className="hidden" 
-                    onChange={handleRegulationFileChange} 
-                  />
-                </div>
-
-                {/* 기능 1: 공간/행정 데이터 벌크 적재 */}
-                <div className="flex flex-col gap-2 border-t border-slate-800 pt-3">
-                  <label className="text-[11px] font-bold text-slate-200">🚀 원천 데이터 벌크 적재 (PostGIS CSV/Shapefile Seed)</label>
-                  <div className="flex gap-2">
-                    <select 
-                      value={seedTable} 
-                      onChange={(e) => setSeedTable(e.target.value)}
-                      className="bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-white outline-none cursor-pointer w-full font-semibold"
-                    >
-                      <option value="cadastral_lands">지적 필지 정보 (cadastral_lands)</option>
-                      <option value="civil_complaints">주민 민원 데이터 (civil_complaints)</option>
-                      <option value="commercial_shops">상권 점포 정보 (commercial_shops)</option>
-                      <option value="restricted_zones">용도제한 보호구역 (restricted_zones)</option>
-                      <option value="user_exclusion_zones">물리 장애물 금역 (user_exclusion_zones)</option>
-                      <option value="city_spatial_features">범용 공간 피처 (city_spatial_features)</option>
-                    </select>
-                  </div>
-                  <div 
-                    onClick={() => document.getElementById('seed-csv-uploader').click()}
-                    className="border-2 border-dashed border-slate-700 hover:border-amber-500 rounded-xl p-4 text-center cursor-pointer transition-all bg-slate-950/40 hover:bg-slate-900/30 flex flex-col items-center justify-center gap-1"
-                  >
-                    <span className="text-lg">📁</span>
-                    <p className="text-[11px] text-slate-300 font-semibold">벌크 CSV 또는 Shapefile 셋 업로드</p>
-                    <p className="text-[9px] text-slate-500">CSV 한 개 또는 Shapefile 셋(.shp,.dbf,.shx)을 드래그하여 공간 변환 적재합니다.</p>
-                    {isSeeding && <p className="text-[10px] text-amber-400 mt-1 animate-pulse">PostGIS 벌크 시딩 및 GIST 인덱싱 가동 중...</p>}
-                  </div>
-                  <input 
-                    type="file" 
-                    multiple
-                    accept=".csv,.shp,.dbf,.shx" 
-                    id="seed-csv-uploader" 
-                    className="hidden" 
-                    onChange={handleSeedFileChange} 
-                  />
-                </div>
-
-                {/* 기능 3: ML 모델 (.pkl) 업로드 및 핫 바인딩 */}
-                <div className="flex flex-col gap-2 border-t border-slate-800 pt-3">
-                  <label className="text-[11px] font-bold text-slate-200">🤖 ML 예측 모델 (.pkl) 핫 업로드</label>
-                  <div className="flex gap-2">
-                    <select 
-                      value={modelDomain} 
-                      onChange={(e) => setModelDomain(e.target.value)}
-                      className="bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-white outline-none cursor-pointer w-full font-semibold"
-                    >
-                      <option value="city_feature">기본 도시 시설 도메인 (city_feature)</option>
-                      <option value="smoking_zone">실외 흡연구역 도메인 (smoking_zone)</option>
-                      <option value="ev_charging">전기차 충전소 도메인 (ev_charging)</option>
-                    </select>
-                  </div>
-                  <div 
-                    onClick={() => document.getElementById('seed-model-uploader').click()}
-                    className="border-2 border-dashed border-slate-700 hover:border-amber-500 rounded-xl p-4 text-center cursor-pointer transition-all bg-slate-950/40 hover:bg-slate-900/30 flex flex-col items-center justify-center gap-1"
-                  >
-                    <span className="text-lg">🤖</span>
-                    <p className="text-[11px] text-slate-300 font-semibold">모델 파일 (.pkl) 업로드</p>
-                    <p className="text-[9px] text-slate-500">지정 도메인에 XGBoost 예측 모델을 핫 로드합니다.</p>
-                    {isModelUploading && <p className="text-[10px] text-amber-400 mt-1 animate-pulse">모델 리로드 및 메모리 리인덱싱 중...</p>}
-                  </div>
-                  <input 
-                    type="file" 
-                    accept=".pkl" 
-                    id="seed-model-uploader" 
-                    className="hidden" 
-                    onChange={handleModelUpload} 
-                  />
-                </div>
-
-                {/* 기능 2: 전체 리셋 단추 */}
-                <div className="border-t border-slate-800 pt-3 flex justify-between items-center">
-                  <div className="flex flex-col gap-0.5">
-                    <span className="text-[11px] font-bold text-rose-400">🚨 시스템 데이터베이스 리셋</span>
-                    <span className="text-[9px] text-slate-500">임시 캐시 및 저장 조례를 전역 삭제합니다.</span>
-                  </div>
-                  <button 
-                    onClick={handlePlatformReset}
-                    className="text-[10px] bg-rose-950/50 hover:bg-rose-900 border border-rose-500/30 text-rose-300 px-3.5 py-2 rounded-lg font-bold cursor-pointer transition-all"
-                  >
-                    전체 리셋 실행
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {adminTab === 'users' && (
-              <div className="border border-slate-800 rounded-lg p-4 bg-slate-900/40 flex flex-col gap-4">
-                
-                {/* 등록된 실무자 목록 테이블 */}
-                <div className="flex flex-col gap-2">
-                  <label className="text-[11px] font-bold text-slate-200">👥 승인된 행정망 사용자 디렉토리</label>
-                  <div className="max-h-60 overflow-y-auto border border-slate-800 rounded-lg bg-slate-950/50">
-                    <table className="w-full text-left border-collapse text-[10px]">
-                      <thead>
-                        <tr className="border-b border-slate-800 bg-slate-900/60 text-slate-400 font-bold">
-                          <th className="p-2">아이디</th>
-                          <th className="p-2">부서</th>
-                          <th className="p-2">권한</th>
-                          <th className="p-2 text-right">관리</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {adminUsers.length === 0 ? (
-                          <tr>
-                            <td colSpan="4" className="text-center py-6 text-slate-500">조회된 계정이 없습니다.</td>
-                          </tr>
-                        ) : (
-                          adminUsers.map(u => (
-                            <tr key={u.id} className="border-b border-slate-900 hover:bg-slate-900/20 text-slate-300">
-                              <td className="p-2 font-semibold font-mono">{u.username}</td>
-                              <td className="p-2">{u.department}</td>
-                              <td className="p-2">
-                                <span className={`px-1.5 py-0.5 rounded text-[8px] font-bold ${u.role === 'admin' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' : 'bg-blue-500/10 text-blue-400 border border-blue-500/20'}`}>
-                                  {u.role === 'admin' ? '관리자' : '실무관'}
-                                </span>
-                              </td>
-                              <td className="p-2 text-right flex gap-1 justify-end">
-                                <button 
-                                  onClick={() => handleUserPasswordReset(u.id, u.username)}
-                                  className="bg-slate-800 hover:bg-slate-700 text-slate-300 px-2 py-0.5 rounded border border-slate-700 cursor-pointer"
-                                >
-                                  재설정
-                                </button>
-                                <button 
-                                  onClick={() => handleUserDelete(u.id, u.username)}
-                                  className="bg-rose-950/40 hover:bg-rose-900 text-rose-400 px-2 py-0.5 rounded border border-rose-500/20 cursor-pointer"
-                                >
-                                  삭제
-                                </button>
-                              </td>
-                            </tr>
-                          ))
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-
-                {/* 신규 실무자 추가 폼 */}
-                <div className="flex flex-col gap-2 border-t border-slate-800 pt-3">
-                  <label className="text-[11px] font-bold text-slate-200">➕ 신규 실무자 (공무원) 계정 추가 등록</label>
-                  <form onSubmit={handleRegisterSubmit} className="flex flex-col gap-2 bg-slate-950/40 p-3 rounded-lg border border-slate-800/80">
-                    <div className="flex gap-2">
-                      <input 
-                        type="text"
-                        placeholder="신규 ID 입력"
-                        value={regUsername}
-                        onChange={(e) => setRegUsername(e.target.value)}
-                        className="bg-slate-950 border border-slate-800 rounded-lg p-2 text-[11px] text-white outline-none w-1/2 font-semibold"
-                      />
-                      <input 
-                        type="password"
-                        placeholder="비밀번호 설정"
-                        value={regPassword}
-                        onChange={(e) => setRegPassword(e.target.value)}
-                        className="bg-slate-950 border border-slate-800 rounded-lg p-2 text-[11px] text-white outline-none w-1/2 font-semibold"
-                      />
-                    </div>
-                    <div className="flex gap-2">
-                      <select 
-                        value={regRole} 
-                        onChange={(e) => setRegRole(e.target.value)}
-                        className="bg-slate-950 border border-slate-800 rounded-lg p-2 text-[10px] text-white outline-none cursor-pointer w-1/2 font-semibold"
-                      >
-                        <option value="user">일반 실무자 (User)</option>
-                        <option value="admin">최고 관리자 (Admin)</option>
-                      </select>
-                      <select 
-                        value={regDept} 
-                        onChange={(e) => setRegDept(e.target.value)}
-                        className="bg-slate-950 border border-slate-800 rounded-lg p-2 text-[10px] text-white outline-none cursor-pointer w-1/2 font-semibold"
-                      >
-                        <option value="스마트도시과">스마트도시과</option>
-                        <option value="도시행정정보과">도시행정정보과</option>
-                        <option value="맑은환경과">맑은환경과</option>
-                      </select>
-                    </div>
-                    <button 
-                      type="submit"
-                      className="w-full bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-bold py-2 rounded-lg transition-all shadow-md cursor-pointer mt-1"
-                    >
-                      {isRegistering ? "등록 요청 전송 중..." : "➕ 신규 실무관 승인 발급"}
-                    </button>
-                  </form>
-                </div>
-              </div>
-            )}
-
-            {adminTab === 'coldstart' && (
-              <div className="border border-slate-800 rounded-lg p-4 bg-slate-900/40 flex flex-col gap-4">
-                <div className="bg-rose-500/10 border border-rose-500/30 text-rose-400 p-3 rounded-lg flex flex-col gap-1.5">
-                  <span className="text-[11px] font-bold flex items-center gap-1">
-                    ⚠️ 데이터 파괴적 초기화 경고 (Cold Start Reset)
-                  </span>
-                  <p className="text-[9px] text-rose-300/80 leading-relaxed font-semibold">
-                    이 도구는 신규 지자체에 솔루션을 처음 설치하거나 배포 환경을 공백 상태에서 구성할 때 사용하는 자동 시딩 도구입니다. 
-                    ZIP 파일을 업로드하면 기존의 행정구역 경계(`emd_boundary`) 및 필지 데이터(`cadastral_map`)가 전역 삭제(Truncate)된 뒤 파싱 복원됩니다.
-                  </p>
-                </div>
-
-                <div className="flex flex-col gap-2">
-                  <label className="text-[11px] font-bold text-slate-200">📦 지자체 공간정보 ZIP 압축셋 업로드</label>
-                  <p className="text-[9px] text-slate-500 leading-normal">
-                    압축 파일(*.zip) 내부에는 반드시 <strong>emd.shp, emd.dbf, emd.shx, emd.prj</strong> 및 
-                    <strong>parcel.shp, parcel.dbf, parcel.shx, parcel.prj</strong> 파일이 평면 구조로 동시 포함되어야 합니다.
-                  </p>
-                  
-                  <div 
-                    onClick={() => !isColdStarting && document.getElementById('seed-coldstart-uploader').click()}
-                    className={`border-2 border-dashed rounded-xl p-6 text-center transition-all bg-slate-950/40 flex flex-col items-center justify-center gap-2 ${isColdStarting ? 'border-amber-500 bg-amber-500/5 cursor-wait' : 'border-slate-700 hover:border-amber-500 cursor-pointer hover:bg-slate-900/30'}`}
-                  >
-                    <span className="text-2xl">📦</span>
-                    <p className="text-[11px] text-slate-300 font-semibold">공간정보 ZIP 패키지 등록</p>
-                    <p className="text-[9px] text-slate-500">지자체 공간정보 벌크 오토인제스천</p>
-                    
-                    {coldStartFile && (
-                      <div className="bg-slate-900 px-3 py-1.5 rounded-lg border border-slate-800 text-[10px] text-amber-400 font-mono mt-1 max-w-xs truncate">
-                        {coldStartFile.name} ({(coldStartFile.size / 1024 / 1024).toFixed(2)} MB)
-                      </div>
-                    )}
-                    
-                    {isColdStarting && (
-                      <div className="flex flex-col items-center gap-1 mt-2">
-                        <p className="text-[10px] text-amber-400 font-bold animate-pulse">📦 공간정보 파이프라인 구동 중...</p>
-                        <p className="text-[8px] text-slate-500">ZIP 압축 해제, ESRI 파싱, CRS 판독 및 ST_Transform 트랜잭션 처리 중</p>
-                      </div>
-                    )}
-                  </div>
-                  
-                  <input 
-                    type="file" 
-                    accept=".zip" 
-                    id="seed-coldstart-uploader" 
-                    className="hidden" 
-                    onChange={(e) => {
-                      if (e.target.files && e.target.files[0]) {
-                        setColdStartFile(e.target.files[0]);
-                      }
-                    }} 
-                    disabled={isColdStarting}
-                  />
-                </div>
-
-                {coldStartFile && !isColdStarting && (
-                  <button
-                    onClick={handleColdStartUpload}
-                    className="w-full bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-bold py-2 rounded-lg transition-all shadow-lg"
-                  >
-                    🚀 초기화 파이프라인 구동 시작
-                  </button>
-                )}
-
-                {coldStartResult && (
-                  <div className={`p-3 rounded-lg border text-[10px] flex flex-col gap-2 ${coldStartResult.status === 'success' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' : 'bg-rose-500/10 border-rose-500/20 text-rose-400'}`}>
-                    <div className="font-bold flex items-center gap-1">
-                      {coldStartResult.status === 'success' ? '✓ 파이프라인 완공 성공' : '❌ 파이프라인 중단 에러'}
-                    </div>
-                    <p className="text-[9px] text-slate-300 font-medium">{coldStartResult.message}</p>
-                    
-                    {coldStartResult.status === 'success' && (
-                      <div className="grid grid-cols-2 gap-2 mt-1 border-t border-slate-800/80 pt-2 text-[9px] text-slate-400">
-                        <div>대상 지자체: <span className="text-slate-200 font-semibold">{coldStartResult.district}</span></div>
-                        <div>법정동 코드 prefix: <span className="text-slate-200 font-semibold font-mono">{coldStartResult.sig_cd}</span></div>
-                        <div>행정동(EMD) 인제스천: <span className="text-emerald-400 font-bold font-mono">{coldStartResult.dongs} 개</span></div>
-                        <div>지적도(Parcel) 인제스천: <span className="text-emerald-400 font-bold font-mono">{coldStartResult.parcels} 개</span></div>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
-            
-            <button 
-              onClick={() => setShowAdminConsoleModal(false)}
-              className="w-full bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white text-xs font-bold py-2.5 rounded-lg transition-all"
-            >
-              콘솔 닫기
-            </button>
-          </div>
-        </div>
-      )}
+      <AdminConsoleModal
+        show={showAdminConsoleModal}
+        onClose={() => setShowAdminConsoleModal(false)}
+        apiFetch={apiFetch}
+        showToast={showToast}
+        userDistrictId={userDistrictId}
+        mlStatus={mlStatus}
+        setMlStatus={setMlStatus}
+        fetchMlStatus={fetchMlStatus}
+      />
 
       {/* 🔑 비밀번호 자가 변경 모달 */}
-      {showPasswordChangeModal && (
-        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="glass-panel w-full max-w-sm p-6 flex flex-col gap-4 relative animate-fade-in text-slate-100">
-            <button 
-              onClick={() => {
-                setShowPasswordChangeModal(false);
-                setOldPassword('');
-                setNewPassword('');
-                setNewPasswordConfirm('');
-              }}
-              className="absolute top-4 right-4 text-slate-400 hover:text-white font-bold cursor-pointer"
-            >
-              ✕
-            </button>
-            <div>
-              <h3 className="text-sm font-bold text-white mb-1">🔑 비밀번호 자가 변경</h3>
-              <p className="text-[10px] text-slate-400">보안 등급 유지를 위해 주기적으로 비밀번호를 변경해 주십시오.</p>
-            </div>
-
-            <form onSubmit={handleSelfPasswordChangeSubmit} className="flex flex-col gap-3">
-              <div className="flex flex-col gap-1">
-                <label className="text-[10px] text-slate-400">기존 비밀번호</label>
-                <input 
-                  type="password"
-                  value={oldPassword}
-                  onChange={(e) => setOldPassword(e.target.value)}
-                  className="bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-white outline-none"
-                  placeholder="기존 비밀번호 입력"
-                />
-              </div>
-
-              <div className="flex flex-col gap-1">
-                <label className="text-[10px] text-slate-400">새 비밀번호</label>
-                <input 
-                  type="password"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  className="bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-white outline-none"
-                  placeholder="새 비밀번호 입력 (4자 이상)"
-                />
-              </div>
-
-              <div className="flex flex-col gap-1">
-                <label className="text-[10px] text-slate-400">새 비밀번호 확인</label>
-                <input 
-                  type="password"
-                  value={newPasswordConfirm}
-                  onChange={(e) => setNewPasswordConfirm(e.target.value)}
-                  className="bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-white outline-none"
-                  placeholder="새 비밀번호 재입력"
-                />
-              </div>
-
-              <button 
-                type="submit"
-                disabled={isChangingPassword}
-                className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-xs font-bold py-2.5 rounded-lg transition-all mt-2 cursor-pointer"
-              >
-                {isChangingPassword ? "비밀번호 변경 중..." : "🔑 비밀번호 변경 및 적용"}
-              </button>
-            </form>
-          </div>
-        </div>
-      )}
+      <PasswordChangeModal
+        show={showPasswordChangeModal}
+        onClose={() => setShowPasswordChangeModal(false)}
+        apiFetch={apiFetch}
+        showToast={showToast}
+        router={router}
+      />
 </div>
   );
 }

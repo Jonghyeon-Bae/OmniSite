@@ -2047,3 +2047,622 @@ async def init_coldstart(
                 shutil.rmtree(temp_dir)
             except Exception:
                 pass
+
+
+# --- Helper to save list of uploaded files for shapefiles ---
+def save_uploaded_files(files: List[UploadFile], temp_dir: str) -> Dict[str, Dict[str, str]]:
+    import shutil
+    shp_groups = {}
+    for f in files:
+        filename = f.filename
+        try:
+            filename = filename.encode('latin-1').decode('utf-8')
+        except Exception:
+            pass
+        
+        save_path = os.path.join(temp_dir, filename)
+        with open(save_path, "wb") as buffer:
+            shutil.copyfileobj(f.file, buffer)
+            
+        base, ext = os.path.splitext(save_path)
+        ext = ext[1:].lower()
+        if ext in ["shp", "dbf", "shx", "prj"]:
+            if base not in shp_groups:
+                shp_groups[base] = {}
+            shp_groups[base][ext] = save_path
+    return shp_groups
+
+
+# --- [Phase 4-1] 4단계 위저드형 단계별 공간정보 적재 API ---
+
+@router.post("/upload/seed-spatial-step1")
+async def seed_spatial_step1(
+    sig_files: List[UploadFile] = File(default=[]),
+    emd_files: List[UploadFile] = File(default=[]),
+    mapping_csv: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_admin: dict = Depends(get_current_admin)
+):
+    import shutil
+    import tempfile
+    from collections import defaultdict
+    
+    # 1. 임시 디렉토리 생성
+    temp_dir = tempfile.mkdtemp(prefix="coldstart_step1_", dir=UPLOAD_DIR)
+    
+    try:
+        # 데이터베이스 정비 (TRUNCATE) - 뼈대를 세우기 위해 기존 테이블을 CASCADE 옵션으로 일괄 초기화
+        db.execute(text("TRUNCATE TABLE transit_passengers, transit_stations, civil_complaints, illegal_dumping_zones, population_stats, age_demographics, cadastral_lands, restricted_zones, dong_boundaries, districts CASCADE;"))
+        db.commit()
+        
+        # CSV 임시 저장 및 매핑 파싱
+        csv_filename = mapping_csv.filename
+        try:
+            csv_filename = csv_filename.encode('latin-1').decode('utf-8')
+        except Exception:
+            pass
+        csv_path = os.path.join(temp_dir, csv_filename)
+        with open(csv_path, "wb") as buffer:
+            shutil.copyfileobj(mapping_csv.file, buffer)
+            
+        correct_enc = detect_csv_encoding(csv_path)
+        mapping_df = pd.read_csv(csv_path, encoding=correct_enc, errors="replace")
+        mapping_df.columns = [c.strip().lower() for c in mapping_df.columns]
+        
+        adm_code_col = next((c for c in mapping_df.columns if "행정동코드" in c or "adm_cd" in c or "adm_code" in c), mapping_df.columns[0])
+        adm_name_col = next((c for c in mapping_df.columns if "행정동명" in c or "adm_nm" in c or "adm_name" in c), mapping_df.columns[1])
+        leg_code_col = next((c for c in mapping_df.columns if "법정동코드" in c or "leg_cd" in c or "leg_code" in c), mapping_df.columns[2])
+        leg_name_col = next((c for c in mapping_df.columns if "법정동명" in c or "leg_nm" in c or "leg_name" in c), mapping_df.columns[3])
+        
+        adm_to_leg = defaultdict(list)
+        unique_leg_dongs = {}
+        for _, row in mapping_df.iterrows():
+            adm_val = str(row[adm_code_col])[:8]
+            leg_val = str(row[leg_code_col])
+            leg_name = str(row[leg_name_col])
+            unique_leg_dongs[leg_val] = leg_name
+            if adm_val not in adm_to_leg:
+                adm_to_leg[adm_val] = []
+            if leg_val not in adm_to_leg[adm_val]:
+                adm_to_leg[adm_val].append(leg_val)
+                
+        # SIG 파일 처리
+        sig_shp_base = None
+        if sig_files:
+            sig_groups = save_uploaded_files(sig_files, temp_dir)
+            for base, g in sig_groups.items():
+                if "shp" in g and "dbf" in g and "shx" in g:
+                    sig_shp_base = base
+                    break
+                    
+        # EMD 파일 처리
+        emd_shp_base = None
+        if emd_files:
+            emd_groups = save_uploaded_files(emd_files, temp_dir)
+            for base, g in emd_groups.items():
+                if "shp" in g and "dbf" in g and "shx" in g:
+                    emd_shp_base = base
+                    break
+                    
+        if not emd_shp_base:
+            raise HTTPException(status_code=400, detail="읍면동 경계 SHP 파일셋(.shp, .dbf, .shx)이 존재하지 않습니다.")
+            
+        # 2. Districts (시군구) 식별 및 인서트
+        district_name = "전체구역"
+        sig_cd = "99999"
+        
+        # EMD 파일명에서 자치구 코드 유추 시도
+        emd_filename = os.path.basename(emd_shp_base)
+        sig_code_match = re.search(r"emd_(\d{5})|EMD_(\d{5})", emd_filename)
+        if sig_code_match:
+            sig_cd = sig_code_match.group(1) or sig_code_match.group(2)
+            
+        if sig_shp_base:
+            sf_sig = shapefile.Reader(sig_shp_base, encoding="cp949")
+            sig_recs = sf_sig.records()
+            sig_fields = [f[0] for f in sf_sig.fields[1:]]
+            for rec in sig_recs:
+                props = {sig_fields[j]: rec[j] for j in range(len(sig_fields))}
+                for k, v in props.items():
+                    if isinstance(v, bytes):
+                        props[k] = v.decode("cp949", errors="replace")
+                cd_val = props.get("SIG_CD") or props.get("sig_cd")
+                nm_val = props.get("SIG_KOR_NM") or props.get("sig_kor_nm") or props.get("SIG_ENG_NM")
+                if cd_val:
+                    sig_cd = str(cd_val)
+                    district_name = str(nm_val)
+                    break
+        else:
+            known_sig = {
+                "11170": "용산구", "11110": "종로구", "11140": "중구", "11200": "성동구", 
+                "11215": "광진구", "11230": "동대문구", "11260": "중랑구", "11290": "성북구", 
+                "11305": "강북구", "11320": "도봉구", "11350": "노원구", "11380": "은평구", 
+                "11410": "서대문구", "11440": "마포구", "11470": "양천구", "11500": "강서구", 
+                "11530": "구로구", "11545": "금천구", "11560": "영등포구", "11590": "동작구", 
+                "11620": "관악구", "11650": "서초구", "11680": "강남구", "11710": "송파구", 
+                "11740": "강동구"
+            }
+            if sig_cd == "99999":
+                sig_cd = "11170" # 기본값 용산구
+            district_name = known_sig.get(sig_cd, "신규 자치구")
+            
+        district_id = db.execute(text("""
+            INSERT INTO districts (id, district_name, sig_cd)
+            VALUES (1, :name, :sig_cd)
+            ON CONFLICT (sig_cd) DO UPDATE SET district_name = EXCLUDED.district_name
+            RETURNING id;
+        """), {"name": district_name, "sig_cd": sig_cd}).scalar()
+        
+        # 3. Dong Boundaries (읍면동) Shapefile 적재
+        sf_emd = shapefile.Reader(emd_shp_base, encoding="cp949")
+        emd_recs = sf_emd.records()
+        emd_shapes = sf_emd.shapes()
+        emd_fields = [f[0] for f in sf_emd.fields[1:]]
+        
+        emd_xmin = emd_shapes[0].bbox[0]
+        emd_srid = 5179
+        if 120.0 <= emd_xmin <= 132.0:
+            emd_srid = 4326
+        elif 150000.0 <= emd_xmin <= 250000.0:
+            emd_srid = 5186
+            
+        dong_count = 0
+        for idx, shp in enumerate(emd_shapes):
+            rec = emd_recs[idx]
+            props = {emd_fields[j]: rec[j] for j in range(len(emd_fields))}
+            for k, v in props.items():
+                if isinstance(v, bytes):
+                    props[k] = v.decode("cp949", errors="replace")
+                    
+            emd_cd = str(props.get("EMD_CD") or props.get("emd_cd") or "")
+            if emd_cd.startswith(sig_cd):
+                leg_code = emd_cd + "00"
+                name = props.get("EMD_KOR_NM") or props.get("emd_kor_nm") or props.get("EMD_ENG_NM")
+                geom = shape(shp)
+                wkt = geom.wkt
+                
+                db.execute(text("""
+                    INSERT INTO dong_boundaries (district_id, dong_code, dong_name, geom)
+                    VALUES (:district_id, :dong_code, :dong_name, ST_Multi(ST_Transform(ST_GeomFromText(:wkt, :srid), 4326)))
+                    ON CONFLICT (dong_code) DO NOTHING
+                """), {
+                    "district_id": district_id,
+                    "dong_code": leg_code,
+                    "dong_name": name,
+                    "wkt": wkt,
+                    "srid": emd_srid
+                })
+                dong_count += 1
+                
+        db.commit()
+        return {
+            "status": "success",
+            "message": f"1단계 행정 구역 및 공간 프레임이 구축되었습니다. (구역명: {district_name}, 행정동 {dong_count}개 생성 완료)",
+            "district_name": district_name,
+            "sig_cd": sig_cd,
+            "dongs_count": dong_count
+        }
+        
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"1단계 적재 중 에러가 발생했습니다: {str(e)}")
+    finally:
+        if os.path.exists(temp_dir):
+            shutil.rmtree(temp_dir)
+
+
+@router.post("/upload/seed-spatial-step2")
+async def seed_spatial_step2(
+    cad_files: List[UploadFile] = File(...),
+    property_csv: Optional[UploadFile] = File(default=None),
+    db: Session = Depends(get_db),
+    current_admin: dict = Depends(get_current_admin)
+):
+    import shutil
+    import tempfile
+    
+    # 1. 임시 디렉토리 생성
+    temp_dir = tempfile.mkdtemp(prefix="coldstart_step2_", dir=UPLOAD_DIR)
+    
+    try:
+        # 국유부동산 정보 로드
+        property_set = set()
+        if property_csv:
+            csv_filename = property_csv.filename
+            try:
+                csv_filename = csv_filename.encode('latin-1').decode('utf-8')
+            except Exception:
+                pass
+            csv_path = os.path.join(temp_dir, csv_filename)
+            with open(csv_path, "wb") as buffer:
+                shutil.copyfileobj(property_csv.file, buffer)
+                
+            prop_enc = detect_csv_encoding(csv_path)
+            prop_df = pd.read_csv(csv_path, encoding=prop_enc, errors="replace")
+            prop_df.columns = [c.strip().lower() for c in prop_df.columns]
+            
+            pnu_col = next((c for c in prop_df.columns if "pnu" in c or "필지코드" in c or "지적코드" in c), None)
+            jibun_col = next((c for c in prop_df.columns if "지번" in c or "jibun" in c or "소재지" in c), None)
+            
+            for _, row in prop_df.iterrows():
+                if pnu_col:
+                    pnu_val = str(row[pnu_col]).strip()
+                    if pnu_val:
+                        property_set.add(pnu_val)
+                elif jibun_col:
+                    jibun_val = str(row[jibun_col]).strip()
+                    if jibun_val:
+                        property_set.add(jibun_val)
+                        
+        # 지적도 SHP 세트 저장
+        cad_groups = save_uploaded_files(cad_files, temp_dir)
+        cad_shp_base = None
+        for base, g in cad_groups.items():
+            if "shp" in g and "dbf" in g and "shx" in g:
+                cad_shp_base = base
+                break
+                
+        if not cad_shp_base:
+            raise HTTPException(status_code=400, detail="지적도 SHP 파일셋(.shp, .dbf, .shx)이 존재하지 않습니다.")
+            
+        sf_cad = shapefile.Reader(cad_shp_base, encoding="cp949")
+        cad_recs = sf_cad.records()
+        cad_shapes = sf_cad.shapes()
+        cad_fields = [f[0] for f in sf_cad.fields[1:]]
+        
+        cad_xmin = cad_shapes[0].bbox[0]
+        cad_srid = 5179
+        if 120.0 <= cad_xmin <= 132.0:
+            cad_srid = 4326
+        elif 150000.0 <= cad_xmin <= 250000.0:
+            cad_srid = 5186
+            
+        # 읍면동 바운더리 Contains 헬퍼
+        def get_dong_id_for_geom(wkt, srid):
+            res = db.execute(text("""
+                SELECT id FROM dong_boundaries 
+                WHERE ST_Contains(geom, ST_Centroid(ST_Transform(ST_SetSRID(ST_GeomFromText(:wkt), :srid), 4326))) 
+                LIMIT 1
+            """), {"wkt": wkt, "srid": srid}).fetchone()
+            if res:
+                return res[0]
+            fallback_res = db.execute(text("SELECT id FROM dong_boundaries LIMIT 1")).fetchone()
+            return fallback_res[0] if fallback_res else 1
+            
+        district_res = db.execute(text("SELECT id FROM districts LIMIT 1")).fetchone()
+        district_id = district_res[0] if district_res else 1
+        
+        cad_count = 0
+        for idx, shp in enumerate(cad_shapes):
+            rec = cad_recs[idx]
+            props = {cad_fields[j]: rec[j] for j in range(len(cad_fields))}
+            for k, v in props.items():
+                if isinstance(v, bytes):
+                    props[k] = v.decode("cp949", errors="replace")
+                    
+            pnu = str(props.get("PNU") or props.get("pnu") or f"PNU_{idx}")
+            jibun = props.get("JIBUN") or props.get("jibun") or ""
+            land_use = props.get("LDC") or props.get("ldc") or "대"
+            
+            is_national = pnu in property_set or any(x in jibun for x in property_set) or props.get("buysable") == "TRUE" or props.get("OWNER") == "국"
+            ownership = "국유지" if is_national else "사유지"
+            
+            geom = shape(shp)
+            wkt = geom.wkt
+            dong_id = get_dong_id_for_geom(wkt, cad_srid)
+            
+            db.execute(text("""
+                INSERT INTO cadastral_lands (district_id, dong_id, pnu, jibun, land_use_code, ownership_type, geom)
+                VALUES (:district_id, :dong_id, :pnu, :jibun, :land_use_code, :ownership_type, ST_Multi(ST_Transform(ST_SetSRID(ST_GeomFromText(:wkt, :srid), 4326))))
+            """), {
+                "district_id": district_id,
+                "dong_id": dong_id,
+                "pnu": pnu,
+                "jibun": jibun,
+                "land_use_code": land_use,
+                "ownership_type": ownership,
+                "wkt": wkt,
+                "srid": cad_srid
+            })
+            cad_count += 1
+            
+        db.commit()
+        return {
+            "status": "success",
+            "message": f"2단계 연속지적도 및 토지 소유권 정보가 적재되었습니다. (지적 필지 {cad_count}개 생성 완료)",
+            "parcels_count": cad_count
+        }
+        
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"2단계 적재 중 에러가 발생했습니다: {str(e)}")
+    finally:
+        if os.path.exists(temp_dir):
+            shutil.rmtree(temp_dir)
+
+
+@router.post("/upload/seed-spatial-step3")
+async def seed_spatial_step3(
+    file_type: str,
+    files: List[UploadFile] = File(...),
+    db: Session = Depends(get_db),
+    current_admin: dict = Depends(get_current_admin)
+):
+    import shutil
+    import tempfile
+    
+    # 1. 임시 디렉토리 생성
+    temp_dir = tempfile.mkdtemp(prefix="coldstart_step3_", dir=UPLOAD_DIR)
+    
+    try:
+        district_res = db.execute(text("SELECT id FROM districts LIMIT 1")).fetchone()
+        district_id = district_res[0] if district_res else 1
+        
+        success_files = []
+        rows_inserted = 0
+        
+        for file in files:
+            filename = file.filename
+            try:
+                filename = filename.encode('latin-1').decode('utf-8')
+            except Exception:
+                pass
+                
+            file_path = os.path.join(temp_dir, filename)
+            with open(file_path, "wb") as buffer:
+                shutil.copyfileobj(file.file, buffer)
+                
+            if file_type == "restricted_zones":
+                headers, rows = parse_csv_file(file_path)
+                mapping, errors = analyze_csv_header_only(headers)
+                
+                lat_col = mapping.get("lat")
+                lng_col = mapping.get("lng")
+                addr_col = mapping.get("address")
+                name_col = next((h for h in headers if "명" in h or "이름" in h or "name" in h or "구역" in h), headers[0])
+                
+                if not lat_col or not lng_col:
+                    continue # 위경도 없는 파일은 패스
+                    
+                lat_idx = headers.index(lat_col)
+                lng_idx = headers.index(lng_col)
+                addr_idx = headers.index(addr_col) if addr_col else -1
+                name_idx = headers.index(name_col) if name_col else -1
+                
+                zone_type = "smoking_zone" if "흡연" in filename or "smoking" in filename.lower() else "nosmoking_zone"
+                
+                for r in rows:
+                    if len(r) <= max(lat_idx, lng_idx):
+                        continue
+                    try:
+                        lat_val = float(r[lat_idx])
+                        lng_val = float(r[lng_idx])
+                        if lat_val == 0 or lng_val == 0:
+                            continue
+                        name_val = r[name_idx] if name_idx != -1 else "정화구역"
+                        addr_val = r[addr_idx] if addr_idx != -1 else ""
+                        
+                        # 공간 조인으로 읍면동 ID 조회
+                        dong_res = db.execute(text("""
+                            SELECT id FROM dong_boundaries 
+                            WHERE ST_Contains(geom, ST_SetSRID(ST_MakePoint(:lng, :lat), 4326)) 
+                            LIMIT 1
+                        """), {"lng": lng_val, "lat": lat_val}).fetchone()
+                        dong_id = dong_res[0] if dong_res else None
+                        
+                        db.execute(text("""
+                            INSERT INTO restricted_zones (district_id, dong_id, zone_name, address, geom, zone_type)
+                            VALUES (:district_id, :dong_id, :zone_name, :address, ST_SetSRID(ST_MakePoint(:lng, :lat), 4326), :zone_type)
+                        """), {
+                            "district_id": district_id,
+                            "dong_id": dong_id,
+                            "zone_name": name_val,
+                            "address": addr_val,
+                            "lng": lng_val,
+                            "lat": lat_val,
+                            "zone_type": zone_type
+                        })
+                        rows_inserted += 1
+                    except Exception:
+                        continue
+                        
+            elif file_type == "transit_stations":
+                headers, rows = parse_csv_file(file_path)
+                
+                station_no_col = next((h for h in headers if "번호" in h or "no" in h.lower() or "id" in h.lower() or "코드" in h), headers[0])
+                station_name_col = next((h for h in headers if "명" in h or "이름" in h or "name" in h.lower()), headers[1])
+                lat_col = next((h for h in headers if "위도" in h or "y" in h.lower() or "lat" in h.lower()), None)
+                lng_col = next((h for h in headers if "경도" in h or "x" in h.lower() or "lng" in h.lower() or "lon" in h.lower()), None)
+                
+                if not lat_col or not lng_col:
+                    continue
+                    
+                no_idx = headers.index(station_no_col)
+                name_idx = headers.index(station_name_col)
+                lat_idx = headers.index(lat_col)
+                lng_idx = headers.index(lng_col)
+                
+                transit_type = "bus" if "버스" in filename or "bus" in filename.lower() else "subway"
+                
+                for r in rows:
+                    if len(r) <= max(lat_idx, lng_idx, no_idx, name_idx):
+                        continue
+                    try:
+                        lat_val = float(r[lat_idx])
+                        lng_val = float(r[lng_idx])
+                        if lat_val == 0 or lng_val == 0:
+                            continue
+                        no_val = str(r[no_idx]).strip()
+                        name_val = str(r[name_idx]).strip()
+                        
+                        dong_res = db.execute(text("""
+                            SELECT id FROM dong_boundaries 
+                            WHERE ST_Contains(geom, ST_SetSRID(ST_MakePoint(:lng, :lat), 4326)) 
+                            LIMIT 1
+                        """), {"lng": lng_val, "lat": lat_val}).fetchone()
+                        dong_id = dong_res[0] if dong_res else None
+                        
+                        db.execute(text("""
+                            INSERT INTO transit_stations (district_id, dong_id, station_no, station_name, transit_type, geom)
+                            VALUES (:district_id, :dong_id, :station_no, :station_name, :transit_type, ST_SetSRID(ST_MakePoint(:lng, :lat), 4326))
+                            ON CONFLICT (station_no) DO UPDATE SET station_name = EXCLUDED.station_name
+                        """), {
+                            "district_id": district_id,
+                            "dong_id": dong_id,
+                            "station_no": no_val,
+                            "station_name": name_val,
+                            "transit_type": transit_type,
+                            "lng": lng_val,
+                            "lat": lat_val
+                        })
+                        rows_inserted += 1
+                    except Exception:
+                        continue
+                        
+            elif file_type == "transit_passengers":
+                headers, rows = parse_csv_file(file_path)
+                
+                ym_col = next((h for h in headers if "년월" in h or "ym" in h.lower() or "일자" in h), headers[0])
+                station_no_col = next((h for h in headers if "번호" in h or "역ID" in h or "노선" in h or "id" in h.lower() or "코드" in h), headers[1])
+                board_col = next((h for h in headers if "승차" in h or "탑승" in h or "boarding" in h.lower()), None)
+                alight_col = next((h for h in headers if "하차" in h or "alighting" in h.lower()), None)
+                
+                ym_idx = headers.index(ym_col)
+                no_idx = headers.index(station_no_col)
+                board_idx = headers.index(board_col) if board_col else -1
+                alight_idx = headers.index(alight_col) if alight_col else -1
+                
+                # transit_stations 매핑 로드 캐싱
+                station_no_map = {}
+                stat_res = db.execute(text("SELECT id, station_no FROM transit_stations")).fetchall()
+                for s_id, s_no in stat_res:
+                    station_no_map[s_no] = s_id
+                    
+                for r in rows:
+                    if len(r) <= max(ym_idx, no_idx):
+                        continue
+                    try:
+                        ym_val = str(r[ym_idx]).replace("-", "").strip()[:6]
+                        no_val = str(r[no_idx]).strip()
+                        station_id = station_no_map.get(no_val)
+                        if not station_id:
+                            continue
+                            
+                        b_cnt = int(float(r[board_idx])) if board_idx != -1 else 0
+                        a_cnt = int(float(r[alight_idx])) if alight_idx != -1 else 0
+                        tot = b_cnt + a_cnt
+                        
+                        db.execute(text("""
+                            INSERT INTO transit_passengers (station_id, analysis_ym, boarding_count, alighting_count, total_volume)
+                            VALUES (:station_id, :analysis_ym, :boarding_count, :alighting_count, :total_volume)
+                        """), {
+                            "station_id": station_id,
+                            "analysis_ym": ym_val,
+                            "boarding_count": b_cnt,
+                            "alighting_count": a_cnt,
+                            "total_volume": tot
+                        })
+                        rows_inserted += 1
+                    except Exception:
+                        continue
+                        
+            elif file_type == "population_stats":
+                headers, rows = parse_csv_file(file_path)
+                
+                dong_code_col = next((h for h in headers if "동코드" in h or "dong_code" in h.lower() or "dong_cd" in h.lower() or "행정동" in h), headers[0])
+                pop_col = next((h for h in headers if "인구" in h or "생활인구" in h or "pop" in h.lower()), headers[-1])
+                
+                dong_idx = headers.index(dong_code_col)
+                pop_idx = headers.index(pop_col)
+                
+                # dong_boundaries 매핑 로드 캐싱
+                dong_code_map = {}
+                dong_res = db.execute(text("SELECT id, dong_code FROM dong_boundaries")).fetchall()
+                for d_id, d_cd in dong_res:
+                    dong_code_map[d_cd[:8]] = d_id # 앞 8자리 기준 조인
+                    
+                for r in rows:
+                    if len(r) <= max(dong_idx, pop_idx):
+                        continue
+                    try:
+                        raw_dong = str(r[dong_idx]).strip()
+                        dong_id = dong_code_map.get(raw_dong[:8])
+                        if not dong_id:
+                            continue
+                        pop_val = float(r[pop_idx])
+                        
+                        # day_type, time_type 임의 기본값 부여
+                        day_type = "weekday"
+                        time_type = "avg"
+                        
+                        db.execute(text("""
+                            INSERT INTO population_stats (dong_id, day_type, time_type, avg_population)
+                            VALUES (:dong_id, :day_type, :time_type, :avg_population)
+                        """), {
+                            "dong_id": dong_id,
+                            "day_type": day_type,
+                            "time_type": time_type,
+                            "avg_population": pop_val
+                        })
+                        rows_inserted += 1
+                    except Exception:
+                        continue
+                        
+            success_files.append(filename)
+            
+        db.commit()
+        return {
+            "status": "success",
+            "message": f"3단계 [{file_type}] 지리지표 묶음 적재 완료! (총 {len(success_files)}개 파일, {rows_inserted}개 행 삽입 성공)",
+            "inserted_rows": rows_inserted
+        }
+        
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"3단계 지리지표 적재 중 에러: {str(e)}")
+    finally:
+        if os.path.exists(temp_dir):
+            shutil.rmtree(temp_dir)
+
+
+@router.post("/upload/seed-spatial-step4")
+async def seed_spatial_step4(
+    regulation_file: Optional[UploadFile] = File(default=None),
+    db: Session = Depends(get_db),
+    current_admin: dict = Depends(get_current_admin)
+):
+    import shutil
+    import tempfile
+    
+    temp_dir = tempfile.mkdtemp(prefix="coldstart_step4_", dir=UPLOAD_DIR)
+    try:
+        district_res = db.execute(text("SELECT id FROM districts LIMIT 1")).fetchone()
+        district_id = district_res[0] if district_res else 1
+        
+        if regulation_file:
+            filename = regulation_file.filename
+            try:
+                filename = filename.encode('latin-1').decode('utf-8')
+            except Exception:
+                pass
+                
+            file_path = os.path.join(temp_dir, filename)
+            with open(file_path, "wb") as buffer:
+                shutil.copyfileobj(regulation_file.file, buffer)
+                
+            # PDF 임베딩 기동
+            chunk_and_embed_pdf(file_path, filename, db, district_id)
+            
+        # 시스템 구동 상태 최종 커밋
+        db.commit()
+        
+        return {
+            "status": "success",
+            "message": "스마트시티 입지 설정 및 GIS 뼈대 최종 완성! 이제 추천과 모의 심의 시뮬레이션을 개시할 수 있습니다."
+        }
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"4단계 최종 활성화 중 에러: {str(e)}")
+    finally:
+        if os.path.exists(temp_dir):
+            shutil.rmtree(temp_dir)

@@ -14,6 +14,9 @@ from app.database import get_db, SessionLocal, engine
 from app.utils.auth import get_current_admin
 from app.routers.spatial import model_registry, registry_path
 
+# 프로젝트 백엔드 루트 디렉토리 설정
+base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 # Machine Learning Modules
 from sklearn.model_selection import train_test_split
 from sklearn.compose import ColumnTransformer
@@ -47,7 +50,7 @@ def load_initial_model_status():
             # 가상 피처 중요도 추출
             if classifier and hasattr(classifier, 'feature_importances_'):
                 numeric_features = ['area', 'dist_to_school', 'dist_to_childcare']
-                categorical_features = ['land_use_code', 'ownership_type']
+                categorical_features = ['land_use_code', 'ownership_type', 'building_use']
                 try:
                     onehot_cols = preprocessor.named_transformers_['cat'].named_steps['onehot'].get_feature_names_out(categorical_features)
                     feature_names = numeric_features + list(onehot_cols)
@@ -125,6 +128,7 @@ def background_model_train():
                 COALESCE(ns.dist_to_school, 9999.0) AS dist_to_school,
                 COALESCE(nc.dist_to_childcare, 9999.0) AS dist_to_childcare,
                 COALESCE(cc.complaint_count, 0) AS complaint_count,
+                COALESCE(b.main_use_name, '미지정') AS building_use,
                 CASE 
                     WHEN COALESCE(cc.complaint_count, 0) >= 120 THEN 1
                     WHEN COALESCE(cc.complaint_count, 0) <= 95 THEN 0
@@ -134,6 +138,7 @@ def background_model_train():
             LEFT JOIN nearest_school ns ON c.id = ns.parcel_id
             LEFT JOIN nearest_childcare nc ON c.id = nc.parcel_id
             LEFT JOIN civil_complaints cc ON c.dong_id = cc.dong_id
+            LEFT JOIN building_ledgers b ON c.pnu = b.pnu
             WHERE c.district_id = 1
               AND c.ownership_type IN (:owner_1, :owner_2, :owner_3)
               AND ST_IsValid(c.geom);
@@ -156,13 +161,31 @@ def background_model_train():
             
         df = pd.DataFrame(labeled_rows)
         
+        # 한글 깨짐 데이터셋 복구 보정 전처리 (latin-1 -> cp949)
+        def restore_korean_str(val):
+            import re
+            if pd.isna(val) or not str(val).strip():
+                return "미지정"
+            # 이미 정상 한글(가~힣)이 들어있다면 보정 작업 없이 원본 반환 (중요)
+            if re.search(r"[가-힣]", str(val)):
+                return str(val).strip()
+            try:
+                return str(val).encode('latin-1').decode('cp949', errors='replace').strip()
+            except Exception:
+                return str(val).strip()
+                
+        for col in ['land_use_code', 'ownership_type', 'building_use']:
+            if col in df.columns:
+                df[col] = df[col].apply(restore_korean_str)
+        
         # 2. 전처리 & 학습 준비
-        X = df[['land_use_code', 'ownership_type', 'area', 'dist_to_school', 'dist_to_childcare']].copy()
+        X = df[['land_use_code', 'ownership_type', 'area', 'dist_to_school', 'dist_to_childcare', 'building_use']].copy()
         y = df['target_label'].copy()
         
         # 결측값 방어 처리
         X['land_use_code'] = X['land_use_code'].fillna('대')
         X['ownership_type'] = X['ownership_type'].fillna('국유지')
+        X['building_use'] = X['building_use'].fillna('미지정')
         X['area'] = X['area'].fillna(X['area'].median())
         X['dist_to_school'] = X['dist_to_school'].fillna(9999.0)
         X['dist_to_childcare'] = X['dist_to_childcare'].fillna(9999.0)
@@ -176,7 +199,7 @@ def background_model_train():
             ('scaler', StandardScaler())
         ])
         
-        categorical_features = ['land_use_code', 'ownership_type']
+        categorical_features = ['land_use_code', 'ownership_type', 'building_use']
         categorical_transformer = Pipeline(steps=[
             ('onehot', OneHotEncoder(handle_unknown='ignore', sparse_output=False))
         ])

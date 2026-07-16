@@ -1997,7 +1997,21 @@ async def init_coldstart(
                 if isinstance(v, bytes):
                     props[k] = v.decode("cp949", errors="replace")
                     
-            pnu = str(props.get("PNU") or props.get("pnu") or f"PNU_{idx}")
+            pnu_raw = props.get("PNU") or props.get("pnu") or f"PNU_{idx}"
+            if isinstance(pnu_raw, float):
+                pnu = str(int(pnu_raw))
+            elif isinstance(pnu_raw, str):
+                pnu_str = pnu_raw.strip()
+                if "E+" in pnu_str.upper() or "E-" in pnu_str.upper() or "." in pnu_str:
+                    try:
+                        pnu = str(int(float(pnu_str)))
+                    except Exception:
+                        pnu = pnu_str
+                else:
+                    pnu = pnu_str
+            else:
+                pnu = str(pnu_raw).strip()
+                
             jibun = props.get("JIBUN") or props.get("jibun") or ""
             land_use = props.get("LDC") or props.get("ldc") or "대"
             
@@ -2255,6 +2269,7 @@ async def seed_spatial_step1(
 async def seed_spatial_step2(
     cad_files: List[UploadFile] = File(...),
     property_csv: Optional[UploadFile] = File(default=None),
+    building_csv: Optional[UploadFile] = File(default=None),
     db: Session = Depends(get_db),
     current_admin: dict = Depends(get_current_admin)
 ):
@@ -2340,7 +2355,21 @@ async def seed_spatial_step2(
                 if isinstance(v, bytes):
                     props[k] = v.decode("cp949", errors="replace")
                     
-            pnu = str(props.get("PNU") or props.get("pnu") or f"PNU_{idx}")
+            pnu_raw = props.get("PNU") or props.get("pnu") or f"PNU_{idx}"
+            if isinstance(pnu_raw, float):
+                pnu = str(int(pnu_raw))
+            elif isinstance(pnu_raw, str):
+                pnu_str = pnu_raw.strip()
+                if "E+" in pnu_str.upper() or "E-" in pnu_str.upper() or "." in pnu_str:
+                    try:
+                        pnu = str(int(float(pnu_str)))
+                    except Exception:
+                        pnu = pnu_str
+                else:
+                    pnu = pnu_str
+            else:
+                pnu = str(pnu_raw).strip()
+                
             jibun = props.get("JIBUN") or props.get("jibun") or ""
             land_use = props.get("LDC") or props.get("ldc") or "대"
             
@@ -2366,11 +2395,75 @@ async def seed_spatial_step2(
             })
             cad_count += 1
             
+        # --- 건축물대장 표제부 적재 (building_csv 가 들어온 경우) ---
+        building_count = 0
+        if building_csv:
+            db.execute(text("TRUNCATE TABLE building_ledgers CASCADE;"))
+            
+            building_filename = building_csv.filename
+            try:
+                building_filename = building_filename.encode('latin-1').decode('utf-8')
+            except Exception:
+                pass
+            building_path = os.path.join(temp_dir, building_filename)
+            with open(building_path, "wb") as buffer:
+                shutil.copyfileobj(building_csv.file, buffer)
+                
+            build_enc = detect_csv_encoding(building_path)
+            build_df = pd.read_csv(building_path, encoding=build_enc, errors="replace", on_bad_lines='skip')
+            build_df.columns = [c.strip() for c in build_df.columns]
+            
+            def make_pnu_local(r):
+                try:
+                    sig = str(int(r['시군구코드'])).zfill(5)
+                    dong = str(int(r['법정동코드'])).zfill(5)
+                    gb = str(r.get('대지구분코드', '1')).strip()
+                    if not gb or gb == 'nan' or gb == '0':
+                        gb = '1'
+                    gb = gb[0]
+                    bon = str(int(r['본번'])).zfill(4)
+                    bu = str(int(r['부번'])).zfill(4)
+                    return sig + dong + gb + bon + bu
+                except Exception:
+                    return None
+                    
+            for _, r_row in build_df.iterrows():
+                pnu_val = make_pnu_local(r_row)
+                if not pnu_val:
+                    continue
+                    
+                def safe_float(val):
+                    try:
+                        return float(val) if not pd.isna(val) else 0.0
+                    except Exception:
+                        return 0.0
+                        
+                def safe_int(val):
+                    try:
+                        return int(val) if not pd.isna(val) else 0
+                    except Exception:
+                        return 0
+                        
+                db.execute(text("""
+                    INSERT INTO building_ledgers (pnu, building_name, main_use_name, structure_name, total_area, ground_floors, underground_floors)
+                    VALUES (:pnu, :building_name, :main_use_name, :structure_name, :total_area, :ground_floors, :underground_floors)
+                """), {
+                    "pnu": pnu_val,
+                    "building_name": str(r_row.get('건물명', r_row.get('대지위치', ''))).strip(),
+                    "main_use_name": str(r_row.get('주용도코드명', '미지정')).strip(),
+                    "structure_name": str(r_row.get('구조코드명', '미지정')).strip(),
+                    "total_area": safe_float(r_row.get('연면적')),
+                    "ground_floors": safe_int(r_row.get('지상층수')),
+                    "underground_floors": safe_int(r_row.get('지하층수'))
+                })
+                building_count += 1
+
         db.commit()
         return {
             "status": "success",
-            "message": f"2단계 연속지적도 및 토지 소유권 정보가 적재되었습니다. (지적 필지 {cad_count}개 생성 완료)",
-            "parcels_count": cad_count
+            "message": f"2단계 연속지적도 및 토지 소유권 정보가 적재되었습니다. (지적 필지 {cad_count}개, 건축물 표제부 {building_count}개 생성 완료)",
+            "parcels_count": cad_count,
+            "buildings_count": building_count
         }
         
     except Exception as e:

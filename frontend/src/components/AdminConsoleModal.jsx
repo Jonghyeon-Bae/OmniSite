@@ -39,6 +39,7 @@ export default function AdminConsoleModal({
   
   const [step2CadFiles, setStep2CadFiles] = useState([]);
   const [step2PropertyFile, setStep2PropertyFile] = useState(null);
+  const [step2BuildingFile, setStep2BuildingFile] = useState(null);
   
   const [step4RegulationFile, setStep4RegulationFile] = useState(null);
   const [step3Progress, setStep3Progress] = useState({
@@ -53,6 +54,13 @@ export default function AdminConsoleModal({
   useEffect(() => {
     if (show && adminTab === 'users') {
       fetchAdminUsers();
+    }
+  }, [show, adminTab]);
+
+  // 재학습 탭 클릭 시 또는 모달 진입 시 ML 실시간 상태 동기화 로드
+  useEffect(() => {
+    if (show && adminTab === 'ml_retrain') {
+      fetchMlStatus();
     }
   }, [show, adminTab]);
 
@@ -436,6 +444,9 @@ export default function AdminConsoleModal({
     if (step2PropertyFile) {
       formData.append('property_csv', step2PropertyFile);
     }
+    if (step2BuildingFile) {
+      formData.append('building_csv', step2BuildingFile);
+    }
     
     try {
       const res = await apiFetch('/api/v1/upload/seed-spatial-step2', {
@@ -445,7 +456,7 @@ export default function AdminConsoleModal({
       const data = await res.json();
       if (!res.ok) throw new Error(data.detail || '2단계 적재 실패');
       
-      showToast(`✓ 2단계 연속지적도 적재 완공!\n지적 필지 수: ${data.parcels_count}개`, 'success');
+      showToast(`✓ 2단계 연속지적도 적재 완공!\n지적 필지 수: ${data.parcels_count}개, 표제부 건물 수: ${data.buildings_count || 0}개`, 'success');
       setWizardStep(3);
     } catch (err) {
       showToast('❌ 2단계 에러: ' + err.message, 'error');
@@ -910,6 +921,15 @@ export default function AdminConsoleModal({
                         className="bg-slate-950 border border-slate-850 rounded-lg p-1.5 text-slate-300"
                       />
                     </div>
+                    <div className="flex flex-col gap-1 mt-1">
+                      <label className="text-slate-400">건축물대장 표제부 속성 연계 CSV (선택사항)</label>
+                      <input 
+                        type="file" 
+                        accept=".csv" 
+                        onChange={(e) => setStep2BuildingFile(e.target.files[0])}
+                        className="bg-slate-950 border border-slate-850 rounded-lg p-1.5 text-slate-300"
+                      />
+                    </div>
                   </div>
                   <div className="flex gap-2">
                     <button 
@@ -1102,19 +1122,19 @@ export default function AdminConsoleModal({
               <div className="flex flex-col gap-1 text-center">
                 <span className="text-[9px] text-slate-400">모델 정확도 (Accuracy)</span>
                 <span className="text-sm font-mono font-bold text-amber-400">
-                  {mlStatus.accuracy ? (mlStatus.accuracy * 100).toFixed(1) + '%' : '92.4%'}
+                  {mlStatus.last_trained_at ? (mlStatus.accuracy * 100).toFixed(1) + '%' : '미학습'}
                 </span>
               </div>
               <div className="flex flex-col gap-1 text-center">
                 <span className="text-[9px] text-slate-400">조화 평균 (F1-Score)</span>
                 <span className="text-sm font-mono font-bold text-amber-400">
-                  {mlStatus.f1_score ? (mlStatus.f1_score).toFixed(3) : '0.908'}
+                  {mlStatus.last_trained_at ? (mlStatus.f1_score).toFixed(3) : '미학습'}
                 </span>
               </div>
               <div className="flex flex-col gap-1 text-center">
                 <span className="text-[9px] text-slate-400">최종 동적 재학습 시점</span>
                 <span className="text-[10px] font-mono font-bold text-slate-300 leading-normal">
-                  {mlStatus.last_trained_at ? new Date(mlStatus.last_trained_at).toLocaleString() : '로컬 기본 가중치 적용 중'}
+                  {mlStatus.last_trained_at ? mlStatus.last_trained_at : '미학습 (재학습을 진행해 주십시오)'}
                 </span>
               </div>
             </div>
@@ -1126,7 +1146,7 @@ export default function AdminConsoleModal({
                 {Object.keys(mlStatus?.feature_importances || {}).length > 0 ? (
                   Object.entries(mlStatus?.feature_importances || {}).map(([feature, val]) => (
                     <div key={feature} className="flex items-center text-[10px]">
-                      <span className="w-24 text-slate-400 truncate">{feature}</span>
+                      <span className="w-40 text-slate-400 truncate">{feature}</span>
                       <div className="flex-1 bg-slate-800 h-2.5 rounded-full overflow-hidden mx-2">
                         <div 
                           className="bg-amber-500 h-full rounded-full transition-all" 
@@ -1147,7 +1167,7 @@ export default function AdminConsoleModal({
                     ['land_area_sqm', 0.03]
                   ].map(([feature, val]) => (
                     <div key={feature} className="flex items-center text-[10px]">
-                      <span className="w-28 text-slate-400 truncate">{feature}</span>
+                      <span className="w-40 text-slate-400 truncate">{feature}</span>
                       <div className="flex-1 bg-slate-850 h-2.5 rounded-full overflow-hidden mx-2">
                         <div 
                           className="bg-amber-500 h-full rounded-full" 

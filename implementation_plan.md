@@ -1,103 +1,74 @@
-# [v1.1-stable] 관리자 콘솔 고도화, 어드민 계정 관리 및 ML 모델 자동 재학습 수립 계획서
+# [v1.2-alpha] 단계별 위저드형 공간정보 벌크 적재 및 웹 어드민 ML 재학습 구현 계획서
 
-본 계획서는 **OmniSite v1.1-stable**의 무결성을 최종 확보하기 위해, 관리자 콘솔(Admin Console)의 원천 데이터 적재 범위를 ESRI Shapefile로 확장하고, 공무원 사용자 계정의 생명주기 관리(CRUD) 체계를 완전 조립하며, **행정 데이터 연동형 ML 모델 자동 재학습(Retraining) 및 동적 피처 생성 파이프라인**을 수립하기 위한 추가 개발 설계서입니다.
+본 계획서는 **OmniSite v1.2-alpha**의 기능 무결성을 완결하기 위해, (1) 통합 어드민 콘솔의 콜드스타트 초기 구동 인프라 구축 방식을 기존의 일괄 zip 업로드에서 **"4단계 순차적 멀티업로드 위저드(Step-by-Step Wizard Ingestion Engine)"**로 전면 전환하고, (2) 독립 터미널 실행에 의존하고 있던 XGBoost ML 모델의 생성을 웹 UI 상에서 버튼 하나로 기동할 수 있도록 백엔드 훈련 API 및 프론트엔드 UX를 연동하기 위한 설계서입니다.
+
+---
 
 ## User Review Required
 
 > [!IMPORTANT]
-> 1. **버전 관리 시작:** 마스터 연구노트의 공식 버전을 `v1.1-stable` 체계로 승격하고, 현 리비전부터 역사 기록을 상시 가동합니다.
-> 2. **모의 심의 토론 페르소나 양식 무결화:** SSE 토론 스트리밍 시작부에서 찬성측/반대측/정부측 메타 헤더를 전송하여 프론트엔드 파서 및 대화 풍선 렌더링 색상이 뒤바뀌거나 깨지는 버그를 원천 진압합니다.
-> 3. **어드민 로그인 및 비밀번호 자가 리셋:** 콜드 부팅 시 기본 어드민 계정(`admin` / `admin1234`)이 DB에 자동 인서트되도록 초기 시드 스크립트를 개조하고, 로그인 상태에서 비밀번호를 즉시 변경할 수 있는 신규 API를 장착합니다.
-> 4. **관리자 최초 로그인 시 패스워드 변경 강제 유도:** 기본 패스워드(`admin1234`) 상태인 관리자 계정 로그인 시 백엔드에서 `require_password_change: true` 플래그를 반환하고, 프론트엔드 로그인 페이지에서 다른 모든 화면 진입을 전면 차단한 채 비밀번호 강제 교체 모달을 우선 실행시킵니다.
-> 5. **공간지리 Shapefile (shp, dbf, shx) Ingestion 파이프라인 개발 및 데이터 교체(Replace/Append) 정책 구현:** 지적도 공간정보를 신규 읍면동 단위로 셋업할 때 백엔드로 SHP 셋을 업로드하면, PostGIS 상에서 좌표계를 스스로 판독(Auto-SRID)하여 위경도 MultiPolygon으로 자동 변환 이관 적재하는 경량 GIS Ingestion 엔진을 구축합니다. 특히 데이터 갱신 시 중복 적재를 막고 안전한 교체를 보장하기 위해, 업로드 시 **"덮어쓰기 (Replace - 기존 테이블 비우고 새로 올리기)"** 및 **"추가 적재 (Append - 중복 지번/PNU 필터링 후 덧붙이기)"**의 Ingestion 정책 옵션을 어드민 콘솔에 제공하고 백엔드 트랜잭션에서 기존 데이터를 자동으로 날리거나 중복 충돌을 방어 처리하도록 구현합니다.
-> 6. **동적 ML 모델 재학습 및 피처 추출 자동화:** 공간 데이터 및 행정구역 변동 발생 시 최신 DB 상태(`cadastral_lands`, `restricted_zones`)로부터 피처를 실시간 조인 및 공간 계산(`ST_Distance`)하여 최신 훈련 데이터셋을 동적 합성하고, Uvicorn 서버 락을 차단하는 비동기(`BackgroundTasks`) XGBoost 재학습 API 및 관리자 콘솔 탭 UI를 전격 도입합니다.
+> 1. **단계별 위저드형 공간 데이터 인제스천 체계 도입:**
+>    * 일관 zip 방식은 오류가 났을 때 원인 규명이 어렵고 유연성이 떨어집니다. 따라서 이를 **4단계 순차적 위저드 UI**로 변경합니다.
+>    * 이전 단계를 성공해야만 다음 단계 업로드 드롭존이 활성화되는 프론트엔드 상태 제어(State Guard)를 통해 공간 DB 외래키(FK) 의존성 크래시를 원천 차단합니다.
+> 2. **지리지표 멀티 업로드 및 "건너뛰기(Skip)" 정책 수립:**
+>    * 3단계 지리지표 CSV 업로드 시 여러 파일을 드래그 앤 드롭으로 던지면 개별 분석 프로그레스바가 노출되고, 아직 데이터가 구축되지 않은 지표의 경우 **"건너뛰기(Skip)"**를 눌러 유연하게 다음 단계로 전향할 수 있게 설계합니다.
+> 3. **웹 관리자 콘솔 전용 ML 모델 재학습(Retraining) API 개설 및 핫 스왑:**
+>    * 백엔드에 `/api/v1/model/retrain` API를 개설하여, 사용자가 웹 브라우저 상에서 버튼 하나로 내장 데이터셋(`css_train_dataset.csv`)을 통한 XGBoost 모델 훈련을 트리거하고, 즉시 생성된 `.pkl` 모델 객체를 인메모리 싱글톤 레지스트리에 핫 스왑 로딩하도록 구현합니다.
 
 ---
 
 ## Proposed Changes
 
-### 1. 백엔드(FastAPI) 계정 관리, 데이터 적재 및 ML 재학습 엔진
-
-#### [MODIFY] [auth.py](file:///c:/Users/Admin/Desktop/빅프로젝트 관련자료/최종1차/1.0-prototype/backend/app/routers/auth.py)
-*   **로그인 응답 스키마 확장:**
-    *   `/login` 엔드포인트에서 로그인 대상이 `admin` 이고, 해시 검증 결과 디폴트 패스워드(`admin1234`)가 여전히 가용 상태라면 응답 페이로드에 `require_password_change: true` 상태 플래그를 실어서 반환하도록 로직을 변경합니다.
-*   **비밀번호 자가 변경 API 추가 (`POST /api/v1/auth/change-password`):**
-    *   현재 로그인된 사용자(`get_current_user`)가 기존 비밀번호 검증을 거쳐 안전하게 패스워드를 갱신할 수 있는 트랜잭션을 구현합니다.
-*   **사용자 디렉토리 관리 API 추가:**
-    *   `GET /api/v1/auth/users`: 등록된 모든 실무관 계정 목록 조회 (어드민 전용 가드).
-    *   `DELETE /api/v1/auth/users/{user_id}`: 특정 실무관 계정 강제 삭제 (어드민 전용 가드).
-    *   `POST /api/v1/auth/users/{user_id}/reset-password`: 특정 사용자 비밀번호 관리자 강제 재설정 (어드민 전용 가드).
-
-#### [MODIFY] [seed_db.py](file:///c:/Users/Admin/Desktop/빅프로젝트 관련자료/최종1차/1.0-prototype/seed_db.py)
-*   **DB 스키마 경량화 및 불필요 테이블 제거:**
-    *   현재 적재량 0건으로 비어 있고 임시 파일 런타임 업로드로 전향하기로 합의된 세 개의 불필요한 테이블 `childcare_centers`, `commercial_shops`, `trash_bins`를 데이터베이스 기동 시점에 `DROP TABLE IF EXISTS ... CASCADE;` 문을 실행해 전격 삭제하고 SQLAlchemy 모델 바인딩을 제거합니다.
-*   데이터베이스 시딩 완료 시점에 `users` 테이블을 검사하고, 기본 관리자 계정(`admin`/`admin1234`)이 존재하지 않을 시 bcrypt 해싱을 가동해 자동 주입 적재하는 방어 모듈을 주입합니다.
+### 1. 백엔드(FastAPI) 단계별 개별 적재 엔드포인트 설계
 
 #### [MODIFY] [upload.py](file:///c:/Users/Admin/Desktop/빅프로젝트 관련자료/최종1차/1.0-prototype/backend/app/routers/upload.py)
-*   **초기 구동 공간 마스터 적재 API 추가 (`POST /api/v1/upload/seed-spatial`):**
-    *   **다지역 동적 확장(Multi-Region Initializer):** 자치구(districts)나 읍면동(dong_boundaries) 및 연속지적도(cadastral_lands) 데이터를 ZIP 혹은 멀티파트 폼으로 한 번에 수신합니다.
-    *   **자치구명 및 행정구코드 동적 판독:** 업로드된 자치구 SHP/DBF 레코드로부터 `SIG_CD` (예: 용산구 11170) 및 `SIG_KOR_NM` (용산구)을 런타임에 파싱하여 `districts` 테이블에 `INSERT ... ON CONFLICT (sig_cd)` 처리합니다. 이를 통해 기존의 용산구 하드코딩 시딩 구조를 전면 철폐하고, **전국 어떤 지자체라도 공간 파일만 올리면 자동으로 마스터 메타데이터가 자체 완공**되는 다지역 확장 구조를 완성합니다.
-    *   **행정동 및 연속지적도 조인 적재:** 행정동 SHP 및 동 매핑 CSV가 올라오면 이들을 읽어 `dong_boundaries`에 다각형 및 코드를 시딩하고, 지적도 적재 시점에 `11. 국유부동산정보.csv` 와 지번 조인을 수행해 소유권 정보를 실시간 병합합니다.
-*   **Shapefile 마스터 벌크 적재 API 추가 및 Ingestion 모드 구현 (`POST /api/v1/upload/seed-shapefile`):**
-    *   관리자 콘솔에서 업로드한 `.shp`, `.dbf`, `.shx` 파일 셋을 병렬 수집하고, `pyshp`를 기동하여 공간 지오메트리를 추출합니다.
-    *   **Auto-SRID 감지 알고리즘:** X 좌표 범위가 120~132 이면 EPSG:4326, 15만~25만 이면 EPSG:5186 (중부원점), 80만~110만 이면 EPSG:5179 (UTM-K)로 감지하여 PostGIS `ST_Transform` 쿼리를 통해 `city_spatial_features` 혹은 `cadastral_lands` 테이블에 다각형 geom을 정합 이관 적재합니다.
-    *   **데이터 갱신/덮어쓰기 모드 도입:** 업로드 시 `mode` 파라미터(`"replace"` or `"append"`)를 추가로 받아, `"replace"` 일 경우 데이터를 삽입하기 전 해당 `target_table`을 비우는(`DELETE FROM` or `TRUNCATE`) 트랜잭션을 선행 구동합니다. `"append"` 일 경우엔 기존 데이터를 보존한 채 신규 데이터만 추가로 인서트합니다. (중복 검사를 위해 `cadastral_lands` 의 경우 `pnu` 중복 레코드는 스킵하는 로직을 반영합니다)
+* **`POST /api/v1/upload/seed-spatial-step1` (뼈대 구축):**
+  * 업로드 인자: 시군구 SHP 세트, 읍면동 SHP 세트, 법정동-행정동 연계 CSV (멀티파트 업로드).
+  * 역할: 기존 `init_coldstart`에서 뼈대 적재 부문만 격리하여 `districts`, `dong_boundaries`에 대한 공간 DB 기초 프레임을 빌드합니다.
+* **`POST /api/v1/upload/seed-spatial-step2` (지적도 구축):**
+  * 업로드 인자: 연속지적도(LSMD) SHP 세트, 국유부동산 대장 CSV (선택).
+  * 역할: 1단계에서 완성된 법정동 경계 데이터(`dong_boundaries`)를 기준으로 연속지적도 도형을 centroid 공간 연산(`ST_Contains`)하여 `cadastral_lands` 테이블에 완벽한 지적 마스터 데이터를 적재합니다.
+* **`POST /api/v1/upload/seed-spatial-step3` (지리지표 멀티 적재):**
+  * 업로드 인자: 개별 CSV 파일 및 타겟 테이블 정보 (예: `restricted_zones`, `transit_stations`, `transit_passengers`, `population_stats`).
+  * 역할: 개별적으로 업로드되는 벌크 CSV 파일에 대해 인코딩 및 컬럼 정합성을 판독하고, 각각의 타겟 DB 테이블에 공간 포인트 변환 등을 수반하여 즉시 인서트 처리합니다.
+* **`POST /api/v1/upload/seed-spatial-step4` (최종 완성 및 락 해제):**
+  * 역할: 시딩 완료 트랜잭션을 확정하고, 초기 부팅 상태 마크를 해제하여 SDSS 의사결정 시뮬레이터 본체를 활성화합니다.
 
 #### [NEW] [model.py](file:///c:/Users/Admin/Desktop/빅프로젝트 관련자료/최종1차/1.0-prototype/backend/app/routers/model.py)
-*   **모델 재학습 및 피처 추출 API 구현 (`POST /api/v1/model/retrain`):**
-    *   관리자가 콘솔에서 훈련 대상 도메인(예: `smoking_zone`)을 선택하여 학습을 요청하면 `BackgroundTasks`로 비동기 훈련 파이프라인을 기동합니다.
-    *   **휘발성 임시 캐시 격리 및 검증 데이터셋(Verified Precedents) 연동:** 
-        *   사용자가 수시로 업로드하는 Step 1 임시 데이터셋은 DB 오염을 방지하기 위해 ML 모델 훈련 대상에서 **철저히 배제(Exclusion)**합니다.
-        *   대신, `Audit AI`가 최종 공문서 PDF 검증을 완료하여 공식 승인한 실재 행정 데이터셋인 **`verified_precedents` 테이블의 데이터만을 ML 학습의 정답 레이블(Target Label) 소스로 활용**합니다.
-        *   **콜드 스타트 방어 가드 (Cold-Start Fallback):** 만약 새로운 지자체 환경에 최초 구동되어 `verified_precedents` 의 실측 데이터가 없거나 훈련 최소 조건(예: 30건 미만)에 부합하지 못하는 콜드 상태일 경우, 시스템 크래시를 방지하기 위해 패키지 내에 기본 동봉된 **`backend/data/processed/css_train_dataset.csv` 일반화 지리 통계 데이터셋을 파일 시스템에서 강제 로드하여 대체 학습(Fallback Train)**하도록 구현합니다.
-    *   `verified_precedents` 내의 입지 중심 좌표(`geom`)와 `restricted_zones`(공인 규제 보호시설)과의 실제 지리적 이격 거리를 PostGIS `ST_Distance` 로 직접 쿼리하여 `dist_to_school`, `dist_to_childcare` 피처 값을 런타임에 동적 산출합니다.
-    *   학습용으로 변환된 피처 매트릭스를 XGBoost Classifier 파이프라인 모델에 피팅시킨 뒤, 생성된 바이너리를 `backend/app/models/registry` 하위에 저장하고 인메모리 싱글톤 모델 레지스트리를 즉시 핫 리로드(Hot-reload)합니다.
-*   **모델 성능 상태 조회 API 구현 (`GET /api/v1/model/status`):**
-    *   현재 싱글톤 레지스트리에 메모리 로드되어 가용 중인 XGBoost 모델의 학습 통계(정확도, F1-Score) 및 피처 기여도(Feature Importance) 배열을 조회합니다.
+* **모델 재학습 및 성능 상태 조회 라우터 신규 구현:**
+  * `POST /api/v1/model/retrain`: 훈련 요청 수신 시 `BackgroundTasks`를 통해 Uvicorn 스레드 차단 없이 XGBoost 모델 훈련 파이프라인(`train_css_model.py` 로직 내재화)을 비동기 구동합니다. 훈련이 성공적으로 완료되면 즉시 `backend/app/models/registry/smoking_zone_v1.pkl`로 모델을 물리 저장하고 `model_registry.load_models()`를 강제 기동하여 핫 리로드(Hot Swap)를 완결합니다.
+  * `GET /api/v1/model/status`: 현재 로드되어 가용 중인 XGBoost 모델의 F1-Score 등 성능 검증 지표와 변수 중요도(Feature Importance) 정보를 프론트엔드로 전달합니다.
 
-#### [MODIFY] [spatial.py](file:///c:/Users/Admin/Desktop/빅프로젝트 관련자료/최종1차/1.0-prototype/backend/app/routers/spatial.py)
-*   **SSE 메타 헤더 송출:** `stream_debate_sim` 내에서 OpenAI 스트림이 최초 가동되는 즉시 `data: {"meta": true, "personas": ["찬성측", "반대측", "정부측"]}` JSON 청크를 발행하도록 조치합니다.
-*   **화자 분류 정규식 매핑 보정:** `save_debate_log_to_file` 의 화자 분리 시, `'찬성측'`, `'반대측'`, `'정부측'` 문자열과 동적 페르소나 매핑 명칭이 콜론 뒤에서 파열되지 않도록 정규식 스캔 구조를 고도화합니다.
+#### [MODIFY] [main.py](file:///c:/Users/Admin/Desktop/빅프로젝트 관련자료/최종1차/1.0-prototype/backend/app/main.py)
+* 신규 작성한 `model_router`를 가져와 `app.include_router(model_router)`를 통해 정식 등록 및 CORS 정책을 통합 바인딩합니다.
 
 ---
 
-### 2. 프론트엔드(Next.js) 관리자 콘솔 3대 탭 확장 및 UX 바인딩
-
-#### [MODIFY] [page.js](file:///c:/Users/Admin/Desktop/빅프로젝트 관련자료/최종1차/1.0-prototype/frontend/src/app/page.js)
-*   **최초 로그인 패스워드 강제 리셋 UI 추가:**
-    *   로그인 API 호출 후 `require_password_change: true` 플래그 수신 시, 기존의 대시보드 강제 리다이렉션을 차단하고, 화면 전체에 **"최초 로그인 보안 비밀번호 변경 안내"** 모달을 띄워 패스워드 교체 전에는 메인 시스템에 진입할 수 없도록 강제 유도 프로세스를 구축합니다.
+### 2. 프론트엔드(Next.js) 4단계 시각화 위저드(Wizard) UI 구현
 
 #### [MODIFY] [page.js](file:///c:/Users/Admin/Desktop/빅프로젝트 관련자료/최종1차/1.0-prototype/frontend/src/app/spatial/page.js)
-*   **관리자 콘솔 UI 구조 변경:**
-    *   통합 관리자 콘솔 모달 내부를 **"🛠️ 초기 구동 설정"**, **"📊 데이터 벌크 적재"**, **"👥 실무자 계정 관리"**, **"🤖 ML 모델 재학습"**의 4개 탭 레이아웃으로 확장 개편합니다.
-    *   **초기 구동 설정 (Cold Start) 탭 (신규):**
-        *   신규 지자체 이식 또는 플랫폼 최초 시동 시, 시군구(districts) SHP 세트, 행정동(dong_boundaries) SHP 세트, 동매핑 CSV, 연속지적도(cadastral_lands) SHP 세트 + 국유부동산 CSV 파일을 순차적 혹은 zip 압축하여 일괄 업로드할 수 있는 **"🛠️ 자치구 공간정보 초기 인프라 구축"** 드롭존 인터페이스를 배포합니다.
-        *   업로드 진행 시 백엔드 `/upload/seed-spatial` API를 기동하여 공간 DB 뼈대를 자치구명과 SIG_CD를 자동 감지(Auto-Region Parsing)하여 자동 세팅하고, 적재 현황(예: "용산구 적재 완료 - 행정동 16개, 필지 11,245개 완료")을 모달 화면에 역동적인 프로그레스바로 시각화해 줍니다.
-    *   **데이터 벌크 적재 탭:**
-        *   CSV/Shapefile 업로드 제어판 상단에 **"적재 옵션"** 라벨과 함께 **"기존 데이터 비우고 덮어쓰기 (Replace)"** 및 **"기존 데이터에 덧붙이기 (Append)"** 라디오 버튼 컴포넌트를 설계하여 백엔드 `/upload/seed-shapefile` 에 `mode` 쿼리 파라미터를 연동 전달합니다.
-        *   데이터 종류 선택 셀렉트박스의 기계적 테이블 명칭(예: `cadastral_lands`)을 **"🗺️ 토지 지적도 및 필지 정보"**, **"🚫 법정 용도제한 보호구역"**, **"🛍️ 소상공인 상권 점포 분포"**, **"💬 주민 불편 민원 접수 대장"** 등 직관적인 한글 행정 명칭으로 교체합니다.
-        *   선택된 테이블 항목에 따라 **"허용 포맷(.csv 또는 .shp 셋)"**과 **"데이터 맵핑 항목(지번, PNU, 좌표 등)"** 및 데이터의 정의를 친절하게 해설하는 **동적 행정 설명 가이드 박스**를 표출하여 실무자의 오작동을 차단합니다.
-    *   **ML 모델 재학습 탭:**
-        *   현재 활성화된 XGBoost 모델의 정확도, F1-Score와 피처 중요도 상위 항목 리스트(Bar 형태의 시각적 컴포넌트)를 렌더링하고, **"⚡ ML 모델 재학습 수행"** 버튼을 제공합니다.
-        *   탭 내에 **"📖 ML 학습 데이터 구성 및 훈련 메커니즘 설명서"** 섹션을 상시 노출합니다. 여기에는 모델이 훈련에 사용하는 핵심 피처(`지목 코드`, `국공유지 유형`, `필지 면적`, `학교까지의 이격거리`, `어린이집 금역 이격거리`)가 실제 DB의 공간 데이터로부터 결합 추출되어 가해지는 방식과 XGBoost 학습의 목적을 개식체로 친절히 설명하여 공무원 실무진의 XAI(설명 가능한 AI) 활용성을 확보합니다.
-        *   버튼 클릭 시 백엔드 재학습 API를 비동기 호출하고, 훈련 중 상태(로딩 인디케이터 및 펄스 애니메이션)를 화면에 표시하며 훈련 완료 시 즉시 갱신된 학습 결과를 시각 리렌더링합니다.
-
-#### [MODIFY] [DebateSimulatorModal.jsx](file:///c:/Users/Admin/Desktop/빅프로젝트 관련자료/최종1차/1.0-prototype/frontend/src/components/DebateSimulatorModal.jsx)
-*   **색상 뒤바뀜 핫픽스:**
-    *   *찬성측* (상권 옹호 / 생존권 호소) ➔ `text-rose-400 font-medium` (상인측)
-    *   *반대측* (정주권 침해 / 아이들 보행 안전) ➔ `text-emerald-400 font-medium` (주민측)
-    *   *정부측* (RAG 법령 매핑 / 중재 조정안) ➔ `text-sky-400 font-medium`
+* **어드민 콘솔 초기 구동 설정 UI를 "단계별 위저드 모드"로 개편:**
+  * **상태 관리 장착 (`step` 및 `uploadStatus`):**
+    * `Step 1 (뼈대 구축)`: 시군구/읍면동 SHP 세트 + 법정동 연계 CSV 업로드 드롭존 노출. 업로드 성공 시에만 `Step 2` 활성화.
+    * `Step 2 (토지 정보)`: 지적도 SHP 세트 + 국유지 CSV 업로드 드롭존 활성화. 성공 시 `Step 3` 활성화.
+    * `Step 3 (지리지표 멀티 업로드)`: 4대 핵심 지수 CSV 멀티 업로드 드롭존 설계. 개별 파일들의 적재 진행 상태를 순차적 프로그레스바로 시각화. 완료 전이라도 **"건너뛰기(Skip)"** 버튼을 허용하여 런타임 유연성 보장.
+    * `Step 4 (최종 락 해제)`: 초기 구동 완료 플래그 적용 및 ML 모델 훈련 세션 안내.
+  * **"🤖 ML 모델 재학습" 탭 연동:**
+    * 탭 진입 시 백엔드 `/api/v1/model/status`를 호출하여 학습 상태 및 피처 중요도 차트를 실시간 출력합니다.
+    * **"⚡ ML 모델 최초 생성 및 재학습 기동"** 버튼을 배치하고, 클릭 시 `/api/v1/model/retrain` API를 트리거하여 비동기식 훈련 프로그레스 로딩 바를 화면에 활성화합니다. 훈련 성공 모달 표출 후 status를 automatic 갱신 리렌더링하도록 훅 구조를 결합합니다.
 
 ---
 
 ## Verification Plan
 
 ### Automated Tests
-*   `seed_db.py` 완료 후 DB 상 `users` 테이블 내 `admin` 계정 및 `hashed_password` 유무 확인 테스트.
-*   Shapefile 업로드 후 변환된 PostGIS geom 레코드들의 유효성(`ST_IsValid`) 수동 쿼리 대조.
-*   `/api/v1/model/retrain` API 비동기 구동 시 백그라운드 스레드 정상 실행 여부 및 학습 완료된 pkl 파일 교체 스냅샷 검증.
+1. **단계별 Ingestion API 검증:**
+   * Step 1 API를 호출해 `districts`와 `dong_boundaries`가 구축되는지 확인.
+   * Step 2 API를 호출해 Step 1의 `dong_boundaries`와 기하적으로 contains 조인되어 `cadastral_lands`가 정상 인서트되는지 외래키 충돌 여부 확인.
+   * Step 3 개별 API 호출 및 건너뛰기 수행 시, 건너뛴 지표들에 대한 null 데이터 예외가 ML/AHP 엔진에서 안전하게 예외처리되는지 검증.
+2. **ML Retrain API 검증:**
+   * `/api/v1/model/retrain` 호출 후 백그라운드 학습이 성공하여 `smoking_zone_v1.pkl` 파일 타임스탬프가 최신화되고 레지스트리에 핫스왑 로딩되는지 서버 콘솔 로그 검증.
 
 ### Manual Verification
-*   관리자 콘솔을 열어 계정 목록 탭 기동 시 등록된 실무관 목록이 정합성 있게 출력되는지, 신규 추가/삭제가 즉시 리렌더링되는지 브라우저에서 검증.
-*   **ML 모델 재학습 탭**에서 재학습 기동 후, 정확도 통계 및 피처 중요도가 동적으로 새로고침 갱신되어 출력되는지 브라우저에서 검증.
-*   실시간 모의 토론 모달 3자 대사에서 색상 대비 및 화자 꼬리표 파열이 없음(Strict regex 매핑 성공)을 육안 확인.
+1. 브라우저에서 통합 어드민 콘솔 모달의 `초기 구동 설정` 탭을 열어 1단계부터 4단계까지의 상태 가이드와 비동기 프로그레스바가 정합성 있게 변경/잠금해제되는지 테스트합니다.
+2. 3단계 지리지표 적재 중 "건너뛰기"가 정상 작동하며, 최종 4단계에서 ML 모델 생성 버튼 기동 시 학습 완료 모달이 표출되는지 검증합니다.

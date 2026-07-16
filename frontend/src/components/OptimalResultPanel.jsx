@@ -32,10 +32,10 @@ export default function OptimalResultPanel({
       {/* ========================================================================= */}
       {/* 1. [Step 2] 비주얼 HITL 좌표 보정 영역 */}
       {/* ========================================================================= */}
-      {pipelineStep === 2 && (
+      {pipelineStep === 3 && (
         <div className="flex flex-col gap-3">
           <div className="border-b border-slate-800 pb-2">
-            <h2 className="text-xs font-bold text-amber-500">Step 2. 비주얼 HITL 좌표 보정 중</h2>
+            <h2 className="text-xs font-bold text-amber-500">Step 3. 비주얼 HITL 좌표 보정 중</h2>
             <p className="text-[10px] text-slate-400 font-medium">지도의 주황색 핀을 드래그하거나 아래 좌표를 보정하세요</p>
           </div>
 
@@ -131,9 +131,9 @@ export default function OptimalResultPanel({
       )}
 
       {/* ========================================================================= */}
-      {/* 2. [Step 4] 최적 추천 후보지 속성 카드 및 리포트 */}
+      {/* 2. [Step 5] 최적 추천 후보지 속성 카드 및 리포트 */}
       {/* ========================================================================= */}
-      {pipelineStep === 4 && (
+      {pipelineStep === 5 && (
         Object.keys(selectedParcel).filter(k => selectedParcel[k] && selectedParcel[k].id).length === 0 ? (
           <div className="flex flex-col gap-4 bg-slate-950/40 p-5 rounded-2xl border border-rose-500/20 text-center">
             <span className="text-[32px] text-rose-500 animate-pulse">📍</span>
@@ -177,7 +177,7 @@ export default function OptimalResultPanel({
 
           {/* 필지 속성 카드 */}
           <div className="flex flex-col gap-2">
-            <h3 className="text-xs font-semibold text-slate-300">Step 4. 추천지 속성 정보</h3>
+            <h3 className="text-xs font-semibold text-slate-300">Step 5. 추천지 속성 정보</h3>
             <div className="bg-slate-950/40 rounded-xl p-4.5 flex flex-col gap-3 border border-slate-900">
               <div className="flex justify-between items-start gap-1">
                 <div className="flex flex-col gap-0.5">
@@ -258,27 +258,27 @@ export default function OptimalResultPanel({
             </div>
           )}
 
-          {/* Step 5 이동 네비게이션 버튼 */}
+          {/* Step 6 이동 네비게이션 버튼 */}
           <button
-            onClick={() => setPipelineStep(5)}
+            onClick={() => setPipelineStep(6)}
             className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs py-3.5 rounded-xl transition-all cursor-pointer shadow-lg shadow-blue-900/30 flex items-center justify-center gap-1.5"
           >
-            Step 5. 의사결정 갈등 심의 이동 ➔
+            Step 6. 의사결정 갈등 심의 이동 ➔
           </button>
         </div>
       ))/* [v4.9.20] End of step 4 conditional ternary mapping */ }
 
       {/* ========================================================================= */}
-      {/* 3. [Step 5] 의사결정 시뮬레이션 및 토론 (독립 격리) */}
+      {/* 3. [Step 6] 의사결정 시뮬레이션 및 토론 (독립 격리) */}
       {/* ========================================================================= */}
-      {pipelineStep === 5 && (
+      {pipelineStep === 6 && (
         <div className="flex flex-col gap-5">
-          {/* Step 4 롤백 뒤로가기 버튼 */}
+          {/* Step 5 롤백 뒤로가기 버튼 */}
           <button
-            onClick={() => setPipelineStep(4)}
+            onClick={() => setPipelineStep(5)}
             className="w-fit text-[10px] text-slate-400 hover:text-slate-200 transition-all cursor-pointer font-semibold flex items-center gap-1 bg-slate-900/60 px-3 py-1.5 rounded-lg border border-slate-800"
           >
-            ◀ Step 4. 입지 정보로 돌아가기
+            ◀ Step 5. 입지 정보로 돌아가기
           </button>
 
           {/* 갈등 민감도 카드 */}
@@ -305,7 +305,7 @@ export default function OptimalResultPanel({
 
           <div className="border-t border-slate-850 pt-4 flex flex-col gap-4">
             <div className="flex justify-between items-center">
-              <span className="text-xs font-semibold text-slate-300">Step 5. 의사결정 시뮬레이션</span>
+              <span className="text-xs font-semibold text-slate-300">Step 6. 의사결정 시뮬레이션</span>
               <span className="text-[10px] text-slate-400 font-mono">갈등 조율 시뮬레이터</span>
             </div>
 
@@ -369,12 +369,13 @@ export default function OptimalResultPanel({
       )}
 
       {/* ========================================================================= */}
-      {/* 4. [기타] Step 1 및 3 진행 중 가이드 */}
+      {/* 4. [기타] Step 1, 2, 3 및 4 진행 중 가이드 */}
       {/* ========================================================================= */}
-      {pipelineStep !== 2 && pipelineStep < 4 && (
+      {pipelineStep !== 3 && pipelineStep < 5 && (
         <div className="text-center py-20 text-slate-500 text-xs">
           [Step 1] 데이터 적재 및 <br />
-          [Step 3] AHP 가중치 잠금을 진행하시면<br />
+          [Step 2] ML 예측 신뢰도 검증 및 <br />
+          [Step 4] AHP 가중치 잠금을 진행하시면<br />
           이곳에 공간 차집합 추천 결과가 출력됩니다.
         </div>
       )}

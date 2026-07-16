@@ -11,7 +11,7 @@ from fastapi import APIRouter, Depends, BackgroundTasks, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from app.database import get_db, SessionLocal, engine
-from app.utils.auth import get_current_admin
+from app.utils.auth import get_current_admin, get_current_user
 from app.routers.spatial import model_registry, registry_path
 
 # 프로젝트 백엔드 루트 디렉토리 설정
@@ -78,44 +78,55 @@ def load_initial_model_status():
 load_initial_model_status()
 
 
-def background_model_train():
-    """XGBoost 모델 학습 및 핫스왑 비동기 태스크"""
+def background_model_train(domain="smoking_zone"):
+    """XGBoost 모델 학습 및 핫스왑 비동기 태스크 (동적 공간 피처 추출 지원)"""
     global training_status
     training_status["is_training"] = True
     training_status["error"] = None
     
     db = SessionLocal()
     try:
-        print("[ML Process] Starting data querying from PostGIS for training dataset...")
+        print(f"[ML Process] Starting dynamic spatial data querying for domain: {domain}")
         
-        # 1. build_ml_training_set.py 로직 내재화하여 데이터셋 쿼리 수행
-        query = text("""
-            WITH nearest_school AS (
-                SELECT DISTINCT ON (c.id)
-                    c.id AS parcel_id,
-                    ST_Distance(ST_Centroid(c.geom)::geography, rz.geom::geography) AS dist_to_school
-                FROM cadastral_lands c
-                CROSS JOIN LATERAL (
-                    SELECT geom FROM restricted_zones 
-                    WHERE zone_type = 'school' 
-                    ORDER BY ST_Centroid(c.geom) <-> geom 
-                    LIMIT 1
-                ) rz
-                WHERE c.district_id = 1
-            ),
-            nearest_childcare AS (
-                SELECT DISTINCT ON (c.id)
-                    c.id AS parcel_id,
-                    ST_Distance(ST_Centroid(c.geom)::geography, rz.geom::geography) AS dist_to_childcare
-                FROM cadastral_lands c
-                CROSS JOIN LATERAL (
-                    SELECT geom FROM restricted_zones 
-                    WHERE zone_type = 'childcare_center' 
-                    ORDER BY ST_Centroid(c.geom) <-> geom 
-                    LIMIT 1
-                ) rz
-                WHERE c.district_id = 1
-            )
+        # 1. restricted_zones 내 고유 zone_type 스캔
+        zone_types_res = db.execute(text("SELECT DISTINCT zone_type FROM restricted_zones;")).fetchall()
+        zone_types = [r[0] for r in zone_types_res if r[0]]
+        if not zone_types:
+            zone_types = ['school', 'childcare_center']
+            
+        print(f"[ML Process] Scanned active spatial zone types: {zone_types}")
+        
+        # 2. 동적 CTE 및 SELECT 최단 거리 피처 SQL 생성
+        cte_parts = []
+        select_parts = []
+        join_parts = []
+        
+        for z in zone_types:
+            z_clean = z.replace('-', '_').replace(' ', '_')
+            cte_parts.append(f"""
+                nearest_{z_clean} AS (
+                    SELECT DISTINCT ON (c.id)
+                        c.id AS parcel_id,
+                        ST_Distance(ST_Centroid(c.geom)::geography, rz.geom::geography) AS dist_to_{z_clean}
+                    FROM cadastral_lands c
+                    CROSS JOIN LATERAL (
+                        SELECT geom FROM restricted_zones 
+                        WHERE zone_type = '{z}' 
+                        ORDER BY ST_Centroid(c.geom) <-> geom 
+                        LIMIT 1
+                    ) rz
+                    WHERE c.district_id = 1
+                )
+            """)
+            select_parts.append(f"COALESCE({z_clean}_tbl.dist_to_{z_clean}, 9999.0) AS dist_to_{z_clean}")
+            join_parts.append(f"LEFT JOIN nearest_{z_clean} {z_clean}_tbl ON c.id = {z_clean}_tbl.parcel_id")
+            
+        cte_sql = ",\n".join(cte_parts)
+        select_sql = ",\n".join(select_parts)
+        join_sql = "\n".join(join_parts)
+        
+        query = text(f"""
+            WITH {cte_sql}
             SELECT 
                 c.id AS parcel_id,
                 c.pnu,
@@ -125,8 +136,7 @@ def background_model_train():
                 ST_Area(c.geom::geography) AS area,
                 ST_X(ST_Centroid(c.geom)) AS lng,
                 ST_Y(ST_Centroid(c.geom)) AS lat,
-                COALESCE(ns.dist_to_school, 9999.0) AS dist_to_school,
-                COALESCE(nc.dist_to_childcare, 9999.0) AS dist_to_childcare,
+                {select_sql},
                 COALESCE(cc.complaint_count, 0) AS complaint_count,
                 COALESCE(b.main_use_name, '미지정') AS building_use,
                 CASE 
@@ -135,8 +145,7 @@ def background_model_train():
                     ELSE -1
                 END AS target_label
             FROM cadastral_lands c
-            LEFT JOIN nearest_school ns ON c.id = ns.parcel_id
-            LEFT JOIN nearest_childcare nc ON c.id = nc.parcel_id
+            {join_sql}
             LEFT JOIN civil_complaints cc ON c.dong_id = cc.dong_id
             LEFT JOIN building_ledgers b ON c.pnu = b.pnu
             WHERE c.district_id = 1
@@ -153,7 +162,6 @@ def background_model_train():
         headers = list(result.keys())
         rows = [dict(zip(headers, r)) for r in result]
         
-        # Filter labeled cases only (target_label != -1)
         labeled_rows = [r for r in rows if r["target_label"] != -1]
         
         if len(labeled_rows) < 10:
@@ -161,12 +169,11 @@ def background_model_train():
             
         df = pd.DataFrame(labeled_rows)
         
-        # 한글 깨짐 데이터셋 복구 보정 전처리 (latin-1 -> cp949)
+        # 한글 깨짐 데이터셋 복구 보정 전처리
         def restore_korean_str(val):
             import re
             if pd.isna(val) or not str(val).strip():
                 return "미지정"
-            # 이미 정상 한글(가~힣)이 들어있다면 보정 작업 없이 원본 반환 (중요)
             if re.search(r"[가-힣]", str(val)):
                 return str(val).strip()
             try:
@@ -179,7 +186,10 @@ def background_model_train():
                 df[col] = df[col].apply(restore_korean_str)
         
         # 2. 전처리 & 학습 준비
-        X = df[['land_use_code', 'ownership_type', 'area', 'dist_to_school', 'dist_to_childcare', 'building_use']].copy()
+        numeric_features = ['area'] + [f"dist_to_{z.replace('-', '_').replace(' ', '_')}" for z in zone_types]
+        categorical_features = ['land_use_code', 'ownership_type', 'building_use']
+        
+        X = df[numeric_features + categorical_features].copy()
         y = df['target_label'].copy()
         
         # 결측값 방어 처리
@@ -187,19 +197,18 @@ def background_model_train():
         X['ownership_type'] = X['ownership_type'].fillna('국유지')
         X['building_use'] = X['building_use'].fillna('미지정')
         X['area'] = X['area'].fillna(X['area'].median())
-        X['dist_to_school'] = X['dist_to_school'].fillna(9999.0)
-        X['dist_to_childcare'] = X['dist_to_childcare'].fillna(9999.0)
+        for nf in numeric_features:
+            if nf != 'area':
+                X[nf] = X[nf].fillna(9999.0)
         
-        # 3. Train-Test Split (80% Train, 20% Test)
+        # 3. Train-Test Split
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
         
         # 4. Pipeline 설정
-        numeric_features = ['area', 'dist_to_school', 'dist_to_childcare']
         numeric_transformer = Pipeline(steps=[
             ('scaler', StandardScaler())
         ])
         
-        categorical_features = ['land_use_code', 'ownership_type', 'building_use']
         categorical_transformer = Pipeline(steps=[
             ('onehot', OneHotEncoder(handle_unknown='ignore', sparse_output=False))
         ])
@@ -237,15 +246,17 @@ def background_model_train():
         importances = classifier.feature_importances_
         importance_dict = {name: float(imp) for name, imp in zip(feature_names, importances)}
         
-        # 8. Serialize and Save to Registry
+        # 8. Serialize and Save to Registry (동적 도메인 태그 버전 적용)
         os.makedirs(registry_path, exist_ok=True)
-        model_path = os.path.join(registry_path, "smoking_zone_v1.pkl")
+        model_filename = f"{domain}_v1.pkl"
+        model_path = os.path.join(registry_path, model_filename)
         joblib.dump(pipeline, model_path)
+        print(f"[Model Save] Successfully serialized model to: {model_path}")
         
         # 파일 캐시 백업용 processed 디렉토리 저장
         processed_dir = os.path.join(base_dir, "data", "processed")
         os.makedirs(processed_dir, exist_ok=True)
-        df.to_csv(os.path.join(processed_dir, "css_train_dataset.csv"), index=False, encoding="utf-8-sig")
+        df.to_csv(os.path.join(processed_dir, f"css_train_dataset_{domain}.csv"), index=False, encoding="utf-8-sig")
         
         # 9. 핫스왑 리로드
         model_registry.load_models()
@@ -259,7 +270,7 @@ def background_model_train():
             "feature_importances": importance_dict,
             "error": None
         })
-        print(f"[ML Process] XGBoost Model retraining successfully finished. Accuracy: {acc:.4f}, F1-score: {f1:.4f}")
+        print(f"[ML Process] XGBoost Model retraining successfully finished for domain {domain}. Accuracy: {acc:.4f}, F1-score: {f1:.4f}")
         
     except Exception as e:
         db.rollback()
@@ -274,25 +285,26 @@ def background_model_train():
 @router.post("/retrain")
 async def retrain_model(
     background_tasks: BackgroundTasks,
-    current_admin: dict = Depends(get_current_admin)
+    domain: str = "smoking_zone",
+    current_user: dict = Depends(get_current_user)
 ):
-    """XGBoost 모델 재학습 비동기 기동 API"""
+    """XGBoost 모델 재학습 비동기 기동 API (도메인 분기 및 일반 실무자 권한 완화 지원)"""
     if training_status["is_training"]:
         raise HTTPException(
             status_code=400,
             detail="이미 다른 ML 모델 재학습 프로세스가 백그라운드에서 구동 중입니다."
         )
         
-    # 백그라운드로 훈련 작업 등록
-    background_tasks.add_task(background_model_train)
+    # 백그라운드로 훈련 작업 등록 (domain 인자 바인딩)
+    background_tasks.add_task(background_model_train, domain)
     return {
         "status": "training_started",
-        "message": "XGBoost 모델의 비동기 재학습이 기동되었습니다. 잠시 후 /status 엔드포인트를 호출하여 결과를 확인하십시오."
+        "message": f"XGBoost 모델의 비동기 재학습({domain})이 기동되었습니다. 잠시 후 /status 엔드포인트를 호출하여 결과를 확인하십시오."
     }
 
 @router.get("/status")
 async def get_model_status(
-    current_admin: dict = Depends(get_current_admin)
+    current_user: dict = Depends(get_current_user)
 ):
-    """현재 XGBoost 모델의 성능 통계 및 훈련 상태 조회 API"""
+    """현재 XGBoost 모델의 성능 통계 및 훈련 상태 조회 API (일반 실무자 권한 완화 지원)"""
     return training_status

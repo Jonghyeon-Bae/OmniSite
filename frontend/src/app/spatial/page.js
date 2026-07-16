@@ -67,6 +67,26 @@ export default function Home() {
     }
     return null;
   };
+  
+  // Step 1 승인(Approve) 시 ML 재학습 자동 기동 및 Step 2 이동 핸들러
+  const handleApproveStep1 = async () => {
+    try {
+      const finalDomain = inferredDomainTag || 'city_feature';
+      const res = await apiFetch(`/api/v1/model/retrain?domain=${finalDomain}`, {
+        method: 'POST'
+      });
+      if (res.ok) {
+        showToast(`🤖 ${finalDomain} 기반 XGBoost 모델 재학습이 기동되었습니다.`, 'info');
+      } else {
+        console.error('모델 재학습 API 호출 실패');
+      }
+      setPipelineStep(2);
+      fetchMlStatus();
+    } catch (err) {
+      console.error('Step 1 승인 및 재학습 트리거 에러:', err);
+      setPipelineStep(2);
+    }
+  };
 
   // 커스텀 토스트 알림 상태 및 헬퍼 함수
   const [toast, setToast] = useState({ show: false, message: '', type: 'info' });
@@ -197,9 +217,9 @@ export default function Home() {
     };
   }, [dragStart]);
 
-  // Step 2 진입 시 관할 경계 GeoJSON 및 규제 시설물 목록 로드
+  // Step 3 진입 시 관할 경계 GeoJSON 및 규제 시설물 목록 로드
   useEffect(() => {
-    if (pipelineStep === 2) {
+    if (pipelineStep === 3) {
       apiFetch(`/api/v1/spatial/district-boundary/${userDistrictId}`)
         .then(res => res.ok ? res.json() : null)
         .then(data => { if (data) setDistrictGeoJson(data); });
@@ -459,8 +479,8 @@ export default function Home() {
       }
       
       setIsAhpLocked(true);
-      setPipelineStep(4);
-      alert('AHP 모델 일관성 검증 승인. PostGIS 다기준 공간 차집합 연산 기동 완료! [Step 4: 최적 입지 선정 결과]를 우측에서 확인하세요.');
+      setPipelineStep(5);
+      alert('AHP 모델 일관성 검증 승인. PostGIS 다기준 공간 차집합 연산 기동 완료! [Step 5: 최적 입지 선정 결과]를 우측에서 확인하세요.');
     } catch (err) {
       alert('오류 발생: ' + err.message);
     } finally {
@@ -1461,6 +1481,10 @@ export default function Home() {
         isAhpLocked={isAhpLocked}
         handleSliderChange={handleSliderChange}
         handleAhpLock={handleAhpLock}
+        handleApproveStep1={handleApproveStep1}
+        mlStatus={mlStatus}
+        fetchMlStatus={fetchMlStatus}
+        showToast={showToast}
       />
 
       {/* 4. 우측 플로팅 패널: 후보지 탭 및 속성 정보 카드 (Information & HITL Panel) */}

@@ -1,14 +1,25 @@
-# [v1.2-alpha-Enhancement] 구현 작업 목록
+# OmniSite 6단계 공간계획 피드백 루프 개조 작업 체크리스트
 
-- [x] 1. 백엔드 멀티에이전트(Multi-agent) 토론 스트리밍 파이프라인 구현 (`backend/app/routers/spatial.py`)
-  - [x] 1.1. 찬성측, 반대측, 정부측 3대 독립 에이전트 시스템 프롬프트 세분화
-  - [x] 1.2. `chat_history`를 컨텍스트로 전달하는 8턴 연쇄 스트리밍 루프 개발
-  - [x] 1.3. Mock Fallback 역시 턴 단위 지연 스트리밍 방식으로 멀티에이전트처럼 작동하도록 통일
-- [x] 2. 프론트엔드 UI/UX 개조 및 이쁜 커스텀 토스트 알림 적용 (`frontend/src/app/spatial/page.js`)
-  - [x] 2.1. `toast` 상태 및 `showToast(msg, type)` 커스텀 디자인 팝업 컴포넌트 추가
-  - [x] 2.2. 모달 내 `alert()` 호출부들을 전량 커스텀 토스트로 교체
-  - [x] 2.3. 통합 관리자 콘솔 모달 크기 확장 (`max-w-lg` ➔ `max-w-4xl`)
-  - [x] 2.4. 데이터 벌크 탭 내 `🚀 원천 데이터 벌크 적재` 우측에 호버 툴팁 가이드 인포 단추 신설
-- [x] 3. 전체 시스템 연동 빌드 테스트 및 마스터 연구노트 `Rev 64` 갱신
-  - [x] 3.1. Next.js Turbopack 빌드 및 FastAPI Uvicorn 구동 성공 여부 테스트
-  - [x] 3.2. 연구노트 내 `Rev 64` 기록 추가 및 자치구청장 동적 PDF 연동 최종 점검
+- [x] **1단계: 백엔드 XGBoost 동적 피처 파이프라인 개조 (`model.py`)**
+  - [x] `background_model_train` 이 `domain` 매개변수를 수용해 `f"{domain}_v1.pkl"` 로 분기 저장되도록 수정
+  - [x] `restricted_zones` 내 모든 고유 `zone_type` 을 자동 스캔하여 SQL 최단 거리 피처 생성부를 동적으로 빌딩하는 모듈 이식
+  - [x] `/train` API 엔드포인트 수정 및 동적 도메인 바인딩
+
+- [x] **2단계: 메인 페이지 `pipelineStep` 6단계 확장 및 연동 (`page.js`)**
+  - [x] `pipelineStep` 최대 범위를 6으로 확장
+  - [x] Step 1 감리 완료 시, 데이터 커밋 후 비동기 `/model/train` 을 호출하며 자동으로 Step 2(ML 검증)로 전이하도록 개조
+  - [x] 기존 컴포넌트 렌더링에 매핑된 `pipelineStep` 상태 분기를 각각 한 단계씩 슬라이딩 매핑 (`2 ➔ 3`, `3 ➔ 4`, `4 ➔ 5`, `5 ➔ 6`)
+
+- [x] **3단계: 사이드바 제어 패널 `pipelineStep === 2` UI 추가 (`SidebarControl.jsx`)**
+  - [x] `pipelineStep === 2` 인 구간에 XGBoost 훈련 로딩 및 실제 통계 리포트 (Accuracy, F1-Score) 시각화 카드 구현
+  - [x] Feature Importance 막대 그래프 시각화 차트 이식
+  - [x] 다음 단계 진행을 위한 가중치 모델 승인 (`setPipelineStep(3)`) 버튼 및 기존 모델 유지 진행 버튼 탑재
+
+- [x] **4단계: 기존 패널 및 모달 슬라이딩 조건 동조 (`OptimalResultPanel.jsx`, `DebateSimulatorModal.jsx`)**
+  - [x] `OptimalResultPanel.jsx` 의 Step 2 HITL 위치 보정 렌더링 조건을 `3` 으로 변경
+  - [x] `OptimalResultPanel.jsx` 의 Step 4 추천 입지 선정 렌더링 조건을 `5` 로 변경
+  - [x] `DebateSimulatorModal.jsx` 의 토론 시뮬레이터 락킹 단계를 `6` 으로 변경
+
+- [x] **5단계: 빌드 컴파일 검증 및 통합 시나리오 테스트**
+  - [x] `npm run build` 가동하여 Next.js 프로덕션 빌드 무오류 통과 검증
+  - [x] 데이터 업로드 ➔ 감리 승인 ➔ 자동 재학습 ➔ 정확도 검증/승인 ➔ HITL 보정 ➔ AHP ➔ 결과 ➔ 토론 시나리오 정상 동작 검증

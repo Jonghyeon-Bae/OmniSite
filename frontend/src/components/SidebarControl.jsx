@@ -22,7 +22,11 @@ export default function SidebarControl({
   ahpWeights,
   isAhpLocked,
   handleSliderChange,
-  handleAhpLock
+  handleAhpLock,
+  handleApproveStep1,
+  mlStatus,
+  fetchMlStatus,
+  showToast
 }) {
   return (
     <div className="floating-overlay left-6 top-20 w-96 glass-panel p-6 flex flex-col gap-6 max-h-[82vh] overflow-y-auto">
@@ -35,7 +39,7 @@ export default function SidebarControl({
           <p className="text-[10px] text-slate-400">데이터 적재 및 가중치 의사결정 수립</p>
         </div>
         <span className="text-xs bg-blue-600/20 text-blue-400 px-2.5 py-1 rounded-full font-bold">
-          Step {pipelineStep} / 5
+          Step {pipelineStep} / 6
         </span>
       </div>
 
@@ -112,7 +116,7 @@ export default function SidebarControl({
               </div>
             </div>
             <button
-              onClick={() => setPipelineStep(2)}
+              onClick={handleApproveStep1}
               className="w-full bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-bold py-2.5 rounded-lg transition-all"
             >
               의도 일치 확인 및 공간 매핑 승인 (Approve)
@@ -128,13 +132,101 @@ export default function SidebarControl({
           onChange={handleFileChange} 
         />
       </div>
+      
+      {/* ========================================================================= */}
+      {/* 3. [Step 2] XGBoost ML 모델 재학습 검증 (New) */}
+      {/* ========================================================================= */}
+      <div className={`flex flex-col gap-4 border-t border-slate-800/80 pt-4 transition-all duration-300 ${pipelineStep !== 2 ? 'hidden' : ''}`}>
+        <div className="flex justify-between items-center border-b border-slate-900 pb-2">
+          <h3 className="text-xs font-bold text-amber-400">Step 2. 님비 예측 모델 학습 및 신뢰도 검증</h3>
+          <span className="text-[10px] bg-amber-500/20 text-amber-400 border border-amber-500/30 px-2 py-0.5 rounded-full font-bold">XGBoost</span>
+        </div>
+
+        {mlStatus && mlStatus.is_training ? (
+          <div className="flex flex-col items-center justify-center py-6 gap-3">
+            <span className="w-8 h-8 border-4 border-amber-500 border-t-transparent rounded-full animate-spin" />
+            <p className="text-xs text-amber-400 font-semibold animate-pulse">신규 감리 데이터 기반 동적 재학습 중...</p>
+            <p className="text-[10px] text-slate-500">PostGIS 공간 인자 최단 거리 연산 매핑 중</p>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-3">
+            <div className="grid grid-cols-2 gap-3 bg-slate-950/60 p-3.5 rounded-xl border border-slate-800/80">
+              <div className="flex flex-col text-center">
+                <span className="text-[9px] text-slate-400">예측 정확도 (Accuracy)</span>
+                <span className="text-sm font-mono font-bold text-amber-400">
+                  {mlStatus?.last_trained_at ? (mlStatus.accuracy * 100).toFixed(1) + '%' : '미학습'}
+                </span>
+              </div>
+              <div className="flex flex-col text-center">
+                <span className="text-[9px] text-slate-400">조화 평균 (F1-Score)</span>
+                <span className="text-sm font-mono font-bold text-amber-400">
+                  {mlStatus?.last_trained_at ? mlStatus.f1_score.toFixed(3) : '미학습'}
+                </span>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-2 bg-slate-950/30 p-3 rounded-xl border border-slate-900">
+              <span className="text-[10px] font-bold text-slate-300">📊 님비 갈등 피처 기여도 (Feature Importance)</span>
+              <div className="flex flex-col gap-2 max-h-40 overflow-y-auto">
+                {Object.keys(mlStatus?.feature_importances || {}).length > 0 ? (
+                  Object.entries(mlStatus?.feature_importances || {}).map(([feature, val]) => (
+                    <div key={feature} className="flex items-center text-[9px]">
+                      <span className="w-24 text-slate-400 truncate">{feature}</span>
+                      <div className="flex-1 bg-slate-800 h-2 rounded-full overflow-hidden mx-1.5">
+                        <div 
+                          className="bg-amber-500 h-full rounded-full transition-all" 
+                          style={{ width: `${val * 100}%` }}
+                        />
+                      </div>
+                      <span className="font-mono text-amber-400 w-8 text-right">{(val * 100).toFixed(1)}%</span>
+                    </div>
+                  ))
+                ) : (
+                  <span className="text-[10px] text-slate-500 py-1">가용 피처 기여도 정보가 존재하지 않습니다.</span>
+                )}
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={fetchMlStatus}
+              className="w-full bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] font-semibold py-1.5 rounded border border-slate-700/60 cursor-pointer transition-all"
+            >
+              🔄 새로고침 (ML 지표 동기화)
+            </button>
+
+            <div className="flex flex-col gap-2 mt-1">
+              <button
+                type="button"
+                onClick={() => {
+                  showToast('✓ 신규 예측 가중치를 시뮬레이션 모델에 적용 완료했습니다!', 'success');
+                  setPipelineStep(3);
+                }}
+                className="w-full bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-white font-bold text-xs py-2.5 rounded-lg transition-all shadow-md shadow-amber-500/10 cursor-pointer"
+              >
+                ✓ 신규 예측 가중치 승인 및 진행
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  showToast('✓ 이전 가중치 버전을 유지한 채 시뮬레이션을 진행합니다.', 'info');
+                  setPipelineStep(3);
+                }}
+                className="w-full bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-slate-300 text-[10px] font-semibold py-2 rounded-lg border border-slate-800 transition-all cursor-pointer"
+              >
+                이전 가중치 모델 유지 후 진행
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* ========================================================================= */}
-      {/* 3. [Step 3] AHP 슬라이더 컨트롤러 */}
+      {/* 4. [Step 4] AHP 슬라이더 컨트롤러 */}
       {/* ========================================================================= */}
-      <div className={`flex flex-col gap-4 border-t border-slate-800/80 pt-4 transition-all duration-300 ${pipelineStep < 3 ? 'hidden' : ''} ${pipelineStep > 3 ? 'opacity-40 pointer-events-none' : ''}`}>
+      <div className={`flex flex-col gap-4 border-t border-slate-800/80 pt-4 transition-all duration-300 ${pipelineStep < 4 ? 'hidden' : ''} ${pipelineStep > 4 ? 'opacity-40 pointer-events-none' : ''}`}>
         <div className="flex justify-between items-center">
-          <label className="text-xs font-semibold text-slate-300">Step 3. AHP 인자별 상대 가중치</label>
+          <label className="text-xs font-semibold text-slate-300">Step 4. AHP 인자별 상대 가중치</label>
           <span className={`text-[10px] px-2 py-0.5 rounded-full font-mono font-semibold transition-all ${crValue < 0.1 ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'}`}>
             C.R. = {crValue} ({crValue < 0.1 ? '만족' : '위배'})
           </span>
@@ -152,7 +244,7 @@ export default function SidebarControl({
                 min="1"
                 max="9"
                 step="0.1"
-                disabled={isAhpLocked || pipelineStep !== 3}
+                disabled={isAhpLocked || pipelineStep !== 4}
                 value={ahpWeights[item.key] !== undefined ? ahpWeights[item.key] : 5.0}
                 onChange={(e) => handleSliderChange(item.key, e.target.value)}
                 className="w-full accent-blue-500 cursor-pointer h-1 bg-slate-800 rounded-lg appearance-none"
@@ -161,10 +253,9 @@ export default function SidebarControl({
           ))}
         </div>
 
-        {/* AHP 잠금 버튼 -> 입지 분석 트리거 */}
         <button
           onClick={handleAhpLock}
-          disabled={crValue >= 0.1 || pipelineStep !== 3 || isRecommending}
+          disabled={crValue >= 0.1 || pipelineStep !== 4 || isRecommending}
           className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold cursor-pointer transition-all disabled:opacity-30 flex items-center justify-center gap-1.5"
         >
           {isRecommending ? (

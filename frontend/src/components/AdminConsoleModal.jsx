@@ -50,6 +50,27 @@ export default function AdminConsoleModal({
   });
   const [wizardLoading, setWizardLoading] = useState(false);
 
+  // 서버 레지스트리 ML 모델 목록 및 선택 상태
+  const [registryModels, setRegistryModels] = useState([]);
+  const [selectedDomainTag, setSelectedDomainTag] = useState('');
+
+  // 서버 레지스트리에 저장된 모든 도메인 모델 메타데이터 스캔
+  const fetchModelRegistry = async () => {
+    try {
+      const res = await apiFetch('/api/v1/model/registry');
+      if (res.ok) {
+        const data = await res.json();
+        const models = data.models || [];
+        setRegistryModels(models);
+        if (models.length > 0 && !selectedDomainTag) {
+          setSelectedDomainTag(models[0].domain);
+        }
+      }
+    } catch (err) {
+      console.error('모델 레지스트리 목록 조회 실패:', err);
+    }
+  };
+
   // 계정 관리 탭 클릭 시 사용자 목록 로드
   useEffect(() => {
     if (show && adminTab === 'users') {
@@ -57,9 +78,10 @@ export default function AdminConsoleModal({
     }
   }, [show, adminTab]);
 
-  // 재학습 탭 클릭 시 또는 모달 진입 시 ML 실시간 상태 동기화 로드
+  // ML 모델 감사 탭 클릭 시 또는 모달 진입 시 레지스트리 모델 스캔
   useEffect(() => {
     if (show && adminTab === 'ml_retrain') {
+      fetchModelRegistry();
       fetchMlStatus();
     }
   }, [show, adminTab]);
@@ -572,7 +594,7 @@ export default function AdminConsoleModal({
             onClick={() => setAdminTab('ml_retrain')}
             className={`flex-1 pb-2 text-[11px] font-bold text-center border-b-2 transition-all cursor-pointer ${adminTab === 'ml_retrain' ? 'border-amber-500 text-amber-400' : 'border-transparent text-slate-400 hover:text-slate-200'}`}
           >
-            🤖 ML 재학습
+            🤖 ML 모델 레지스트리 감사
           </button>
         </div>
 
@@ -655,37 +677,6 @@ export default function AdminConsoleModal({
               />
             </div>
 
-            {/* 기능 3: ML 모델 (.pkl) 업로드 및 핫 바인딩 */}
-            <div className="flex flex-col gap-2 border-t border-slate-800 pt-3">
-              <label className="text-[11px] font-bold text-slate-200">🤖 ML 예측 모델 (.pkl) 핫 업로드</label>
-              <div className="flex gap-2">
-                <select 
-                  value={modelDomain} 
-                  onChange={(e) => setModelDomain(e.target.value)}
-                  className="bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-white outline-none cursor-pointer w-full font-semibold"
-                >
-                  <option value="smoking_zone">실외 흡연구역 입지 (smoking_zone)</option>
-                  <option value="illegal_dumping">상습 쓰레기 무단투기 (illegal_dumping)</option>
-                  <option value="yellow_carpet">보행 아동 옐로카펫 (yellow_carpet)</option>
-                  <option value="ev_charging">전기차 급속충전 인프라 (ev_charging)</option>
-                  <option value="smart_shelter">IoT 버스 스마트쉼터 (smart_shelter)</option>
-                </select>
-                <button 
-                  onClick={() => document.getElementById('seed-model-uploader').click()}
-                  className="bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-bold px-4 py-2 rounded-lg transition-all flex items-center justify-center gap-1 min-w-[120px] cursor-pointer"
-                >
-                  📁 모델 등록
-                </button>
-              </div>
-              {isModelUploading && <p className="text-[10px] text-amber-400 animate-pulse">ML 모델 바이너리 파싱 및 핫 바인딩 가동 중...</p>}
-              <input 
-                type="file" 
-                accept=".pkl" 
-                id="seed-model-uploader" 
-                className="hidden" 
-                onChange={handleModelUpload} 
-              />
-            </div>
           </div>
         )}
 
@@ -1111,84 +1102,114 @@ export default function AdminConsoleModal({
 
         {adminTab === 'ml_retrain' && (
           <div className="border border-slate-800 rounded-lg p-4 bg-slate-900/40 flex flex-col gap-4">
-            <h4 className="text-xs font-bold text-white mb-1">🤖 XGBoost 기반 갈등 민감도 예측 모델(CSS) 재학습</h4>
-            <p className="text-[10px] text-slate-400 leading-relaxed">
-              사용자가 Audit AI를 거쳐 승인/보정한 물리 사례들이 데이터베이스에 축적되면, 이를 가중 학습 피처로 반영하여
-              실시간 민원 갈등 등급 점수를 예측하는 머신러닝 알고리즘 파이프라인을 백그라운드에서 재훈련합니다.
-            </p>
-
-            {/* 현재 ML 모델의 주요 성능 스냅샷 */}
-            <div className="grid grid-cols-3 gap-3 bg-slate-950/60 p-3 rounded-lg border border-slate-800/80">
-              <div className="flex flex-col gap-1 text-center">
-                <span className="text-[9px] text-slate-400">모델 정확도 (Accuracy)</span>
-                <span className="text-sm font-mono font-bold text-amber-400">
-                  {mlStatus.last_trained_at ? (mlStatus.accuracy * 100).toFixed(1) + '%' : '미학습'}
-                </span>
+            <div className="flex justify-between items-center border-b border-slate-800 pb-2.5">
+              <div>
+                <h4 className="text-xs font-bold text-white mb-0.5">🤖 활성 ML 예측 모델 레지스트리 감사 (Model Registry Audit)</h4>
+                <p className="text-[10px] text-slate-400">
+                  서버 레지스트리(`backend/app/models/registry/`)에 실존하는 도메인별 XGBoost 모델의 성능 통계 및 피처 기여도를 감사 점검합니다.
+                </p>
               </div>
-              <div className="flex flex-col gap-1 text-center">
-                <span className="text-[9px] text-slate-400">조화 평균 (F1-Score)</span>
-                <span className="text-sm font-mono font-bold text-amber-400">
-                  {mlStatus.last_trained_at ? (mlStatus.f1_score).toFixed(3) : '미학습'}
-                </span>
-              </div>
-              <div className="flex flex-col gap-1 text-center">
-                <span className="text-[9px] text-slate-400">최종 동적 재학습 시점</span>
-                <span className="text-[10px] font-mono font-bold text-slate-300 leading-normal">
-                  {mlStatus.last_trained_at ? mlStatus.last_trained_at : '미학습 (재학습을 진행해 주십시오)'}
-                </span>
-              </div>
+              <button 
+                onClick={fetchModelRegistry}
+                className="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-[10px] font-bold px-2.5 py-1 rounded transition-all cursor-pointer flex items-center gap-1"
+              >
+                🔄 목록 새로고침
+              </button>
             </div>
 
-            {/* Feature Importance 차트 시각화 */}
-            <div className="flex flex-col gap-2">
-              <span className="text-[10px] font-bold text-slate-300">📊 XGBoost 의사결정 피처 기여도 (Feature Importance)</span>
-              <div className="bg-slate-950/40 p-3 rounded-lg border border-slate-800 flex flex-col gap-2">
-                {Object.keys(mlStatus?.feature_importances || {}).length > 0 ? (
-                  Object.entries(mlStatus?.feature_importances || {}).map(([feature, val]) => (
-                    <div key={feature} className="flex items-center text-[10px]">
-                      <span className="w-40 text-slate-400 truncate">{feature}</span>
-                      <div className="flex-1 bg-slate-800 h-2.5 rounded-full overflow-hidden mx-2">
-                        <div 
-                          className="bg-amber-500 h-full rounded-full transition-all" 
-                          style={{ width: `${val * 100}%` }}
-                        />
-                      </div>
-                      <span className="font-mono text-amber-400 w-10 text-right">{(val * 100).toFixed(1)}%</span>
-                    </div>
-                  ))
+            {/* 도메인 선택 칩 목록 */}
+            <div className="flex flex-col gap-1.5">
+              <span className="text-[10px] font-bold text-slate-300">📌 감지된 서버 등록 도메인 모델 목록 ({registryModels.length}개)</span>
+              <div className="flex flex-wrap gap-2">
+                {registryModels.length > 0 ? (
+                  registryModels.map((m) => {
+                    const isSelected = (selectedDomainTag || registryModels[0]?.domain) === m.domain;
+                    return (
+                      <button
+                        key={m.domain}
+                        onClick={() => setSelectedDomainTag(m.domain)}
+                        className={`px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all cursor-pointer border ${
+                          isSelected
+                            ? 'bg-amber-500/20 text-amber-400 border-amber-500/50 shadow-sm'
+                            : 'bg-slate-950/60 text-slate-400 border-slate-800 hover:text-slate-200'
+                        }`}
+                      >
+                        🏷️ {m.domain} <span className="text-[9px] font-mono text-slate-500">({m.model_filename})</span>
+                      </button>
+                    );
+                  })
                 ) : (
-                  // 기본 중요도 차트 모크업 표출
-                  [
-                    ['transit_distance', 0.32],
-                    ['restricted_zone_distance', 0.24],
-                    ['commercial_density', 0.18],
-                    ['civil_complaints_count', 0.15],
-                    ['population_density', 0.08],
-                    ['land_area_sqm', 0.03]
-                  ].map(([feature, val]) => (
-                    <div key={feature} className="flex items-center text-[10px]">
-                      <span className="w-40 text-slate-400 truncate">{feature}</span>
-                      <div className="flex-1 bg-slate-850 h-2.5 rounded-full overflow-hidden mx-2">
-                        <div 
-                          className="bg-amber-500 h-full rounded-full" 
-                          style={{ width: `${val * 100}%` }}
-                        />
-                      </div>
-                      <span className="font-mono text-amber-400 w-8 text-right">{(val * 100).toFixed(0)}%</span>
-                    </div>
-                  ))
+                  <div className="text-[10px] text-slate-500 italic p-2 bg-slate-950 rounded-lg">
+                    서버 레지스트리에 등록된 활성 ML 모델이 없습니다.
+                  </div>
                 )}
               </div>
             </div>
 
-            {/* 재학습 버튼 */}
-            <button
-              onClick={handleMlRetrain}
-              disabled={mlStatus.is_training}
-              className={`w-full text-xs font-bold py-2.5 rounded-lg transition-all shadow-md cursor-pointer ${mlStatus.is_training ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20 cursor-wait animate-pulse' : 'bg-amber-500 hover:bg-amber-600 text-slate-950'}`}
-            >
-              {mlStatus.is_training ? "⚡ 백그라운드 XGBoost 모델 훈련 중 (3초 주기 폴링)..." : "⚡ ML 모델 최초 생성 및 재학습 기동"}
-            </button>
+            {/* 선택된 도메인 모델의 상세 성능 카드 */}
+            {(() => {
+              const currentModel = registryModels.find(m => m.domain === (selectedDomainTag || registryModels[0]?.domain)) || registryModels[0];
+              if (!currentModel) return null;
+              
+              const importances = currentModel.feature_importances || mlStatus?.feature_importances || {};
+
+              return (
+                <div className="flex flex-col gap-3">
+                  <div className="grid grid-cols-3 gap-3 bg-slate-950/60 p-3 rounded-lg border border-slate-800/80">
+                    <div className="flex flex-col gap-1 text-center">
+                      <span className="text-[9px] text-slate-400">모델 정확도 (Accuracy)</span>
+                      <span className="text-sm font-mono font-bold text-amber-400">
+                        {currentModel.accuracy ? (currentModel.accuracy * 100).toFixed(1) + '%' : '미집계'}
+                      </span>
+                    </div>
+                    <div className="flex flex-col gap-1 text-center">
+                      <span className="text-[9px] text-slate-400">조화 평균 (F1-Score)</span>
+                      <span className="text-sm font-mono font-bold text-amber-400">
+                        {currentModel.f1_score ? currentModel.f1_score.toFixed(3) : '미집계'}
+                      </span>
+                    </div>
+                    <div className="flex flex-col gap-1 text-center">
+                      <span className="text-[9px] text-slate-400">최종 동적 학습 완료 시점</span>
+                      <span className="text-[10px] font-mono font-bold text-slate-300 leading-normal">
+                        {currentModel.last_trained_at || '정보 없음'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Feature Importance 차트 시각화 */}
+                  <div className="flex flex-col gap-2">
+                    <div className="flex justify-between items-center">
+                      <span className="text-[10px] font-bold text-slate-300">📊 [{currentModel.domain}] 의사결정 피처 기여도 (Feature Importance)</span>
+                      <span className="text-[9px] text-slate-500 font-mono">파일 용량: {currentModel.file_size || 'N/A'}</span>
+                    </div>
+                    <div className="bg-slate-950/40 p-3 rounded-lg border border-slate-800 flex flex-col gap-2 max-h-48 overflow-y-auto">
+                      {Object.keys(importances).length > 0 ? (
+                        Object.entries(importances).map(([feature, val]) => (
+                          <div key={feature} className="flex items-center text-[10px]">
+                            <span className="w-44 text-slate-400 truncate">{feature}</span>
+                            <div className="flex-1 bg-slate-800 h-2.5 rounded-full overflow-hidden mx-2">
+                              <div 
+                                className="bg-amber-500 h-full rounded-full transition-all" 
+                                style={{ width: `${val * 100}%` }}
+                              />
+                            </div>
+                            <span className="font-mono text-amber-400 w-10 text-right">{(val * 100).toFixed(1)}%</span>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="text-[10px] text-slate-500 italic text-center py-3">
+                          해당 모델의 세부 피처 중요도 정보가 없습니다.
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="bg-amber-500/10 border border-amber-500/20 p-2.5 rounded-lg text-[10px] text-amber-300 flex items-center justify-between">
+                    <span>💡 실시간 ML 예측 모델의 재학습은 AI 감리(Step 1 ➔ Step 2) 파이프라인 승인 시 도메인별로 자동 정밀 갱신됩니다.</span>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         )}
         

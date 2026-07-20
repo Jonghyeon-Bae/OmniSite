@@ -1,3 +1,4 @@
+import html
 import os
 import json
 import asyncio
@@ -1617,12 +1618,36 @@ class ReportDownloadRequest(BaseModel):
     candidate_lat: float = 37.53
     candidate_lng: float = 126.97
     candidate_reason: Optional[str] = ""
-    ahp_weights: Dict[str, float] = {}
-    debate_logs: List[Dict[str, str]] = []
+    ahp_weights: Dict[str, Any] = {}
+    debate_logs: List[Any] = []
 
 @router.post("/spatial/report/download")
 async def download_report_pdf(req: ReportDownloadRequest, db: Session = Depends(get_db)):
     try:
+        # ReportLab XML 태그 파싱 에러 방지 이스케이프 헬퍼
+        def safe_xml(val) -> str:
+            if val is None:
+                return ""
+            return html.escape(str(val))
+
+        # 토론 로그 아이템 (str, dict, list 등) 유연 파서
+        def parse_debate_log(log_item):
+            if isinstance(log_item, dict):
+                s = safe_xml(log_item.get("sender") or "참여자")
+                t = safe_xml(log_item.get("text") or "")
+                return s, t
+            elif isinstance(log_item, str):
+                log_str = log_item.strip()
+                if log_str.startswith("[") and "]" in log_str:
+                    parts = log_str.split("]", 1)
+                    return safe_xml(parts[0].replace("[", "").strip()), safe_xml(parts[1].strip())
+                elif ":" in log_str:
+                    parts = log_str.split(":", 1)
+                    return safe_xml(parts[0].strip()), safe_xml(parts[1].strip())
+                return "토론 알림", safe_xml(log_str)
+            else:
+                return "알림", safe_xml(str(log_item))
+
         # [Zero Hardcoding] 자치구 동적 바인딩 조회
         dist_id = req.district_id or 1
         dist_name_query = text("SELECT district_name FROM districts WHERE id = :dist_id")
@@ -1776,13 +1801,20 @@ async def download_report_pdf(req: ReportDownloadRequest, db: Session = Depends(
         
         # 1. 후보지 기본 정보
         story.append(Paragraph("1. 입지 후보지 기본 제원", section_style))
-        css_grade = "상(높음)" if req.candidate_css >= 70 else ("중(보통)" if req.candidate_css >= 40 else "하(낮음)")
+        css_val = req.candidate_css if isinstance(req.candidate_css, (int, float)) else 50
+        css_grade = "상(높음)" if css_val >= 70 else ("중(보통)" if css_val >= 40 else "하(낮음)")
+        
+        clean_jibun = safe_xml(req.candidate_jibun)
+        clean_facility = safe_xml(req.facility_type)
+        clean_purpose = safe_xml(req.inferred_purpose)
+        clean_reason = safe_xml(req.candidate_reason or "위치적 이격조건 및 AHP 기여 분석에 근거하여 입지 적합성을 확보한 지점입니다.")
+        
         info_data = [
-            [Paragraph("<b>가. 대상지 지번 주소</b>", body_style), Paragraph(req.candidate_jibun, body_style)],
+            [Paragraph("<b>가. 대상지 지번 주소</b>", body_style), Paragraph(clean_jibun, body_style)],
             [Paragraph("<b>나. 대상지 중심 좌표</b>", body_style), Paragraph(f"위도 {req.candidate_lat}, 경도 {req.candidate_lng}", body_style)],
-            [Paragraph("<b>다. 시설 유형 및 목적</b>", body_style), Paragraph(f"{req.facility_type} ({req.inferred_purpose})", body_style)],
-            [Paragraph("<b>라. 갈등 민감도 (CSS)</b>", body_style), Paragraph(f"<b>{req.candidate_css}점</b> (등급: {css_grade})", body_style)],
-            [Paragraph("<b>마. 선정 사유 및 고려사항</b>", body_style), Paragraph(req.candidate_reason or "위치적 이격조건 및 AHP 기여 분석에 근거하여 입지 적합성을 확보한 지점입니다.", body_style)]
+            [Paragraph("<b>다. 시설 유형 및 목적</b>", body_style), Paragraph(f"{clean_facility} ({clean_purpose})", body_style)],
+            [Paragraph("<b>라. 갈등 민감도 (CSS)</b>", body_style), Paragraph(f"<b>{css_val}점</b> (등급: {css_grade})", body_style)],
+            [Paragraph("<b>마. 선정 사유 및 고려사항</b>", body_style), Paragraph(clean_reason, body_style)]
         ]
         t1 = Table(info_data, colWidths=[150, 380])
         t1.setStyle(TableStyle([
@@ -1800,8 +1832,9 @@ async def download_report_pdf(req: ReportDownloadRequest, db: Session = Depends(
         # 2. AHP 의사결정 인자 가중치
         story.append(Paragraph("2. AHP 다기준 의사결정 분석 가중치 현황", section_style))
         ahp_rows = []
-        for k, v in req.ahp_weights.items():
-            ahp_rows.append([Paragraph(f"<b>{k}</b>", body_style), Paragraph(f"{v}", body_style)])
+        weights_dict = req.ahp_weights if isinstance(req.ahp_weights, dict) else {}
+        for k, v in weights_dict.items():
+            ahp_rows.append([Paragraph(f"<b>{safe_xml(k)}</b>", body_style), Paragraph(f"{safe_xml(v)}", body_style)])
         if not ahp_rows:
             ahp_rows.append([Paragraph("가중치 데이터 부재", body_style), Paragraph("-", body_style)])
         t2 = Table(ahp_rows, colWidths=[200, 330])
@@ -1818,21 +1851,19 @@ async def download_report_pdf(req: ReportDownloadRequest, db: Session = Depends(
         # 3. AI 모의 심의 토론 내용
         story.append(Paragraph("3. 스마트시티 주민 모의 심의 내용 (가상 토론 시나리오)", section_style))
         debate_story = []
-        
-        # 경고 문구 상단에 한 번 더 명시
         debate_story.append(Paragraph("<b>[심의 진행 기록]</b> ※ 이하 기록된 토론은 가상의 인물 간 의견 대립 및 중재안 도출 시뮬레이션입니다.", body_style))
         debate_story.append(Spacer(1, 6))
         
-        for log in req.debate_logs:
-            sender = log.get("sender", "알 수 없음")
-            text_log = log.get("text", "")
+        logs_list = req.debate_logs if isinstance(req.debate_logs, list) else []
+        for log_item in logs_list:
+            sender, text_log = parse_debate_log(log_item)
             if "면책 고지" in text_log or "가상의 시나리오" in text_log:
                 continue
             debate_story.append(Paragraph(f"<b>◦ {sender}</b>", body_style))
             debate_story.append(Paragraph(text_log, log_style))
             debate_story.append(Spacer(1, 4))
             
-        if not req.debate_logs:
+        if not logs_list:
             debate_story.append(Paragraph("기록된 모의 토론 출력이 존재하지 않습니다.", body_style))
             
         t3 = Table([[debate_story]], colWidths=[530])
@@ -1849,8 +1880,9 @@ async def download_report_pdf(req: ReportDownloadRequest, db: Session = Depends(
         
         # 4. 종합 행정 고시
         story.append(Paragraph("4. 종합 검토 고시 및 권고사항", section_style))
+        clean_dist = safe_xml(district_name)
         notice_text = (
-            f"본 보고서는 {district_name} 스마트시티 의사결정지원시스템(SDSS) OmniSite의 AI 갈등 진단 엔진에 의거하여 "
+            f"본 보고서는 {clean_dist} 스마트시티 의사결정지원시스템(SDSS) OmniSite의 AI 갈등 진단 엔진에 의거하여 "
             "작성된 참고 서류입니다. 수록된 주민 심의 의견 및 중재안은 공간 빅데이터와 관련 자치 조례 RAG 임베딩에 "
             "기반해 가상 구현된 결과물로, 법적 구속력을 갖지 않으며 실제 공사 시행 전 구의회 보고 및 주민 주민설명회의 "
             "사전 행정 절차를 필수적으로 이행해야 합니다."
@@ -1859,11 +1891,10 @@ async def download_report_pdf(req: ReportDownloadRequest, db: Session = Depends(
         story.append(Spacer(1, 15))
         
         # 5. 하단 발신 명의 및 면책 고지
-        clean_dist_name = district_name
-        if clean_dist_name.endswith("구"):
-            district_chief = f"서울특별시 {clean_dist_name}청장"
+        if clean_dist.endswith("구"):
+            district_chief = f"서울특별시 {clean_dist}청장"
         else:
-            district_chief = f"서울특별시 {clean_dist_name}구청장"
+            district_chief = f"서울특별시 {clean_dist}구청장"
         story.append(Paragraph(f"<b>{district_chief}</b> <font size=10 color='#64748B'>(직인생략)</font>", sender_style))
         story.append(Paragraph("※ 본 보고서의 입지분석 및 모의 심의 결과는 가상 AI 페르소나의 역할 수행 결과로, 실제 인물이나 사실과는 무관합니다.", disclaimer_style))
         
@@ -1879,10 +1910,11 @@ async def download_report_pdf(req: ReportDownloadRequest, db: Session = Depends(
             }
         )
     except Exception as e:
+        import traceback
+        print(f"[PDF Generation Critical Error] {e}")
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"PDF 리포트 생성 오류: {str(e)}")
 
-
-# Pydantic DTO 정의 [v4.4.1]
 class UserExclusionCreateRequest(BaseModel):
     zone_name: str
     coordinates: List[List[float]]  # [[lng, lat], [lng, lat], ...]

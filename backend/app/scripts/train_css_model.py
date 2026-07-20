@@ -64,9 +64,13 @@ preprocessor = ColumnTransformer(
 pipeline = Pipeline(steps=[
     ('preprocessor', preprocessor),
     ('classifier', XGBClassifier(
-        n_estimators=100,
-        max_depth=5,
-        learning_rate=0.1,
+        n_estimators=80,
+        max_depth=3,
+        learning_rate=0.08,
+        reg_lambda=10.0,
+        reg_alpha=2.0,
+        subsample=0.8,
+        colsample_bytree=0.8,
         random_state=42,
         eval_metric='logloss'
     ))

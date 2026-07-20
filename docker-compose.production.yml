@@ -1,0 +1,45 @@
+version: '3.8'
+
+services:
+  database:
+    image: postgis/postgis:15-3.3
+    container_name: omnisite_prod_db
+    restart: always
+    environment:
+      POSTGRES_DB: postgres
+      POSTGRES_USER: Admin
+      POSTGRES_PASSWORD: admin1234_production_key
+    volumes:
+      - postgres_prod_data:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:5432:5432" # 격리 보안: 로컬 루프백 인터페이스로만 바인딩하여 무단 원격 침투 차단
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: omnisite_prod_be
+    restart: always
+    environment:
+      - DATABASE_URL=postgresql+psycopg://Admin:admin1234_production_key@database:5432/postgres
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    ports:
+      - "8000:8000"
+    depends_on:
+      - database
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: omnisite_prod_fe
+    restart: always
+    ports:
+      - "80:3000" # 80포트 대문 개방 (SSL 프록시 연동 시 3000포트로 포워딩 가능)
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+    depends_on:
+      - backend
+
+volumes:
+  postgres_prod_data:

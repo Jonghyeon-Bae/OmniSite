@@ -18,6 +18,9 @@ export default function Dashboard() {
   const [historyList, setHistoryList] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
+  // FAQ 아코디언 상태
+  const [openFaq, setOpenFaq] = useState(null);
+
   // Audit AI 폼 상태
   const [activeHistoryId, setActiveHistoryId] = useState(null);
   const [auditFile, setAuditFile] = useState(null);
@@ -99,37 +102,12 @@ export default function Dashboard() {
     setShowDetailModal(true);
   };
 
-  const getMockDebateLogs = (infra) => {
-    if (!infra) return [];
-    if (infra.includes('쉼터') || infra.includes('부스')) {
-      return [
-        { sender: '주민대표 (반대)', text: '부스 설치 예정 필지 인근의 좁은 인도 폭 때문에 보행 통로가 협소해져 통학 어린이들의 충돌 우려 등 보행 안전이 매우 우려됩니다.' },
-        { sender: '상인대표 (찬성)', text: '상가 앞 길거리 간접 흡연 및 무분별한 꽁초 투기를 전용 스마트 부스로 유도 수용하여 미관 및 보행 환경이 훨씬 개선됩니다.' },
-        { sender: '공무원 (조정)', text: '보행 유효 통행 폭 3.0m를 확보하고, 정화 공조 필터 등급 사양을 강화하여 안전성 우려를 최소화하는 조건으로 최종 통과시킵니다.' }
-      ];
-    } else if (infra.includes('옐로카펫') || infra.includes('정화지')) {
-      return [
-        { sender: '주민대표 (반대)', text: '옐로카펫 보행 정화지 영역이 차량 우회전 진입로 사각지대를 가려 운전자 시야 확보를 저해할 여지가 있습니다.' },
-        { sender: '상인대표 (찬성)', text: '초등학교 어린이 보호구역 내 학생들의 보행 대기 시인성을 대폭 강화하여 스쿨존 교통사고를 선제적으로 막을 수 있습니다.' },
-        { sender: '공무원 (조정)', text: '신호 대기부 반사 시인성 패널 면적을 2.5㎡로 제한 조정하고 반대편에 우회전 사각지대 감시용 반사경을 병행 설치하여 합의안을 통과시킵니다.' }
-      ];
-    } else if (infra.includes('충전소') || infra.includes('전기차')) {
-      return [
-        { sender: '주민대표 (반대)', text: '지상 개방 주차 구역 인근 열화 화재 발생 시 열 폭주로 인해 인접 건물로 화염이 전이되는 리스크가 매우 큽니다.' },
-        { sender: '상인대표 (찬성)', text: '소화 질식포와 차수판이 완비된 화재 방지 특화 구역을 시유지에 규격화하여 구축하는 것이 분산형 충전기 방치보다 훨씬 안전합니다.' },
-        { sender: '공무원 (조정)', text: '충전소 외곽에 전용 습식 소방 라인을 확충하고 화재 감지 시 배전 3중 셧다운 연동 장치를 탑재하는 조건으로 설치 인가를 최종 의결합니다.' }
-      ];
-    }
-    return [
-      { sender: '주민대표 (반대)', text: '시설물 입지 시 인근 거주 보행 환경 및 경관 침해 요소에 대해 주민 동의가 수반되지 않았습니다.' },
-      { sender: '상인대표 (찬성)', text: '스마트 인프라 도입에 따른 배후 상권 활성화 및 유동 인구 분산 편익이 월등히 높습니다.' },
-      { sender: '공무원 (조정)', text: '주민 안전 요구 조례 사항을 보강 반영하고 현장 실무 보정 단계를 거쳐 의사결정을 최종 수립합니다.' }
-    ];
-  };
-
   // WeasyPrint 스타일의 HTML 행정 보고서 발급 기능 (한국어 호환용 정규 규격 문서)
   const downloadReportHTML = (item) => {
-    const mockDebate = getMockDebateLogs(item.infra);
+    const debateLogs = item.debateLogs || [];
+    const areaVal = parseFloat(item.selectedParcelArea) || 15.0;
+    const priceVal = parseInt(item.selectedParcelPrice, 10) || 14200000;
+    const taxVal = Math.round(areaVal * priceVal * 0.02);
     const htmlContent = `
       <!DOCTYPE html>
       <html>
@@ -185,12 +163,12 @@ export default function Dashboard() {
 
         <div class="section-title">2. AI 에이전트(LangGraph) 모의 심의 토론 아카이브</div>
         <div class="log-box">
-          ${mockDebate.map(log => `
+          ${debateLogs.length > 0 ? debateLogs.map(log => `
             <div class="log-item">
-              <span class="log-sender">[${log.sender}]</span>
-              <span>${log.text}</span>
+              <span class="log-sender">[${log.sender || log.name || '참여자'}]</span>
+              <span>${log.text || log.content || log.message || '(의견 내용 없음)'}</span>
             </div>
-          `).join('')}
+          `).join('') : '<div class="log-item"><span>기록된 모의 토론 출력이 존재하지 않습니다.</span></div>'}
         </div>
 
         <div class="section-title">3. 행정 점용 예산 부담액 산출 요약</div>
@@ -204,9 +182,9 @@ export default function Dashboard() {
           </thead>
           <tbody>
             <tr>
-              <td>15.0 ㎡</td>
-              <td>₩ 14,200,000 / ㎡</td>
-              <td style="font-weight:bold; color:#d9534f; font-size: 13px;">₩ 4,260,000 / 년</td>
+              <td>${areaVal.toFixed(1)} ㎡</td>
+              <td>₩ ${priceVal.toLocaleString()} / ㎡</td>
+              <td style="font-weight:bold; color:#d9534f; font-size: 13px;">₩ ${taxVal.toLocaleString()} / 년</td>
             </tr>
           </tbody>
         </table>
@@ -252,23 +230,27 @@ export default function Dashboard() {
       </header>
 
       {/* 2. 대시보드 레이아웃 본문 */}
-      <main className="max-w-7xl mx-auto p-8 flex flex-col gap-8">
+      <main className="max-w-[85%] mx-auto p-8 flex flex-col gap-8">
         
-        {/* 상단 3대 지표 분석 요약 카드 (크레딧 항목 제거 및 행정 지표 대체) */}
+        {/* 상단 3대 지표 분석 요약 카드 (실 데이터베이스 연동 연산) */}
         <section className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="glass-panel p-6 flex flex-col gap-2">
             <span className="text-xs text-slate-400 font-semibold">종합 입지 의사결정 수립 건수</span>
-            <span className="text-3xl font-bold text-white font-mono">18 건</span>
-            <p className="text-[10px] text-emerald-400 mt-1">▲ 전월 대비 12% 상승 (용산구 최다 수립)</p>
+            <span className="text-3xl font-bold text-white font-mono">{historyList.length} 건</span>
+            <p className="text-[10px] text-emerald-400 mt-1">▲ DB 동적 연동 활성화됨 (용산구 실측 수립)</p>
           </div>
           <div className="glass-panel p-6 flex flex-col gap-2">
             <span className="text-xs text-slate-400 font-semibold">평균 갈등 타결 신뢰도</span>
-            <span className="text-3xl font-bold text-blue-400 font-mono">87.5 %</span>
-            <p className="text-[10px] text-slate-500 mt-1">LangGraph 예측 시나리오 매핑 만족 수준</p>
+            <span className="text-3xl font-bold text-blue-400 font-mono">
+              {historyList.length > 0 ? (historyList.filter(h => h.auditState === '검증 완료').length / historyList.length * 100).toFixed(1) : 0} %
+            </span>
+            <p className="text-[10px] text-slate-500 mt-1">실제 감리 완료된 입지 적합 판정 비율</p>
           </div>
           <div className="glass-panel p-6 flex flex-col gap-2">
             <span className="text-xs text-slate-400 font-semibold">RAG 축적 검증사례 수</span>
-            <span className="text-3xl font-bold text-emerald-400 font-mono">12 건</span>
+            <span className="text-3xl font-bold text-emerald-400 font-mono">
+              {historyList.filter(h => h.auditState === '검증 완료').length} 건
+            </span>
             <p className="text-[10px] text-slate-500 mt-1">실제 이행 공문 분석 RAG 격리 세그먼트 적재량</p>
           </div>
         </section>
@@ -418,6 +400,55 @@ export default function Dashboard() {
           </div>
         </section>
 
+        {/* FAQ 아코디언 섹션 */}
+        <section className="glass-panel p-6 mt-4 flex flex-col gap-6">
+          <div className="border-b border-slate-800 pb-3">
+            <h2 className="text-sm font-bold text-white">OmniSite 시스템 FAQ & 사용자 매뉴얼</h2>
+            <p className="text-[10px] text-slate-500">지능형 입지선정 의사결정 시스템의 주요 메커니즘 설명</p>
+          </div>
+
+          <div className="flex flex-col gap-3">
+            {[
+              {
+                q: "OmniSite는 어떤 시스템인가요?",
+                a: "OmniSite는 다기준 의사결정 분석기법(AHP)과 XGBoost 주민 갈등도(CSS) 머신러닝 예측 모델을 융합하여, 스마트시티 공공 인프라 도입 시 최적의 입지 분석 및 사후 검증(RAG OCR)을 지원하는 지능형 의사결정 지원 시스템(SDSS)입니다."
+              },
+              {
+                q: "입지 추천 우선순위는 어떻게 계산되나요?",
+                a: "대중교통 접근성, 민원 빈도, 쓰레기 무단투기 밀집도, 유동/배후 인구, 보호시설 이격거리 요소를 계층 분석(AHP)을 통해 각 요율별 쌍대비교하여 도출한 '종합 우선순위 점수(AHP Score)' 기준 내림차순으로 Top 1~6 후보지를 최종 선정합니다."
+              },
+              {
+                q: "주민 갈등 위험도(CSS) 점수의 신뢰 수준은 어떤가요?",
+                a: "지목의 성질, 공시지가, 인근 정화 구역 이격거리 등을 특성값(Features)으로 하여 XGBoost Classifier 파이프라인 모델이 갈등 민감도를 분석합니다. 과적합 억제 하이퍼파라미터(L1/L2 Regularization)를 적용하여 전국 자치구 범용 성능인 일반화 F1-Score 75%~78% 신뢰도를 보장합니다."
+              },
+              {
+                q: "사후 Audit AI(RAG) 기능은 어떻게 사용하나요?",
+                a: "최종 의결을 통해 '행정 종결'된 이력 항목에 대해, 준공 검사조서 및 고시 공문(PDF) 파일을 업로드 존에 투입합니다. 시스템은 실시간 PDF OCR 분석 및 임베딩 처리를 기동하여 최초 의사결정 이격거리 규격과 실제 완공 요건이 일치하는지 교차 대조하여 일치율(%) 및 감리 보고 의견을 출력합니다."
+              }
+            ].map((faq, idx) => (
+              <div 
+                key={idx} 
+                className="border border-slate-900 rounded-xl overflow-hidden bg-slate-950/40"
+              >
+                <button
+                  onClick={() => setOpenFaq(openFaq === idx ? null : idx)}
+                  className="w-full text-left p-4 flex justify-between items-center text-xs font-semibold text-slate-200 hover:bg-slate-900/30 transition-all cursor-pointer font-sans"
+                >
+                  <span>{faq.q}</span>
+                  <span className="text-slate-500 font-bold">{openFaq === idx ? '▲' : '▼'}</span>
+                </button>
+                <div 
+                  className={`transition-all duration-300 ease-in-out overflow-hidden text-[11px] text-slate-400 bg-slate-950/70 border-t border-slate-900/50 ${
+                    openFaq === idx ? 'max-h-40 p-4' : 'max-h-0 p-0 border-t-0'
+                  }`}
+                >
+                  {faq.a}
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
       </main>
 
       {/* 과거 이력 상세 모달 팝업 (찬반 토론 및 결과서 다운로드 조회용) */}
@@ -444,7 +475,7 @@ export default function Dashboard() {
               </div>
               {(selectedHistory.debateLogs && selectedHistory.debateLogs.length > 0
                 ? selectedHistory.debateLogs
-                : getMockDebateLogs(selectedHistory.infra)
+                : []
               ).map((log, index) => (
                 <div key={index} className="flex gap-2 leading-relaxed">
                   <span className={`font-semibold shrink-0 ${

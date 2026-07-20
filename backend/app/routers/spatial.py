@@ -343,10 +343,17 @@ async def recommend_optimal_sites(
                             return float(nested)
                         return default
 
-                    school_m = extract_dist(rules_payload, "school", 200.0)
-                    childcare_m = extract_dist(rules_payload, "childcare_center", 50.0)
-                    nosmoking_m = extract_dist(rules_payload, "nosmoking_zone", 10.0)
-                    school_ev_m = extract_dist(rules_payload, "school_ev", 100.0)
+                    # [Strict Floor Limit Guard] DB 설정값이나 요청 파라미터와 무관하게 학교 200m, 어린이집 50m 법정 절대보호구역 거리 미만으로 떨어지지 않도록 강제 하한선 고정
+                    raw_school = extract_dist(rules_payload, "school", 200.0)
+                    school_m = max(raw_school, 200.0)
+                    
+                    raw_childcare = extract_dist(rules_payload, "childcare_center", 50.0)
+                    childcare_m = max(raw_childcare, 50.0)
+                    
+                    raw_nosmoking = extract_dist(rules_payload, "nosmoking_zone", 10.0)
+                    nosmoking_m = max(raw_nosmoking, 10.0)
+                    
+                    school_ev_m = max(extract_dist(rules_payload, "school_ev", 100.0), 100.0)
                     
                     school_dist = school_m * 0.00001
                     childcare_dist = childcare_m * 0.00001
@@ -384,16 +391,31 @@ async def recommend_optimal_sites(
               AND c.ownership_type IN ('국유지', '시유지', '구유지')
               AND ST_IsValid(c.geom)
               AND ST_DWithin(c.geom, ST_SetSRID(ST_MakePoint(:ref_lng, :ref_lat), 4326), :search_radius)
-              -- 개별 규제지 버퍼 저촉 여부를 geometry 인덱스(GIST)로 고속 감지
+              -- [Strict Complete Drop] 금지구역/보호구역 버퍼 다각형과 1mm라도 겹치거나 포함/접하는 필지는 100% 무조건 완전 제거 탈락 (Complete Drop)
               AND NOT EXISTS (
                   SELECT 1 FROM restricted_zones rz 
                   WHERE (
-                        -- [공통 절대 규제 가드] 시설 도메인과 무관하게 학교(200m) 및 어린이집(50m) 보호구역은 무조건 실시간 공통 배제
-                        (rz.zone_type = 'school' AND ST_DWithin(c.geom::geography, rz.geom::geography, :school_m)) OR
-                        (rz.zone_type = 'childcare_center' AND ST_DWithin(c.geom::geography, rz.geom::geography, :childcare_m)) OR
+                        -- 1. 공간 상 붉은 버퍼 원 다각형 내부 교차/내포/접함 100% 무조건 배제
+                        ST_Intersects(c.geom, rz.geom) OR 
+                        ST_Intersects(ST_Centroid(c.geom), rz.geom) OR
+                        ST_Within(c.geom, rz.geom) OR
+                        ST_Within(ST_Centroid(c.geom), rz.geom) OR
+                        ST_Contains(rz.geom, c.geom) OR
+                        ST_Touches(c.geom, rz.geom) OR
                         
-                        -- 흡연구역 도메인일 경우 금연구역(10m) 추가 배제 룰 동적 인가
-                        (:facility_type = 'smoking_zone' AND rz.zone_type = 'nosmoking_zone' AND ST_DWithin(c.geom::geography, rz.geom::geography, :nosmoking_m))
+                        -- 2. 법적 한계 이격거리(학교 200m, 어린이집 50m, 금연구역 10m) 구면 침범 100% 무조건 배제
+                        (rz.zone_type = 'school' AND (
+                            ST_DWithin(ST_SetSRID(c.geom, 4326)::geography, ST_SetSRID(rz.geom, 4326)::geography, :school_m) OR 
+                            ST_DWithin(ST_SetSRID(ST_Centroid(c.geom), 4326)::geography, ST_SetSRID(rz.geom, 4326)::geography, :school_m)
+                        )) OR
+                        (rz.zone_type = 'childcare_center' AND (
+                            ST_DWithin(ST_SetSRID(c.geom, 4326)::geography, ST_SetSRID(rz.geom, 4326)::geography, :childcare_m) OR 
+                            ST_DWithin(ST_SetSRID(ST_Centroid(c.geom), 4326)::geography, ST_SetSRID(rz.geom, 4326)::geography, :childcare_m)
+                        )) OR
+                        (:facility_type = 'smoking_zone' AND rz.zone_type = 'nosmoking_zone' AND (
+                            ST_DWithin(ST_SetSRID(c.geom, 4326)::geography, ST_SetSRID(rz.geom, 4326)::geography, :nosmoking_m) OR 
+                            ST_DWithin(ST_SetSRID(ST_Centroid(c.geom), 4326)::geography, ST_SetSRID(rz.geom, 4326)::geography, :nosmoking_m)
+                        ))
                     )
               )
               -- 흡연구역 도메인인 경우에만 버스정류장/지하철역 이격거리 규제 적용 (지구 타원체 기준 10m 구면 geography 정확 매핑)
@@ -402,7 +424,10 @@ async def recommend_optimal_sites(
                   NOT EXISTS (
                       SELECT 1 FROM transit_stations ts
                       WHERE ts.transit_type IN ('BUS', 'SUBWAY')
-                        AND ST_DWithin(c.geom::geography, ts.geom::geography, 10.0)
+                        AND (
+                            ST_DWithin(ST_SetSRID(c.geom, 4326)::geography, ST_SetSRID(ts.geom, 4326)::geography, 10.0) OR
+                            ST_DWithin(ST_SetSRID(ST_Centroid(c.geom), 4326)::geography, ST_SetSRID(ts.geom, 4326)::geography, 10.0)
+                        )
                   )
               )
               -- [v4.9.16] 지하차도, 고가도로, 터널 등 물리 구축 불가 구역 배제
@@ -424,13 +449,15 @@ async def recommend_optimal_sites(
                       WHERE ST_DWithin(c.geom, cs.geom, 0.0015)
                   )
               )
-              -- 사용자 지정 가상 금지구역(Exclusion Polygon/Circle)에 저촉되는 필지 실시간 제외 [v4.4.0]
+              -- 사용자 지정 가상 금지구역(Exclusion Polygon/Circle)에 저촉되는 필지 실시간 제외 (마커 좌표 포함 Strict Cut) [v4.4.0]
               AND NOT EXISTS (
                   SELECT 1 FROM user_exclusion_zones uez
                   WHERE ST_Intersects(c.geom, uez.geom)
                      OR ST_Within(c.geom, uez.geom)
                      OR ST_Contains(uez.geom, c.geom)
+                     OR ST_Within(ST_Centroid(c.geom), uez.geom)
                      OR ST_DWithin(c.geom::geography, uez.geom::geography, 0.0)
+                     OR ST_DWithin(ST_Centroid(c.geom)::geography, uez.geom::geography, 0.0)
               )
               -- [v4.9.33] 차도/지하차도/선로 램프 형태학적 극단선 필터 (종횡비 8.0 이상 차단)
               AND (
@@ -529,7 +556,7 @@ async def recommend_optimal_sites(
                     except Exception as ex:
                         print(f"[Realtime Exclusion Load Error] {file}: {ex}")
 
-        # 수집된 실시간 금지 구역 리스트와 비교하여 구면거리 하버사인 한계 내 후보지 자동 탈락
+        # [v4.9.40 - Option 2 Hard Drop] 수집된 실시간 금지 구역 리스트와 비교하여 구면거리 하버사인 한계 내 후보지 100% 완전 삭제 배제 (Hard Drop)
         if realtime_exclusions:
             filtered_candidates_list = []
             for c in candidates:
@@ -538,7 +565,7 @@ async def recommend_optimal_sites(
                     dist = haversine_distance(c["lat"], c["lng"], r_ex["lat"], r_ex["lng"])
                     if dist < r_ex["limit"]:
                         too_close = True
-                        print(f"[Realtime Hard Drop] Candidate {c['id']} ({c['jibun']}) automatically dropped. (Dist: {dist:.1f}m < Limit: {r_ex['limit']}m from {r_ex['source']})")
+                        print(f"[Option 2 Hard Drop] Candidate {c['id']} ({c['jibun']}) automatically dropped due to exclusion radius ({dist:.1f}m < {r_ex['limit']}m from {r_ex['source']}).")
                         break
                 if not too_close:
                     filtered_candidates_list.append(c)
@@ -1624,18 +1651,25 @@ class ReportDownloadRequest(BaseModel):
 @router.post("/spatial/report/download")
 async def download_report_pdf(req: ReportDownloadRequest, db: Session = Depends(get_db)):
     try:
-        # ReportLab XML 태그 파싱 에러 방지 이스케이프 헬퍼
+        # ReportLab XML 태그 파싱 에러 방지 및 줄바꿈 br 변환 이스케이프 헬퍼
         def safe_xml(val) -> str:
             if val is None:
                 return ""
-            return html.escape(str(val))
+            raw_str = str(val).strip()
+            if not raw_str:
+                return ""
+            # HTML 특수문자 이스케이프 후 줄바꿈 \n 을 ReportLab <br/> 로 치환
+            escaped = html.escape(raw_str)
+            return escaped.replace("\n", "<br/>")
 
         # 토론 로그 아이템 (str, dict, list 등) 유연 파서
         def parse_debate_log(log_item):
             if isinstance(log_item, dict):
-                s = safe_xml(log_item.get("sender") or "참여자")
-                t = safe_xml(log_item.get("text") or "")
-                return s, t
+                sender_val = log_item.get("sender") or log_item.get("name") or "참여자"
+                text_val = log_item.get("text") or log_item.get("content") or log_item.get("message") or ""
+                s = safe_xml(sender_val)
+                t = safe_xml(text_val)
+                return s or "참여자", t or "(의견 내용 없음)"
             elif isinstance(log_item, str):
                 log_str = log_item.strip()
                 if log_str.startswith("[") and "]" in log_str:
@@ -1850,32 +1884,36 @@ async def download_report_pdf(req: ReportDownloadRequest, db: Session = Depends(
         
         # 3. AI 모의 심의 토론 내용
         story.append(Paragraph("3. 스마트시티 주민 모의 심의 내용 (가상 토론 시나리오)", section_style))
-        debate_story = []
-        debate_story.append(Paragraph("<b>[심의 진행 기록]</b> ※ 이하 기록된 토론은 가상의 인물 간 의견 대립 및 중재안 도출 시뮬레이션입니다.", body_style))
-        debate_story.append(Spacer(1, 6))
+        story.append(Paragraph("<b>[심의 진행 기록]</b> ※ 이하 기록된 토론은 가상의 인물 간 의견 대립 및 중재안 도출 시뮬레이션입니다.", body_style))
+        story.append(Spacer(1, 6))
         
         logs_list = req.debate_logs if isinstance(req.debate_logs, list) else []
         for log_item in logs_list:
             sender, text_log = parse_debate_log(log_item)
             if "면책 고지" in text_log or "가상의 시나리오" in text_log:
                 continue
-            debate_story.append(Paragraph(f"<b>◦ {sender}</b>", body_style))
-            debate_story.append(Paragraph(text_log, log_style))
-            debate_story.append(Spacer(1, 4))
+            
+            # 각 토론 항목을 개별 다중 페이지 지원 렌더링 박스로 구성
+            item_story = [
+                Paragraph(f"<b>◦ {sender}</b>", body_style),
+                Spacer(1, 2),
+                Paragraph(text_log or "(의견 내용 없음)", log_style)
+            ]
+            t_item = Table([[item_story]], colWidths=[530])
+            t_item.setStyle(TableStyle([
+                ('BACKGROUND', (0,0), (-1,-1), colors.HexColor('#F8FAFC')),
+                ('BOX', (0,0), (-1,-1), 0.5, colors.HexColor('#E2E8F0')),
+                ('TOPPADDING', (0,0), (-1,-1), 6),
+                ('BOTTOMPADDING', (0,0), (-1,-1), 6),
+                ('LEFTPADDING', (0,0), (-1,-1), 8),
+                ('RIGHTPADDING', (0,0), (-1,-1), 8),
+            ]))
+            story.append(t_item)
+            story.append(Spacer(1, 5))
             
         if not logs_list:
-            debate_story.append(Paragraph("기록된 모의 토론 출력이 존재하지 않습니다.", body_style))
+            story.append(Paragraph("기록된 모의 토론 출력이 존재하지 않습니다.", body_style))
             
-        t3 = Table([[debate_story]], colWidths=[530])
-        t3.setStyle(TableStyle([
-            ('BACKGROUND', (0,0), (-1,-1), colors.HexColor('#F8FAFC')),
-            ('BOX', (0,0), (-1,-1), 0.8, colors.HexColor('#CBD5E1')),
-            ('TOPPADDING', (0,0), (-1,-1), 10),
-            ('BOTTOMPADDING', (0,0), (-1,-1), 10),
-            ('LEFTPADDING', (0,0), (-1,-1), 10),
-            ('RIGHTPADDING', (0,0), (-1,-1), 10),
-        ]))
-        story.append(t3)
         story.append(Spacer(1, 10))
         
         # 4. 종합 행정 고시

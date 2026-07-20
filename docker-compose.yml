@@ -1,21 +1,52 @@
 version: '3.8'
 
 services:
-  db:
-    build:
-      context: .
-      dockerfile: DB/Dockerfile
-    container_name: omnisite-db
+  database:
+    image: postgis/postgis:15-3.3
+    container_name: omnisite_dev_db
+    restart: always
     environment:
+      POSTGRES_DB: postgres
       POSTGRES_USER: Admin
       POSTGRES_PASSWORD: admin1234
-      POSTGRES_DB: postgres
-    ports:
-      - "5432:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./DB/init:/docker-entrypoint-initdb.d
+      - postgres_dev_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432" # 로컬 호스트 전체 개방하여 DB 관리도구 접근 허용
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: omnisite_dev_be
     restart: always
+    environment:
+      - DATABASE_URL=postgresql+psycopg://Admin:admin1234@database:5432/postgres
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    volumes:
+      - ./backend:/workspace # 핫 리로딩용 로컬 디렉터리 동기화 마운트
+    ports:
+      - "8000:8000"
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    depends_on:
+      - database
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: omnisite_dev_fe
+    restart: always
+    ports:
+      - "3000:3000" # 개발 로컬 3000포트 개방
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+    volumes:
+      - ./frontend:/app # 핫 리로딩용 로컬 디렉터리 동기화 마운트
+      - /app/node_modules # 호스트 node_modules 덮어쓰기 방어
+    command: npm run dev
+    depends_on:
+      - backend
 
 volumes:
-  postgres_data:
+  postgres_dev_data:

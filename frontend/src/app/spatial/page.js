@@ -239,21 +239,45 @@ export default function Home() {
     }
   }, [pipelineStep, inferredDomainTag, userDistrictId]);
 
-  // 컴포넌트 마운트 시 세션스토리지 기반 자동 로그인 복구 (SSR window is not defined 크래시 예방)
+  // 컴포넌트 마운트 및 새로고침 시 백엔드 실시간 JWT 토큰 유효성 동기 검증 (/api/v1/auth/me)
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const token = sessionStorage.getItem('token');
       const savedUser = sessionStorage.getItem('username');
-      const savedRole = sessionStorage.getItem('role');
-      const savedDept = sessionStorage.getItem('department');
-      const savedDistrict = sessionStorage.getItem('district_id');
+      
       if (token && savedUser) {
-        setIsLoggedIn(true);
-        setMunicipalId(savedUser);
-        setUserRole(savedRole || 'user');
-        setDepartment(savedDept || '스마트도시과');
-        const parsedDistrict = savedDistrict ? parseInt(savedDistrict, 10) : 1;
-        setUserDistrictId(!isNaN(parsedDistrict) && parsedDistrict ? parsedDistrict : 1);
+        // 백엔드 서버에 토큰 유효성 실시간 감사 요청
+        fetch('/api/v1/auth/me', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        })
+        .then(res => {
+          if (res.ok) {
+            return res.json();
+          } else {
+            // 토큰 만료 또는 세션 해제 시 세션스토리지 자동 클리어 및 비로그인 전환
+            console.warn("[Auth Verify Fail] 세션 토큰이 만료되었거나 유효하지 않습니다. 세션 초기화.");
+            sessionStorage.clear();
+            setIsLoggedIn(false);
+            setUserRole('user');
+            setMunicipalId('');
+            return null;
+          }
+        })
+        .then(userData => {
+          if (userData) {
+            setIsLoggedIn(true);
+            setMunicipalId(userData.username || savedUser);
+            setUserRole(userData.role || sessionStorage.getItem('role') || 'user');
+            setDepartment(userData.department || sessionStorage.getItem('department') || '스마트도시과');
+            const dist = userData.district_id || parseInt(sessionStorage.getItem('district_id') || '1', 10);
+            setUserDistrictId(!isNaN(dist) && dist ? dist : 1);
+          }
+        })
+        .catch(err => {
+          console.error("[Auth Verify Error] 실시간 토큰 검증 네트워크 예외:", err);
+        });
+      } else {
+        setIsLoggedIn(false);
       }
     }
   }, []);
@@ -1295,10 +1319,19 @@ export default function Home() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ filenames })
       });
-      if (!auditRes.ok) {
-        throw new Error('AI 시맨틱 감리 분석 중 오류가 발생했습니다.');
+      
+      let auditData;
+      const responseText = await auditRes.text();
+      try {
+        auditData = JSON.parse(responseText);
+      } catch (jsonErr) {
+        console.error('[AI Audit JSON Parse Error] Raw text response:', responseText);
+        throw new Error('AI 감리 서버 응답을 파싱할 수 없습니다: ' + (responseText.slice(0, 100) || 'Internal Server Error'));
       }
-      const auditData = await auditRes.json();
+      
+      if (!auditRes.ok) {
+        throw new Error(auditData.detail || 'AI 시맨틱 감리 분석 중 오류가 발생했습니다.');
+      }
 
       // 3. 추론 결과 기반 상태 세팅
       setInferredPurpose(auditData.inferred_purpose);

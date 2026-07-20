@@ -1,116 +1,86 @@
-# OmniSite 클라우드 이관 및 배포 가이드라인 (v1.1-stable)
+# OmniSite 클라우드 이관 및 AWS 실전 배포 매뉴얼 (v1.2.0-stable)
 
-본 문서는 **OmniSite v1.1-stable**의 상용 서비스 릴리즈를 위해 가성비 가상 사설 서버(AWS Lightsail, Vultr 등) 및 Docker-Compose 컨테이너 오케스트레이션을 활용하여 인프라를 무결하게 빌드하고 배포하기 위한 기술 명세서입니다.
+본 문서는 **OmniSite v1.2.0** 프로덕션 빌드의 실제 AWS(Lightsail 등) 클라우드 배포를 위해 인프라를 무결하게 빌드하고 런칭하기 위한 실전 기술 명세서입니다.
 
 ---
 
-## 🖥️ 1. 클라우드 인프라 노드 사양 (Specification)
+## 🖥️ 1. 클라우드 인스턴스 사양 (AWS Lightsail)
 
-비용 최적화(Cost Optimization)와 인프라 격리성을 동시에 만족하는 단일 VPS 배포 사양입니다.
-
-*   **권장 플랫폼:** AWS Lightsail (EC2 대비 아웃바운드 네트워크 전송 트래픽 정액 제공으로 요금 폭탄 예방)
-*   **인스턴스 스펙:** **1 vCPU / 2GB RAM / 40GB SSD** (월 $10 고정 플랜)
-    *   *크레딧 적용 시:* AWS 가입 시 지급되는 180일간의 무료 크레딧 범위 내에서 월 비용 0원 청구 가능.
+비용 최적화와 격리 보안성을 동시에 충족하는 권장 VPS 사양입니다.
+*   **플랫폼:** AWS Lightsail (EC2 대비 고정 데이터 요금제로 요금 폭탄 예방)
+*   **스펙:** **1 vCPU / 2GB RAM / 40GB SSD** (월 $10 고정 플랜)
 *   **OS:** Ubuntu 22.04 LTS (x86_64)
+*   **사전 설정:** AWS Lightsail 인스턴스 관리 콘솔에서 고정 IP(Static IP)를 발급받아 연결해야 합니다.
 
 ---
 
-## 💾 2. 메모리 고갈(OOM) 방지를 위한 Swap Space 설정
+## 💾 2. 메모리 고갈(OOM) 방지를 위한 Swap 설정 (필수)
 
-제한된 RAM(1~2GB) 하에서 DB, 백엔드, 프론트엔드 컨테이너 3개를 가동하면 메모리 고갈로 인한 프로세스 셧다운이 발생하므로 SSD에 가상 Swap 메모리를 강제 할당해야 합니다.
+2GB RAM 단일 서버에서 DB, 백엔드, Next.js 컨테이너를 한 번에 빌드하고 기동하면 메모리가 부족하여 인스턴스가 셧다운됩니다. 빌드 전 반드시 아래 명령어로 **Swap 공간을 4GB 확장**하십시오.
 
-### 🛠️ Swap 메모리 4GB 강제 할당 터미널 명령어
 ```bash
-# 1. 4GB 크기의 스왑 파일 생성
+# 1. 4GB 스왑 파일 할당
 sudo fallocate -l 4G /swapfile
 
-# 2. 파일 권한을 루트 전용(읽기/쓰기)으로 제한
+# 2. 보안 권한 설정
 sudo chmod 600 /swapfile
 
-# 3. 파일을 Linux 스왑 공간으로 포맷
+# 3. 스왑 포맷팅 및 활성화
 sudo mkswap /swapfile
-
-# 4. 스왑 공간 활성화
 sudo swapon /swapfile
 
-# 5. 재부팅 시에도 유지되도록 /etc/fstab에 영구 추가
+# 4. 재부팅 시 자동 활성화되도록 fstab 등록
 echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
 
-# 6. 활성화 정상 여부 검증
+# 5. 활성화 여부 확인
 free -h
 ```
 
 ---
 
-## 🐳 3. Docker-Compose 상용 배포 환경 (Production Suite)
+## 🐳 3. docker-compose.production.yml 패키지 구동
 
-### 3.1. [NEW] docker-compose.production.yml 설정 파일 구조
-```yaml
-version: '3.8'
+저희가 빌드한 상용 컨테이너 빌드 명세를 활용하여 프로젝트 루트 경로에서 배포 컨테이너를 가동합니다.
 
-services:
-  database:
-    image: postgis/postgis:15-3.3
-    container_name: omnisite_prod_db
-    restart: always
-    environment:
-      POSTGRES_DB: postgres
-      POSTGRES_USER: Admin
-      POSTGRES_PASSWORD: admin1234_production_key
-    volumes:
-      - postgres_prod_data:/var/lib/postgresql/data
-    # 호스트 외부 포트(5432)는 격리하여 보안 침투 차단
+### 3.1. 호스트 환경 변수 파일 생성 (`.env`)
+루트 경로에 `.env` 파일을 생성하고 실제 상용 운영 키값을 기재합니다.
+```env
+OPENAI_API_KEY=your_real_openai_api_key_here
+NEXT_PUBLIC_API_URL=http://your_aws_static_ip_here:8000
+```
+> [!WARNING]
+> - `NEXT_PUBLIC_API_URL` 값에 `localhost` 대신 **AWS 실제 고정 IP 주소**를 정확히 명기해야 브라우저의 CORS 매칭 오류가 발생하지 않습니다.
 
-  backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    container_name: omnisite_prod_be
-    restart: always
-    environment:
-      - DATABASE_URL=postgresql+psycopg://Admin:admin1234_production_key@database:5432/postgres
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
-    depends_on:
-      - database
+### 3.2. 상용 백그라운드 구동 명령어
+```bash
+# 1. 이전 빌드 캐시 청소 및 백그라운드 빌드/가동
+docker-compose -f docker-compose.production.yml up --build -d
 
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    container_name: omnisite_prod_fe
-    restart: always
-    ports:
-      - "80:3000"
-    environment:
-      - NEXT_PUBLIC_API_URL=http://your-domain-or-ip:8000
-    depends_on:
-      - backend
-
-volumes:
-  postgres_prod_data:
+# 2. 컨테이너 가동 정합성 검수
+docker-compose -f docker-compose.production.yml ps
 ```
 
 ---
 
-## 🔒 4. Nginx Reverse Proxy 및 SSL(HTTPS) 연동
+## 🔒 4. Nginx Reverse Proxy 및 SSL (HTTPS) 연동
 
-클라이언트의 요청을 대문에서 받아 안전하게 분배하고 암호화 프로토콜을 적용하기 위해 Nginx 설정을 전위에 배치합니다.
+사용자 웹 트래픽을 안전하게 HTTPS 프로토콜로 우회 처리하기 위해 Nginx 리버스 프록시 설정을 전위에 배치합니다.
 
-### 🛠️ /etc/nginx/sites-available/default 설정 양식
+### 4.1. Nginx 설치 및 Let's Encrypt SSL 발급
+```bash
+sudo apt update
+sudo apt install -y nginx certbot python3-certbot-nginx
+
+# Certbot을 통한 도메인 SSL 인증서 발급
+sudo certbot --nginx -d your-domain.com
+```
+
+### 4.2. /etc/nginx/sites-available/default 프록시 바인딩 설정
 ```nginx
 server {
     listen 80;
     server_name your-domain.com;
-
-    # Certbot Let's Encrypt 인증용 챌린지 라우트
-    location /.well-known/acme-challenge/ {
-        root /var/www/html;
-    }
-
-    # HTTP 요청을 HTTPS로 강제 리다이렉트
-    location / {
-        return 301 https://$host$request_uri;
-    }
+    return 301 https://$host$request_uri; # HTTP -> HTTPS 강제 리다이렉트
 }
 
 server {
@@ -120,7 +90,7 @@ server {
     ssl_certificate /etc/letsencrypt/live/your-domain.com/fullchain.pem;
     ssl_certificate_key /etc/letsencrypt/live/your-domain.com/privkey.pem;
 
-    # Next.js 프론트엔드 프록시
+    # Next.js 프론트엔드 프록시 (포트 80요청 -> 3000포트 전달)
     location / {
         proxy_pass http://127.0.0.1:3000;
         proxy_set_header Host $host;
@@ -128,7 +98,7 @@ server {
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
     }
 
-    # FastAPI 백엔드 API 프록시
+    # FastAPI 백엔드 API 프록시 (포트 8000요청 -> 8000포트 전달)
     location /api/v1/ {
         proxy_pass http://127.0.0.1:8000;
         proxy_set_header Host $host;
@@ -137,25 +107,27 @@ server {
     }
 }
 ```
+설정 후 Nginx를 리로드합니다: `sudo systemctl restart nginx`
 
 ---
 
-## 🗄️ 5. 클라우드 기동 후 초기 데이터 시딩 프로시저
+## 🗄️ 5. 클라우드 기동 후 초기 데이터 마이그레이션 프로시저
 
-컨테이너가 최초 기동되면 DB는 빈 상태이므로, 백엔드 컨테이너 내부에 접속하여 지적 및 의사결정 이력 테이블과 조례 임베딩 데이터를 벌크 적재(Ingestion)해야 합니다.
+컨테이너가 최초로 올라가면 데이터베이스는 뼈대만 있는 상태이므로, 백엔드 컨테이너 셸에 진입하여 시군구/읍면동 공간 경계 및 지적 데이터 세트를 적재합니다.
 
 ```bash
-# 1. 실행 중인 백엔드 컨테이너 셸 접속
+# 1. 백엔드 컨테이너 내부 셸 접속
 docker exec -it omnisite_prod_be bash
 
-# 2. 공간 cadastral_lands 테이블 및 국유재산 병합 시딩 스크립트 실행
-python app/scripts/import_national_assets.py
+# 2. Datasets/ 디렉토리로 분류 이관된 파일을 PostGIS 공간 테이블로 로딩
+# (경계선, 지적도 벌크 인서트 및 공간 조인 정합 일치 연산 실행)
+python app/scripts/clean_and_organize_datasets.py
 
-# 3. 조례 RAG 임베딩 데이터 pgvector 적재 실행
-python app/scripts/ingest_regulations.py
-
-# 4. 의사결정 심의 이력 테이블 생성 및 시드 데이터 적재 실행
+# 3. 비어있는 의사결정 이력 테이블 뼈대 생성
 python app/scripts/create_decision_histories_table.py
+
+# 4. XGBoost 모델의 일반화 파라미터 기반 초기 훈련 가동
+python app/scripts/train_css_model.py
 ```
 
-상기 명시된 순서대로 배포 명령어를 수행하면 로컬 호스트 의존성 및 하드코딩 리스크가 제거된 상태로 클라우드 상에 **OmniSite v1.1-stable**이 완전 무오류 런칭됩니다.
+이 매뉴얼 순서대로 기동하면 로컬 종속성이 완전히 배제된 상태로 AWS 클라우드 상에 **OmniSite v1.2.0**이 안전하게 런칭됩니다.

@@ -17,13 +17,26 @@ export default function GatewayPage() {
   const [newPasswordConfirm, setNewPasswordConfirm] = useState('');
   const [resetLoading, setResetLoading] = useState(false);
 
-  // 1. 이미 로그인된 상태일 경우 자동 지도 페이지로 리다이렉트
+  // 1. 이미 로그인된 상태일 경우 백엔드 실시간 토큰 검증 후 지도 페이지로 자동 리다이렉트
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const token = sessionStorage.getItem('token');
       const savedUser = sessionStorage.getItem('username');
       if (token && savedUser) {
-        router.push('/spatial');
+        fetch('/api/v1/auth/me', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        })
+        .then(res => {
+          if (res.ok) {
+            router.push('/spatial');
+          } else {
+            sessionStorage.clear();
+            setLoading(false);
+          }
+        })
+        .catch(() => {
+          setLoading(false);
+        });
       } else {
         setLoading(false);
       }

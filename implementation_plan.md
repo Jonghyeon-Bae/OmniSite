@@ -1,36 +1,32 @@
-# 관리자 콘솔 ML 모델 레지스트리 성능 감사(Audit) 대시보드 개조 계획서
+# 로컬 핫리로드 개발 환경 및 상용 배포 환경 복합 이중화 구축 계획서 (v1.2.0-alpha-Rev99)
 
-관리자 콘솔의 불필요하고 왜곡 위험이 있는 수동 ML 모델 핫업로드 및 단일 ML 재학습 탭을 전격 폐지하고, 서버 상에 활성화된 도메인별 ML 모델 목록을 조회하여 성능 지표(Accuracy, F1-Score, Feature Importance)를 감사(Audit)하는 전용 모니터링 대시보드로 정밀 전환합니다.
+본 계획은 조장(USER)의 지시에 따라, 로컬 테스트/개발 환경(Development Environment)과 실제 클라우드 배포 환경(Production Environment)을 포트 충돌이나 환경 파일 꼬임 없이 상호 독립적 및 병행 구동할 수 있도록 이중 컨테이너 구성을 수립하기 위함입니다.
 
 ## User Review Required
 
-> [!NOTE]
-> 본 개조를 통해 관리자 콘솔(`AdminConsoleModal.jsx`)의 수동 `.pkl` 핫업로드 폼과 수동 재학습 트리거 버튼이 완전 삭제되며, 오직 실존 모델의 감사 및 조회를 담당하는 **"🤖 ML 모델 레지스트리 성능 감사"** 탭으로 전면 일원화됩니다.
-> 실시간 모델 재학습은 파이프라인 Step 1(AI 감리 승인 시)의 자동 선순환 피드백 체계를 통해 구동됩니다.
+> [!IMPORTANT]
+> - **로컬 개발 전용 `docker-compose.yml` 완공**:
+>   - 로컬 소스 변경 시 실시간 반영되도록 볼륨 마운트(`bind-mount`) 처리.
+>   - 백엔드는 `--reload`를 켜고, 프론트엔드는 `npm run dev`로 개발 핫 리로더 기동.
+> - **상용 배포 전용 `docker-compose.production.yml` 분리**:
+>   - 소스코드가 내장된 정적 컨테이너 이미지 빌드.
+>   - 백엔드는 `gunicorn` 다중 프로덕션 모드 가동, 프론트엔드는 Next.js 프로덕션 컴파일 상태로 기동하여 고가용성 보장.
 
 ## Proposed Changes
 
-### Backend Component
+### Docker Orchestration Components
 
-#### [MODIFY] [model.py](file:///c:/Users/Admin/Desktop/빅프로젝트%20관련자료/최종1차/1.0-prototype/backend/app/routers/model.py)
-- `GET /api/v1/model/registry` 엔드포인트 신설:
-  - `backend/app/models/registry/` 디렉터리 내의 모든 `*_v1.pkl` 파일들을 탐색.
-  - 각 모델 파일별 **도메인명(domain_tag), 파일 크기, 최종 수정시각(last_trained_at), 정확도(accuracy), F1-Score(f1_score), 피처 중요도 딕셔너리(feature_importances)**를 추출하여 동적 리스트로 반환.
-  - 파이프라인 dumps 시 성능 메타데이터를 함께 저장하도록 `background_model_train` 수정.
+#### [MODIFY] [docker-compose.yml (Local Development)](file:///c:/Users/Admin/Desktop/빅프로젝트%20관련자료/최종1차/1.0-prototype/docker-compose.yml)
+- 기존 db 단독 명세에서 백엔드(FastAPI Uvicorn Reload), 프론트엔드(Next.js dev hot-reload) 3개 통합 기동으로 개조.
+- 로컬 변경 내역 실시간 바인딩 볼륨 마운트 지정.
 
-### Frontend Component
-
-#### [MODIFY] [AdminConsoleModal.jsx](file:///c:/Users/Admin/Desktop/빅프로젝트%20관련자료/최종1차/1.0-prototype/frontend/src/components/AdminConsoleModal.jsx)
-- 기존 "ML 핫업로드" 및 "ML 재학습" 탭 텍스트 및 조작 버튼 제거/통합 ➔ **"🤖 ML 모델 레지스트리 감사 (Model Registry Audit)"** 탭으로 개편.
-- 상단/좌측 도메인 선택 칩(예: `smoking_zone`, `city_feature` 등) UI 추가.
-- 선택된 모델의 주요 지표 카드(정확도, F1-Score, 최종 재학습 시각) 및 **XGBoost 피처 기여도(Feature Importance) 막대 차트** 표출.
+#### [MODIFY] [docker-compose.production.yml (Cloud Production)](file:///c:/Users/Admin/Desktop/빅프로젝트/관련자료/최종1차/1.0-prototype/docker-compose.production.yml)
+- 소스 마운트 없이 정적으로 컨테이너 빌드 완료 후 Gunicorn & Next.js production 가동.
 
 ## Verification Plan
 
 ### Automated Tests
-- `python -c "import app.routers.model"` 구문 정합성 및 백엔드 라우트 임포트 테스트.
-- `npm run build` 가동하여 Next.js 프론트엔드 최적화 빌드 컴파일 무오류 통과 검증.
+- Next.js 개발 서버 빌드 정합성을 크로스 검증합니다.
 
 ### Manual Verification
-- 백엔드 `/api/v1/model/registry` 엔드포인트 호출 시 `models/registry/` 내의 `.pkl` 파일 목록 및 상세 성능 메타데이터 정상 리턴 확인.
-- 어드민 콘솔 모달 진입 시 수동 업로드/재학습 버튼이 제거되고 도메인별 모델 선택 시 피처 중요도 그래프 및 통계 지표가 동적으로 갱신되는지 확인.
+- 로컬 docker-compose 기동 시 코드 변경 사항이 브라우저에 즉각 핫 리로딩 갱신 반영되는지 실측 검사합니다.

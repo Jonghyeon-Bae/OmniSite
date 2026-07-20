@@ -1,0 +1,16 @@
+venv/
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.coverage
+htmlcov/
+.env
+temp_shp/
+*.pdf
+*.pdf.txt
+*.txt.cache
+data/raw/*.json
+data/processed/css_train_dataset.csv

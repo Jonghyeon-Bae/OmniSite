@@ -7,10 +7,11 @@
 ## 🖥️ 1. 클라우드 인스턴스 사양 (AWS Lightsail)
 
 비용 최적화와 격리 보안성을 동시에 충족하는 권장 VPS 사양입니다.
-*   **플랫폼:** AWS Lightsail (EC2 대비 고정 데이터 요금제로 요금 폭탄 예방)
-*   **스펙:** **1 vCPU / 2GB RAM / 40GB SSD** (월 $10 고정 플랜)
-*   **OS:** Ubuntu 22.04 LTS (x86_64)
-*   **사전 설정:** AWS Lightsail 인스턴스 관리 콘솔에서 고정 IP(Static IP)를 발급받아 연결해야 합니다.
+
+- **플랫폼:** AWS Lightsail (EC2 대비 고정 데이터 요금제로 요금 폭탄 예방)
+- **스펙:** **1 vCPU / 2GB RAM / 40GB SSD** (월 $10 고정 플랜)
+- **OS:** Ubuntu 22.04 LTS (x86_64)
+- **사전 설정:** AWS Lightsail 인스턴스 관리 콘솔에서 고정 IP(Static IP)를 발급받아 연결해야 합니다.
 
 ---
 
@@ -43,15 +44,20 @@ free -h
 저희가 빌드한 상용 컨테이너 빌드 명세를 활용하여 프로젝트 루트 경로에서 배포 컨테이너를 가동합니다.
 
 ### 3.1. 호스트 환경 변수 파일 생성 (`.env`)
+
 루트 경로에 `.env` 파일을 생성하고 실제 상용 운영 키값을 기재합니다.
+
 ```env
 OPENAI_API_KEY=your_real_openai_api_key_here
 NEXT_PUBLIC_API_URL=http://your_aws_static_ip_here:8000
 ```
+
 > [!WARNING]
+>
 > - `NEXT_PUBLIC_API_URL` 값에 `localhost` 대신 **AWS 실제 고정 IP 주소**를 정확히 명기해야 브라우저의 CORS 매칭 오류가 발생하지 않습니다.
 
 ### 3.2. 상용 백그라운드 구동 명령어
+
 ```bash
 # 1. 이전 빌드 캐시 청소 및 백그라운드 빌드/가동
 docker-compose -f docker-compose.production.yml up --build -d
@@ -67,6 +73,7 @@ docker-compose -f docker-compose.production.yml ps
 사용자 웹 트래픽을 안전하게 HTTPS 프로토콜로 우회 처리하기 위해 Nginx 리버스 프록시 설정을 전위에 배치합니다.
 
 ### 4.1. Nginx 설치 및 Let's Encrypt SSL 발급
+
 ```bash
 sudo apt update
 sudo apt install -y nginx certbot python3-certbot-nginx
@@ -76,6 +83,7 @@ sudo certbot --nginx -d your-domain.com
 ```
 
 ### 4.2. /etc/nginx/sites-available/default 프록시 바인딩 설정
+
 ```nginx
 server {
     listen 80;
@@ -107,6 +115,7 @@ server {
     }
 }
 ```
+
 설정 후 Nginx를 리로드합니다: `sudo systemctl restart nginx`
 
 ---

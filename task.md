@@ -1,4 +1,4 @@
-- `[x]` 로컬 개발용 `docker-compose.yml` 3중 컨테이너 및 핫 리로딩 바인딩 구조 완공
-- `[x]` 상용 배포용 `docker-compose.production.yml` 정적 최적화 명세 보완
+- `[x]` 루트 `.gitignore` 내 `*.pdf`, `*.pdf.txt`, 토론 캐시 JSON 등 불필요 임시 파일 배제 설정 보강
+- `[x]` `backend/.dockerignore` 및 `frontend/.dockerignore` 컨테이너 빌드 제외 파일 완공
 - `[x]` Next.js 프로덕션 컴파일 `npm run build` 빌드 검증 수행
-- `[x]` 바탕화면 Workspace 파일 이관 동기화 및 종합 연구노트 `Rev99` 기록 추가
+- `[x]` 바탕화면 Workspace 파일 이관 동기화 및 종합 연구노트 `Rev100` 기록 추가

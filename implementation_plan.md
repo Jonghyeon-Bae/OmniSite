@@ -1,32 +1,33 @@
-# 로컬 핫리로드 개발 환경 및 상용 배포 환경 복합 이중화 구축 계획서 (v1.2.0-alpha-Rev99)
+# Git 불필요/임시 산출물 배제(Ignore) 및 정리 계획서 (v1.2.0-alpha-Rev100-Clean)
 
-본 계획은 조장(USER)의 지시에 따라, 로컬 테스트/개발 환경(Development Environment)과 실제 클라우드 배포 환경(Production Environment)을 포트 충돌이나 환경 파일 꼬임 없이 상호 독립적 및 병행 구동할 수 있도록 이중 컨테이너 구성을 수립하기 위함입니다.
+본 계획은 실제 구동 및 배포에 불필요하거나 개인정보/행정 기밀 노출 우려가 있는 임시 파일들(모의 토론 JSON 로그, RAG 감리 임시 PDF 및 텍스트 캐시, 일회성 테스트 스크립트 등)을 Git 형상관리 대상에서 전격 제외하여 저장소(Repository)의 무결점과 청정 상태를 확보하기 위함입니다.
 
 ## User Review Required
 
 > [!IMPORTANT]
-> - **로컬 개발 전용 `docker-compose.yml` 완공**:
->   - 로컬 소스 변경 시 실시간 반영되도록 볼륨 마운트(`bind-mount`) 처리.
->   - 백엔드는 `--reload`를 켜고, 프론트엔드는 `npm run dev`로 개발 핫 리로더 기동.
-> - **상용 배포 전용 `docker-compose.production.yml` 분리**:
->   - 소스코드가 내장된 정적 컨테이너 이미지 빌드.
->   - 백엔드는 `gunicorn` 다중 프로덕션 모드 가동, 프론트엔드는 Next.js 프로덕션 컴파일 상태로 기동하여 고가용성 보장.
+> - **Git 영구 제외 및 정리 대상 명세**:
+>   - **임시 PDF 및 텍스트 캐시 (`*.pdf`, `*.pdf.txt`)**: PDF OCR 감리 시 로컬 디렉토리에 캐싱되는 원천 문서들로, 보안 및 개인정보 침해 소지가 있어 제외합니다.
+>   - **임시 토론/RAG 캐시 JSON (`backend/data/raw/*.json`)**: 웹 구동 시 실시간 적재 및 휘발되는 캐시 데이터이므로 형상관리에서 영구 격리합니다.
+>   - **ML 훈련 데이터 중간 산출물 (`backend/data/processed/css_train_dataset.csv`)**: 이미 완성된 ML 모델(`smoking_zone_v1.pkl`)이 레지스트리에 내장되어 있어 Git 업로드 불필요로 판정해 제외합니다.
+>   - **일회성/테스트 스크립트 및 백업본 (`frontend.zip`, `create_pdf_raw.py` 등)**: 로컬 검증만을 위한 일회성 쓰레기 코드로, 배포 패키지 오염을 유발하므로 제외합니다.
 
 ## Proposed Changes
 
-### Docker Orchestration Components
+### Configuration Components
 
-#### [MODIFY] [docker-compose.yml (Local Development)](file:///c:/Users/Admin/Desktop/빅프로젝트%20관련자료/최종1차/1.0-prototype/docker-compose.yml)
-- 기존 db 단독 명세에서 백엔드(FastAPI Uvicorn Reload), 프론트엔드(Next.js dev hot-reload) 3개 통합 기동으로 개조.
-- 로컬 변경 내역 실시간 바인딩 볼륨 마운트 지정.
+#### [MODIFY] [.gitignore](file:///c:/Users/Admin/Desktop/빅프로젝트%20관련자료/최종1차/1.0-prototype/.gitignore)
+- L34 ~ L44 구역을 개조하여 상기 명세된 임시 캐시 및 텍스트 데이터의 영구 제외 규칙을 추가 보완합니다.
 
-#### [MODIFY] [docker-compose.production.yml (Cloud Production)](file:///c:/Users/Admin/Desktop/빅프로젝트/관련자료/최종1차/1.0-prototype/docker-compose.production.yml)
-- 소스 마운트 없이 정적으로 컨테이너 빌드 완료 후 Gunicorn & Next.js production 가동.
+#### [NEW] [.dockerignore (backend)](file:///c:/Users/Admin/Desktop/빅프로젝트%20관련자료/최종1차/1.0-prototype/backend/.dockerignore)
+- 도커 이미지 빌드 용량 최적화를 위해 가상환경(`venv`) 및 임시 PDF, `__pycache__` 등을 빌드 대상에서 전격 제외합니다.
+
+#### [NEW] [.dockerignore (frontend)](file:///c:/Users/Admin/Desktop/빅프로젝트%20관련자료/최종1차/1.0-prototype/frontend/.dockerignore)
+- `node_modules` 및 `.next` 컴파일 임시 디렉토리를 이미지 전송 대상에서 차단합니다.
 
 ## Verification Plan
 
 ### Automated Tests
-- Next.js 개발 서버 빌드 정합성을 크로스 검증합니다.
+- Next.js 프로덕션 컴파일 빌드를 재동작시켜 정적 무결성을 증명합니다.
 
 ### Manual Verification
-- 로컬 docker-compose 기동 시 코드 변경 사항이 브라우저에 즉각 핫 리로딩 갱신 반영되는지 실측 검사합니다.
+- git status 검사 시 임시 PDF나 토론 캐시 파일들이 정상적으로 스킵되어 깨끗한 트래킹 상태가 유지되는지 확인합니다.

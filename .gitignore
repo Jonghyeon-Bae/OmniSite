@@ -33,11 +33,14 @@ Thumbs.db
 
 # Project-specific temporary/backup files
 frontend.zip
-*.log
-backend/data/raw/
-backend/data/processed/
 create_pdf_raw.py
-test_regulation.pdf
+*.log
+backend/data/raw/*.json
+backend/data/processed/css_train_dataset.csv
+backend/temp_shp/
+*.pdf
+*.pdf.txt
+*.txt.cache
 
 # Exclude heavy raw geospatial datasets from Git tracking
 Datasets/

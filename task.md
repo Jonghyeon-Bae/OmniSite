@@ -1,4 +1,4 @@
-- `[x]` RAG OCR 검증용 한글 지원 PDF 생성 스크립트 작성 및 컴파일 실행 완료
-- `[x]` `yongsan_smart_infra_completion_notice_sample.pdf` 실물 샘플 완공 수립
+- `[x]` backend/app/routers/spatial.py 실증사례 목록 반환 API GET /api/v1/spatial/precedents 신규 구현
+- `[x]` frontend/src/app/dashboard/page.js 대시보드 테이블 탭(Tab) 전환 인터페이스 및 precedentList 렌더링 완공
 - `[x]` Next.js 프로덕션 컴파일 `npm run build` 빌드 검증 수행
-- `[x]` 바탕화면 Workspace 파일 이관 동기화 및 종합 연구노트 `Rev108` 기록 추가
+- `[x]` 바탕화면 Workspace 파일 이관 동기화 및 종합 연구노트 `Rev114` 기록 추가

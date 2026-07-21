@@ -16,6 +16,8 @@ const apiFetch = (url, options = {}) => {
 
 export default function Dashboard() {
   const [historyList, setHistoryList] = useState([]);
+  const [precedentList, setPrecedentList] = useState([]);
+  const [activeTab, setActiveTab] = useState('history'); // 'history' | 'precedents'
   const [isLoading, setIsLoading] = useState(true);
 
   // FAQ 아코디언 상태
@@ -41,19 +43,36 @@ export default function Dashboard() {
       }
     } catch (err) {
       console.error("Failed to fetch history:", err);
-    } finally {
-      setIsLoading(false);
     }
   };
 
+  // RAG 실증사례 목록 조회 API 연계
+  const fetchPrecedents = async () => {
+    try {
+      const res = await apiFetch('/api/v1/spatial/precedents');
+      if (res.ok) {
+        const data = await res.json();
+        setPrecedentList(data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch precedents:", err);
+    }
+  };
+
+  const refreshAllData = async () => {
+    setIsLoading(true);
+    await Promise.all([fetchHistory(), fetchPrecedents()]);
+    setIsLoading(false);
+  };
+
   useEffect(() => {
-    fetchHistory();
+    refreshAllData();
   }, []);
 
   // 실제 공문서 파일 업로드 검증 감리 API 연동 (RAG Audit)
   const handleAuditUpload = async (e) => {
     const file = e.target.files[0];
-    if (!file || !activeHistoryId) return;
+    if (!file) return;
 
     setAuditFile(file);
     setIsParsing(true);
@@ -63,28 +82,52 @@ export default function Dashboard() {
       const formData = new FormData();
       formData.append('file', file);
       
-      const res = await apiFetch(`/api/v1/spatial/history/${activeHistoryId}/audit-doc`, {
+      // 1단계: PNU 및 지번 지능형 자동 매칭 API 호출
+      const res = await apiFetch(`/api/v1/spatial/history/audit-auto`, {
         method: 'POST',
         body: formData
       });
       
       if (res.ok) {
         const data = await res.json();
-        setAuditResult(data);
         
-        // 해당 심의 역사 행 검증 상태 업데이트
-        setHistoryList(prev => prev.map(item => {
-          if (item.id === activeHistoryId) {
-            return { 
-              ...item, 
-              auditState: data.auditState, 
-              auditOpinion: data.summary 
-            };
+        if (data.status === "not_found") {
+          // 2단계: 매칭되는 심의 이력이 없는 경우 -> 자가학습 지식 아카이브 편입 유도 모달/컴펌
+          const confirmRegister = window.confirm(
+            `[미등록 준공 공문서 감지]\n\n` +
+            `• 주소: ${data.jibun}\n` +
+            `• 필지 PNU: ${data.pnu || '미추출'}\n\n` +
+            `시스템 내에 이 필지에 관한 과거 모의 심의 이력이 존재하지 않습니다.\n` +
+            `이 문서를 RAG 성공 사례(지식베이스)에 축적하여 AI 자가학습 참고자료로 등록하시겠습니까?`
+          );
+          
+          if (confirmRegister) {
+            // 성공사례 지식 적재 API 호출
+            const regRes = await apiFetch(`/api/v1/spatial/history/audit-register-precedent`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                pnu: data.pnu,
+                jibun: data.jibun,
+                filename: data.filename,
+                textContent: data.textContent
+              })
+            });
+            
+            if (regRes.ok) {
+              alert("✓ 성공 사례 및 AI 자가학습 RAG 지식 아카이브 적재가 무사히 완료되었습니다!");
+              refreshAllData(); // 실시간 전체 리스트/통계 갱신
+            } else {
+              const regErr = await regRes.json();
+              alert(`성공사례 적재 실패: ${regErr.detail || '알 수 없는 오류'}`);
+            }
           }
-          return item;
-        }));
-        
-        alert(`✓ RAG 교차 감리 완료!\n일치율: ${data.matchScore}%\n시나리오 판정: ${data.mappedScenario}`);
+        } else {
+          // 매칭 성공 케이스
+          setAuditResult(data);
+          refreshAllData(); // 의사결정 상태 전체 갱신
+          alert(`✓ PNU 자동 인식 매칭 성공!\n일치율: ${data.matchScore}%\n시나리오 판정: ${data.mappedScenario}`);
+        }
       } else {
         const err = await res.json();
         alert(`감리 분석 실패: ${err.detail || '알 수 없는 오류'}`);
@@ -249,7 +292,7 @@ export default function Dashboard() {
           <div className="glass-panel p-6 flex flex-col gap-2">
             <span className="text-xs text-slate-400 font-semibold">RAG 축적 검증사례 수</span>
             <span className="text-3xl font-bold text-emerald-400 font-mono">
-              {historyList.filter(h => h.auditState === '검증 완료').length} 건
+              {precedentList.length} 건
             </span>
             <p className="text-[10px] text-slate-500 mt-1">실제 이행 공문 분석 RAG 격리 세그먼트 적재량</p>
           </div>
@@ -258,77 +301,150 @@ export default function Dashboard() {
         {/* 메인 이력 테이블 및 Audit AI 영역 (2단 분할) */}
         <section className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           
-          {/* 좌측 2칸: 과거 이력 테이블 */}
+          {/* 좌측 2칸: 과거 이력 테이블 및 실증 사례 테이블 (탭 분리) */}
           <div className="lg:col-span-2 glass-panel p-6 flex flex-col gap-4">
-            <div className="flex justify-between items-center border-b border-slate-800 pb-3">
-              <h2 className="text-sm font-bold text-white">행정 의사결정 이력 목록 (OMS-01-04-001)</h2>
-              <span className="text-[10px] text-slate-500">지적 필지 및 갈등 시뮬레이션 이력 아카이브</span>
+            <div className="flex justify-between items-center border-b border-slate-800 pb-3 flex-wrap gap-2">
+              <div className="flex flex-col gap-1">
+                <h2 className="text-sm font-bold text-white">행정 입지 분석 및 실증 준공 아카이브</h2>
+                <span className="text-[10px] text-slate-500">모의 시뮬레이션 이력과 실제 준공 검증 데이터 연동 목록</span>
+              </div>
+              
+              {/* 프리미엄 탭 스위처 */}
+              <div className="flex gap-1 bg-slate-950 p-1 rounded-lg border border-slate-800">
+                <button
+                  onClick={() => setActiveTab('history')}
+                  className={`px-3 py-1 rounded text-[11px] font-bold transition-all cursor-pointer ${
+                    activeTab === 'history' 
+                      ? 'bg-blue-600/90 text-white shadow-lg shadow-blue-500/20' 
+                      : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  모의 심의 이력 ({historyList.length})
+                </button>
+                <button
+                  onClick={() => setActiveTab('precedents')}
+                  className={`px-3 py-1 rounded text-[11px] font-bold transition-all cursor-pointer ${
+                    activeTab === 'precedents' 
+                      ? 'bg-emerald-600/90 text-white shadow-lg shadow-emerald-500/20' 
+                      : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  실증 준공 사례 ({precedentList.length})
+                </button>
+              </div>
             </div>
 
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs border-collapse">
-                <thead>
-                  <tr className="border-b border-slate-800 text-slate-400 font-semibold bg-slate-900/30">
-                    <th className="py-3 px-4">의사결정 ID</th>
-                    <th className="py-3 px-4">일자</th>
-                    <th className="py-3 px-4">대상 지역</th>
-                    <th className="py-3 px-4">선택 인프라</th>
-                    <th className="py-3 px-4">심의 상태</th>
-                    <th className="py-3 px-4">사후 검증</th>
-                    <th className="py-3 px-4 text-center">조회</th>
-                    <th className="py-3 px-4 text-center">선택</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {historyList.map(item => (
-                    <tr key={item.id} className="border-b border-slate-900 hover:bg-slate-900/30 transition-all">
-                      <td className="py-3.5 px-4 font-mono text-slate-300">#{item.id}</td>
-                      <td className="py-3.5 px-4 text-slate-400">{item.date}</td>
-                      <td className="py-3.5 px-4 font-medium text-white">{item.region}</td>
-                      <td className="py-3.5 px-4 text-slate-300">{item.infra}</td>
-                      <td className="py-3.5 px-4">
-                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                          item.status === '행정 종결' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'
-                        }`}>
-                          {item.status}
-                        </span>
-                      </td>
-                      <td className="py-3.5 px-4">
-                        <span className={`text-[10px] font-semibold ${
-                          item.auditState === '검증 완료' ? 'text-emerald-400' :
-                          item.auditState === '대기 중' ? 'text-slate-500 animate-pulse' : 'text-rose-400'
-                        }`}>
-                          {item.auditState}
-                        </span>
-                      </td>
-                      <td className="py-3.5 px-4 text-center">
-                        <button
-                          onClick={() => openHistoryDetails(item)}
-                          className="bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] font-bold px-2 py-1 rounded cursor-pointer transition-all border border-slate-700"
-                        >
-                          상세 조회
-                        </button>
-                      </td>
-                      <td className="py-3.5 px-4 text-center">
-                        <button
-                          onClick={() => {
-                            setActiveHistoryId(item.id);
-                            setAuditFile(null);
-                            setAuditResult(null);
-                          }}
-                          disabled={item.status !== '행정 종결'}
-                          className="bg-blue-600 hover:bg-blue-700 disabled:opacity-30 disabled:pointer-events-none text-white text-[10px] font-bold px-2 py-1 rounded cursor-pointer transition-all"
-                        >
-                          검증 선택
-                        </button>
-                      </td>
+              {activeTab === 'history' ? (
+                // 탭 A: 모의 심의 이력 테이블
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead>
+                    <tr className="border-b border-slate-800 text-slate-400 font-semibold bg-slate-900/30">
+                      <th className="py-3 px-4">의사결정 ID</th>
+                      <th className="py-3 px-4">일자</th>
+                      <th className="py-3 px-4">대상 지역</th>
+                      <th className="py-3 px-4">선택 인프라</th>
+                      <th className="py-3 px-4">심의 상태</th>
+                      <th className="py-3 px-4">사후 검증</th>
+                      <th className="py-3 px-4 text-center">조회</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {historyList.map(item => (
+                      <tr key={item.id} className="border-b border-slate-900 hover:bg-slate-900/30 transition-all">
+                        <td className="py-3.5 px-4 font-mono text-slate-300">#{item.id}</td>
+                        <td className="py-3.5 px-4 text-slate-400">{item.date}</td>
+                        <td className="py-3.5 px-4 font-medium text-white">{item.region}</td>
+                        <td className="py-3.5 px-4 text-slate-300">{item.infra}</td>
+                        <td className="py-3.5 px-4">
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                            item.status === '행정 종결' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'
+                          }`}>
+                            {item.status}
+                          </span>
+                        </td>
+                        <td className="py-3.5 px-4">
+                          <span className={`text-[10px] font-semibold ${
+                            item.auditState === '검증 완료' ? 'text-emerald-400' :
+                            item.auditState === '대기 중' ? 'text-slate-500 animate-pulse' : 'text-rose-400'
+                          }`}>
+                            {item.auditState}
+                          </span>
+                        </td>
+                        <td className="py-3.5 px-4 text-center">
+                          <button
+                            onClick={() => openHistoryDetails(item)}
+                            className="bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] font-bold px-2 py-1 rounded cursor-pointer transition-all border border-slate-700"
+                          >
+                            상세 조회
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                    {historyList.length === 0 && (
+                      <tr>
+                        <td colSpan="7" className="py-8 text-center text-slate-500 font-mono">기동된 모의 심의 이력이 존재하지 않습니다.</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              ) : (
+                // 탭 B: 실증 준공 사례 테이블
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead>
+                    <tr className="border-b border-slate-800 text-slate-400 font-semibold bg-slate-900/30">
+                      <th className="py-3 px-4">사례 ID</th>
+                      <th className="py-3 px-4">등록일자</th>
+                      <th className="py-3 px-4">실증 준공 주소</th>
+                      <th className="py-3 px-4">필지 PNU</th>
+                      <th className="py-3 px-4">도달 시나리오</th>
+                      <th className="py-3 px-4">감리 문서명</th>
+                      <th className="py-3 px-4 text-center">감리 분석</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {precedentList.map(item => (
+                      <tr key={item.id} className="border-b border-slate-900 hover:bg-slate-900/30 transition-all">
+                        <td className="py-3.5 px-4 font-mono text-slate-300">#{item.id}</td>
+                        <td className="py-3.5 px-4 text-slate-400">{item.date}</td>
+                        <td className="py-3.5 px-4 font-medium text-white">{item.jibun}</td>
+                        <td className="py-3.5 px-4 font-mono text-slate-400">{item.pnu}</td>
+                        <td className="py-3.5 px-4">
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400">
+                            {item.scenario || '준공 부합'}
+                          </span>
+                        </td>
+                        <td className="py-3.5 px-4 text-slate-400 max-w-[120px] truncate" title={item.title}>
+                          {item.title}
+                        </td>
+                        <td className="py-3.5 px-4 text-center">
+                          <button
+                            onClick={() => {
+                              setAuditFile({ name: item.title });
+                              setAuditResult({
+                                mappedScenario: item.scenario || '준공 완전 부합',
+                                matchScore: 100,
+                                title: item.title,
+                                summary: item.summary
+                              });
+                            }}
+                            className="bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-bold px-2 py-1 rounded cursor-pointer transition-all border border-emerald-700"
+                          >
+                            RAG 분석
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                    {precedentList.length === 0 && (
+                      <tr>
+                        <td colSpan="7" className="py-8 text-center text-slate-500 font-mono">적재된 실증 준공 사례가 존재하지 않습니다.</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              )}
             </div>
           </div>
-
           {/* 우측 1칸: 선택된 이력의 Audit AI 사후 검증 모듈 */}
           <div className="glass-panel p-6 flex flex-col gap-4">
             <div className="border-b border-slate-800 pb-3">
@@ -336,67 +452,61 @@ export default function Dashboard() {
               <p className="text-[10px] text-slate-500">선택된 이력의 실제 공문서 검증 피드백 루프</p>
             </div>
 
-            {activeHistoryId ? (
-              <div className="flex flex-col gap-4">
-                <div className="bg-slate-900/50 p-4 rounded-xl border border-slate-800 flex justify-between items-center text-xs">
-                  <span className="font-semibold text-slate-300">선택된 이력 ID:</span>
-                  <span className="font-mono text-blue-400 font-bold">#{activeHistoryId}</span>
-                </div>
-
-                {/* 결재 공문 업로드존 */}
-                <div className="flex flex-col gap-2">
-                  <label className="text-xs text-slate-400">행정 종결 고시 공문 (PDF)</label>
-                  <div className="border-2 border-dashed border-slate-700 hover:border-emerald-500 rounded-xl p-5 text-center cursor-pointer transition-all bg-slate-950/40 relative">
-                    <input 
-                      type="file" 
-                      accept=".pdf" 
-                      onChange={handleAuditUpload} 
-                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                    />
-                    <p className="text-xs text-slate-300 font-medium">
-                      {auditFile ? auditFile.name : '준공/고시 공문 드롭존'}
-                    </p>
-                    <p className="text-[9px] text-slate-600 mt-1">드래그앤드롭하여 분석 개시</p>
-                  </div>
-                </div>
-
-                {/* 파싱 중 인디케이터 */}
-                {isParsing && (
-                  <div className="text-xs text-blue-400 animate-pulse text-center my-4 font-mono">
-                    📄 OCR 추출 및 시나리오 1:1 매핑 연산 중...
-                  </div>
-                )}
-
-                {/* 분석 완료 리포트 */}
-                {auditResult && !isParsing && (
-                  <div className="bg-slate-950/60 p-4 rounded-xl border border-emerald-500/30 flex flex-col gap-3 text-xs text-slate-300 leading-relaxed">
-                    <div className="flex justify-between border-b border-slate-900 pb-1.5 text-emerald-400 font-semibold">
-                      <span>도달 시나리오</span>
-                      <span>{auditResult.mappedScenario}</span>
-                    </div>
-                    <div>
-                      <span className="text-slate-500 block mb-0.5">매칭 유사 신뢰도</span>
-                      <span className="text-white font-mono font-bold">{auditResult.matchScore}% 적합</span>
-                    </div>
-                    <div>
-                      <span className="text-slate-500 block mb-0.5">판독 공문</span>
-                      <span className="text-slate-300 font-medium">{auditResult.title}</span>
-                    </div>
-                    <div>
-                      <span className="text-slate-500 block mb-0.5">주요 요약 결과</span>
-                      <p className="text-slate-400 bg-slate-900/30 p-2.5 rounded border border-slate-900 text-[11px]">{auditResult.summary}</p>
-                    </div>
-                    <div className="text-[10px] text-emerald-400 font-bold border-t border-slate-900 pt-2 text-right">
-                      ✓ RAG 격리 세그먼트 적재 및 요약 완료
-                    </div>
-                  </div>
-                )}
+            <div className="flex flex-col gap-4">
+              <div className="bg-slate-900/50 p-4 rounded-xl border border-slate-800 flex justify-between items-center text-xs">
+                <span className="font-semibold text-slate-300">동작 모드:</span>
+                <span className="font-mono text-emerald-400 font-bold">지능형 PNU 자동 감지 모드</span>
               </div>
-            ) : (
-              <div className="text-center py-20 text-slate-500 text-xs">
-                의사결정 이력 테이블에서<br />[검증 선택] 버튼을 클릭하면<br />사후 검증 드롭존이 활성화됩니다.
+
+              {/* 결재 공문 업로드존 */}
+              <div className="flex flex-col gap-2">
+                <label className="text-xs text-slate-400">행정 준공/고시 공문 (PDF)</label>
+                <div className="border-2 border-dashed border-slate-700 hover:border-emerald-500 rounded-xl p-5 text-center cursor-pointer transition-all bg-slate-950/40 relative">
+                  <input 
+                    type="file" 
+                    accept=".pdf" 
+                    onChange={handleAuditUpload} 
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                  />
+                  <p className="text-xs text-slate-300 font-medium">
+                    {auditFile ? auditFile.name : '준공/고시 공문 드롭존'}
+                  </p>
+                  <p className="text-[9px] text-slate-600 mt-1">드래그앤드롭하여 자동 PNU 분석 및 적재 개시</p>
+                </div>
               </div>
-            )}
+
+              {/* 파싱 중 인디케이터 */}
+              {isParsing && (
+                <div className="text-xs text-blue-400 animate-pulse text-center my-4 font-mono">
+                  📄 OCR 추출 및 지능형 PNU 이력 매핑 연산 중...
+                </div>
+              )}
+
+              {/* 분석 완료 리포트 */}
+              {auditResult && !isParsing && (
+                <div className="bg-slate-950/60 p-4 rounded-xl border border-emerald-500/30 flex flex-col gap-3 text-xs text-slate-300 leading-relaxed">
+                  <div className="flex justify-between border-b border-slate-900 pb-1.5 text-emerald-400 font-semibold">
+                    <span>도달 시나리오</span>
+                    <span>{auditResult.mappedScenario}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 block mb-0.5">매칭 유사 신뢰도</span>
+                    <span className="text-white font-mono font-bold">{auditResult.matchScore}% 적합</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 block mb-0.5">판독 공문</span>
+                    <span className="text-slate-300 font-medium">{auditResult.title}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 block mb-0.5">주요 요약 결과</span>
+                    <p className="text-slate-400 bg-slate-900/30 p-2.5 rounded border border-slate-900 text-[11px]">{auditResult.summary}</p>
+                  </div>
+                  <div className="text-[10px] text-emerald-400 font-bold border-t border-slate-900 pt-2 text-right">
+                    ✓ RAG 격리 세그먼트 적재 및 요약 완료
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </section>
 

@@ -52,6 +52,7 @@ export default function DebateSimulatorModal({
         inferred_purpose: payload.inferred_purpose,
         ahp_weights: payload.ahp_weights,
         selected_parcel_jibun: payload.candidate_jibun,
+        selected_parcel_pnu: currentParcel.pnu || currentParcel.PNU || null,
         selected_parcel_price: currentParcel.price || 0,
         selected_parcel_area: currentParcel.area || 0.0,
         selected_parcel_css: payload.candidate_css,

@@ -25,6 +25,7 @@ def main():
                 inferred_purpose VARCHAR(250),
                 ahp_weights JSONB,
                 selected_parcel_jibun VARCHAR(250),
+                selected_parcel_pnu VARCHAR(50),
                 selected_parcel_price BIGINT,
                 selected_parcel_area NUMERIC,
                 selected_parcel_css INTEGER,

@@ -27,6 +27,14 @@ def main():
         print("[Fix DDL] Decoupling verified_precedents foreign key constraint...")
         conn.execute(text("ALTER TABLE verified_precedents DROP CONSTRAINT IF EXISTS verified_precedents_conflict_simulation_id_fkey;"))
         conn.execute(text("ALTER TABLE verified_precedents ALTER COLUMN conflict_simulation_id DROP NOT NULL;"))
+        conn.execute(text("ALTER TABLE verified_precedents ADD COLUMN IF NOT EXISTS selected_parcel_pnu VARCHAR(50);"))
+        conn.execute(text("ALTER TABLE verified_precedents ADD COLUMN IF NOT EXISTS match_score INTEGER DEFAULT 100;"))
+        conn.execute(text("ALTER TABLE verified_precedents ADD COLUMN IF NOT EXISTS audit_opinion TEXT;"))
+        
+        # pgvector district_regulations 테이블의 잘못된 btree INCLUDE 인덱스 수정 (로우 크기 초과 방지)
+        print("[Fix DDL] Repairing district_regulations btree index to exclude vector column...")
+        conn.execute(text("DROP INDEX IF EXISTS idx_regulations_district_category_vector;"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS idx_regulations_district_category_vector ON district_regulations (district_id, category);"))
         conn.commit()
         print("[Fix DDL] Column and foreign keys repaired successfully!")
 

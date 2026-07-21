@@ -1,7 +1,7 @@
 {
   "domain": "smoking_zone",
   "model_filename": "smoking_zone_v1.pkl",
-  "last_trained_at": "2026-07-20 14:44:55",
+  "last_trained_at": "2026-07-21 11:39:22",
   "accuracy": 0.7686,
   "f1_score": 0.7813,
   "sample_count": 6567,

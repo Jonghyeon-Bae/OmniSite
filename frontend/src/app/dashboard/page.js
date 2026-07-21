@@ -91,7 +91,37 @@ export default function Dashboard() {
       if (res.ok) {
         const data = await res.json();
         
-        if (data.status === "not_found") {
+        if (data.status === "already_exists") {
+          // 중복 실증 준공 사례 업로드 감지 분기
+          const confirmOverwrite = window.confirm(
+            `[실증 준공 사례 중복 감지]\n\n` +
+            `• 대상 PNU: ${data.pnu}\n` +
+            `• 기존 파일: ${data.existing_title}\n\n` +
+            `이미 동일 필지(PNU)로 등록된 실증 준공 사례가 존재합니다. 기존 사례를 삭제하고 덮어쓰시겠습니까?`
+          );
+          
+          if (confirmOverwrite) {
+            const regRes = await apiFetch(`/api/v1/spatial/history/audit-register-precedent`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                pnu: data.pnu,
+                jibun: data.jibun,
+                filename: data.filename,
+                textContent: data.textContent,
+                overwrite: true
+              })
+            });
+            
+            if (regRes.ok) {
+              alert("✓ 성공 사례가 기존 데이터를 덮어쓰고 정상 갱신되었습니다!");
+              refreshAllData();
+            } else {
+              const regErr = await regRes.json();
+              alert(`성공사례 덮어쓰기 실패: ${regErr.detail || '알 수 없는 오류'}`);
+            }
+          }
+        } else if (data.status === "not_found") {
           // 2단계: 매칭되는 심의 이력이 없는 경우 -> 자가학습 지식 아카이브 편입 유도 모달/컴펌
           const confirmRegister = window.confirm(
             `[미등록 준공 공문서 감지]\n\n` +
@@ -110,7 +140,8 @@ export default function Dashboard() {
                 pnu: data.pnu,
                 jibun: data.jibun,
                 filename: data.filename,
-                textContent: data.textContent
+                textContent: data.textContent,
+                overwrite: false
               })
             });
             
@@ -136,6 +167,40 @@ export default function Dashboard() {
       alert(`감리 문서 업로드 중 오류 발생: ${err.message}`);
     } finally {
       setIsParsing(false);
+    }
+  };
+
+  // 모의 심의 이력 삭제 핸들러
+  const handleDeleteHistory = async (id, e) => {
+    e.stopPropagation();
+    if (!window.confirm(`선택한 모의 심의 이력 #${id}을 영구 삭제하시겠습니까?`)) return;
+    try {
+      const res = await apiFetch(`/api/v1/spatial/history/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        alert("✓ 심의 이력이 정상 삭제되었습니다.");
+        refreshAllData();
+      } else {
+        alert("이력 삭제에 실패했습니다.");
+      }
+    } catch (err) {
+      alert(`삭제 중 오류 발생: ${err.message}`);
+    }
+  };
+
+  // 실증 준공 사례 삭제 핸들러
+  const handleDeletePrecedent = async (id, e) => {
+    e.stopPropagation();
+    if (!window.confirm(`선택한 실증 준공 사례 #${id}을 RAG 지식베이스에서 영구 삭제하시겠습니까?`)) return;
+    try {
+      const res = await apiFetch(`/api/v1/spatial/precedents/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        alert("✓ 실증 준공 사례가 성공적으로 삭제되었습니다.");
+        refreshAllData();
+      } else {
+        alert("사례 삭제에 실패했습니다.");
+      }
+    } catch (err) {
+      alert(`삭제 중 오류 발생: ${err.message}`);
     }
   };
 
@@ -283,11 +348,11 @@ export default function Dashboard() {
             <p className="text-[10px] text-emerald-400 mt-1">▲ DB 동적 연동 활성화됨 (용산구 실측 수립)</p>
           </div>
           <div className="glass-panel p-6 flex flex-col gap-2">
-            <span className="text-xs text-slate-400 font-semibold">평균 갈등 타결 신뢰도</span>
+            <span className="text-xs text-slate-400 font-semibold">모의 심의 이력 중 합의 타결률</span>
             <span className="text-3xl font-bold text-blue-400 font-mono">
-              {historyList.length > 0 ? (historyList.filter(h => h.auditState === '검증 완료').length / historyList.length * 100).toFixed(1) : 0} %
+              {historyList.length > 0 ? (historyList.filter(h => h.status === '행정 종결').length / historyList.length * 100).toFixed(1) : 0} %
             </span>
-            <p className="text-[10px] text-slate-500 mt-1">실제 감리 완료된 입지 적합 판정 비율</p>
+            <p className="text-[10px] text-slate-500 mt-1">모의 주민 토론을 거쳐 합의 타결 종결된 이력 비율</p>
           </div>
           <div className="glass-panel p-6 flex flex-col gap-2">
             <span className="text-xs text-slate-400 font-semibold">RAG 축적 검증사례 수</span>
@@ -346,7 +411,7 @@ export default function Dashboard() {
                       <th className="py-3 px-4">선택 인프라</th>
                       <th className="py-3 px-4">심의 상태</th>
                       <th className="py-3 px-4">사후 검증</th>
-                      <th className="py-3 px-4 text-center">조회</th>
+                      <th className="py-3 px-4 text-center">조회 / 삭제</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -371,12 +436,18 @@ export default function Dashboard() {
                             {item.auditState}
                           </span>
                         </td>
-                        <td className="py-3.5 px-4 text-center">
+                        <td className="py-3.5 px-4 text-center flex items-center justify-center gap-1.5">
                           <button
                             onClick={() => openHistoryDetails(item)}
                             className="bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] font-bold px-2 py-1 rounded cursor-pointer transition-all border border-slate-700"
                           >
                             상세 조회
+                          </button>
+                          <button
+                            onClick={(e) => handleDeleteHistory(item.id, e)}
+                            className="bg-rose-950/40 hover:bg-rose-900/60 text-rose-400 text-[10px] font-bold px-2 py-1 rounded cursor-pointer transition-all border border-rose-800/40"
+                          >
+                            삭제
                           </button>
                         </td>
                       </tr>
@@ -399,7 +470,7 @@ export default function Dashboard() {
                       <th className="py-3 px-4">필지 PNU</th>
                       <th className="py-3 px-4">도달 시나리오</th>
                       <th className="py-3 px-4">감리 문서명</th>
-                      <th className="py-3 px-4 text-center">감리 분석</th>
+                      <th className="py-3 px-4 text-center">감리 분석 / 삭제</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -417,13 +488,13 @@ export default function Dashboard() {
                         <td className="py-3.5 px-4 text-slate-400 max-w-[120px] truncate" title={item.title}>
                           {item.title}
                         </td>
-                        <td className="py-3.5 px-4 text-center">
+                        <td className="py-3.5 px-4 text-center flex items-center justify-center gap-1.5">
                           <button
                             onClick={() => {
                               setAuditFile({ name: item.title });
                               setAuditResult({
                                 mappedScenario: item.scenario || '준공 완전 부합',
-                                matchScore: 100,
+                                matchScore: item.matchScore || 100,
                                 title: item.title,
                                 summary: item.summary
                               });
@@ -431,6 +502,12 @@ export default function Dashboard() {
                             className="bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-bold px-2 py-1 rounded cursor-pointer transition-all border border-emerald-700"
                           >
                             RAG 분석
+                          </button>
+                          <button
+                            onClick={(e) => handleDeletePrecedent(item.id, e)}
+                            className="bg-rose-950/40 hover:bg-rose-900/60 text-rose-400 text-[10px] font-bold px-2 py-1 rounded cursor-pointer transition-all border border-rose-800/40"
+                          >
+                            삭제
                           </button>
                         </td>
                       </tr>

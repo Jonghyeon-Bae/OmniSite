@@ -1,0 +1,61 @@
+# PNU 자동 파싱 매칭 및 RAG 자가학습 지식 아카이브 통합 설계서 (v1.2.0-alpha-RAGDesign)
+
+본 설계서는 조장(USER)의 혁신적인 아이디어에 따라, 사후 행정 공문서 PDF RAG 검증 시 공무원이 수동으로 이력을 찾아 업로드하는 번거로움을 제거하고, **"PDF 본문 텍스트 내에서 필지고유번호(PNU)를 인공지능이 자동 파싱하여 실시간 매칭하고, 미등록 필지는 자가학습 데이터셋(Knowledge Base)으로 흡수 적재"**하도록 아키텍처를 고도화하기 위한 정밀 설계 문서입니다.
+
+---
+
+## ⚙️ 1. 차세대 RAG 자동 바인딩 아키텍처 워크플로우
+
+사용자가 대시보드 RAG 업로드 존에 PDF를 드롭했을 때 기동되는 시스템 내부 파이프라인의 변경 설계도입니다.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    사용자 (공무원) ->> 프론트엔드: PDF 준공 고시문 업로드 (Drag & Drop)
+    프론트엔드 ->> 백엔드 (API): PDF 바이너리 전송 (/api/v1/audit/auto-match)
+    Note over 백엔드 (API): PDF OCR 텍스트 추출<br/>GPT/Regex를 통한 PNU (19자리) 자동 식별
+    백엔드 (API) ->> 데이터베이스: SELECT * FROM decision_histories WHERE pnu = :parsed_pnu
+    alt 1. 매칭 필지 이력 실존 (기존 심의 이력 존재)
+        데이터베이스 -->> 백엔드 (API): 의사결정 이력 데이터 반환
+        Note over 백엔드 (API): 조례 기준 vs 실제 준공 수치 1:1 대조<br/>일치율 계산 및 감리서 작성
+        백엔드 (API) -->> 프론트엔드: {"status": "matched", "match_score": 95, "report": "..."}
+        프론트엔드 -->> 사용자 (공무원): 실시간 1:1 대조 리포트 렌더링
+    else 2. 매칭 필지 이력 없음 (외지/타행정 준공 문서)
+        백엔드 (API) -->> 프론트엔드: {"status": "not_found", "pnu": "11170...", "message": "모의 심의 이력이 존재하지 않습니다."}
+        프론트엔드 -->> 사용자 (공무원): "미등록 준공 문서 감지. 성공사례(지식베이스)로 등록하시겠습니까?" 팝업
+        사용자 (공무원) ->> 프론트엔드: [예 (승인)] 클릭
+        프론트엔드 ->> 백엔드 (API): 성공사례 영구 적재 요청 (/api/v1/audit/knowledge-register)
+        Note over 백엔드 (API): PDF 파싱 텍스트 벡터화 (Embedding)<br/>pgvector 지식베이스 & DB 적재
+        백엔드 (API) -->> 프론트엔드: {"status": "success", "message": "자가학습 데이터 등록 완료"}
+        프론트엔드 -->> 사용자 (공무원): "AI 지식베이스 축적 완료" 알림
+    end
+```
+
+---
+
+## ⚖️ 2. 시니어 개발자 관점의 타당성 및 경제적 효용성 진단
+
+### ① UX 동선의 혁신적 단축 (B2G 가치 극대화)
+- **기존 방식**: 공무원이 수많은 과거 테이블 행에서 타겟 주소를 찾고, `[검증]`을 눌러 대기 스위치를 켠 뒤 파일을 매칭해 올려야 하는 3단계 동선이었습니다. 주소가 누락되거나 이력 ID가 꼬일 때 오작동할 우려가 컸습니다.
+- **제안 방식**: 아무것도 모르는 신임 공무원이라도 **"준공 공문서 PDF를 그냥 메인 업로드 창에 털어 넣기만 하면"** 시스템이 PNU 번호(`\d{19}`) 및 법정동 주소를 파싱해 관련 이력을 알아서 매칭하여 채점하므로, 동선이 단 1회 드롭으로 단축되어 실무 만족도가 10배 이상 폭증합니다.
+
+### ② 행정 지식의 자가 축적 루프 (Knowledge Loop) 구현
+- 시스템 외부에서 행해진 우수 설치 공고나, 이력이 없더라도 정상 준공된 행정 준공 문서를 **성공사례 지식베이스(Knowledge Base Vector)**로 영구 흡수합니다.
+- 이렇게 흡수된 텍스트 청크(Chunks)는 pgvector 테이블에 저장되어, 향후 타 필지 의사결정 모의 심의 토론 시 **"유사 PNU의 외부 준공 모범 판례 예시"** 형태로 RAG Context에 자동 공급되므로, AI 에이전트의 논리력이 쓰면 쓸수록 정교해지는 **자가 진화(Self-evolution) 메커니즘**을 완성합니다.
+
+---
+
+## 🛠️ 3. 기술적 구현 설계 명세
+
+### 1) 백엔드 PNU 파싱 API 설계 (`/api/v1/audit/auto-match`)
+- **기능**: PDF를 파싱하여 PNU 패턴(`\d{19}`)을 Regex로 1차 탐색하고, 추출 실패 시 OpenAI LLM 프롬프트에 텍스트를 인가하여 주소로부터 행정 PNU 번호를 역추출합니다.
+- **DB 쿼리**:
+  ```sql
+  SELECT id, region, total_score, audit_state
+  FROM decision_histories
+  WHERE target_pnu = :parsed_pnu;
+  ```
+
+### 2) 성공사례 지식 적재 API 설계 (`/api/v1/audit/knowledge-register`)
+- **기능**: 매칭 실패 문서를 pgvector 임베딩 모델(text-embedding-3-small)을 통과시켜 공간 조례 RAG 테이블(`regulation_embeddings`)에 탭 구분하여 삽입합니다.
+- **이력 테이블 동기화**: `decision_histories`에 `audit_state = '외부 준공사례'` 레코드를 생성하여 전체 대시보드 통계 지표에 자동 합산되도록 정렬합니다.

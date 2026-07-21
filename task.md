@@ -1,4 +1,4 @@
-- `[x]` 루트 `.gitignore` 내 `*.pdf`, `*.pdf.txt`, 토론 캐시 JSON 등 불필요 임시 파일 배제 설정 보강
-- `[x]` `backend/.dockerignore` 및 `frontend/.dockerignore` 컨테이너 빌드 제외 파일 완공
+- `[x]` RAG OCR 검증용 한글 지원 PDF 생성 스크립트 작성 및 컴파일 실행 완료
+- `[x]` `yongsan_smart_infra_completion_notice_sample.pdf` 실물 샘플 완공 수립
 - `[x]` Next.js 프로덕션 컴파일 `npm run build` 빌드 검증 수행
-- `[x]` 바탕화면 Workspace 파일 이관 동기화 및 종합 연구노트 `Rev100` 기록 추가
+- `[x]` 바탕화면 Workspace 파일 이관 동기화 및 종합 연구노트 `Rev108` 기록 추가

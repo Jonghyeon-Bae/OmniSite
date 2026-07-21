@@ -426,6 +426,7 @@ class CoordinateCorrection(BaseModel):
 
 class HITLCommitRequest(BaseModel):
     filename: str
+    target_file: Optional[str] = None
     column_mapping: Dict[str, str]
     corrections: List[CoordinateCorrection]
     confirmed_domain: Optional[str] = None
@@ -1325,12 +1326,13 @@ async def commit_hitl_data(request: HITLCommitRequest, db: Session = Depends(get
                 
                 # [v4.9.27] 자동 감리 불가 구역(지하/고가/철도/블랙리스트) 가상 금역 생성기 기동
                 try:
-                    db.execute(text("DELETE FROM user_exclusion_zones WHERE notes = '[시스템 자동 감리] 물리적 장애물 배제 영역 (지하/고가/철도)'"))
+                    db.execute(text("DELETE FROM user_exclusion_zones WHERE memo = '[시스템 자동 감리] 물리적 장애물 배제 영역 (지하/고가/철도)'"))
                     auto_gen_query = text("""
-                        INSERT INTO user_exclusion_zones (geom, notes, created_at)
+                        INSERT INTO user_exclusion_zones (zone_name, geom, memo, created_at)
                         SELECT 
+                            '자동 감리 금지 구역' as zone_name,
                             geom,
-                            '[시스템 자동 감리] 물리적 장애물 배제 영역 (지하/고가/철도)' as notes,
+                            '[시스템 자동 감리] 물리적 장애물 배제 영역 (지하/고가/철도)' as memo,
                             CURRENT_TIMESTAMP as created_at
                         FROM cadastral_lands
                         WHERE district_id = 1

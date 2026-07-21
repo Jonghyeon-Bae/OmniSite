@@ -95,8 +95,10 @@ export default function DebateSimulatorModal({
       <div className="w-[800px] h-[550px] glass-panel p-6 flex flex-col justify-between">
         <div className="flex justify-between items-center border-b border-slate-800 pb-3">
           <div>
-            <h3 className="text-sm font-semibold text-slate-300">OMS-01-03-001 | AI 에이전트 실시간 모의 심의 토론</h3>
-            <p className="text-[10px] text-slate-500">Target PNU: {currentParcel.pnu}</p>
+            <h3 className="text-sm font-semibold text-slate-300">
+              [{payload.inferred_purpose || payload.facility_type || '공공 인프라'}] 실시간 3자 AI 모의 심의 토론
+            </h3>
+            <p className="text-[10px] text-slate-500">Target PNU: {currentParcel.pnu || 'PNU 미지정'}</p>
           </div>
           <button 
             onClick={() => setShowSimModal(false)}

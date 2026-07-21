@@ -1154,7 +1154,7 @@ export default function Home() {
           method: 'POST',
           headers: { 
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${sessionStorage.getItem('jwtToken') || ''}`
+            'Authorization': `Bearer ${sessionStorage.getItem('token') || sessionStorage.getItem('jwtToken') || ''}`
           },
           body: JSON.stringify(payload)
         });
@@ -1189,7 +1189,7 @@ export default function Home() {
                 region: `${currentParcel.sido_name || '서울특별시'} ${currentParcel.sgg_name || '관할구'} ${currentParcel.dong_name || currentParcel.dongName || '관내동'}`,
                 facility_type: inferredDomainTag || '도시 공공시설',
                 infra: inferredPurpose || inferredDomainTag || '스마트 인프라',
-                pnu_count: candidates.length || 5,
+                pnu_count: selectedParcel?.length || 5,
                 status: '토론 완료',
                 audit_state: '대기 중',
                 audit_opinion: null,

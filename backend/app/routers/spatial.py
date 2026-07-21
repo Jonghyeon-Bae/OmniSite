@@ -1423,7 +1423,7 @@ async def stream_debate_sim(req: DebateRequest, db: Session = Depends(get_db)):
             emb = get_embedding(query_kw)
             if emb:
                 rag_query = text("""
-                    SELECT content, 1 - (embedding <=> :emb_vector::vector) as similarity
+                    SELECT content, 1 - (embedding <=> CAST(:emb_vector AS vector)) as similarity
                     FROM district_regulations
                     ORDER BY similarity DESC
                     LIMIT 1
@@ -1557,33 +1557,29 @@ async def stream_debate_sim(req: DebateRequest, db: Session = Depends(get_db)):
     )
 
     merchant_system_prompt = (
-        "당신은 스마트시티 입지 선정 토론에서 [찬성 측 (상인대표)] 역할을 담당하는 독립 AI 에이전트입니다.\n\n"
-        "## 역할 특성\n"
-        "1. 데이터 분석 및 공학 전문가 기조: 감정적 호소를 배제하고, AHP 가중치 수치와 대중교통 유동인구 통계 수치를 직접 제시하며 정량적 시너지를 설득하십시오.\n"
-        "2. 상인들의 경제적 곤궁과 필수적 인프라 시급함을 이성적으로 대변하며 주민들의 불안이 다소 과도함을 지적하십시오.\n"
-        "3. 절대로 대사 맨 처음에 마크다운 기호 `**`를 사용하지 마십시오. (예: `**찬성측:**` 금지)\n"
-        "4. 오직 자신의 의견만을 한 턴 분량으로 뱉고 다른 화자의 대사까지 지어내지 마십시오.\n\n"
+        "당신은 스마트시티 입지 선정 주민 공청회 및 심의회에서 [찬성 측 (상인대표)] 역할을 맡은 실제 상권 대표입니다.\n\n"
+        "## 대화 톤앤매너 수칙\n"
+        "1. 절대로 보고서 읽는 로봇이나 딱딱한 템플릿 문체를 쓰지 마십시오. 실제로 현장에서 생업에 종사하는 상인이 사람 대 사람으로 호소하고 설득하는 자연스러운 구어체 말투를 사용하십시오.\n"
+        "2. 주민 대표가 지적하는 생활 민원이나 오염 우려를 무작정 무시하지 말고, '주민분들 걱정하시는 마음 충분히 이해합니다. 하지만...'처럼 사람다운 공감 표현을 섞어 대화를 이어가십시오.\n"
+        "3. 대사 앞에 마크다운 기호 `**`나 딱딱한 접두어를 절대 붙이지 마십시오.\n\n"
         f"{base_context}"
     )
 
     resident_system_prompt = (
-        "당신은 스마트시티 입지 선정 토론에서 [반대 측 (주민대표)] 역할을 담당하는 독립 AI 에이전트입니다.\n\n"
-        "## 역할 특성\n"
-        "1. 생활 밀착형 거주자 기조: 찬성 측의 차가운 정량 통계에 주눅 들지 마십시오.\n"
-        "2. 해당 관할동의 실제 누적 민원 수와 무단투기 개소 수치를 직접 대사에 언급하며 정주 환경 파괴와 아동의 보행 위험을 격렬하게 항변하십시오.\n"
-        "3. 주민자치 설명회에서 나올 법한 격앙된 어조와 날 선 표현을 통해 현실적인 생활 고충을 전달하십시오.\n"
-        "4. 절대로 대사 맨 처음에 마크다운 기호 `**`를 사용하지 마십시오. (예: `**반대측:**` 금지)\n"
-        "5. 오직 자신의 의견만을 한 턴 분량으로 뱉고 다른 화자의 대사까지 지어내지 마십시오.\n\n"
+        "당신은 스마트시티 입지 선정 주민 공청회 및 심의회에서 [반대 측 (주민대표)] 역할을 맡은 실제 마을 거주자입니다.\n\n"
+        "## 대화 톤앤매너 수칙\n"
+        "1. 절대로 기계적이고 형식적인 문장을 뱉지 마십시오. 실제 골목 주거 정주 환경과 아이들 보행 안전을 우려하는 아파트/주택 주민의 생생하고 날 선 인간적 목소리로 대화하십시오.\n"
+        "2. 상인 측의 영업 입장도 이해는 하지만, 쓰레기나 악취, 안전사고 우려가 해소되지 않는 한 선뜻 찬성할 수 없는 거주자의 진솔하고 구체적인 걱정을 사람 말투로 나누십시오.\n"
+        "3. 대사 앞에 마크다운 기호 `**`나 딱딱한 접두어를 절대 붙이지 마십시오.\n\n"
         f"{base_context}"
     )
 
     coordinator_system_prompt = (
-        "당신은 스마트시티 입지 선정 토론에서 [정부 측 (갈등조정관)] 역할을 담당하는 독립 AI 에이전트입니다.\n\n"
-        "## 역할 특성\n"
-        "1. 합리적 중재자 기조: 주민과 상인대표 간의 극단적 충돌을 막기 위해 법령 조례(RAG)의 수치를 짚어주며 양측의 합의를 이끌어내는 조정안을 제시하십시오.\n"
-        "2. 조정 조건으로 '이격거리 1.5배 후퇴 설계', '소방안전 장비 및 차폐막 강화 보강', '주민대표단에게 위생/화재 위반 시 즉각 가동정지를 명령할 수 있는 삼진아웃권 부여' 등을 파격적으로 활용해 상생 결론을 마무리하십시오.\n"
-        "3. 절대로 대사 맨 처음에 마크다운 기호 `**`를 사용하지 마십시오. (예: `**정부측:**` 금지)\n"
-        "4. 오직 자신의 의견만을 한 턴 분량으로 뱉고 다른 화자의 대사까지 지어내지 마십시오.\n\n"
+        "당신은 스마트시티 입지 선정 현장에서 주민과 상인을 중재하는 [정부 측 (갈등조정관)] 행정관입니다.\n\n"
+        "## 대화 톤앤매너 수칙\n"
+        "1. 훈계조나 서면 매뉴얼 말투가 아닌, 과열된 공청회 현장의 감정을 부드럽게 다독이고 상생할 수 있는 현실적 중재안(이격거리 후퇴, 주민 상시 점검권 공식 위임)을 신뢰감 있게 건네는 인간적인 지자체 주무관의 말투를 쓰십시오.\n"
+        "2. 최종 타결 시에는 감사를 표하며 자연스럽게 '[모의 심의 완료]' 문구를 덧붙여 마무리하십시오.\n"
+        "3. 대사 앞에 마크다운 기호 `**`나 딱딱한 접두어를 절대 붙이지 마십시오.\n\n"
         f"{base_context}"
     )
 
@@ -2226,6 +2222,26 @@ async def create_decision_history(req: DecisionHistoryCreate, db: Session = Depe
         db.rollback()
         raise HTTPException(status_code=500, detail=f"심의 이력 저장 실패: {str(e)}")
 
+class HistoryStatusUpdateRequest(BaseModel):
+    status: str
+
+@router.post("/spatial/history/{history_id}/status")
+async def update_decision_history_status(history_id: int, req: HistoryStatusUpdateRequest, db: Session = Depends(get_db)):
+    try:
+        query = text("""
+            UPDATE decision_histories
+            SET status = :status
+            WHERE id = :history_id
+        """)
+        res = db.execute(query, {"status": req.status, "history_id": history_id})
+        if res.rowcount == 0:
+            raise HTTPException(status_code=404, detail="해당 심의 이력을 찾을 수 없습니다.")
+        db.commit()
+        return {"status": "success", "message": f"의사결정 이력 #{history_id}의 상태가 '{req.status}'(으)로 수정되었습니다."}
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"상태 수정 실패: {str(e)}")
+
 @router.post("/spatial/history/{history_id}/audit-doc")
 async def audit_history_document(history_id: int, file: UploadFile = File(...), db: Session = Depends(get_db)):
     try:
@@ -2466,31 +2482,32 @@ async def register_precedent_from_audit(req: PrecedentRegisterRequest, db: Sessi
         # 데이터 오염(Data Poisoning) 방지: 감리 합격 성공사례(시나리오 A/B 및 match_score >= 50)만 RAG 지식베이스 축적 허용
         is_rag_pass = ("C" not in scenario) and ("불허" not in scenario) and ("반려" not in scenario) and (match_score >= 50)
         if is_rag_pass:
-            try:
-                # 300자 내외로 간단 청킹 후 임베딩 저장
-                paragraphs = [req.textContent[i:i+300] for i in range(0, len(req.textContent), 250)]
-                for idx, chunk in enumerate(paragraphs):
-                    if not chunk.strip():
-                        continue
-                    embed_res = client.embeddings.create(
-                        model="text-embedding-3-small",
-                        input=chunk
-                    )
-                    embedding = embed_res.data[0].embedding
-                    
-                    db.execute(
-                        text("""
-                            INSERT INTO district_regulations (district_id, regulation_title, content, embedding)
-                            VALUES (1, :title, :content, CAST(:embedding AS vector))
-                        """),
-                        {
-                            "title": f"성공판정사례 - {req.filename} (Part {idx+1})",
-                            "content": chunk,
-                            "embedding": embedding
-                        }
-                    )
-            except Exception as embed_err:
-                print(f"[RAG embedding accumulation failed] {embed_err}")
+            client = get_openai_client()
+            if client:
+                try:
+                    # 300자 내외로 간단 청킹 후 임베딩 저장
+                    paragraphs = [req.textContent[i:i+300] for i in range(0, len(req.textContent), 250)]
+                    for idx, chunk in enumerate(paragraphs):
+                        if not chunk.strip():
+                            continue
+                        embed_res = client.embeddings.create(
+                            model="text-embedding-3-small",
+                            input=chunk
+                        )
+                        embedding = embed_res.data[0].embedding
+                        db.execute(
+                            text("""
+                                INSERT INTO district_regulations (district_id, regulation_title, content, embedding)
+                                VALUES (1, :title, :content, CAST(:embedding AS vector))
+                            """),
+                            {
+                                "title": f"성공판정사례 - {req.filename} (Part {idx+1})",
+                                "content": chunk,
+                                "embedding": embedding
+                            }
+                        )
+                except Exception as embed_err:
+                    print(f"[RAG embedding accumulation failed] {embed_err}")
                 
         db.commit()
         return {"status": "success", "message": "성공 사례 및 AI 자가학습 RAG 지식 아카이브 적재가 완료되었습니다."}

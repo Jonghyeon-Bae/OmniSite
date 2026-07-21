@@ -287,32 +287,73 @@ def run_local_fallback_audit(pdf_text: str, filename: str, error_msg: str = None
         "rules_matched": rules_matched
     }
 
-# PDF 청킹 및 OpenAI text-embedding-3-small 임베딩을 통한 district_regulations 벡터 테이블 적재 헬퍼
 def chunk_and_embed_pdf(file_path: str, filename: str, db: Session, district_id: int = 1):
     text_content = extract_pdf_text(file_path)
     if not text_content:
         return
     
-    chunk_size = 1000
-    overlap = 200
-    chunks = []
+    import re
+    # 제\d+조 또는 제\d+조의\d+ 패턴 매칭
+    pattern = re.compile(r'(제\s*\d+\s*조(?:의\s*\d+)?\([^\)]+\)|제\s*\d+\s*조(?:의\s*\d+)?)')
+    parts = pattern.split(text_content)
+    raw_chunks = []
     
-    start = 0
-    while start < len(text_content):
-        end = start + chunk_size
-        chunks.append(text_content[start:end])
-        start += chunk_size - overlap
-        
+    current_title = "제1조(목적)"
+    if parts:
+        intro = parts[0].strip()
+        if intro:
+            raw_chunks.append((current_title, intro))
+            
+        i = 1
+        while i < len(parts):
+            title = parts[i].strip()
+            content = parts[i+1].strip() if i+1 < len(parts) else ""
+            
+            # 800자 초과하는 긴 조항은 동그라미 번호(항) 단위로 정밀 분할
+            if len(content) > 800:
+                sub_parts = re.split(r'(①|②|③|④|⑤|⑥|⑦|⑧|⑨|⑩)', content)
+                sub_text = ""
+                if sub_parts:
+                    intro_sub = sub_parts[0].strip()
+                    if intro_sub:
+                        sub_text += intro_sub + "\n"
+                    
+                    j = 1
+                    while j < len(sub_parts):
+                        num_marker = sub_parts[j]
+                        num_content = sub_parts[j+1].strip() if j+1 < len(sub_parts) else ""
+                        if len(sub_text) + len(num_marker) + len(num_content) > 600:
+                            raw_chunks.append((title, sub_text.strip()))
+                            sub_text = num_marker + " " + num_content + "\n"
+                        else:
+                            sub_text += num_marker + " " + num_content + "\n"
+                        j += 2
+                    if sub_text.strip():
+                        raw_chunks.append((title, sub_text.strip()))
+            else:
+                raw_chunks.append((title, content))
+            i += 2
+            
     client = get_openai_client()
     if not client:
         print("[Warning] OpenAI client is not initialized. Skipping embedding for RAG database.")
         return
         
-    for idx, chunk in enumerate(chunks):
+    # 조례명/파일명 정화 (확장자 제거)
+    clean_filename = os.path.splitext(filename)[0]
+    
+    for idx, (clause_num, body) in enumerate(raw_chunks):
+        if not body.strip():
+            continue
+            
+        # [위계 헤더 주입]
+        header = f"[{clean_filename} > {clause_num}]"
+        enriched_content = f"{header}\n{clause_num} {body}"
+        
         try:
             response = client.embeddings.create(
                 model="text-embedding-3-small",
-                input=chunk
+                input=enriched_content
             )
             embedding = response.data[0].embedding
             
@@ -323,8 +364,8 @@ def chunk_and_embed_pdf(file_path: str, filename: str, db: Session, district_id:
             db.execute(query, {
                 "district_id": district_id,
                 "regulation_title": filename,
-                "clause_number": f"청크 {idx+1}",
-                "content": chunk,
+                "clause_number": clause_num,
+                "content": enriched_content,
                 "embedding": embedding,
                 "category": "health_sanitation"
             })

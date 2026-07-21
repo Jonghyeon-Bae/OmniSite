@@ -12,10 +12,29 @@ DATABASE_URL = "postgresql+psycopg://Admin:admin1234@localhost:5432/postgres"
 engine = create_engine(DATABASE_URL)
 
 def resolve_path(key, default_fallback):
+    # 1. Resolve package paths relative to seed_db.py inside Datasets/
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    datasets_base = os.path.join(base_dir, "Datasets")
+    
+    datasets_mapping = {
+        "dong_mapping": os.path.join(datasets_base, "1_boundaries", "용산구_법정동_행정동_연계매핑.csv"),
+        "parcels": os.path.join(datasets_base, "2_cadastral", "05.용산구_부지면적_좌표(흡연부스 후보).csv"),
+        "bus_stations": os.path.join(datasets_base, "4_indicators", "서울시 버스정류소 위치정보.csv"),
+        "subway_stations": os.path.join(datasets_base, "4_indicators", "서울시 역사마스터 정보.csv"),
+        "bus_passengers": os.path.join(datasets_base, "4_indicators", "BUS_STATION_BOARDING_MONTH_202605.csv"),
+        "subway_passengers": os.path.join(datasets_base, "4_indicators", "CARD_SUBWAY_MONTH_202605.csv"),
+        "illegal_dumping": os.path.join(datasets_base, "3_restrictions", "07. 담배꽁초_상습_무단투기.csv"),
+        "local_population": os.path.join(datasets_base, "4_indicators", "LOCAL_PEOPLE_DONG_202605_YONGSAN.csv"),
+        "restricted_zones": os.path.join(datasets_base, "3_restrictions", "서울시 금연구역 정보(표준 데이터).csv"),
+    }
+    if key in datasets_mapping and os.path.exists(datasets_mapping[key]):
+        return datasets_mapping[key]
+        
     if os.path.exists(default_fallback):
         return default_fallback
+        
     # Resolve package paths relative to seed_db.py
-    pkg_base = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "데이터", "최초 ColdStart를 위한 데이터셋"))
+    pkg_base = os.path.abspath(os.path.join(base_dir, "..", "데이터", "최초 ColdStart를 위한 데이터셋"))
     pkg_essential = os.path.join(pkg_base, "필수데이터")
     
     mapping = {
@@ -123,46 +142,61 @@ def seed():
                 if leg_code not in adm_to_leg[adm_code]:
                     adm_to_leg[adm_code].append(leg_code)
             
-            # Load real shapefile and insert
-            shp_path = r"c:\Users\Admin\Desktop\빅프로젝트 관련자료\최종1차\데이터\emd"
-            sf = shapefile.Reader(shp_path, encoding="cp949")
-            
+            # Load real shapefile and insert (with CSV fallback if shp file is absent)
             dong_db_map = {} # leg_code -> db ID
             dong_centroids = {} # db_id -> (lng, lat) for fallback
-            
-            for i in range(len(sf)):
-                rec = sf.record(i)
-                emd_cd = rec["EMD_CD"]
-                if emd_cd.startswith("11170"):
-                    leg_code = emd_cd + "00" # 10-digit code
-                    name = rec["EMD_KOR_NM"]
-                    geom = shape(sf.shape(i))
-                    wkt = geom.wkt
-                    
+
+            try:
+                shp_path = resolve_path("emd_shp", r"c:\Users\Admin\Desktop\빅프로젝트 관련자료\최종1차\데이터\emd")
+                sf = shapefile.Reader(shp_path, encoding="cp949")
+                
+                for i in range(len(sf)):
+                    rec = sf.record(i)
+                    emd_cd = rec["EMD_CD"]
+                    if emd_cd.startswith("11170"):
+                        leg_code = emd_cd + "00" # 10-digit code
+                        name = rec["EMD_KOR_NM"]
+                        geom = shape(sf.shape(i))
+                        wkt = geom.wkt
+                        
+                        db_id = conn.execute(text("""
+                            INSERT INTO dong_boundaries (district_id, dong_code, dong_name, geom)
+                            VALUES (:district_id, :dong_code, :dong_name, ST_Multi(ST_Transform(ST_GeomFromText(:wkt, 5179), 4326)))
+                            RETURNING id
+                        """), {
+                            "district_id": district_id,
+                            "dong_code": leg_code,
+                            "dong_name": name,
+                            "wkt": wkt
+                        }).scalar()
+                        
+                        dong_db_map[leg_code] = db_id
+                        
+                        # Store centroid for distance fallback
+                        centroid_pt = geom.centroid
+                        c_pt_res = conn.execute(text("""
+                            SELECT ST_X(ST_Transform(ST_SetSRID(ST_MakePoint(:x, :y), 5179), 4326)) AS lng,
+                                   ST_Y(ST_Transform(ST_SetSRID(ST_MakePoint(:x, :y), 5179), 4326)) AS lat
+                        """), {"x": centroid_pt.x, "y": centroid_pt.y}).fetchone()
+                        
+                        dong_centroids[db_id] = (c_pt_res[0], c_pt_res[1])
+                print(f"    Seeded {len(dong_db_map)} Legal Dong boundaries from shapefile.")
+            except Exception as shp_err:
+                print(f"    [Shapefile Fallback] shapefile load skipped ({shp_err}), seeding dong_boundaries from CSV mapping...")
+                default_polygon = "POLYGON((126.96 37.52, 126.98 37.52, 126.98 37.54, 126.96 37.54, 126.96 37.52))"
+                for leg_code, leg_name in unique_leg_dongs.items():
                     db_id = conn.execute(text("""
                         INSERT INTO dong_boundaries (district_id, dong_code, dong_name, geom)
-                        VALUES (:district_id, :dong_code, :dong_name, ST_Multi(ST_Transform(ST_GeomFromText(:wkt, 5179), 4326)))
+                        VALUES (:district_id, :dong_code, :dong_name, ST_Multi(ST_GeomFromText(:wkt, 4326)))
                         RETURNING id
                     """), {
                         "district_id": district_id,
                         "dong_code": leg_code,
-                        "dong_name": name,
-                        "wkt": wkt
+                        "dong_name": leg_name,
+                        "wkt": default_polygon
                     }).scalar()
-                    
                     dong_db_map[leg_code] = db_id
-                    
-                    # Store centroid for distance fallback
-                    centroid_pt = geom.centroid
-                    # Transform centroid coordinates from 5179 to 4326
-                    c_pt_res = conn.execute(text("""
-                        SELECT ST_X(ST_Transform(ST_SetSRID(ST_MakePoint(:x, :y), 5179), 4326)) AS lng,
-                               ST_Y(ST_Transform(ST_SetSRID(ST_MakePoint(:x, :y), 5179), 4326)) AS lat
-                    """), {"x": centroid_pt.x, "y": centroid_pt.y}).fetchone()
-                    
-                    dong_centroids[db_id] = (c_pt_res[0], c_pt_res[1])
-            
-            print(f"    Seeded {len(dong_db_map)} Legal Dong boundaries from shapefile.")
+                print(f"    Seeded {len(dong_db_map)} Legal Dong boundaries from CSV mapping.")
 
             def get_dong_by_coord(lng, lat):
                 res = conn.execute(text("""

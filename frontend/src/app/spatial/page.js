@@ -736,7 +736,7 @@ export default function Home() {
           if (boundaryRes.ok) {
             const boundaryData = await boundaryRes.json();
             if (!boundaryData.contained) {
-              alert('⚠️ 경고: 마커가 관할 자치구(용산구) 경계를 벗어났습니다. 관할 구역 내에만 위치시킬 수 있습니다.');
+              alert('⚠️ 경고: 마커가 관할 자치구 경계를 벗어났습니다. 관할 구역 내에만 위치시킬 수 있습니다.');
               marker.setLatLng([hitlLat, hitlLng]);
               marker.setIcon(markerIcon);
               marker.isWarning = false;
@@ -1138,7 +1138,7 @@ export default function Home() {
         const payload = {
           facility_type: inferredDomainTag || "city_feature",
           inferred_purpose: inferredPurpose || "입지 분석",
-          candidate_jibun: selectedParcel[activeTab]?.jibun || "용산구 미지정 부지",
+          candidate_jibun: selectedParcel[activeTab]?.jibun || "관할구역 미지정 부지",
           candidate_css: selectedParcel[activeTab]?.css || 50,
           candidate_lat: selectedParcel[activeTab]?.lat || 37.53,
           candidate_lng: selectedParcel[activeTab]?.lng || 126.97,
@@ -1175,11 +1175,49 @@ export default function Home() {
         ];
 
         let activePersonas = [...dynamicPersonas];
+        let lastParsedLogs = [];
 
         while (!isClosed) {
           const { value, done } = await reader.read();
           if (done) {
             setSimStep(6);
+            
+            // [RAG-SDSS DB 영구 적재] 모의 토론 완료 시 decision_histories 테이블에 자동 이력 적재 ('토론 완료' 상태)
+            try {
+              const currentParcel = selectedParcel[activeTab] || selectedParcel[0] || {};
+              const historyPayload = {
+                region: `${currentParcel.sido_name || '서울특별시'} ${currentParcel.sgg_name || '관할구'} ${currentParcel.dong_name || currentParcel.dongName || '관내동'}`,
+                facility_type: inferredDomainTag || '도시 공공시설',
+                infra: inferredPurpose || inferredDomainTag || '스마트 인프라',
+                pnu_count: candidates.length || 5,
+                status: '토론 완료',
+                audit_state: '대기 중',
+                audit_opinion: null,
+                inferred_purpose: inferredPurpose || '정화 시설',
+                ahp_weights: ahpWeights || {},
+                selected_parcel_jibun: currentParcel.jibun || currentParcel.address || '지번 미지정',
+                selected_parcel_price: currentParcel.price || currentParcel.official_price || 0,
+                selected_parcel_area: parseFloat(currentParcel.area || 0.0),
+                selected_parcel_css: parseInt(currentParcel.css || 50),
+                selected_parcel_pnu: currentParcel.pnu || null,
+                debate_logs: lastParsedLogs || []
+              };
+
+              fetch(`${backendBaseUrl}/api/v1/spatial/history`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${sessionStorage.getItem('jwtToken') || sessionStorage.getItem('token') || ''}`
+                },
+                body: JSON.stringify(historyPayload)
+              }).then(hRes => {
+                if (hRes.ok) {
+                  console.log("✓ [DB Auto Save] 모의 토론 심의 이력이 '토론 완료' 상태로 DB에 저장되었습니다!");
+                }
+              }).catch(hErr => console.error("History DB Save Fail:", hErr));
+            } catch (saveErr) {
+              console.error("Failed to build history payload:", saveErr);
+            }
             break;
           }
 
@@ -1241,6 +1279,7 @@ export default function Home() {
                     }
                     
                     setSimLogs([...initialSystemLogs, ...parsedLogs]);
+                    lastParsedLogs = parsedLogs;
                   }
                 }
               } catch (e) {
@@ -1365,7 +1404,7 @@ export default function Home() {
               .filter(f => f.properties && f.properties.status === 'missing_coordinate')
               .map(f => ({
                 row_index: f.properties.row_index,
-                address: f.properties.address || '용산구 관내 결측지'
+                address: f.properties.address || '지자체 관내 부지'
               }));
             setMissingCoordinates(missing);
             

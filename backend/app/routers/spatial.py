@@ -65,15 +65,17 @@ def analyze_audit_document_via_llm(text_content: str, jibun: str, pnu: str, mock
        - 일부 규제 저촉 사항이 존재하나 우회 타결 및 조건부 승인되었다면 "시나리오 B (규제 조건부 준수 감리)"
        - 규제를 명백히 위반했거나 검증이 불가능하다면 "시나리오 C (기준 이탈/검증 불허)"
        - 텍스트 내용상 공간 규제 분석이 불가하거나 규제 요건과 전혀 부합하지 않는 무관한 문서라면 "시나리오 해당 없음"
-    2. 적합성 신뢰도 (0 ~ 100):
-       - 문서의 적합도(%)를 정량 산출하십시오.
+    2. 적합성 신뢰도 match_score (0 ~ 100):
+       - 시나리오 A (부합 완공): 90 ~ 100점 산출.
+       - 시나리오 B (조건부 준수): 60 ~ 75점 산출.
+       - 시나리오 C (기준 이탈/검증 불허/위반): 규제 저촉 상태이므로 10 ~ 40점 이하의 낮은 부합도 점수를 산출하십시오. (절대로 100점을 부여하지 마십시오)
     3. 주요 감리 요약 결과:
        - 한글로 3문장 이내로 작성하십시오. 법적 근거와 수치(이격거리 등)를 인용하여 정교하게 작성하십시오.
 
     반드시 아래 JSON 형식으로만 응답하십시오. 다른 텍스트는 일절 배제하십시오:
     {{
         "scenario": "도달 시나리오 텍스트",
-        "match_score": 85,
+        "match_score": 30,
         "summary": "한글 감리 요약문"
     }}
     """
@@ -2450,6 +2452,8 @@ async def register_precedent_from_audit(req: PrecedentRegisterRequest, db: Sessi
         # LLM 지능형 한글 감리 판독 가동 (하드코딩 배제)
         llm_res = analyze_audit_document_via_llm(req.textContent, req.jibun, req.pnu or "PNU 모름")
         scenario = llm_res["scenario"]
+        match_score = llm_res.get("match_score", 85)
+        summary = llm_res.get("summary", "감리 요약 완료")
         
         # 1. verified_precedents에 매핑 적재 (외지/외부 실측 사례이므로 conflict_simulation_id는 NULL)
         prec_query = text("""
@@ -2459,8 +2463,9 @@ async def register_precedent_from_audit(req: PrecedentRegisterRequest, db: Sessi
         db.execute(prec_query, {"title": req.filename, "ocr_text": req.textContent[:5000], "scenario": scenario, "pnu": req.pnu, "match_score": match_score, "audit_opinion": summary})
         
         # 3. RAG 공간 조례 pgvector 데이터 적재 (자가학습 편입)
-        client = get_openai_client()
-        if client:
+        # 데이터 오염(Data Poisoning) 방지: 감리 합격 성공사례(시나리오 A/B 및 match_score >= 50)만 RAG 지식베이스 축적 허용
+        is_rag_pass = ("C" not in scenario) and ("불허" not in scenario) and ("반려" not in scenario) and (match_score >= 50)
+        if is_rag_pass:
             try:
                 # 300자 내외로 간단 청킹 후 임베딩 저장
                 paragraphs = [req.textContent[i:i+300] for i in range(0, len(req.textContent), 250)]

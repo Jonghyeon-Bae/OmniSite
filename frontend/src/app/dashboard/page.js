@@ -28,6 +28,7 @@ export default function Dashboard() {
   const [auditFile, setAuditFile] = useState(null);
   const [auditResult, setAuditResult] = useState(null);
   const [isParsing, setIsParsing] = useState(false);
+  const [isRegistering, setIsRegistering] = useState(false);
 
   // 과거 이력 상세 모달 상태
   const [showDetailModal, setShowDetailModal] = useState(false);
@@ -43,6 +44,26 @@ export default function Dashboard() {
       }
     } catch (err) {
       console.error("Failed to fetch history:", err);
+    }
+  };
+
+  // 모의 이력 수동 상태 갱신/롤백 API 연계
+  const handleUpdateHistoryStatus = async (id, targetStatus) => {
+    try {
+      const res = await apiFetch(`/api/v1/spatial/history/${id}/status`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: targetStatus })
+      });
+      if (res.ok) {
+        alert(`✓ 의사결정 이력 상태가 '${targetStatus}'로 수정되었습니다.`);
+        setSelectedHistory(prev => ({ ...prev, status: targetStatus }));
+        refreshAllData();
+      } else {
+        alert("이력 상태 변경에 실패했습니다.");
+      }
+    } catch (err) {
+      alert(`상태 변경 중 오류 발생: ${err.message}`);
     }
   };
 
@@ -101,24 +122,29 @@ export default function Dashboard() {
           );
           
           if (confirmOverwrite) {
-            const regRes = await apiFetch(`/api/v1/spatial/history/audit-register-precedent`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                pnu: data.pnu,
-                jibun: data.jibun,
-                filename: data.filename,
-                textContent: data.textContent,
-                overwrite: true
-              })
-            });
-            
-            if (regRes.ok) {
-              alert("✓ 성공 사례가 기존 데이터를 덮어쓰고 정상 갱신되었습니다!");
-              refreshAllData();
-            } else {
-              const regErr = await regRes.json();
-              alert(`성공사례 덮어쓰기 실패: ${regErr.detail || '알 수 없는 오류'}`);
+            setIsRegistering(true);
+            try {
+              const regRes = await apiFetch(`/api/v1/spatial/history/audit-register-precedent`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  pnu: data.pnu,
+                  jibun: data.jibun,
+                  filename: data.filename,
+                  textContent: data.textContent,
+                  overwrite: true
+                })
+              });
+              
+              if (regRes.ok) {
+                alert("✓ 성공 사례가 기존 데이터를 덮어쓰고 정상 갱신되었습니다!");
+                refreshAllData();
+              } else {
+                const regErr = await regRes.json();
+                alert(`성공사례 덮어쓰기 실패: ${regErr.detail || '알 수 없는 오류'}`);
+              }
+            } finally {
+              setIsRegistering(false);
             }
           }
         } else if (data.status === "not_found") {
@@ -132,32 +158,40 @@ export default function Dashboard() {
           );
           
           if (confirmRegister) {
-            // 성공사례 지식 적재 API 호출
-            const regRes = await apiFetch(`/api/v1/spatial/history/audit-register-precedent`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                pnu: data.pnu,
-                jibun: data.jibun,
-                filename: data.filename,
-                textContent: data.textContent,
-                overwrite: false
-              })
-            });
-            
-            if (regRes.ok) {
-              alert("✓ 성공 사례 및 AI 자가학습 RAG 지식 아카이브 적재가 무사히 완료되었습니다!");
-              refreshAllData(); // 실시간 전체 리스트/통계 갱신
-            } else {
-              const regErr = await regRes.json();
-              alert(`성공사례 적재 실패: ${regErr.detail || '알 수 없는 오류'}`);
+            setIsRegistering(true);
+            try {
+              // 성공사례 지식 적재 API 호출
+              const regRes = await apiFetch(`/api/v1/spatial/history/audit-register-precedent`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  pnu: data.pnu,
+                  jibun: data.jibun,
+                  filename: data.filename,
+                  textContent: data.textContent,
+                  overwrite: false
+                })
+              });
+              
+              if (regRes.ok) {
+                alert("✓ 성공 사례 및 AI 자가학습 RAG 지식 아카이브 적재가 무사히 완료되었습니다!");
+                refreshAllData(); // 실시간 전체 리스트/통계 갱신
+              } else {
+                const regErr = await regRes.json();
+                alert(`성공사례 적재 실패: ${regErr.detail || '알 수 없는 오류'}`);
+              }
+            } finally {
+              setIsRegistering(false);
             }
           }
         } else {
           // 매칭 성공 케이스
-          setAuditResult(data);
+          setAuditResult({
+            ...data,
+            matchScore: data.matchScore || data.match_score || 100
+          });
           refreshAllData(); // 의사결정 상태 전체 갱신
-          alert(`✓ PNU 자동 인식 매칭 성공!\n일치율: ${data.matchScore}%\n시나리오 판정: ${data.mappedScenario}`);
+          alert(`✓ PNU 자동 인식 매칭 성공!\n일치율: ${data.matchScore || data.match_score || 100}%\n시나리오 판정: ${data.mappedScenario}`);
         }
       } else {
         const err = await res.json();
@@ -262,6 +296,10 @@ export default function Dashboard() {
             <th>RAG 귀속 여부</th>
             <td>RAG 세그먼트 적재 완료</td>
           </tr>
+          <tr>
+            <th>필지 고유번호 (PNU)</th>
+            <td colspan="3" style="font-family: monospace; font-size: 11.5px; letter-spacing: 0.5px;">${item.selectedParcelPnu || '미추출/미지정'}</td>
+          </tr>
         </table>
 
         <div class="section-title">1. AHP 계층분석 모형 프로파일</div>
@@ -345,14 +383,14 @@ export default function Dashboard() {
           <div className="glass-panel p-6 flex flex-col gap-2">
             <span className="text-xs text-slate-400 font-semibold">종합 입지 의사결정 수립 건수</span>
             <span className="text-3xl font-bold text-white font-mono">{historyList.length} 건</span>
-            <p className="text-[10px] text-emerald-400 mt-1">▲ DB 동적 연동 활성화됨 (용산구 실측 수립)</p>
+            <p className="text-[10px] text-emerald-400 mt-1">▲ DB 실시간 동적 연동 활성화</p>
           </div>
           <div className="glass-panel p-6 flex flex-col gap-2">
-            <span className="text-xs text-slate-400 font-semibold">모의 심의 이력 중 합의 타결률</span>
+            <span className="text-xs text-slate-400 font-semibold">모의 시나리오 실증 성공률</span>
             <span className="text-3xl font-bold text-blue-400 font-mono">
-              {historyList.length > 0 ? (historyList.filter(h => h.status === '행정 종결').length / historyList.length * 100).toFixed(1) : 0} %
+              {historyList.length > 0 ? (historyList.filter(h => h.status === '실증 성공').length / historyList.length * 100).toFixed(1) : 0} %
             </span>
-            <p className="text-[10px] text-slate-500 mt-1">모의 주민 토론을 거쳐 합의 타결 종결된 이력 비율</p>
+            <p className="text-[10px] text-slate-500 mt-1">모의 수립 입지 중 실제 공문으로 준공 검증된 비율</p>
           </div>
           <div className="glass-panel p-6 flex flex-col gap-2">
             <span className="text-xs text-slate-400 font-semibold">RAG 축적 검증사례 수</span>
@@ -423,7 +461,8 @@ export default function Dashboard() {
                         <td className="py-3.5 px-4 text-slate-300">{item.infra}</td>
                         <td className="py-3.5 px-4">
                           <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                            item.status === '행정 종결' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'
+                            item.status === '실증 성공' ? 'bg-emerald-500/20 text-emerald-400' :
+                            item.status === '실증 실패' ? 'bg-rose-500/20 text-rose-400' : 'bg-blue-500/20 text-blue-400'
                           }`}>
                             {item.status}
                           </span>
@@ -562,13 +601,19 @@ export default function Dashboard() {
               {/* 분석 완료 리포트 */}
               {auditResult && !isParsing && (
                 <div className="bg-slate-950/60 p-4 rounded-xl border border-emerald-500/30 flex flex-col gap-3 text-xs text-slate-300 leading-relaxed">
-                  <div className="flex justify-between border-b border-slate-900 pb-1.5 text-emerald-400 font-semibold">
-                    <span>도달 시나리오</span>
-                    <span>{auditResult.mappedScenario}</span>
+                  <div className="flex justify-between border-b border-slate-900 pb-1.5 font-semibold">
+                    <span className="text-slate-400">도달 시나리오</span>
+                    <span className={auditResult.mappedScenario?.includes("C") ? "text-red-400 font-bold" : "text-emerald-400"}>
+                      {auditResult.mappedScenario}
+                    </span>
                   </div>
                   <div>
-                    <span className="text-slate-500 block mb-0.5">매칭 유사 신뢰도</span>
-                    <span className="text-white font-mono font-bold">{auditResult.matchScore}% 적합</span>
+                    <span className="text-slate-500 block mb-0.5">
+                      {auditResult.mappedScenario?.includes("C") ? "조례 규정 부합률 (위반/저촉)" : "매칭 유사 신뢰도"}
+                    </span>
+                    <span className={`font-mono font-bold text-sm ${auditResult.mappedScenario?.includes("C") ? "text-red-400" : "text-emerald-400"}`}>
+                      {auditResult.matchScore}% {auditResult.mappedScenario?.includes("C") ? "(규제 저촉 / 불합격)" : "(적합 준수)"}
+                    </span>
                   </div>
                   <div>
                     <span className="text-slate-500 block mb-0.5">판독 공문</span>
@@ -613,12 +658,12 @@ export default function Dashboard() {
                 a: "CSS는 특정 후보지에 인프라를 도입했을 때 예상되는 잠재적 민원 강도를 예측합니다. XGBoost Classifier 모델이 필지의 지목, 공시지가, 인근 보호시설과의 이격거리 분포를 학습하여 민원 발생 확률을 0~100점 척도로 환산하며, 오버피팅 제어 규제를 적용하여 일반화 F1-Score 75%~78% 신뢰도를 확보합니다."
               },
               {
-                q: "최초 ColdStart용 패키지 데이터셋의 특성은 어떠한가요?",
-                a: "[중요 알림 - MVP 데이터 편향 고지] 제공되는 최초 적재용 Datasets/ 폴더 내의 경계 및 보호 구역 좌표들은 스마트 흡연부스 MVP 검증에 집중하여 프로토타이핑되어 수록되어 있습니다. 따라서 타 인프라에 적용할 경우에는 데이터베이스의 규제 거리 규칙 테이블 및 관련 실측 레이어를 대상 인프라에 맞춰 사전에 튜닝 매핑하여 운용해야 정합성이 일치합니다."
+                q: "다목적 인프라 확장을 위한 공간 GIS 데이터셋 수집 및 매핑 기준은 무엇인가요?",
+                a: "OmniSite는 범용 공간 정보 표준(GeoJSON 및 PostGIS Spatial Geometry)을 지원하여 자치구의 법정 경계, 지적도(Cadastral Lands), 보호구역(Restricted Zones) 데이터를 실시간으로 인입합니다. 각 자치구별 조례 이격 가이드라인(학교, 어린이집, 보호구역 등)을 관리자 콘솔에서 유동적으로 변경하여 모든 다목적 공공 인프라 입지선정에 즉시 대칭 적용할 수 있습니다."
               },
               {
-                q: "사후 Audit AI(RAG OCR) 모듈의 검증 메커니즘은 무엇인가요?",
-                a: "행정이 의결 종결된 이력에 대해 최종 준공/고시 PDF 공문서를 업로드하면, RAG 파이프라인이 실시간 OCR 분석 및 임베딩을 기동합니다. 고시문 본문에서 완공된 면적, 보호 구역 이격거리 등의 실제 공사 내역을 파싱하여, 최초 의결 수립안 및 조례 규격과 1:1로 자동 대조하여 일치 신뢰도(%)와 감리 보고서를 출력합니다."
+                q: "사후 Audit AI(RAG OCR) 모듈의 검증 및 자가학습 지식오염 방지 메커니즘은 무엇인가요?",
+                a: "최종 준공/고시 PDF 공문서를 업로드하면 RAG OCR 파이프라인이 실측 수치를 추출하여 시나리오(A/B/C) 및 규제 부합률을 자동 감리합니다. 검증이 통과된 승인 공문만 RAG 지식베이스(pgvector)에 축적되며, 불합격된 위법 사례는 Data Poisoning Guard가 작동하여 RAG 지식베이스 오염을 원천 차단합니다. 또한 실증 사례 삭제 시 연동된 모의 심의 이력이 자동으로 원상 롤백(Rollback) 복구됩니다."
               }
             ].map((faq, idx) => (
               <div 
@@ -690,6 +735,21 @@ export default function Dashboard() {
                 <span className="font-semibold text-slate-300">선택된 인프라:</span> {selectedHistory.infra} ({selectedHistory.pnuCount}개 후보 필지 중 최종 결정)
               </div>
               <div className="flex gap-3">
+                {selectedHistory.status === '토론 완료' ? (
+                  <button
+                    onClick={() => handleUpdateHistoryStatus(selectedHistory.id, '실증 실패')}
+                    className="bg-rose-950/80 hover:bg-rose-900 text-rose-400 font-semibold text-xs px-3 py-2 rounded-lg transition-all cursor-pointer border border-rose-800/40"
+                  >
+                    ⚠️ 실증 실패 처리
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => handleUpdateHistoryStatus(selectedHistory.id, '토론 완료')}
+                    className="bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-xs px-3 py-2 rounded-lg transition-all cursor-pointer border border-slate-700"
+                  >
+                    🔄 상태 초기화 (토론완료 복구)
+                  </button>
+                )}
                 <button
                   onClick={() => downloadReportHTML(selectedHistory)}
                   className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs px-4 py-2 rounded-lg transition-all cursor-pointer"
@@ -698,13 +758,22 @@ export default function Dashboard() {
                 </button>
                 <button
                   onClick={() => setShowDetailModal(false)}
-                  className="bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs px-4 py-2 rounded-lg cursor-pointer"
+                  className="bg-slate-850 hover:bg-slate-800 text-slate-400 text-xs px-4 py-2 rounded-lg cursor-pointer border border-slate-900"
                 >
                   닫기
                 </button>
               </div>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* RAG 자가학습 적재 로딩 오버레이 */}
+      {isRegistering && (
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex flex-col items-center justify-center text-white gap-3 animate-fade-in">
+          <div className="w-10 h-10 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
+          <p className="text-sm font-bold text-emerald-400 font-mono">🧠 pgvector RAG 벡터 지식베이스 임베딩 축적 및 자가학습 적재 연산 중...</p>
+          <p className="text-xs text-slate-400">잠시만 기다려 주십시오. 실측 텍스트를 청킹 임베딩 처리하여 덤프 중입니다.</p>
         </div>
       )}
 

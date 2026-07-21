@@ -2,7 +2,9 @@ version: '3.8'
 
 services:
   database:
-    image: postgis/postgis:15-3.3
+    build:
+      context: .
+      dockerfile: ./DB/Dockerfile
     container_name: omnisite_prod_db
     restart: always
     environment:
@@ -11,6 +13,7 @@ services:
       POSTGRES_PASSWORD: admin1234_production_key
     volumes:
       - postgres_prod_data:/var/lib/postgresql/data
+      - ./DB/init:/docker-entrypoint-initdb.d
     ports:
       - "127.0.0.1:5432:5432" # 격리 보안: 로컬 루프백 인터페이스로만 바인딩하여 무단 원격 침투 차단
 

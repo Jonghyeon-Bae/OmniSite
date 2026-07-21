@@ -12,8 +12,19 @@ import joblib
 
 print("=== [PHASE 1: STARTING CSS ML MODEL TRAINING] ===")
 
-dataset_path = "backend/data/processed/css_train_dataset.csv"
-model_dir = "backend/app/models/registry"
+# 로컬 실행과 도커 환경 실행 모두를 유연하게 방어하기 위한 지능형 경로 리졸버
+current_script_dir = os.path.dirname(os.path.abspath(__file__))
+# app/scripts -> app -> backend
+backend_base = os.path.dirname(os.path.dirname(current_script_dir))
+
+if os.path.exists(os.path.join(backend_base, "data", "processed", "css_train_dataset.csv")):
+    dataset_path = os.path.join(backend_base, "data", "processed", "css_train_dataset.csv")
+    model_dir = os.path.join(backend_base, "app", "models", "registry")
+else:
+    # 로컬 작업 디렉토리 기준 폴백 지원
+    dataset_path = "backend/data/processed/css_train_dataset.csv"
+    model_dir = "backend/app/models/registry"
+
 if not os.path.exists(model_dir):
     os.makedirs(model_dir)
     print(f"Created model registry folder: {model_dir}")

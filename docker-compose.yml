@@ -2,7 +2,9 @@ version: '3.8'
 
 services:
   database:
-    image: postgis/postgis:15-3.3
+    build:
+      context: .
+      dockerfile: ./DB/Dockerfile
     container_name: omnisite_dev_db
     restart: always
     environment:
@@ -11,6 +13,7 @@ services:
       POSTGRES_PASSWORD: admin1234
     volumes:
       - postgres_dev_data:/var/lib/postgresql/data
+      - ./DB/init:/docker-entrypoint-initdb.d
     ports:
       - "5432:5432" # 로컬 호스트 전체 개방하여 DB 관리도구 접근 허용
 

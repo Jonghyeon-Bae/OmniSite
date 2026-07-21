@@ -93,6 +93,11 @@ def seed():
     with engine.connect() as conn:
         trans = conn.begin()
         try:
+            # 0. Ensure database extensions are activated for clean coldstart
+            print("[1-1] Activating SQL extensions (postgis, vector)...")
+            conn.execute(text("CREATE EXTENSION IF NOT EXISTS postgis;"))
+            conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector;"))
+            
             # 1. Truncate target tables
             print("[2] Truncating target tables...")
             conn.execute(text("""

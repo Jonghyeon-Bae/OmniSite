@@ -11,6 +11,7 @@ import OptimalResultPanel from '../../components/OptimalResultPanel';
 import AdminConsoleModal from '../../components/AdminConsoleModal';
 import PasswordChangeModal from '../../components/PasswordChangeModal';
 import RagRegulationModal from '../../components/RagRegulationModal';
+import StepGuideModal from '../../components/StepGuideModal';
 
 const apiFetch = (url, options = {}) => {
   const token = typeof window !== 'undefined' ? sessionStorage.getItem('token') : null;
@@ -53,6 +54,7 @@ export default function Home() {
 
   // [Phase 2] 관리자 콘솔 및 시드 데이터 적재 상태
   const [showAdminConsoleModal, setShowAdminConsoleModal] = useState(false);
+  const [activeGuideStep, setActiveGuideStep] = useState(null);
   const [mlStatus, setMlStatus] = useState({ is_training: false });
   const fetchMlStatus = async () => {
     try {

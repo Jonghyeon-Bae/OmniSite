@@ -26,6 +26,9 @@ export default function AdminConsoleModal({
   const [regDept, setRegDept] = useState('스마트도시과');
   const [isRegistering, setIsRegistering] = useState(false);
 
+  // 데이터 규격 안내 모달 상태
+  const [showDataGuideModal, setShowDataGuideModal] = useState(false);
+
   // 콜드스타트 위저드 및 ZIP 파일 상태
   const [coldStartFile, setColdStartFile] = useState(null);
   const [isColdStarting, setIsColdStarting] = useState(false);
@@ -629,20 +632,17 @@ export default function AdminConsoleModal({
 
             {/* 기능 1: 공간/행정 데이터 벌크 적재 */}
             <div className="flex flex-col gap-2 border-t border-slate-800 pt-3">
-              <div className="flex items-center gap-1.5">
-                <label className="text-[11px] font-bold text-slate-200">🚀 원천 데이터 벌크 적재 (PostGIS CSV/Shapefile Seed)</label>
-                <div className="relative group flex items-center justify-center cursor-pointer text-slate-400 hover:text-white bg-slate-800 rounded-full w-3.5 h-3.5 text-[8px] font-mono select-none">
-                  i
-                  <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 w-64 p-3 bg-slate-950 border border-slate-800 rounded-lg shadow-xl backdrop-blur-sm opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-all z-50 text-[9px] leading-relaxed text-slate-300 text-left font-sans font-medium">
-                    <strong className="text-amber-400 block mb-1">📋 테이블별 시딩 요구 사양</strong>
-                    - <strong>지적 필지(cadastral_lands)</strong>: pnu, jibun, area, price, land_use_code, ownership_type 필수 (CSV 또는 SHP 셋)<br/>
-                    - <strong>주민 민원(civil_complaints)</strong>: lat, lng, complaint_type, details 필수 (CSV)<br/>
-                    - <strong>상권 점포(commercial_shops)</strong>: lat, lng, shop_name, category_name 필수 (CSV)<br/>
-                    - <strong>용도제한(restricted_zones)</strong>: lat, lng, zone_type, buffer_m 필수 (CSV 또는 SHP 셋)<br/>
-                    - <strong>물리 장애(user_exclusion_zones)</strong>: lat, lng, obstacle_name 필수 (CSV 또는 SHP 셋)<br/>
-                    - <strong>공간 피처(city_spatial_features)</strong>: lat, lng, feature_name, feature_type 필수 (CSV)
-                  </div>
-                </div>
+              <div className="flex items-center justify-between">
+                <label className="text-[11px] font-bold text-slate-200 flex items-center gap-2">
+                  <span>🚀 원천 데이터 벌크 적재 (PostGIS CSV/Shapefile Seed)</span>
+                  <button
+                    type="button"
+                    onClick={() => setShowDataGuideModal(true)}
+                    className="px-2.5 py-0.5 text-[10px] font-bold bg-amber-500/15 hover:bg-amber-500/30 text-amber-400 border border-amber-500/40 rounded-full transition-all cursor-pointer flex items-center gap-1 shadow-sm hover:scale-105"
+                  >
+                    <span>💡 업로드 데이터 규격가이드</span>
+                  </button>
+                </label>
               </div>
               <div className="flex gap-2">
                 <select 
@@ -1220,6 +1220,91 @@ export default function AdminConsoleModal({
           콘솔 닫기
         </button>
       </div>
+
+      {/* 💡 업로드 데이터 규격가이드 서브 모달 */}
+      {showDataGuideModal && (
+        <div className="fixed inset-0 bg-slate-950/90 backdrop-blur-md z-[60] flex items-center justify-center p-4">
+          <div className="glass-panel w-full max-w-2xl p-6 flex flex-col gap-4 relative animate-fade-in text-slate-100 max-h-[85vh] overflow-y-auto border border-amber-500/30">
+            <button 
+              onClick={() => setShowDataGuideModal(false)}
+              className="absolute top-4 right-4 text-slate-400 hover:text-white font-bold cursor-pointer"
+            >
+              ✕
+            </button>
+            
+            <div className="flex items-center gap-2 border-b border-slate-800 pb-3">
+              <span className="text-xl">💡</span>
+              <div>
+                <h4 className="text-sm font-bold text-amber-400">공간 및 행정 데이터 업로드 규격 상세 가이드</h4>
+                <p className="text-[10px] text-slate-400">타 도메인 인프라(불법주정차, 킥보드, CCTV 등) 적용 시 필요한 파일 확장자 및 데이터 예시입니다.</p>
+              </div>
+            </div>
+
+            {/* 1. 허용 확장자 규격 */}
+            <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-3.5 flex flex-col gap-2">
+              <h5 className="text-[11px] font-bold text-white flex items-center gap-1.5">
+                <span>📁 1. 허용 파일 확장자 규격</span>
+              </h5>
+              <div className="grid grid-cols-3 gap-2 text-[10px]">
+                <div className="bg-slate-950 p-2.5 rounded-lg border border-slate-800">
+                  <span className="text-amber-400 font-bold block mb-1">.CSV 파일</span>
+                  <span className="text-slate-400 text-[9px]">단일 텍스트 데이터. 위도/경도(lat, lng) 또는 PNU 필지고유번호 포함 필수.</span>
+                </div>
+                <div className="bg-slate-950 p-2.5 rounded-lg border border-slate-800">
+                  <span className="text-blue-400 font-bold block mb-1">.SHP 세트 (Shapefile)</span>
+                  <span className="text-slate-400 text-[9px]">.shp, .dbf, .shx 3종 이상을 한 번에 다중 선택하여 드래그앤드롭 업로드.</span>
+                </div>
+                <div className="bg-slate-950 p-2.5 rounded-lg border border-slate-800">
+                  <span className="text-emerald-400 font-bold block mb-1">.PDF 조례 문서</span>
+                  <span className="text-slate-400 text-[9px]">RAG 법률 자동 감리용 조례 및 시행령 비정형 텍스트 문서.</span>
+                </div>
+              </div>
+            </div>
+
+            {/* 2. 도메인별 업로드 데이터 예시 */}
+            <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-3.5 flex flex-col gap-2">
+              <h5 className="text-[11px] font-bold text-white flex items-center gap-1.5">
+                <span>🎯 2. 도메인별 데이터셋 파일 및 지표 예시</span>
+              </h5>
+              <div className="space-y-2 text-[10px]">
+                <div className="bg-slate-950 p-2.5 rounded-lg border border-slate-800/80 flex flex-col gap-1">
+                  <span className="text-amber-300 font-bold">🚗 불법주정차 단속 CCTV 입지선정 도메인</span>
+                  <p className="text-slate-300 text-[9.5px] font-mono">권장 파일명: <span className="text-amber-400">용산구_불법주정차_단속CCTV_위치.csv</span> / <span className="text-blue-400">어린이보호구역_주정차금지.shp</span></p>
+                  <p className="text-slate-400 text-[9px]">필수 포함 열: lat, lng, road_width(도로폭), complaint_count(단속민원수), zone_type</p>
+                </div>
+
+                <div className="bg-slate-950 p-2.5 rounded-lg border border-slate-800/80 flex flex-col gap-1">
+                  <span className="text-teal-300 font-bold">🛴 공공 퍼스널모빌리티 (킥보드) 거치대 도메인</span>
+                  <p className="text-slate-300 text-[9.5px] font-mono">권장 파일명: <span className="text-amber-400">공유킥보드_반납거치대_후보지.csv</span> / <span className="text-blue-400">자전거도로_연계구역.shp</span></p>
+                  <p className="text-slate-400 text-[9px]">필수 포함 열: lat, lng, station_distance(지하철역거리), pedestrian_flow(유동인구)</p>
+                </div>
+
+                <div className="bg-slate-950 p-2.5 rounded-lg border border-slate-800/80 flex flex-col gap-1">
+                  <span className="text-indigo-300 font-bold">🎥 스마트 도로 / 다목적 방범 CCTV 도메인</span>
+                  <p className="text-slate-300 text-[9.5px] font-mono">권장 파일명: <span className="text-amber-400">도로_다목적_CCTV_설치현황.csv</span> / <span className="text-blue-400">용산구_도로망_네트워크.shp</span></p>
+                  <p className="text-slate-400 text-[9px]">필수 포함 열: lat, lng, cctv_type, coverage_m(감시범위), road_class(도로등급)</p>
+                </div>
+              </div>
+            </div>
+
+            {/* 3. 데이터 오염 방지 안내 */}
+            <div className="bg-emerald-500/10 border border-emerald-500/20 p-3 rounded-xl text-[10px] text-emerald-300 flex items-start gap-2">
+              <span className="text-base">🛡️</span>
+              <div className="leading-relaxed">
+                <strong className="block text-emerald-200 mb-0.5">데이터 오염 방지 & 시맨틱 도메인 격리 안내</strong>
+                업로드하신 데이터는 백엔드 OpenAI 임베딩 파이프라인에 의해 도메인 태그(예: <code className="text-amber-300">illegal_parking</code>, <code className="text-amber-300">kickboard</code>)가 자동 할당됩니다. 타 도메인 간 공간 데이터가 DB 내부에서 섞이거나 오염되지 않도록 완전히 파티셔닝되어 저장됩니다.
+              </div>
+            </div>
+
+            <button 
+              onClick={() => setShowDataGuideModal(false)}
+              className="w-full bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold py-2 text-xs rounded-lg transition-all cursor-pointer shadow-lg mt-1"
+            >
+              확인 및 안내 닫기
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

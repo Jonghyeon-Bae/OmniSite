@@ -36,11 +36,12 @@ frontend.zip
 create_pdf_raw.py
 *.log
 backend/data/raw/*.json
-backend/data/processed/css_train_dataset.csv
 backend/temp_shp/
 *.pdf
 *.pdf.txt
 *.txt.cache
 
-# Exclude heavy raw geospatial datasets from Git tracking
-Datasets/
+# Essential geospatial seed datasets are tracked for seamless Git Clone cold-start
+# Datasets/
+# backend/data/processed/css_train_dataset.csv
+

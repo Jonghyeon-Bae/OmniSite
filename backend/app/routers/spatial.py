@@ -279,6 +279,23 @@ async def recommend_optimal_sites(
         if ref_lng is not None and not math.isnan(ref_lng) and 124.0 <= ref_lng <= 132.0:
             base_lng = ref_lng
 
+        # [HITL Exclusion Zone Guard] 지정한 좌표가 사용자 지정 금지구역(user_exclusion_zones) 내부에 위치하는지 사전 검증
+        if ref_lat is not None and ref_lng is not None:
+            exclusion_check_query = text("""
+                SELECT uez.obstacle_name
+                FROM user_exclusion_zones uez
+                WHERE uez.district_id = :district_id
+                  AND ST_Contains(uez.geom, ST_SetSRID(ST_MakePoint(:lng, :lat), 4326))
+                LIMIT 1
+            """)
+            ex_row = db.execute(exclusion_check_query, {"district_id": district_id, "lng": base_lng, "lat": base_lat}).fetchone()
+            if ex_row:
+                obstacle = ex_row[0] or "사용자 지정 금지구역"
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"⚠️ 마커를 지정할 수 없습니다: 설정하신 위치는 금지구역('{obstacle}') 내부에 위치하고 있습니다."
+                )
+
         # [Zero Hardcoding] districts 테이블에서 district_id 기반 자치구 명칭 동적 조회
         dist_name_query = text("SELECT district_name FROM districts WHERE id = :dist_id")
         dist_name_row = db.execute(dist_name_query, {"dist_id": district_id}).fetchone()
@@ -442,6 +459,17 @@ async def recommend_optimal_sites(
                       SELECT 1 FROM commercial_shops cs
                       WHERE ST_DWithin(c.geom, cs.geom, 0.0015)
                   )
+              )
+              -- [Strict Exclusion Zone Guard] 사용자 지정 물리 금지구역(user_exclusion_zones)에 포함되거나 교차하는 필지 100% 완전 제거
+              AND NOT EXISTS (
+                  SELECT 1 FROM user_exclusion_zones uez
+                  WHERE uez.district_id = :district_id
+                    AND (
+                        ST_Intersects(c.geom, uez.geom) OR
+                        ST_Intersects(ST_Centroid(c.geom), uez.geom) OR
+                        ST_Contains(uez.geom, c.geom) OR
+                        ST_Within(c.geom, uez.geom)
+                    )
               )
               -- 사용자 지정 가상 금지구역(Exclusion Polygon/Circle)에 저촉되는 필지 실시간 제외 (마커 좌표 포함 Strict Cut) [v4.4.0]
               AND NOT EXISTS (

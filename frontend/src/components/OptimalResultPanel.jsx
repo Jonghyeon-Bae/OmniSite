@@ -35,20 +35,9 @@ export default function OptimalResultPanel({
       {/* ========================================================================= */}
       {pipelineStep === 3 && (
         <div className="flex flex-col gap-3">
-          <div className="border-b border-slate-800 pb-2 flex justify-between items-center">
-            <div>
-              <h2 className="text-xs font-bold text-amber-500">Step 2. 비주얼 HITL 좌표 보정 중</h2>
-              <p className="text-[10px] text-slate-400 font-medium">지도의 주황색 핀을 드래그하거나 아래 좌표를 보정하세요</p>
-            </div>
-            {onOpenGuideModal && (
-              <button
-                type="button"
-                onClick={() => onOpenGuideModal(2)}
-                className="px-2 py-0.5 text-[9px] font-bold bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded-full transition-all cursor-pointer"
-              >
-                💡가이드
-              </button>
-            )}
+          <div className="border-b border-slate-800 pb-2">
+            <h2 className="text-xs font-bold text-amber-500">Step 2. 비주얼 HITL 좌표 보정 중</h2>
+            <p className="text-[10px] text-slate-400 font-medium">지도의 주황색 핀을 드래그하거나 아래 좌표를 보정하세요</p>
           </div>
 
           <div className="bg-slate-950/40 p-4 rounded-xl border border-amber-500/30 flex flex-col gap-3">
@@ -168,27 +157,6 @@ export default function OptimalResultPanel({
           </div>
         ) : (
           <div className="flex flex-col gap-5">
-          <div className="flex justify-between items-center px-1">
-            <span className="text-[11px] font-bold text-slate-300">🎯 최적 입지 추천 & AI 심의 분석</span>
-            {onOpenGuideModal && (
-              <div className="flex gap-1.5">
-                <button
-                  type="button"
-                  onClick={() => onOpenGuideModal(4)}
-                  className="px-2 py-0.5 text-[9px] font-bold bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-full transition-all cursor-pointer"
-                >
-                  💡Step 4 가이드
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onOpenGuideModal(5)}
-                  className="px-2 py-0.5 text-[9px] font-bold bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 border border-purple-500/30 rounded-full transition-all cursor-pointer"
-                >
-                  💡Step 5 가이드
-                </button>
-              </div>
-            )}
-          </div>
           {/* Top 1 ~ Top 5 동적 탭 바 */}
           <div className="flex bg-slate-950/60 p-1 rounded-lg border border-slate-800/80">
             {Object.keys(selectedParcel)

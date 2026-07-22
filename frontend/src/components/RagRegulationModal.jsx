@@ -88,7 +88,13 @@ export default function RagRegulationModal({
           </button>
           <div>
             <h3 className="text-sm font-bold text-white mb-1">⚖️ 법규 RAG 데이터베이스 관리</h3>
-            <p className="text-[11px] text-slate-400">조례 및 시행령 PDF 문서를 텍스트로 벡터 캐싱하여 RAG 지식베이스를 구축합니다.</p>
+            <p className="text-[10px] text-slate-400">지자체 자치법규, 조례, 시행령 PDF를 업로드하여 pgvector 기반 RAG 인공지능 감리 DB를 구축합니다.</p>
+          </div>
+
+          <div className="bg-blue-950/30 border border-blue-500/30 p-2.5 rounded-xl text-[10px] text-blue-300 leading-relaxed flex flex-col gap-1">
+            <span className="font-bold text-blue-200">💡 조례 PDF 업로드 규격 가이드</span>
+            <span>- <strong>조(條) 단위 자동 분할</strong>: [조례명 &gt; 제N조] 단위로 백엔드가 파싱되어 pgvector 1,536 차원으로 자동 임베딩 적재됩니다.</span>
+            <span>- <strong>다중 PDF 선택 지원</strong>: 지자체별 금연구역 조례, 킥보드 준수사항 등 여러 문서를 다중 드래그앤드롭 업로드하십시오.</span>
           </div>
           
           <div className="border border-slate-800 rounded-lg p-4 bg-slate-900/40 flex flex-col gap-3">

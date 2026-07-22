@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 
 const STEP_GUIDE_DATA = {
   1: {
@@ -6,7 +6,7 @@ const STEP_GUIDE_DATA = {
     subtitle: '분석 대상 지리 데이터 원천 파싱 및 의도 검증 단계',
     icon: '📂',
     badgeColor: 'bg-blue-500/20 border-blue-500/40 text-blue-400',
-    description: '분석하고 하는 스마트 인프라 후보지 데이터셋(CSV)을 업로드하면, AI 감리 엔진이 수초 만에 지표와 수립 목적을 자동 감별합니다.',
+    description: '분석하고자 하는 스마트 인프라 후보지 데이터셋(CSV)을 업로드하면, AI 감리 엔진이 수초 만에 지표와 수립 목적을 자동 감별합니다.',
     items: [
       {
         head: '📋 업로드 데이터 조건',
@@ -17,8 +17,8 @@ const STEP_GUIDE_DATA = {
         body: 'OpenAI 임베딩 파이프라인이 텍스트 속성을 파악하여 입지선정 목적(예: 스마트 흡연부스, 킥보드 거치대)과 지표 태그를 자동 추론'
       },
       {
-        head: '💡 활용 팁',
-        body: '추론된 목적과 지표가 적합하면 하단의 [감리 승인 및 2단계 보정 진입] 버튼을 눌러 다음 단계로 이동하십시오.'
+        head: '📜 RAG 조례 PDF 연동',
+        body: '지자체 자치법규 조례 PDF를 추가 적재하면 [조례명 > 제N조] 파싱 기반의 교차 감리 준비가 완료됩니다.'
       }
     ]
   },
@@ -36,6 +36,10 @@ const STEP_GUIDE_DATA = {
       {
         head: '🛡️ 용도제한 보호구역 레이어',
         body: '학교, 유치원 등 보호구역 이격거리 버퍼(50m~200m) 붉은색 링을 실시간 캔버스에 렌더링하여 위배 여부 1차 필터링'
+      },
+      {
+        head: '🚫 금지구역 마커 지정 거부 가드',
+        body: '사용자 지정 물리 금지구역 상에 마커가 올려지면 백엔드가 HTTP 400 거부 에러를 발생시켜 오지정을 방지합니다.'
       }
     ]
   },
@@ -76,7 +80,7 @@ const STEP_GUIDE_DATA = {
   5: {
     title: 'Step 5. RAG 법규 준공 감리 & AI 3자 모의 토론 (Audit & Multi-Agent Debate)',
     subtitle: '조례 자동 교차 검증 및 AI 페르소나 모의 공청회 시뮬레이션',
-    icon: '⚖️',
+    icon: '💬',
     badgeColor: 'bg-purple-500/20 border-purple-500/40 text-purple-400',
     description: '선택된 후보지에 대하여 RAG 법령 검증과 AI 페르소나그룹 모의 토론이 순차적으로 집행됩니다.',
     items: [
@@ -96,14 +100,22 @@ const STEP_GUIDE_DATA = {
   }
 };
 
-export default function StepGuideModal({ show, onClose, step }) {
-  if (!show || !step) return null;
+export default function StepGuideModal({ show, onClose, initialStep = 1 }) {
+  const [activeTab, setActiveTab] = useState(initialStep);
 
-  const guide = STEP_GUIDE_DATA[step] || STEP_GUIDE_DATA[1];
+  useEffect(() => {
+    if (initialStep) {
+      setActiveTab(initialStep);
+    }
+  }, [initialStep, show]);
+
+  if (!show) return null;
+
+  const guide = STEP_GUIDE_DATA[activeTab] || STEP_GUIDE_DATA[1];
 
   return (
-    <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-[70] flex items-center justify-center p-4">
-      <div className="glass-panel w-full max-w-xl p-6 flex flex-col gap-4 relative animate-fade-in text-slate-100 border border-slate-700 shadow-2xl">
+    <div className="fixed inset-0 bg-slate-950/85 backdrop-blur-md z-[80] flex items-center justify-center p-4">
+      <div className="glass-panel w-full max-w-2xl p-6 flex flex-col gap-4 relative animate-fade-in text-slate-100 border border-slate-700/80 shadow-2xl">
         <button 
           onClick={onClose}
           className="absolute top-4 right-4 text-slate-400 hover:text-white font-bold cursor-pointer text-sm"
@@ -111,12 +123,36 @@ export default function StepGuideModal({ show, onClose, step }) {
           ✕
         </button>
 
-        <div className="flex items-center gap-3 border-b border-slate-800 pb-3.5">
+        {/* 모달 상단 탭 바 (Step 1 ~ Step 5 통합 탐색) */}
+        <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+          <div className="flex items-center gap-2">
+            <span className="text-base font-bold text-amber-400">💡 공간 의사결정 파이프라인 실무 가이드</span>
+          </div>
+          <span className="text-[10px] text-slate-400">단계 탭을 클릭하여 전체 가이드를 둘러보세요</span>
+        </div>
+
+        <div className="flex bg-slate-950 p-1 rounded-xl border border-slate-800">
+          {[1, 2, 3, 4, 5].map(stepNum => (
+            <button
+              key={stepNum}
+              onClick={() => setActiveTab(stepNum)}
+              className={`flex-1 py-2 text-center text-xs font-bold rounded-lg cursor-pointer transition-all ${
+                activeTab === stepNum 
+                  ? 'bg-blue-600 text-white shadow-md' 
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
+              }`}
+            >
+              Step {stepNum}
+            </button>
+          ))}
+        </div>
+
+        <div className="flex items-center gap-3 bg-slate-900/60 p-3.5 rounded-xl border border-slate-800">
           <span className="text-2xl">{guide.icon}</span>
           <div>
             <div className="flex items-center gap-2">
-              <span className={`text-[9px] px-2 py-0.5 rounded-full font-bold border ${guide.badgeColor}`}>
-                가이드라인
+              <span className={`text-[9.5px] px-2 py-0.5 rounded-full font-bold border ${guide.badgeColor}`}>
+                Step {activeTab} 가이드
               </span>
             </div>
             <h3 className="text-sm font-bold text-white mt-1">{guide.title}</h3>
@@ -124,7 +160,7 @@ export default function StepGuideModal({ show, onClose, step }) {
           </div>
         </div>
 
-        <p className="text-[11px] text-slate-300 leading-relaxed bg-slate-900/60 p-3 rounded-xl border border-slate-800">
+        <p className="text-[11px] text-slate-300 leading-relaxed bg-slate-950/60 p-3.5 rounded-xl border border-slate-900">
           {guide.description}
         </p>
 
@@ -139,9 +175,9 @@ export default function StepGuideModal({ show, onClose, step }) {
 
         <button
           onClick={onClose}
-          className="w-full bg-slate-800 hover:bg-slate-700 text-white font-bold py-2.5 text-xs rounded-xl transition-all cursor-pointer border border-slate-700 mt-1"
+          className="w-full bg-slate-800 hover:bg-slate-700 text-white font-bold py-2.5 text-xs rounded-xl transition-all cursor-pointer border border-slate-700 mt-1 shadow-md"
         >
-          가이드 닫기 및 계속 진행
+          확인 및 가이드 닫기
         </button>
       </div>
     </div>

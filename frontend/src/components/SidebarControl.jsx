@@ -39,20 +39,9 @@ export default function SidebarControl({
           <h2 className="text-sm font-bold text-white mb-0.5">입지선정 기준 설정</h2>
           <p className="text-[10px] text-slate-400">데이터 적재 및 가중치 의사결정 수립</p>
         </div>
-        <div className="flex items-center gap-2">
-          {onOpenGuideModal && (
-            <button
-              type="button"
-              onClick={() => onOpenGuideModal(pipelineStep)}
-              className="px-2.5 py-1 text-[10px] font-bold bg-amber-500/15 hover:bg-amber-500/30 text-amber-400 border border-amber-500/40 rounded-full transition-all cursor-pointer flex items-center gap-1 shadow-sm hover:scale-105"
-            >
-              <span>💡 Step {pipelineStep} 가이드</span>
-            </button>
-          )}
-          <span className="text-xs bg-blue-600/20 text-blue-400 px-2.5 py-1 rounded-full font-bold">
-            Step {pipelineStep} / 6
-          </span>
-        </div>
+        <span className="text-xs bg-blue-600/20 text-blue-400 px-2.5 py-1 rounded-full font-bold">
+          Step {pipelineStep} / 6
+        </span>
       </div>
 
       {/* ========================================================================= */}
@@ -60,29 +49,24 @@ export default function SidebarControl({
       {/* ========================================================================= */}
       <div className={`flex flex-col gap-3 transition-all duration-300 ${pipelineStep !== 1 ? 'opacity-40 pointer-events-none' : ''}`}>
         <div className="flex justify-between items-center">
-          <div className="flex items-center gap-1.5">
-            <label className="text-xs font-semibold text-slate-300">Step 1. 공간 데이터 수집 & AI 감리</label>
-            {onOpenGuideModal && (
-              <button
-                type="button"
-                onClick={() => onOpenGuideModal(1)}
-                className="px-1.5 py-0.5 text-[9px] font-bold bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/30 rounded-full transition-all cursor-pointer"
-              >
-                💡가이드
-              </button>
-            )}
-          </div>
+          <label className="text-xs font-semibold text-slate-300">Step 1. 공간 데이터 수집 & AI 감리</label>
           <span className="text-[10px] text-blue-400 font-mono">CSV 전용 (분석용)</span>
         </div>
 
         {!isAuditComplete ? (
-          <div 
-            onClick={triggerFileAudit}
-            className="border-2 border-dashed border-slate-700 hover:border-blue-500 rounded-xl p-5 text-center cursor-pointer transition-all bg-slate-950/40 hover:bg-slate-900/30"
-          >
-            <p className="text-xs text-slate-300 font-semibold">📁 공간 데이터 CSV 업로드 (클릭)</p>
-            <p className="text-[10px] text-slate-500 mt-1">컬럼명 및 위치 결측 검증 가동</p>
-            {isUploading && <p className="text-[10px] text-amber-400 mt-1 animate-pulse">업로드 및 AI 감리 분석 중...</p>}
+          <div className="flex flex-col gap-2">
+            <div 
+              onClick={triggerFileAudit}
+              className="border-2 border-dashed border-slate-700 hover:border-blue-500 rounded-xl p-5 text-center cursor-pointer transition-all bg-slate-950/40 hover:bg-slate-900/30"
+            >
+              <p className="text-xs text-slate-300 font-semibold">📁 공간 데이터 CSV 업로드 (클릭)</p>
+              <p className="text-[10px] text-slate-500 mt-1">위경도(lat, lng), PNU, 이격거리 필드 자동 검증</p>
+              {isUploading && <p className="text-[10px] text-amber-400 mt-1 animate-pulse">업로드 및 AI 감리 분석 중...</p>}
+            </div>
+            
+            <div className="bg-slate-900/50 p-2.5 rounded-xl border border-slate-800 flex items-center justify-between text-[10px]">
+              <span className="text-slate-400">📜 조례 PDF 추가 시 RAG 교차 준공 감리 가동</span>
+            </div>
           </div>
         ) : (
           /* AI 감리 결과 판독 및 실무자 의도 승인 루프 */
@@ -249,18 +233,7 @@ export default function SidebarControl({
       {/* ========================================================================= */}
       <div className={`flex flex-col gap-4 border-t border-slate-800/80 pt-4 transition-all duration-300 ${pipelineStep < 4 ? 'hidden' : ''} ${pipelineStep > 4 ? 'opacity-40 pointer-events-none' : ''}`}>
         <div className="flex justify-between items-center">
-          <div className="flex items-center gap-1.5">
-            <label className="text-xs font-semibold text-slate-300">Step 3. AHP 인자별 상대 가중치</label>
-            {onOpenGuideModal && (
-              <button
-                type="button"
-                onClick={() => onOpenGuideModal(3)}
-                className="px-1.5 py-0.5 text-[9px] font-bold bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded-full transition-all cursor-pointer"
-              >
-                💡가이드
-              </button>
-            )}
-          </div>
+          <label className="text-xs font-semibold text-slate-300">Step 3. AHP 인자별 상대 가중치</label>
           <span className={`text-[10px] px-2 py-0.5 rounded-full font-mono font-semibold transition-all ${crValue < 0.1 ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'}`}>
             C.R. = {crValue} ({crValue < 0.1 ? '만족' : '위배'})
           </span>

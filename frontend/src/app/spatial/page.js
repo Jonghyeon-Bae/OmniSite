@@ -1462,6 +1462,14 @@ export default function Home() {
         <nav className="flex items-center gap-8 text-xs font-semibold">
           <Link href="/spatial" className="text-white border-b-2 border-blue-500 pb-1">입지분석 메인 (Map)</Link>
           <Link href="/dashboard" className="text-slate-400 hover:text-white transition-all pb-1">이력 대시보드 (Analytics)</Link>
+          
+          <button
+            type="button"
+            onClick={() => setActiveGuideStep(pipelineStep)}
+            className="text-xs bg-gradient-to-r from-amber-500/20 to-amber-500/10 hover:from-amber-500/30 hover:to-amber-500/20 text-amber-400 border border-amber-500/40 px-3 py-1 rounded-full font-bold transition-all cursor-pointer flex items-center gap-1.5 shadow-sm hover:scale-105"
+          >
+            <span>💡 Step {pipelineStep} 실무 가이드라인</span>
+          </button>
         </nav>
         <div className="flex items-center gap-3">
           <button 
@@ -1559,6 +1567,7 @@ export default function Home() {
         mlStatus={mlStatus}
         fetchMlStatus={fetchMlStatus}
         showToast={showToast}
+        onOpenGuideModal={(step) => setActiveGuideStep(step)}
       />
 
       {/* 4. 우측 플로팅 패널: 후보지 탭 및 속성 정보 카드 (Information & HITL Panel) */}
@@ -1586,6 +1595,7 @@ export default function Home() {
         simStep={simStep}
         addressAnalysis={selectedParcel[activeTab]?.address_analysis || ""}
         isAnalyzingAddress={false}
+        onOpenGuideModal={(step) => setActiveGuideStep(step)}
       />
 
       {/* AI 시뮬레이션 모달 팝업 */}
@@ -1605,6 +1615,13 @@ export default function Home() {
         ahpWeights={ahpWeights}
         apiFetch={apiFetch}
         districtId={userDistrictId}
+      />
+
+      {/* 💡 파이프라인 단계별 실무 가이드라인 모달 (오브젝트 바인딩) */}
+      <StepGuideModal
+        show={activeGuideStep !== null}
+        step={activeGuideStep}
+        onClose={() => setActiveGuideStep(null)}
       />
 
 

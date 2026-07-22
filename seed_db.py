@@ -2,6 +2,7 @@ import os
 import csv
 import re
 import math
+import zipfile
 import shapefile
 import bcrypt
 from collections import defaultdict
@@ -152,7 +153,16 @@ def seed():
             dong_centroids = {} # db_id -> (lng, lat) for fallback
 
             try:
-                shp_path = resolve_path("emd_shp", r"c:\Users\Admin\Desktop\빅프로젝트 관련자료\최종1차\데이터\emd")
+                # 읍면동.zip 자동 압축해제 탐색
+                datasets_base = os.path.join(os.path.dirname(os.path.abspath(__file__)), "Datasets")
+                extracted_dir = os.path.join(datasets_base, "1_boundaries", "extracted")
+                zip_path = os.path.join(datasets_base, "1_boundaries", "읍면동.zip")
+                if not os.path.exists(os.path.join(extracted_dir, "emd.shp")) and os.path.exists(zip_path):
+                    os.makedirs(extracted_dir, exist_ok=True)
+                    with zipfile.ZipFile(zip_path, 'r') as zf:
+                        zf.extractall(extracted_dir)
+                
+                shp_path = resolve_path("emd_shp", os.path.join(extracted_dir, "emd.shp"))
                 sf = shapefile.Reader(shp_path, encoding="cp949")
                 
                 for i in range(len(sf)):
@@ -215,18 +225,26 @@ def seed():
                     return res[0], res[1], res[2]
                 
                 # Fallback to nearest dong centroid
-                min_dist = float('inf')
-                best_id = list(dong_centroids.keys())[0]
-                for db_id, (clng, clat) in dong_centroids.items():
-                    dist = (lng - clng)**2 + (lat - clat)**2
-                    if dist < min_dist:
-                        min_dist = dist
-                        best_id = db_id
-                        
-                res_fallback = conn.execute(text("""
-                    SELECT dong_name, dong_code FROM dong_boundaries WHERE id = :id
-                """), {"id": best_id}).fetchone()
-                return best_id, res_fallback[0], res_fallback[1]
+                if dong_centroids:
+                    min_dist = float('inf')
+                    best_id = list(dong_centroids.keys())[0]
+                    for db_id, (clng, clat) in dong_centroids.items():
+                        dist = (lng - clng)**2 + (lat - clat)**2
+                        if dist < min_dist:
+                            min_dist = dist
+                            best_id = db_id
+                            
+                    res_fallback = conn.execute(text("""
+                        SELECT dong_name, dong_code FROM dong_boundaries WHERE id = :id
+                    """), {"id": best_id}).fetchone()
+                    if res_fallback:
+                        return best_id, res_fallback[0], res_fallback[1]
+                
+                # Global fallback if centroids mapping is unavailable
+                res_first = conn.execute(text("SELECT id, dong_name, dong_code FROM dong_boundaries LIMIT 1")).fetchone()
+                if res_first:
+                    return res_first[0], res_first[1], res_first[2]
+                return 1, "한강로동", "1117062000"
 
             # 4. Load parcels and seed cadastral_lands
             print("[5] Seeding cadastral_lands...")
@@ -558,7 +576,7 @@ def seed():
                     dong_id, _, _ = get_dong_by_coord(lng, lat)
                     
                     conn.execute(text("""
-                        INSERT INTO restricted_zones (district_id, dong_id, zone_name, address, geom, zone_type, restriction_radius)
+                        INSERT INTO restricted_zones (district_id, dong_id, zone_name, address, geom, zone_type, area)
                         VALUES (:district_id, :dong_id, :zone_name, :address, ST_SetSRID(ST_MakePoint(:lng, :lat), 4326), :zone_type, :area)
                     """), {
                         "district_id": district_id,

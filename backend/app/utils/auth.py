@@ -79,3 +79,34 @@ async def get_current_admin(current_user: Dict[str, Any] = Depends(get_current_u
             detail="본 기능은 시스템 관리자(Admin) 권한이 요구되는 작업입니다."
         )
     return current_user
+
+# --- 5. 게스트 및 일반 세션 수용 유연한 인증 의존성 (get_optional_current_user) ---
+oauth2_optional_scheme = OAuth2PasswordBearer(tokenUrl="api/v1/auth/login", auto_error=False)
+
+async def get_optional_current_user(token: Optional[str] = Depends(oauth2_optional_scheme), db: Session = Depends(get_db)) -> Dict[str, Any]:
+    guest_user = {
+        "id": 0,
+        "username": "guest",
+        "role": "user",
+        "department": "스마트도시과",
+        "district_id": 1
+    }
+    if not token:
+        return guest_user
+    try:
+        payload = jwt.decode(token, settings.JWT_SECRET_KEY, algorithms=[settings.JWT_ALGORITHM])
+        username: str = payload.get("sub")
+        if username:
+            query = text("SELECT id, username, role, department, district_id FROM users WHERE username = :username")
+            user_row = db.execute(query, {"username": username}).fetchone()
+            if user_row:
+                return {
+                    "id": user_row[0],
+                    "username": user_row[1],
+                    "role": user_row[2],
+                    "department": user_row[3],
+                    "district_id": user_row[4]
+                }
+    except Exception:
+        pass
+    return guest_user

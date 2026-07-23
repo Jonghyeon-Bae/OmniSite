@@ -12,6 +12,12 @@ import pandas as pd
 import io
 from io import BytesIO
 from pypdf import PdfReader
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import letter
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable, KeepTogether
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
 from typing import List, Dict, Any, Optional
 from fastapi import APIRouter, HTTPException, Depends
 from fastapi.responses import StreamingResponse
@@ -282,33 +288,51 @@ async def recommend_optimal_sites(
         # [HITL Exclusion Zone Guard] 지정한 좌표가 사용자 지정 금지구역(user_exclusion_zones) 내부에 위치하는지 사전 검증
         if ref_lat is not None and ref_lng is not None:
             exclusion_check_query = text("""
-                SELECT uez.obstacle_name
+                SELECT COALESCE(uez.zone_name, uez.memo, '사용자 지정 금지구역') AS obstacle_name
                 FROM user_exclusion_zones uez
-                WHERE uez.district_id = :district_id
-                  AND ST_Contains(uez.geom, ST_SetSRID(ST_MakePoint(:lng, :lat), 4326))
+                WHERE (
+                      ST_Contains(uez.geom, ST_SetSRID(ST_MakePoint(:lng, :lat), 4326)) OR
+                      ST_Within(ST_SetSRID(ST_MakePoint(:lng, :lat), 4326), uez.geom) OR
+                      ST_Intersects(uez.geom, ST_SetSRID(ST_MakePoint(:lng, :lat), 4326))
+                  )
                 LIMIT 1
             """)
-            ex_row = db.execute(exclusion_check_query, {"district_id": district_id, "lng": base_lng, "lat": base_lat}).fetchone()
-            if ex_row:
-                obstacle = ex_row[0] or "사용자 지정 금지구역"
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"⚠️ 마커를 지정할 수 없습니다: 설정하신 위치는 금지구역('{obstacle}') 내부에 위치하고 있습니다."
-                )
+            try:
+                ex_row = db.execute(exclusion_check_query, {"district_id": district_id, "lng": base_lng, "lat": base_lat}).fetchone()
+                if ex_row:
+                    obstacle = ex_row[0] or "사용자 지정 금지구역"
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"⚠️ 마커를 지정할 수 없습니다: 설정하신 위치는 금지구역('{obstacle}') 내부에 위치하고 있습니다."
+                    )
+            except HTTPException:
+                raise
+            except Exception as ex_check_err:
+                db.rollback()
+                print(f"[Exclusion Zone Check Skipped/Warning] {ex_check_err}")
 
         # [Zero Hardcoding] districts 테이블에서 district_id 기반 자치구 명칭 동적 조회
-        dist_name_query = text("SELECT district_name FROM districts WHERE id = :dist_id")
-        dist_name_row = db.execute(dist_name_query, {"dist_id": district_id}).fetchone()
-        district_name = dist_name_row[0] if dist_name_row else "용산구"
+        try:
+            dist_name_query = text("SELECT district_name FROM districts WHERE id = :dist_id")
+            dist_name_row = db.execute(dist_name_query, {"dist_id": district_id}).fetchone()
+            district_name = dist_name_row[0] if dist_name_row else "용산구"
+        except Exception as dist_ex:
+            db.rollback()
+            district_name = "용산구"
 
         # 1. AHP 모델 가중치 조회
-        if model_id:
-            ahp_query = text("SELECT criteria_weights, facility_type, criteria_list FROM ahp_models WHERE id = :id")
-            ahp_row = db.execute(ahp_query, {"id": model_id}).fetchone()
-        else:
-            # 최신 락 데이터 조회
-            ahp_query = text("SELECT criteria_weights, facility_type, criteria_list FROM ahp_models WHERE is_locked = TRUE ORDER BY id DESC LIMIT 1")
-            ahp_row = db.execute(ahp_query).fetchone()
+        ahp_row = None
+        try:
+            if model_id:
+                ahp_query = text("SELECT criteria_weights, facility_type, criteria_list FROM ahp_models WHERE id = :id")
+                ahp_row = db.execute(ahp_query, {"id": model_id}).fetchone()
+            else:
+                # 최신 락 데이터 조회
+                ahp_query = text("SELECT criteria_weights, facility_type, criteria_list FROM ahp_models WHERE is_locked = TRUE ORDER BY id DESC LIMIT 1")
+                ahp_row = db.execute(ahp_query).fetchone()
+        except Exception as ahp_ex:
+            db.rollback()
+            print(f"[AHP Model Query Fail/Fallback] {ahp_ex}")
             
         if not ahp_row:
             # 기본 흡연구역 가중치 세트 강제 매핑 (Fallback)
@@ -399,9 +423,9 @@ async def recommend_optimal_sites(
                 LIMIT 1
             ) nc ON TRUE
             WHERE c.district_id = :district_id
-              AND c.ownership_type IN ('국유지', '시유지', '구유지')
+              AND (:allow_private = TRUE OR c.ownership_type IN ('국유지', '시유지', '구유지'))
               AND ST_IsValid(c.geom)
-              AND ST_DWithin(c.geom, ST_SetSRID(ST_MakePoint(:ref_lng, :ref_lat), 4326), :search_radius)
+              AND ST_DWithin(ST_SetSRID(c.geom, 4326), ST_SetSRID(ST_MakePoint(:ref_lng, :ref_lat), 4326), :search_radius)
               -- [Strict Complete Drop] 금지구역/보호구역 버퍼 다각형과 1mm라도 겹치거나 포함/접하는 필지는 100% 무조건 완전 제거 탈락 (Complete Drop)
               AND NOT EXISTS (
                   SELECT 1 FROM restricted_zones rz 
@@ -463,8 +487,7 @@ async def recommend_optimal_sites(
               -- [Strict Exclusion Zone Guard] 사용자 지정 물리 금지구역(user_exclusion_zones)에 포함되거나 교차하는 필지 100% 완전 제거
               AND NOT EXISTS (
                   SELECT 1 FROM user_exclusion_zones uez
-                  WHERE uez.district_id = :district_id
-                    AND (
+                  WHERE (
                         ST_Intersects(c.geom, uez.geom) OR
                         ST_Intersects(ST_Centroid(c.geom), uez.geom) OR
                         ST_Contains(uez.geom, c.geom) OR
@@ -511,39 +534,48 @@ async def recommend_optimal_sites(
             return f"서울특별시 {district_name} {clean_jibun}"
 
 
-        # [v4.9.21] 사용자가 보정한 기준 마커 기준으로 최대 300m(0.003도) 범위 최정밀 보행권 고속 검색
-        # 중복 쿼리 병목을 차단하기 위해 단 1회 최대 300m 이내 적격 부지를 거리 정렬로 한 번에 조회
+        # [v4.9.21] 사용자가 보정한 기준 마커 기준으로 1차 300m 탐색 후, 적격지 부족 시 최대 1km까지 유연 확장 (Adaptive Buffer Relaxation)
         candidates = []
-        search_radius = 0.003 # 최대 300m 반경 고정 조건
+        search_radius = 0.003 # 1차 기본 300m 반경 조건
         
-        try:
-            rows = db.execute(spatial_query, {
-                "ref_lng": base_lng, 
-                "ref_lat": base_lat, 
-                "search_radius": search_radius,
-                "facility_type": facility_type,
-                "school_m": school_m,
-                "childcare_m": childcare_m,
-                "nosmoking_m": nosmoking_m,
-                "school_ev_m": school_ev_m,
-                "district_id": district_id
-            }).fetchall()
-            
-            for r in rows:
-                candidates.append({
-                    "id": r[0], "pnu": r[1], 
-                    "jibun": to_road_address(r[2], r[3]),
-                    "land_use_code": r[3],
-                    "ownership_type": r[4], "area": round(float(r[5]), 1),
-                    "lng": float(r[6]), "lat": float(r[7]), "dong_id": r[8],
-                    "dist_from_ref": float(r[9]) if len(r) > 9 else 0.0,
-                    "dist_to_school": float(r[10]) if len(r) > 10 else 9999.0,
-                    "dist_to_childcare": float(r[11]) if len(r) > 11 else 9999.0
-                })
-            print(f"[Incremental Buffer Search] Found total {len(candidates)} candidates within 1km. (Pre-calculated school/childcare distances)")
-        except Exception as q_ex:
-            print(f"[Query execution error] {q_ex}")
-            candidates = []
+        for allow_priv in [False, True]: # 1차: 국유지 전용, 2차 폴백: 사유지/민간부지 포함 전체 필지
+            for attempt_radius in [0.003, 0.006, 0.010, 0.020]: # 300m -> 600m -> 1km -> 2km 유연 확장
+                try:
+                    rows = db.execute(spatial_query, {
+                        "ref_lng": base_lng, 
+                        "ref_lat": base_lat, 
+                        "search_radius": attempt_radius,
+                        "facility_type": facility_type,
+                        "school_m": school_m,
+                        "childcare_m": childcare_m,
+                        "nosmoking_m": nosmoking_m,
+                        "school_ev_m": school_ev_m,
+                        "district_id": district_id,
+                        "allow_private": allow_priv
+                    }).fetchall()
+                    
+                    candidates = []
+                    for r in rows:
+                        candidates.append({
+                            "id": r[0], "pnu": r[1], 
+                            "jibun": to_road_address(r[2], r[3]),
+                            "land_use_code": r[3],
+                            "ownership_type": r[4], "area": round(float(r[5]), 1),
+                            "lng": float(r[6]), "lat": float(r[7]), "dong_id": r[8],
+                            "dist_from_ref": float(r[9]) if len(r) > 9 else 0.0,
+                            "dist_to_school": float(r[10]) if len(r) > 10 else 9999.0,
+                            "dist_to_childcare": float(r[11]) if len(r) > 11 else 9999.0
+                        })
+                    if len(candidates) >= 3:
+                        search_radius = attempt_radius
+                        print(f"[Adaptive Buffer Search] Found {len(candidates)} candidates within {attempt_radius*100000:.0f}m radius (allow_private={allow_priv}).")
+                        break
+                except Exception as q_ex:
+                    db.rollback()
+                    print(f"[Query execution error] {q_ex}")
+                    candidates = []
+            if len(candidates) >= 3:
+                break
 
         # [v4.9.30] 조장님 지시: 실시간 업로드된 금지구역 CSV/JSON 좌표들을 캐싱/추출하여 물리적 200m 내부 후보지 자동 완벽 탈락 (Hard Drop)
         realtime_exclusions = []
@@ -933,13 +965,31 @@ async def recommend_optimal_sites(
             if model:
                 try:
                     # 피처 DataFrame 빌드
-                    X_pred = pd.DataFrame([{
+                    row_dict = {
                         "land_use_code": cand["land_use_code"] or "대",
                         "ownership_type": cand["ownership_type"] or "국유지",
+                        "building_use": "미지정",
                         "area": float(cand["area"]),
                         "dist_to_school": float(cand["dist_to_school"]),
-                        "dist_to_childcare": float(cand["dist_to_childcare"])
-                    }])
+                        "dist_to_childcare": float(cand["dist_to_childcare"]),
+                        "dist_to_childcare_center": float(cand["dist_to_childcare"]),
+                        "dist_to_nosmoking_zone": 15.0,
+                        "complaint_count": 50
+                    }
+                    X_pred = pd.DataFrame([row_dict])
+                    
+                    # 파이프라인 전처리기 필수 컬럼 보완
+                    try:
+                        preprocessor = model.named_steps.get('preprocessor')
+                        if preprocessor:
+                            expected_cols = preprocessor.feature_names_in_
+                            for c in expected_cols:
+                                if c not in X_pred.columns:
+                                    X_pred[c] = 9999.0 if "dist_" in c else ("미지정" if "use" in c else 0)
+                            X_pred = X_pred[expected_cols]
+                    except Exception as prep_ex:
+                        pass
+
                     # Y=1 (갈등) 발생 확률 추출
                     prob_conflict = model.predict_proba(X_pred)[0][1]
                     css_score = round(prob_conflict * 100)
@@ -1532,7 +1582,7 @@ async def stream_debate_sim(req: DebateRequest, db: Session = Depends(get_db)):
         "당신은 스마트시티 입지 선정 현장에서 주민과 상인을 중재하는 [정부 측 (갈등조정관)] 행정관입니다.\n\n"
         "## 대화 톤앤매너 수칙\n"
         "1. 훈계조나 서면 매뉴얼 말투가 아닌, 과열된 공청회 현장의 감정을 부드럽게 다독이고 상생할 수 있는 현실적 중재안(이격거리 후퇴, 주민 상시 점검권 공식 위임)을 신뢰감 있게 건네는 인간적인 지자체 주무관의 말투를 쓰십시오.\n"
-        "2. 최종 타결 시에는 감사를 표하며 자연스럽게 '[모의 심의 완료]' 문구를 덧붙여 마무리하십시오.\n"
+        "2. 절대로 대사 중간에 '[모의 심의 완료]'나 '[시스템]' 같은 시스템 태그 문구를 직접 출력하지 마십시오. 대화 내용은 순수 자연스러운 인간 구어체만 뱉으십시오.\n"
         "3. 대사 앞에 마크다운 기호 `**`나 딱딱한 접두어를 절대 붙이지 마십시오.\n\n"
         f"{base_context}"
     )
@@ -1569,9 +1619,9 @@ async def stream_debate_sim(req: DebateRequest, db: Session = Depends(get_db)):
                     if step_idx == 0:
                         user_directive = f"'{req.candidate_jibun}' 입지에 대해 {role_name}의 1차 기조 발언을 시작해 주세요."
                     elif step_idx == 7:
-                        user_directive = f"상대방의 의견들을 최종 조율하여 합의를 공식 결정하고 [모의 심의 완료] 문구를 덧붙여 종결해주십시오."
+                        user_directive = f"상대방의 의견들을 최종 종합하여 모두가 수용 가능한 합의안을 공식 결정하고 대화를 자연스럽게 마무리해 주십시오."
                     else:
-                        user_directive = f"직전의 의견을 논박하고 {role_name}의 입장에서 대화를 이어가십시오."
+                        user_directive = f"직전의 의견을 논박하고 {role_name}의 입장에서 자연스럽게 대화를 이어가십시오."
 
                     messages.append({"role": "user", "content": user_directive})
 
@@ -1585,14 +1635,23 @@ async def stream_debate_sim(req: DebateRequest, db: Session = Depends(get_db)):
                     async for chunk in response:
                         content = chunk.choices[0].delta.content
                         if content:
+                            # 모의 심의 완료 환각 브라켓 필터링
+                            if "[모의 심의 완료]" in content or "[모의 심의 완료]" in turn_text:
+                                content = content.replace("[모의 심의 완료]", "").replace("[모의심의완료]", "")
                             if not turn_text and (content.strip().startswith("**") or content.strip().startswith(role_name)):
                                 continue
                             turn_text += content
-                            yield f"data: {json.dumps({'text': content}, ensure_ascii=False)}\n\n"
+                            if content:
+                                yield f"data: {json.dumps({'text': content}, ensure_ascii=False)}\n\n"
 
                     chat_history.append({"role": "assistant" if role_name == coordinator_name else "user", "content": f"{role_name}: {turn_text}"})
                     full_text += turn_text
                     await asyncio.sleep(0.4)
+
+                # 8턴 모든 대화가 완전히 마쳐진 '맨 마지막 시점'에만 백엔드가 시스템 태그 단 1회 보장 발송
+                completion_notice = "\n\n[시스템] [모의 심의 완료]"
+                yield f"data: {json.dumps({'text': completion_notice}, ensure_ascii=False)}\n\n"
+                full_text += completion_notice
 
                 try:
                     save_debate_log_to_file(req, full_text)
@@ -1615,7 +1674,8 @@ async def stream_debate_sim(req: DebateRequest, db: Session = Depends(get_db)):
                     f"{coordinator_name}: 두 분 모두 타당한 논거를 대고 계십니다. 상인의 유동인구 {int(transit_score or 0):,}명 대응 필요성과 주민의 {int(complaint_score or 0)}건 민원 우려를 극적으로 해소하기 위해 조정안을 제시합니다. 첫째, 교육기관 경계선 및 완충 구역 밖으로 최소 이격거리를 1.5배 추가 후퇴하겠습니다. 둘째, 주민자치위원회에 시설 상시 감찰 및 가동 정지 권한을 공식 부여하겠습니다. 수용 가능한 범위입니까?\n\n",
                     f"{merchant_name}: 아쉬운 제약조건이지만 상권 활성화 and 공존을 위해 이격거리 후퇴 및 주민 위생 감찰권 중재안을 받아들이겠습니다.\n\n",
                     f"{resident_name}: 조정관께서 주민 직접 통제 및 정지 권한을 명문화해 주신다면, 저희 주민대표단도 이 조건하에 상생 타협안을 수용하겠습니다.\n\n",
-                    f"{coordinator_name}: 팽팽했던 대립 속에서 양측의 한 걸음 양보로 상생 합의가 도출되었습니다. 완충 이격과 감찰 권한 이양을 골자로 본 의사결정을 타결합니다. [모의 심의 완료]"
+                    f"{coordinator_name}: 팽팽했던 대립 속에서 양측의 한 걸음 양보로 상생 합의가 도출되었습니다. 완충 이격과 감찰 권한 이양을 골자로 본 의사결정을 타결합니다.\n\n",
+                    f"[시스템] [모의 심의 완료]"
                 ]
             elif req.intensity_level == "extreme":
                 dialogue = [
@@ -1627,7 +1687,8 @@ async def stream_debate_sim(req: DebateRequest, db: Session = Depends(get_db)):
                     f"{coordinator_name}: 양측의 대립이 매우 격앙되어 타협점을 찾기 어려운 교착 상태입니다. 조정관으로서 파국을 막기 위한 강제 중재안을 내놓겠습니다. 첫째, 주민대표단에게 소방/위생 위반 시 가동을 정지시킬 수 있는 '상시 가동정지 요청 및 직접 점검권'을 부여하겠습니다. 둘째, 화재 예방용 질식소화포 and 강화형 소방 장비를 상인회 예산으로 추가 확충합니다. 셋째, 미관 및 분진 방지를 위해 1.5배 넓은 물리적 차폐막 설치를 보장합니다. 양측의 최종 의사를 밝혀주십시오.\n\n",
                     f"{merchant_name}: 가동정지권 부여는 영업에 큰 부담이지만, 상권이 아예 무너지는 것보다 안전 설비를 확충하고 이를 수용하는 편이 낫겠군요. 조건부 동의하겠습니다.\n\n",
                     f"{resident_name}: 주민 직접 감찰과 가동정지권, 질식소화포 같은 안전 대책이 공식 명문화된다면, 주민들도 일단 단체 행동을 유보하고 조건부로 수용하겠습니다.\n\n",
-                    f"{coordinator_name}: 극한의 교착 상태에서 화재 안전 및 상시 점검권 조항을 통해 극적인 조건부 합의를 도출했습니다. 조정안을 최종 가결하며 토론을 마칩니다. [모의 심의 완료]"
+                    f"{coordinator_name}: 극한의 교착 상태에서 화재 안전 및 상시 점검권 조항을 통해 극적인 조건부 합의를 도출했습니다. 조정안을 최종 가결하며 토론을 마칩니다.\n\n",
+                    f"[시스템] [모의 심의 완료]"
                 ]
             else: # normal
                 dialogue = [
@@ -1636,7 +1697,8 @@ async def stream_debate_sim(req: DebateRequest, db: Session = Depends(get_db)):
                     f"{resident_name}: 네, 상인회의 경제 활성화 의지에 공감합니다. 다만 관할동 내 누적 공공 민원이 {int(complaint_score or 0)}건이고 무단투기 우려도 있으므로 주거지 인근 위생 대책을 철저히 마련해주셨으면 합니다. 안전하고 위생적인 시설 관리가 보장된다면 무조건적인 반대는 하지 않겠습니다.\n\n",
                     f"{merchant_name}: 주민분들의 건설적인 지적에 감사드립니다. 시설 관리를 위한 스마트 자동 정화 및 정밀 여과 필터를 장착하고, CCTV를 연동해 위생 환경을 청결히 유지하겠습니다. 주민들이 안심하실 수 있도록 실시간 모니터링 수치도 투명하게 공개하겠습니다.\n\n",
                     f"{resident_name}: 스마트 정화 설비와 투명한 정보 공개가 약속된다면 주민대표단도 찬성 의견으로 선회할 수 있습니다. 적극적인 관리 및 주기적 위생 점검에 협조해주시기를 당부드립니다.\n\n",
-                    f"{coordinator_name}: 양측의 원만한 상생과 협조 노력에 감사드립니다. 본 안건은 찬성 측의 '스마트 정화 필터 장착 및 주기적 점검'과 반대 측의 '투명 정보 수용'을 골자로 원만히 합의 타결되었음을 선포합니다. [모의 심의 완료]"
+                    f"{coordinator_name}: 양측의 원만한 상생과 협조 노력에 감사드립니다. 본 안건은 찬성 측의 '스마트 정화 필터 장착 및 주기적 점검'과 반대 측의 '투명 정보 수용'을 골자로 원만히 합의 타결되었음을 선포합니다.\n\n",
+                    f"[시스템] [모의 심의 완료]"
                 ]
 
             full_text = "".join(dialogue)

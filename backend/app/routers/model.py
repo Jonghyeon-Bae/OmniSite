@@ -11,7 +11,7 @@ from fastapi import APIRouter, Depends, BackgroundTasks, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from app.database import get_db, SessionLocal, engine
-from app.utils.auth import get_current_admin, get_current_user
+from app.utils.auth import get_current_admin, get_current_user, get_optional_current_user
 from app.routers.spatial import model_registry, registry_path
 
 # 프로젝트 백엔드 루트 디렉토리 설정

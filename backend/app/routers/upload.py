@@ -2176,9 +2176,9 @@ async def seed_spatial_step1(
     temp_dir = tempfile.mkdtemp(prefix="coldstart_step1_", dir=UPLOAD_DIR)
     
     try:
-        # 데이터베이스 정비 (TRUNCATE) - 뼈대를 세우기 위해 기존 테이블을 CASCADE 옵션으로 일괄 초기화
-        db.execute(text("TRUNCATE TABLE transit_passengers, transit_stations, civil_complaints, illegal_dumping_zones, population_stats, age_demographics, cadastral_lands, restricted_zones, dong_boundaries, districts CASCADE;"))
-        db.commit()
+        # [v4.9.40] 콜드스타트 1단계 실행 시 원본 지적도/인프라 데이터 무차별 완전 삭제(TRUNCATE) 방지 안전 가드
+        # db.execute(text("TRUNCATE TABLE transit_passengers, transit_stations, civil_complaints, illegal_dumping_zones, population_stats, age_demographics, cadastral_lands, restricted_zones, dong_boundaries, districts CASCADE;"))
+        # db.commit()
         
         # CSV 임시 저장 및 매핑 파싱
         csv_filename = mapping_csv.filename

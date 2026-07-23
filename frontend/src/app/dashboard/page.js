@@ -5,7 +5,9 @@ import Link from 'next/link';
 
 // Next.js API Fetch 래퍼 (JWT 세션 자동 바인딩)
 const apiFetch = (url, options = {}) => {
-  const token = typeof window !== 'undefined' ? sessionStorage.getItem('token') : null;
+  const token = typeof window !== 'undefined' 
+    ? (sessionStorage.getItem('token') || localStorage.getItem('token')) 
+    : null;
   const headers = {
     ...options.headers,
     ...(token ? { 'Authorization': `Bearer ${token}` } : {})

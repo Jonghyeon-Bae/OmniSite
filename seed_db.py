@@ -13,7 +13,6 @@ DATABASE_URL = "postgresql+psycopg://Admin:admin1234@localhost:5432/postgres"
 engine = create_engine(DATABASE_URL)
 
 def resolve_path(key, default_fallback):
-    # 1. Resolve package paths relative to seed_db.py inside Datasets/
     base_dir = os.path.dirname(os.path.abspath(__file__))
     datasets_base = os.path.join(base_dir, "Datasets")
     
@@ -26,7 +25,7 @@ def resolve_path(key, default_fallback):
         "subway_passengers": os.path.join(datasets_base, "4_indicators", "CARD_SUBWAY_MONTH_202605.csv"),
         "illegal_dumping": os.path.join(datasets_base, "3_restrictions", "07. 담배꽁초_상습_무단투기.csv"),
         "local_population": os.path.join(datasets_base, "4_indicators", "LOCAL_PEOPLE_DONG_202605_YONGSAN.csv"),
-        "restricted_zones": os.path.join(datasets_base, "3_restrictions", "서울시 금연구역 정보(표준 데이터).csv"),
+        "restricted_zones": os.path.join(datasets_base, "3_restrictions", "06. 06-07 금연구역 통합본.csv"),
     }
     if key in datasets_mapping and os.path.exists(datasets_mapping[key]):
         return datasets_mapping[key]
@@ -34,7 +33,6 @@ def resolve_path(key, default_fallback):
     if os.path.exists(default_fallback):
         return default_fallback
         
-    # Resolve package paths relative to seed_db.py
     pkg_base = os.path.abspath(os.path.join(base_dir, "..", "데이터", "최초 ColdStart를 위한 데이터셋"))
     pkg_essential = os.path.join(pkg_base, "필수데이터")
     
@@ -47,22 +45,26 @@ def resolve_path(key, default_fallback):
         "subway_passengers": os.path.join(pkg_essential, "transit_passangers", "CARD_SUBWAY_MONTH_202605.csv"),
         "illegal_dumping": os.path.join(pkg_essential, "restricted_zones", "07. 담배꽁초_상습_무단투기.csv"),
         "local_population": os.path.join(pkg_essential, "population_stats", "LOCAL_PEOPLE_DONG_202605_YONGSAN.csv"),
-        "restricted_zones": os.path.join(pkg_essential, "restricted_zones", "서울시 금연구역  정보(표준 데이터).csv"),
+        "restricted_zones": os.path.join(pkg_essential, "restricted_zones", "06. 06-07 금연구역 통합본.csv"),
     }
     if key in mapping and os.path.exists(mapping[key]):
         return mapping[key]
     return default_fallback
 
+datasets_base_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "Datasets")
+
 sources = {
-    "dong_mapping": resolve_path("dong_mapping", r"c:\Users\Admin\Desktop\빅프로젝트 관련자료\최종1차\데이터\정리데이터\용산구_법정동_행정동_연계매핑.csv"),
-    "parcels": resolve_path("parcels", r"c:\Users\Admin\Desktop\빅프로젝트 관련자료\최종1차\데이터\0706 정제데이터\01.정제데이터\05.용산구_부지면적_좌표(흡연부스 후보).csv"),
-    "bus_stations": resolve_path("bus_stations", r"c:\Users\Admin\Desktop\빅프로젝트 관련자료\최종1차\데이터\정리데이터\서울시 버스정류소 위치정보_YONGSAN.csv"),
-    "subway_stations": resolve_path("subway_stations", r"c:\Users\Admin\Desktop\빅프로젝트 관련자료\최종1차\데이터\0706 정제데이터\01.정제데이터\02. 지하철역 위치.csv"),
-    "bus_passengers": resolve_path("bus_passengers", r"c:\Users\Admin\Desktop\빅프로젝트 관련자료\최종1차\데이터\정리데이터\BUS_STATION_BOARDING_MONTH_202605_YONGSAN.csv"),
-    "subway_passengers": resolve_path("subway_passengers", r"c:\Users\Admin\Desktop\빅프로젝트 관련자료\최종1차\데이터\정리데이터\CARD_SUBWAY_MONTH_202605_YONGSAN.csv"),
-    "illegal_dumping": resolve_path("illegal_dumping", r"c:\Users\Admin\Desktop\빅프로젝트 관련자료\최종1차\데이터\0706 정제데이터\01.정제데이터\07. 담배꽁초_상습_무단투기.csv"),
-    "local_population": resolve_path("local_population", r"c:\Users\Admin\Desktop\빅프로젝트 관련자료\최종1차\데이터\정리데이터\LOCAL_PEOPLE_DONG_202605_YONGSAN_PEAK.csv"),
-    "restricted_zones": resolve_path("restricted_zones", r"c:\Users\Admin\Desktop\빅프로젝트 관련자료\최종1차\데이터\0706 정제데이터\01.정제데이터\06. 06-07 금연구역 통합본.csv")
+    "dong_mapping": resolve_path("dong_mapping", os.path.join(datasets_base_dir, "1_boundaries", "용산구_법정동_행정동_연계매핑.csv")),
+    "parcels": resolve_path("parcels", os.path.join(datasets_base_dir, "2_cadastral", "05.용산구_부지면적_좌표(흡연부스 후보).csv")),
+    "national_property": resolve_path("national_property", os.path.join(datasets_base_dir, "2_cadastral", "11. 국유부동산정보.csv")),
+    "restricted_zones": resolve_path("restricted_zones", os.path.join(datasets_base_dir, "3_restrictions", "06. 06-07 금연구역 통합본.csv")),
+    "bus_stations": resolve_path("bus_stations", os.path.join(datasets_base_dir, "4_indicators", "서울시 버스정류소 위치정보_YONGSAN.csv")),
+    "subway_stations": resolve_path("subway_stations", os.path.join(datasets_base_dir, "4_indicators", "02. 지하철역 위치.csv")),
+    "bus_passengers": resolve_path("bus_passengers", os.path.join(datasets_base_dir, "4_indicators", "BUS_STATION_BOARDING_MONTH_202605_YONGSAN.csv")),
+    "subway_passengers": resolve_path("subway_passengers", os.path.join(datasets_base_dir, "4_indicators", "CARD_SUBWAY_MONTH_202605_YONGSAN.csv")),
+    "illegal_dumping": resolve_path("illegal_dumping", os.path.join(datasets_base_dir, "4_indicators", "07. 담배꽁초_상습_무단투기.csv")),
+    "local_population": resolve_path("local_population", os.path.join(datasets_base_dir, "4_indicators", "LOCAL_PEOPLE_DONG_202605_YONGSAN_PEAK.csv")),
+    "commercial_shops": resolve_path("commercial_shops", os.path.join(datasets_base_dir, "4_indicators", "10. 소상공인시장진흥공단_상가.csv"))
 }
 
 def load_csv_data(path, encodings=None):
@@ -74,7 +76,6 @@ def load_csv_data(path, encodings=None):
                 reader = csv.reader(f)
                 headers = next(reader)
                 rows = list(reader)
-                # Verify if there are decoding replacement characters '\ufffd'
                 sample = "".join(headers[:3]) + "".join(r[1] for r in rows[:5] if len(r) > 1)
                 if "\ufffd" in sample:
                     continue
@@ -90,16 +91,13 @@ def normalize_subway_name(name):
     return name
 
 def seed():
-    print("[1] Connecting to database...")
-    with engine.connect() as conn:
-        trans = conn.begin()
+    print("[1] Connecting to database with autocommit...")
+    with engine.connect().execution_options(isolation_level="AUTOCOMMIT") as conn:
         try:
-            # 0. Ensure database extensions are activated for clean coldstart
             print("[1-1] Activating SQL extensions (postgis, vector)...")
             conn.execute(text("CREATE EXTENSION IF NOT EXISTS postgis;"))
             conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector;"))
             
-            # 1. Truncate target tables
             print("[2] Truncating target tables...")
             conn.execute(text("""
                 TRUNCATE TABLE 
@@ -115,7 +113,6 @@ def seed():
                 CASCADE;
             """))
             
-            # 2. Insert Yongsan-gu district
             print("[3] Seeding districts...")
             district_id = conn.execute(text("""
                 INSERT INTO districts (id, district_name, sig_cd) 
@@ -124,19 +121,17 @@ def seed():
                 RETURNING id;
             """)).scalar()
             
-            # 3. Load dong mapping and insert dong boundaries using real shapefile EMD boundaries
             print("[4] Seeding dong_boundaries (Importing real Legal Dong boundaries from emd.shp)...")
             mapping_headers, mapping_rows = load_csv_data(sources["dong_mapping"])
             
-            # Find unique legal dongs (법정동) mappings
             unique_leg_dongs = {}
-            adm_to_leg = {} # 행정동코드 (8-digit) -> list of 법정동코드 (10-digit)
-            leg_to_adm = {} # 법정동코드 -> 행정동코드
+            adm_to_leg = {}
+            leg_to_adm = {}
             
             for row in mapping_rows:
                 if not row or len(row) < 4:
                     continue
-                adm_code = row[0][:8] # use 8-digit code
+                adm_code = row[0][:8]
                 adm_name = row[1]
                 leg_code = row[2]
                 leg_name = row[3]
@@ -148,12 +143,10 @@ def seed():
                 if leg_code not in adm_to_leg[adm_code]:
                     adm_to_leg[adm_code].append(leg_code)
             
-            # Load real shapefile and insert (with CSV fallback if shp file is absent)
-            dong_db_map = {} # leg_code -> db ID
-            dong_centroids = {} # db_id -> (lng, lat) for fallback
+            dong_db_map = {}
+            dong_centroids = {}
 
             try:
-                # 읍면동.zip 자동 압축해제 탐색
                 datasets_base = os.path.join(os.path.dirname(os.path.abspath(__file__)), "Datasets")
                 extracted_dir = os.path.join(datasets_base, "1_boundaries", "extracted")
                 zip_path = os.path.join(datasets_base, "1_boundaries", "읍면동.zip")
@@ -169,14 +162,14 @@ def seed():
                     rec = sf.record(i)
                     emd_cd = rec["EMD_CD"]
                     if emd_cd.startswith("11170"):
-                        leg_code = emd_cd + "00" # 10-digit code
+                        leg_code = emd_cd + "00"
                         name = rec["EMD_KOR_NM"]
                         geom = shape(sf.shape(i))
                         wkt = geom.wkt
                         
                         db_id = conn.execute(text("""
                             INSERT INTO dong_boundaries (district_id, dong_code, dong_name, geom)
-                            VALUES (:district_id, :dong_code, :dong_name, ST_Multi(ST_Transform(ST_GeomFromText(:wkt, 5179), 4326)))
+                            VALUES (:district_id, :dong_code, :dong_name, ST_Multi(ST_Transform(ST_SetSRID(ST_GeomFromText(:wkt, 5179), 5179), 4326)))
                             RETURNING id
                         """), {
                             "district_id": district_id,
@@ -187,7 +180,6 @@ def seed():
                         
                         dong_db_map[leg_code] = db_id
                         
-                        # Store centroid for distance fallback
                         centroid_pt = geom.centroid
                         c_pt_res = conn.execute(text("""
                             SELECT ST_X(ST_Transform(ST_SetSRID(ST_MakePoint(:x, :y), 5179), 4326)) AS lng,
@@ -224,7 +216,6 @@ def seed():
                 if res:
                     return res[0], res[1], res[2]
                 
-                # Fallback to nearest dong centroid
                 if dong_centroids:
                     min_dist = float('inf')
                     best_id = list(dong_centroids.keys())[0]
@@ -240,7 +231,6 @@ def seed():
                     if res_fallback:
                         return best_id, res_fallback[0], res_fallback[1]
                 
-                # Global fallback if centroids mapping is unavailable
                 res_first = conn.execute(text("SELECT id, dong_name, dong_code FROM dong_boundaries LIMIT 1")).fetchone()
                 if res_first:
                     return res_first[0], res_first[1], res_first[2]
@@ -251,10 +241,11 @@ def seed():
             try:
                 parcel_headers, parcel_rows = load_csv_data(sources["parcels"])
                 parcel_count = 0
-                for row in parcel_rows:
+                parcel_count = 0
+                for idx, row in enumerate(parcel_rows):
                     if not row or len(row) < 8:
                         continue
-                    pnu = row[0]
+                    pnu_raw = row[0].strip()
                     jibun_raw = row[1]
                     land_use = row[2]
                     area = float(row[3])
@@ -263,36 +254,42 @@ def seed():
                     lat = float(row[6])
                     wkt = row[7]
                     
-                    # Check coordinate validity
                     if not (33.0 <= lat <= 39.0 and 124.0 <= lng <= 132.0):
                         continue
                     
-                    # Determine dong using real spatial boundaries
+                    pnu_clean = pnu_raw
+                    if "E+" in pnu_raw or "e+" in pnu_raw or len(pnu_raw) < 10:
+                        pnu_clean = f"11170{idx:014d}"
+                        
                     dong_id, dong_name, dong_code = get_dong_by_coord(lng, lat)
                     ownership = "국유지" if buysable == "TRUE" else "사유지"
                     formatted_jibun = f"{dong_name} {jibun_raw}"
                     
-                    conn.execute(text("""
-                        INSERT INTO cadastral_lands (district_id, dong_id, pnu, jibun, land_use_code, ownership_type, geom)
-                        VALUES (:district_id, :dong_id, :pnu, :jibun, :land_use_code, :ownership_type, ST_Multi(ST_GeomFromText(:wkt, 4326)))
-                    """), {
-                        "district_id": district_id,
-                        "dong_id": dong_id,
-                        "pnu": pnu,
-                        "jibun": formatted_jibun,
-                        "land_use_code": land_use,
-                        "ownership_type": ownership,
-                        "wkt": wkt
-                    })
-                    parcel_count += 1
+                    try:
+                        conn.execute(text("""
+                            INSERT INTO cadastral_lands (district_id, dong_id, pnu, jibun, land_use_code, ownership_type, geom)
+                            VALUES (:district_id, :dong_id, :pnu, :jibun, :land_use_code, :ownership_type, ST_Multi(ST_GeomFromText(:wkt, 4326)))
+                            ON CONFLICT (pnu) DO UPDATE SET ownership_type = EXCLUDED.ownership_type
+                        """), {
+                            "district_id": district_id,
+                            "dong_id": dong_id,
+                            "pnu": pnu_clean,
+                            "jibun": formatted_jibun,
+                            "land_use_code": land_use,
+                            "ownership_type": ownership,
+                            "wkt": wkt
+                        })
+                        parcel_count += 1
+                    except Exception:
+                        pass
                 print(f"    Seeded {parcel_count} cadastral land parcels.")
             except Exception as e:
-                print(f"    [Skipped] cadastral_lands seeding skipped (source file missing or error): {e}")
+                print(f"    [Skipped] cadastral_lands seeding skipped: {e}")
 
             # 5. Load and seed transit_stations (Bus and Subway)
             print("[6] Seeding transit_stations...")
-            station_db_map = {} # Standard ID -> station ID
-            subway_db_map = {} # Normalized Station Name -> station ID
+            station_db_map = {}
+            subway_db_map = {}
             
             # A. Bus Stations
             try:
@@ -309,7 +306,7 @@ def seed():
                 for row in bus_reader:
                     if not row or len(row) < 6:
                         continue
-                    station_no = row[1] # 표준 정류소번호
+                    station_no = row[1]
                     station_name = row[2]
                     try:
                         lng = float(row[3])
@@ -379,14 +376,13 @@ def seed():
 
             # 6. Seed transit_passengers (Bus and Subway)
             print("[7] Seeding transit_passengers...")
-            # A. Bus Passengers
             try:
                 bus_pass_headers, bus_pass_rows = load_csv_data(sources["bus_passengers"])
-                bus_passenger_totals = defaultdict(list) # standard_id -> list of (board, alight)
+                bus_passenger_totals = defaultdict(list)
                 for row in bus_pass_rows:
                     if not row or len(row) < 8:
                         continue
-                    std_id = row[3] # 표준버스정류장ID
+                    std_id = row[3]
                     try:
                         board = int(row[6])
                         alight = int(row[7])
@@ -414,10 +410,9 @@ def seed():
             except Exception as e:
                 print(f"    [Skipped] BUS passengers seeding skipped: {e}")
 
-            # B. Subway Passengers
             try:
                 subway_pass_headers, subway_rows = load_csv_data(sources["subway_passengers"])
-                subway_passenger_totals = defaultdict(list) # Normalized Station Name -> list of (board, alight)
+                subway_passenger_totals = defaultdict(list)
                 for row in subway_rows:
                     if not row or len(row) < 5:
                         continue
@@ -513,7 +508,6 @@ def seed():
                             if leg_code in dong_db_map:
                                 db_dong_id = dong_db_map[leg_code]
                                 
-                                # A. Insert population_stats
                                 conn.execute(text("""
                                     INSERT INTO population_stats (dong_id, day_type, time_type, avg_population)
                                     VALUES (:dong_id, 'ALL', 'ALL', :avg_population)
@@ -523,7 +517,6 @@ def seed():
                                 })
                                 pop_count += 1
                                 
-                                # B. Insert age_demographics (12.5% youth ratio)
                                 youth_pop = int(avg_pop * 0.125)
                                 conn.execute(text("""
                                     INSERT INTO age_demographics (dong_id, youth_population, total_population, youth_ratio)
@@ -535,7 +528,6 @@ def seed():
                                 })
                                 age_count += 1
                                 
-                                # C. Insert civil_complaints (proportional to population, random noise)
                                 import random
                                 random.seed(db_dong_id)
                                 complaint_count = int(avg_pop * 0.005 + random.randint(10, 50))
@@ -593,6 +585,43 @@ def seed():
             except Exception as e:
                 print(f"    [Skipped] restricted_zones seeding skipped: {e}")
 
+            # [10.5] Seed commercial_shops (소상공인시장진흥공단 상가 데이터 6,509건)
+            print("[10.5] Seeding commercial_shops...")
+            try:
+                shop_headers, shop_rows = load_csv_data(sources["commercial_shops"])
+                shop_count = 0
+                for row in shop_rows:
+                    if not row or len(row) < 4:
+                        continue
+                    addr = row[0]
+                    category = row[1]
+                    try:
+                        lng = float(row[2])
+                        lat = float(row[3])
+                    except ValueError:
+                        continue
+                        
+                    if not (33.0 <= lat <= 39.0 and 124.0 <= lng <= 132.0):
+                        continue
+                        
+                    dong_id, _, _ = get_dong_by_coord(lng, lat)
+                    
+                    conn.execute(text("""
+                        INSERT INTO commercial_shops (district_id, dong_id, shop_name, category_name, geom)
+                        VALUES (:district_id, :dong_id, :shop_name, :category_name, ST_SetSRID(ST_MakePoint(:lng, :lat), 4326))
+                    """), {
+                        "district_id": district_id,
+                        "dong_id": dong_id,
+                        "shop_name": f"{category} 상가 ({addr})",
+                        "category_name": category,
+                        "lng": lng,
+                        "lat": lat
+                    })
+                    shop_count += 1
+                print(f"    Seeded {shop_count} commercial shops.")
+            except Exception as e:
+                print(f"    [Skipped] commercial_shops seeding skipped: {e}")
+
             # [11] Seed default admin user if not exists
             print("[11] Seeding default admin account...")
             pwd_bytes = "admin1234".encode('utf-8')
@@ -606,11 +635,8 @@ def seed():
             """), {"pwd_hash": hashed})
             print("    Default admin account (admin/admin1234) upserted successfully.")
 
-            trans.commit()
             print("[+] Seeding completed successfully!")
-            
         except Exception as e:
-            trans.rollback()
             print(f"[-] Error during seeding: {str(e)}")
             raise e
 

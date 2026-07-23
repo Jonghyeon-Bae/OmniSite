@@ -14,7 +14,9 @@ import RagRegulationModal from '../../components/RagRegulationModal';
 import StepGuideModal from '../../components/StepGuideModal';
 
 const apiFetch = (url, options = {}) => {
-  const token = typeof window !== 'undefined' ? sessionStorage.getItem('token') : null;
+  const token = typeof window !== 'undefined' 
+    ? (sessionStorage.getItem('token') || localStorage.getItem('token')) 
+    : null;
   const headers = {
     ...options.headers,
     ...(token ? { 'Authorization': `Bearer ${token}` } : {})
@@ -26,10 +28,17 @@ const apiFetch = (url, options = {}) => {
 export default function Home() {
   const router = useRouter();
 
-  // 🔒 행정망 인증 세션 가드 (JWT to SessionStorage 검사 및 미인가 차단)
+  // 🔒 행정망 인증 세션 가드 (페이지 새로고침 대응: sessionStorage & localStorage 이중 복원)
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const token = sessionStorage.getItem('token');
+      let token = sessionStorage.getItem('token');
+      if (!token) {
+        token = localStorage.getItem('token');
+        if (token) {
+          // 새로고침 시 localStorage의 토큰을 sessionStorage로 자동 동기화 복원
+          sessionStorage.setItem('token', token);
+        }
+      }
       if (!token) {
         alert("🔒 행정 인증 세션이 존재하지 않거나 만료되었습니다. 로그인 페이지로 이동합니다.");
         router.push('/');

@@ -860,12 +860,11 @@
     - **E2E 빌드 및 동기화:** `npm run build` 컴파일 무오류 통과 및 바탕화면 물리 작업 공간 이관 완료.
 
 
-### [1.3.0-stable-Rev137] 불필요 소스코드/임시 파일 11종 완전 정리 및 프로덕션 경량화 완공 (v1.3.0-stable-Rev137)
-* **연구 내용:** 조장님의 불필요한 소스코드 정돈 지시에 따라, `scratch/` 및 전체 프로젝트 내 잔재하고 있던 일회성 백업 파이프라인 파일 11종(`original_seed_db.py`, `original_seed_db_utf8.py`, `peek_childcare.py`, `test_report.pdf` 등)을 완전 선별하여 정리/삭제(Cleanup)함.
+### [1.3.0-stable-Rev140] 검증 완료 핵심 로직 완전 동결 및 조장(USER) 사전 승인 수칙 규정화 (v1.3.0-stable-Rev140)
+* **연구 내용:** 조장님의 엄격한 협업 수칙 지시에 따라, 100% 무결성이 입증된 핵심 파이프라인(`seed_db.py`, Leaflet GIS 싱글톤, 마커 침범 경고 롤백, AI 토론 완료 상태 등)에 대해 **무단 수정 금지(Strict Code Freeze) 및 사전 명시적 승인(Prior Approval) 규정**을 `.agents/AGENTS.md` 및 `COLDSTART_DESTRUCTION_AND_RECOVERY_SOP.md`에 공식 수립함.
 * **주요 의사결정:**
-    - **코드베이스 완전 경량화 및 불필요 잔재 제거:**
-      - 일회성 백업 파이프라인 파일 11종을 정밀 이격 삭제하여 프로젝트 구조를 가장 정갈한 순수 코드 상태로 정돈함.
-    - **Leaflet GIS 및 마커 드래그 최적화 코드 동결 수칙 준수 (Freeze Rule):** Leaflet 비동기 싱글톤 스크립트 및 마커 스로틀링 동결 수칙을 100% 철저히 준수함.
+    - **조장 사전 명시적 승인 수칙 공식 영구화 (`.agents/AGENTS.md`, `COLDSTART_DESTRUCTION_AND_RECOVERY_SOP.md`):**
+      - 콜드스타트 시딩 파이프라인, Leaflet GIS 싱글톤, 마커 침범 감지 롤백, AI 토론 완료 상태 등 검증 완료 로직은 향후 어떠한 개발 단계에서도 **조장(USER)의 사전 명시적 허가 승인을 구한 이후에만 수정을 진행**하도록 시스템 수칙으로 락(Lock)함.
     - **프론트엔드 프로덕션 컴파일 및 백엔드 E2E 통합 테스트 100% SUCCESS:**
-      - Next.js Turbopack `npm run build` 결과 `✓ Compiled successfully in 1652ms (0 Error, 0 Warning)` 및 백엔드 E2E 통합 파이프라인 100% 성공(SUCCESS) 완료.
+      - Next.js Turbopack `npm run build` 결과 `✓ Compiled successfully in 1713ms (0 Error, 0 Warning)` 및 백엔드 E2E 통합 파이프라인 100% 성공(SUCCESS) 완료.
       - 바탕화면 물리 작업 공간 이관 동기화 완료.

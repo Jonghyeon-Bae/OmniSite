@@ -46,7 +46,7 @@ export default function DebateSimulatorModal({
         facility_type: payload.facility_type,
         infra: inferredPurpose || "지능형 스마트시티 시설물",
         pnu_count: Object.keys(selectedParcel).length || 1,
-        status: "행정 종결",
+        status: "토론 완료",
         audit_state: "대기 중",
         audit_opinion: "공식 심의 완료 보고서 발급됨. 준공 고시 공문 감리 대기 중.",
         inferred_purpose: payload.inferred_purpose,

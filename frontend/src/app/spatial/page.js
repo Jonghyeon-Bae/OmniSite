@@ -733,7 +733,7 @@ export default function Home() {
           return;
         }
 
-        // 2. 관할 자치구 경계선 이탈 체크 (PostGIS ST_Contains API 연동)
+        // 2. 관할 자치구 경계선 이탈 및 사용자 지정 임시금지구역 침범 체크 (PostGIS ST_Contains API 연동)
         try {
           const boundaryRes = await apiFetch('/api/v1/spatial/check-boundary', {
             method: 'POST',
@@ -746,6 +746,17 @@ export default function Home() {
           });
           if (boundaryRes.ok) {
             const boundaryData = await boundaryRes.json();
+            
+            // 2-1. 사용자 지정 통제 영역(임시 금지구역) 침범 체크
+            if (boundaryData.user_exclusion_violated) {
+              alert(`⚠️ 경고: 해당 지점은 사용자 지정 통제 영역('${boundaryData.user_exclusion_name || '임시 금지구역'}') 내에 위치합니다. 안전한 구역으로 위치를 복원합니다.`);
+              marker.setLatLng([hitlLat, hitlLng]);
+              marker.setIcon(markerIcon);
+              marker.isWarning = false;
+              return;
+            }
+
+            // 2-2. 자치구 관할 경계선 이탈 체크
             if (!boundaryData.contained) {
               alert('⚠️ 경고: 마커가 관할 자치구 경계를 벗어났습니다. 관할 구역 내에만 위치시킬 수 있습니다.');
               marker.setLatLng([hitlLat, hitlLng]);

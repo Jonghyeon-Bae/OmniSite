@@ -1085,23 +1085,40 @@ async def get_district_boundary(district_id: int, db: Session = Depends(get_db))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"자치구 경계 조회 오류: {str(e)}")
 
-# 2. 특정 위경도의 자치구 경계 내 포함 여부 검증 API
 @router.post("/spatial/check-boundary")
 async def check_boundary_containment(req: BoundaryCheckRequest, db: Session = Depends(get_db)):
     try:
-        # dong_boundaries 의 ST_Union 경계에 위경도가 포함되는지 ST_Contains로 검증
+        # 1. user_exclusion_zones 사용자 지정 임시 금지구역 침범 여부 검사
+        user_excl_name = None
+        user_excl_violated = False
+        try:
+            excl_query = text("""
+                SELECT zone_name 
+                FROM user_exclusion_zones
+                WHERE ST_Contains(geom, ST_SetSRID(ST_MakePoint(:lng, :lat), 4326))
+                LIMIT 1
+            """)
+            excl_row = db.execute(excl_query, {"lng": req.lng, "lat": req.lat}).fetchone()
+            if excl_row:
+                user_excl_violated = True
+                user_excl_name = excl_row[0]
+        except Exception as excl_err:
+            print(f"[UserExclusion Check Warning] {excl_err}")
+
+        # 2. dong_boundaries 의 ST_Union 경계에 위경도가 포함되는지 ST_Contains로 검증
         query = text("""
             SELECT ST_Contains(ST_Union(geom), ST_SetSRID(ST_MakePoint(:lng, :lat), 4326))
             FROM dong_boundaries
             WHERE district_id = :district_id
         """)
         res = db.execute(query, {"district_id": req.district_id, "lng": req.lng, "lat": req.lat}).scalar()
-        if res is not None:
-            return {"contained": bool(res)}
-            
-        in_lng = 126.9450 <= req.lng <= 127.0155
-        in_lat = 37.5150 <= req.lat <= 37.5650
-        return {"contained": in_lng and in_lat}
+        contained = bool(res) if res is not None else (126.9450 <= req.lng <= 127.0155 and 37.5150 <= req.lat <= 37.5650)
+        
+        return {
+            "contained": contained,
+            "user_exclusion_violated": user_excl_violated,
+            "user_exclusion_name": user_excl_name
+        }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"경계 검증 처리 오류: {str(e)}")
 

@@ -107,6 +107,29 @@ export default function Home() {
     return () => clearInterval(interval);
   }, [router]);
 
+  // 🔒 1시간 세션 연장 핸들러
+  const [isRefreshingToken, setIsRefreshingToken] = useState(false);
+
+  const handleRefreshSession = async () => {
+    setIsRefreshingToken(true);
+    try {
+      const res = await apiFetch('/api/v1/auth/refresh', { method: 'POST' });
+      if (res.ok) {
+        const data = await res.json();
+        const newToken = data.access_token;
+        sessionStorage.setItem('token', newToken);
+        localStorage.setItem('token', newToken);
+        alert("✓ 로그인 세션이 성공적으로 1시간(60분) 연장되었습니다.");
+      } else {
+        alert("세션 연장에 실패했습니다. 다시 로그인해 주십시오.");
+      }
+    } catch (err) {
+      alert("세션 연장 오류: " + err.message);
+    } finally {
+      setIsRefreshingToken(false);
+    }
+  };
+
   // 플랫폼 단계별 상태 제어 (Pipeline Wizard Steps)
   // Step 1: 데이터 일괄 업로드 및 감리 (Ingestion & AI Audit)
   // Step 2: 비주얼 HITL 좌표 보정 (Visual HITL Alignment)
@@ -1577,6 +1600,17 @@ export default function Home() {
             <span className="text-[11px] text-slate-300">인증 세션:</span>
             <span className="text-[11px] font-mono font-bold text-amber-400">⏱️ {tokenTimeLeft || '검증 중...'}</span>
           </div>
+
+          {/* 🔒 1시간 세션 연장 버튼 [v1.4.5] */}
+          <button
+            type="button"
+            onClick={handleRefreshSession}
+            disabled={isRefreshingToken}
+            className="text-xs bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-amber-500/50 text-slate-200 hover:text-amber-400 px-3 py-1.5 rounded-lg font-bold cursor-pointer transition-all flex items-center gap-1 shadow-sm active:scale-95"
+            title="클릭 시 로그인 세션 만료 시간을 1시간 추가 연장합니다"
+          >
+            <span>🔄 세션 연장 (+1시간)</span>
+          </button>
 
           <button 
             onClick={() => {

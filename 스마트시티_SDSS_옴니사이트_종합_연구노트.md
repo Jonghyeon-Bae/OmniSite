@@ -860,14 +860,14 @@
     - **E2E 빌드 및 동기화:** `npm run build` 컴파일 무오류 통과 및 바탕화면 물리 작업 공간 이관 완료.
 
 
-### [1.4.4-Hotfix] ML 모델 레지스트리 감사 탭 fetchMlStatus 비동기 헬퍼 안전 폴백 완공 (v1.4.4-Hotfix)
-* **연구 내용:** 조장(USER)의 버그 제보(`ml모델 레지스트리 검사 접근 시 fetchMlStatus is not a function 발생`)에 따라 원인을 규명하고 100% 원천 수리를 완공함.
+### [1.4.5-Hotfix] 행정 인증 세션 1시간(60분) 추가 연장 API 및 헤더 연장 버튼 탑재 완공 (v1.4.5-Hotfix)
+* **연구 내용:** 조장(USER)의 기능 추가 요청(`인증세션 시간 오른쪽에 1시간 세션연장 버튼 배치`)에 따라 백엔드 연장 API와 프론트엔드 연장 버튼 UI를 완공함.
 * **주요 의사결정:**
-    - **`AdminConsoleModal.jsx` 내 `safeFetchMlStatus` 헬퍼 함수 도입:**
-      - 부모 컴포넌트(`dashboard/page.js` 등)에서 `fetchMlStatus` prop 전달이 누락되거나 미정의된 상황에서도 `apiFetch('/api/v1/model/status')` 백엔드 다이렉트 폴백 조회를 지원하는 `safeFetchMlStatus` 헬퍼 구축.
-      - `TypeError: fetchMlStatus is not a function` 런타임 에러 100% 원천 차단 완공.
-    - **`dashboard/page.js` 상태 및 바인딩 보완:**
-      - 대시보드 컴포넌트에 `mlStatus` 및 `setMlStatus` 상태를 신설하고 `AdminConsoleModal`에 바인딩하여 안전성 이중 보장.
+    - **백엔드 세션 1시간 추가 연장 API (`POST /api/v1/auth/refresh`):**
+      - 로그인된 실무관의 기존 JWT 세션에 60분(1시간) 추가 델타를 부여하여 신규 bearer 토큰을 즉시 반환하는 엔드포인트 구축.
+    - **프론트엔드 헤더 세션 연장 버튼 배치 (`spatial/page.js`, `dashboard/page.js`):**
+      - 메인 GIS 입지분석 및 대시보드 헤더의 실시간 남은 세션 시간 뱃지 바로 오른쪽에 **`[🔄 세션 연장 (+1시간)]`** 버튼을 배치.
+      - 클릭 시 세션을 1시간 추가 연장하고 토큰을 자동 갱신 주입함.
     - **프론트엔드 프로덕션 컴파일 및 백엔드 E2E 통합 테스트 100% SUCCESS:**
-      - Next.js Turbopack `npm run build` 결과 `✓ Compiled successfully in 1852ms (0 Error, 0 Warning)` 및 백엔드 E2E 파이프라인 100% 성공(SUCCESS) 완료.
+      - Next.js Turbopack `npm run build` 결과 `✓ Compiled successfully in 1658ms (0 Error, 0 Warning)` 및 백엔드 E2E 파이프라인 100% 성공(SUCCESS) 완료.
       - 바탕화면 물리 작업 공간 이관 동기화 완료.

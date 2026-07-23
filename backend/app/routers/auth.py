@@ -232,3 +232,26 @@ async def reset_user_password(user_id: int, req: PasswordResetRequest, db: Sessi
         raise HTTPException(status_code=500, detail=f"비밀번호 재설정 중 오류가 발생했습니다: {str(e)}")
         
     return {"status": "success", "message": f"계정 '{user[0]}'의 비밀번호가 성공적으로 초기화되었습니다."}
+
+# --- 9. 행정 세션 1시간(60분) 연장 API ---
+@router.post("/refresh")
+async def refresh_session_token(current_user: dict = Depends(get_current_user)):
+    """
+    현재 로그인된 실무관의 세션을 1시간(60분) 추가 연장하여 신규 JWT 토큰을 발급합니다.
+    """
+    expires_delta = timedelta(minutes=60)
+    new_token = create_access_token(
+        data={
+            "sub": current_user["username"],
+            "role": current_user.get("role", "user"),
+            "department": current_user.get("department", "스마트도시과"),
+            "district_id": current_user.get("district_id", 1)
+        },
+        expires_delta=expires_delta
+    )
+    return {
+        "access_token": new_token,
+        "token_type": "bearer",
+        "expires_in_minutes": 60,
+        "message": "인증 세션이 성공적으로 1시간 연장되었습니다."
+    }

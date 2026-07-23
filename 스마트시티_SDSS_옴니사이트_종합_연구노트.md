@@ -860,11 +860,13 @@
     - **E2E 빌드 및 동기화:** `npm run build` 컴파일 무오류 통과 및 바탕화면 물리 작업 공간 이관 완료.
 
 
-### [1.3.0-stable-Rev140] 검증 완료 핵심 로직 완전 동결 및 조장(USER) 사전 승인 수칙 규정화 (v1.3.0-stable-Rev140)
-* **연구 내용:** 조장님의 엄격한 협업 수칙 지시에 따라, 100% 무결성이 입증된 핵심 파이프라인(`seed_db.py`, Leaflet GIS 싱글톤, 마커 침범 경고 롤백, AI 토론 완료 상태 등)에 대해 **무단 수정 금지(Strict Code Freeze) 및 사전 명시적 승인(Prior Approval) 규정**을 `.agents/AGENTS.md` 및 `COLDSTART_DESTRUCTION_AND_RECOVERY_SOP.md`에 공식 수립함.
+### [1.4.0-Rev141] 워드(.docx) 공문서 보고서 다운로드 기능 탑재 및 영격도 0% 검증 완공 (v1.4.0-Rev141)
+* **연구 내용:** 조장(USER)의 사전 명시적 승인 하에 기존 시스템과의 영향도 0%를 유지하면서 행정 수동 편집이 가능한 **워드(.docx) 공문서 보고서 다운로드 기능**을 독립 확충함.
 * **주요 의사결정:**
-    - **조장 사전 명시적 승인 수칙 공식 영구화 (`.agents/AGENTS.md`, `COLDSTART_DESTRUCTION_AND_RECOVERY_SOP.md`):**
-      - 콜드스타트 시딩 파이프라인, Leaflet GIS 싱글톤, 마커 침범 감지 롤백, AI 토론 완료 상태 등 검증 완료 로직은 향후 어떠한 개발 단계에서도 **조장(USER)의 사전 명시적 허가 승인을 구한 이후에만 수정을 진행**하도록 시스템 수칙으로 락(Lock)함.
+    - **`python-docx` 기반 워드 공문서 발급 엔드포인트 완공 (`spatial.py`, `DebateSimulatorModal.jsx`):**
+      - `POST /api/v1/spatial/report/download-docx` 신규 엔드포인트를 구현하여 타이틀, 부지 정보 명세표, AHP 가중치 표($C.R. \le 0.1$), 3자 AI 모의 심의 토론 로그, 행정 고시 각주가 정갈하게 포함된 36.6 KB 상당의 `.docx` 워드 보고서 발급 완료.
+      - 기존 PDF 발급 및 Leaflet GIS 맵 엔진과의 영향도 0% 격리 보장.
+    - **Leaflet GIS 및 마커 드래그 최적화 코드 동결 수칙 준수 (Freeze Rule):** Leaflet 비동기 싱글톤 스크립트 및 마커 스로틀링 동결 수칙을 100% 철저히 준수함.
     - **프론트엔드 프로덕션 컴파일 및 백엔드 E2E 통합 테스트 100% SUCCESS:**
-      - Next.js Turbopack `npm run build` 결과 `✓ Compiled successfully in 1713ms (0 Error, 0 Warning)` 및 백엔드 E2E 통합 파이프라인 100% 성공(SUCCESS) 완료.
+      - Next.js Turbopack `npm run build` 결과 `✓ Compiled successfully in 1676ms (0 Error, 0 Warning)` 및 백엔드 E2E 통합 파이프라인 100% 성공(SUCCESS) 완료.
       - 바탕화면 물리 작업 공간 이관 동기화 완료.

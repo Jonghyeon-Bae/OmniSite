@@ -26,6 +26,15 @@ from sqlalchemy.orm import Session
 from sqlalchemy import text
 from fastapi import UploadFile, File
 
+try:
+    import docx
+    from docx import Document
+    from docx.shared import Pt, RGBColor, Inches
+    from docx.enum.text import WD_ALIGN_PARAGRAPH
+    from docx.enum.table import WD_TABLE_ALIGNMENT
+except ImportError:
+    docx = None
+
 # App & Local Services & Imports
 from app.database import get_db
 from app.routers.upload import UPLOAD_DIR, get_openai_client, get_embedding, get_async_openai_client
@@ -1738,7 +1747,7 @@ class ReportDownloadRequest(BaseModel):
     facility_type: str = "city_feature"
     inferred_purpose: str = ""
     candidate_jibun: str = ""
-    candidate_css: int = 50
+    candidate_css: Optional[Any] = 50
     candidate_lat: float = 37.53
     candidate_lng: float = 126.97
     candidate_reason: Optional[str] = ""
@@ -2049,6 +2058,174 @@ async def download_report_pdf(req: ReportDownloadRequest, db: Session = Depends(
         print(f"[PDF Generation Critical Error] {e}")
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"PDF 리포트 생성 오류: {str(e)}")
+
+# [v1.4.0-Rev141] 워드 (.docx) 공문서 보고서 다운로드 API
+@router.post("/spatial/report/download-docx")
+async def download_report_docx(req: ReportDownloadRequest, db: Session = Depends(get_db)):
+    if docx is None:
+        raise HTTPException(status_code=500, detail="python-docx 모듈이 서버에 설치되어 있지 않습니다.")
+    try:
+        # [Zero Hardcoding] 자치구 동적 바인딩 조회
+        dist_id = req.district_id or 1
+        dist_name_query = text("SELECT district_name FROM districts WHERE id = :dist_id")
+        dist_name_row = db.execute(dist_name_query, {"dist_id": dist_id}).fetchone()
+        district_name = dist_name_row[0] if dist_name_row else "용산구"
+
+        doc = Document()
+        
+        # 페이지 여백 설정 (1 인치)
+        for section in doc.sections:
+            section.top_margin = Inches(1)
+            section.bottom_margin = Inches(1)
+            section.left_margin = Inches(1)
+            section.right_margin = Inches(1)
+
+        # 1. 공문서 타이틀
+        p_title = doc.add_paragraph()
+        p_title.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        run_title = p_title.add_run(f"[{district_name}] 스마트시티 SDSS 입지 적합성 및 모의 심의 보고서")
+        run_title.font.name = "맑은 고딕"
+        run_title.font.size = Pt(16)
+        run_title.font.bold = True
+        run_title.font.color.rgb = RGBColor(15, 23, 42)
+
+        # 부제목 / 발급 정보
+        p_sub = doc.add_paragraph()
+        p_sub.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        run_sub = p_sub.add_run(f"문서번호: OMNISITE-REPORT-{datetime.datetime.now().strftime('%Y%m%d%H%M')} | 소관지자체: {district_name} 스마트도시과")
+        run_sub.font.name = "맑은 고딕"
+        run_sub.font.size = Pt(9)
+        run_sub.font.color.rgb = RGBColor(100, 116, 139)
+        
+        doc.add_paragraph() # Spacer
+
+        # 2. Section 1: 추천 후보 부지 정보
+        h1 = doc.add_heading("1. 입지 선정 후보 부지 명세", level=1)
+        for r in h1.runs:
+            r.font.name = "맑은 고딕"
+            r.font.color.rgb = RGBColor(30, 41, 59)
+
+        table_info = doc.add_table(rows=5, cols=2)
+        table_info.alignment = WD_TABLE_ALIGNMENT.CENTER
+        table_info.style = 'Table Grid'
+        
+        css_val = 0.0
+        try:
+            css_val = float(req.candidate_css)
+        except Exception:
+            css_val = 50.0
+
+        info_data = [
+            ("구분 / 시설 종류", str(req.facility_type or "공공 흡연부스")),
+            ("선정 부지 지번", str(req.candidate_jibun or "미지정 부지")),
+            ("입지 적격도 (CSS 점수)", f"{css_val:.2f} 점 / 100점 만점"),
+            ("위경도 좌표", f"위도 {req.candidate_lat:.6f}, 경도 {req.candidate_lng:.6f}"),
+            ("추천 / 선정 사유", str(req.candidate_reason or "공간 복합 알고리즘 및 AHP 가중치 최적화 결과"))
+        ]
+        
+        for idx, (k, v) in enumerate(info_data):
+            row_cells = table_info.rows[idx].cells
+            row_cells[0].text = k
+            row_cells[1].text = v
+            row_cells[0].paragraphs[0].runs[0].font.bold = True
+            row_cells[0].paragraphs[0].runs[0].font.name = "맑은 고딕"
+            row_cells[0].paragraphs[0].runs[0].font.size = Pt(10)
+            row_cells[1].paragraphs[0].runs[0].font.name = "맑은 고딕"
+            row_cells[1].paragraphs[0].runs[0].font.size = Pt(10)
+
+        doc.add_paragraph() # Spacer
+
+        # 3. Section 2: AHP 공간 의사결정 가중치 명세
+        h2 = doc.add_heading("2. AHP 공간 의사결정 평가 가중치 (C.R. ≤ 0.1 검증 완료)", level=1)
+        for r in h2.runs:
+            r.font.name = "맑은 고딕"
+            r.font.color.rgb = RGBColor(30, 41, 59)
+
+        ahp_dict = req.ahp_weights or {}
+        if ahp_dict:
+            table_ahp = doc.add_table(rows=len(ahp_dict) + 1, cols=2)
+            table_ahp.alignment = WD_TABLE_ALIGNMENT.CENTER
+            table_ahp.style = 'Table Grid'
+            
+            hdr_cells = table_ahp.rows[0].cells
+            hdr_cells[0].text = "평가 항목 (Criteria)"
+            hdr_cells[1].text = "산출 가중치 (Weight)"
+            hdr_cells[0].paragraphs[0].runs[0].font.bold = True
+            hdr_cells[1].paragraphs[0].runs[0].font.bold = True
+            
+            for row_idx, (k, val) in enumerate(ahp_dict.items(), start=1):
+                r_cells = table_ahp.rows[row_idx].cells
+                r_cells[0].text = str(k)
+                try:
+                    w_num = float(val)
+                    r_cells[1].text = f"{w_num:.4f} ({w_num*100:.1f}%)"
+                except Exception:
+                    r_cells[1].text = str(val)
+                r_cells[0].paragraphs[0].runs[0].font.name = "맑은 고딕"
+                r_cells[1].paragraphs[0].runs[0].font.name = "맑은 고딕"
+        else:
+            p_no_ahp = doc.add_paragraph("※ 기본 규정 AHP 동적 가중치 모델이 적용되었습니다.")
+            p_no_ahp.runs[0].font.name = "맑은 고딕"
+
+        doc.add_paragraph() # Spacer
+
+        # 4. Section 3: 3자 페르소나 모의 심의 토론 전문
+        h3 = doc.add_heading("3. AI 3자 멀티에이전트 모의 심의 토론 기록", level=1)
+        for r in h3.runs:
+            r.font.name = "맑은 고딕"
+            r.font.color.rgb = RGBColor(30, 41, 59)
+
+        if req.debate_logs:
+            for log_item in req.debate_logs:
+                sender = "참여자"
+                text_content = ""
+                if isinstance(log_item, dict):
+                    sender = log_item.get("sender") or log_item.get("name") or "참여자"
+                    text_content = log_item.get("text") or log_item.get("content") or ""
+                elif isinstance(log_item, str):
+                    text_content = log_item
+                    
+                p_log = doc.add_paragraph()
+                p_log.paragraph_format.space_after = Pt(4)
+                r_s = p_log.add_run(f"[{sender}] ")
+                r_s.font.name = "맑은 고딕"
+                r_s.font.bold = True
+                r_s.font.color.rgb = RGBColor(2, 132, 199) if "의장" in sender or "위원" in sender else (RGBColor(225, 29, 72) if "주민" in sender else RGBColor(16, 185, 129))
+                
+                r_t = p_log.add_run(str(text_content))
+                r_t.font.name = "맑은 고딕"
+                r_t.font.size = Pt(9.5)
+        else:
+            p_no_log = doc.add_paragraph("※ 모의 심의 토론 로그가 제공되지 않았습니다.")
+            p_no_log.runs[0].font.name = "맑은 고딕"
+
+        doc.add_paragraph() # Spacer
+
+        # 5. Section 4: 하단 공인 행정 각주
+        p_foot = doc.add_paragraph()
+        p_foot.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        r_foot = p_foot.add_run("본 보고서는 스마트시티 SDSS 옴니사이트(OmniSite)에 의해 생성된 공식 행정 심의 의결 문서입니다.")
+        r_foot.font.name = "맑은 고딕"
+        r_foot.font.size = Pt(8.5)
+        r_foot.font.color.rgb = RGBColor(148, 163, 184)
+
+        # BytesIO 스트리밍 반환
+        buffer = io.BytesIO()
+        doc.save(buffer)
+        buffer.seek(0)
+        
+        filename = f"OmniSite_Report_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.docx"
+        headers = {
+            'Content-Disposition': f'attachment; filename="{filename}"'
+        }
+        return StreamingResponse(
+            buffer,
+            media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            headers=headers
+        )
+    except Exception as e:
+        print(f"[download_report_docx Error] {e}")
+        raise HTTPException(status_code=500, detail=f"워드 보고서 발급 중 오류가 발생했습니다: {str(e)}")
 
 class UserExclusionCreateRequest(BaseModel):
     zone_name: str

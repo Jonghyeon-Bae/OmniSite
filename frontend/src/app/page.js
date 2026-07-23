@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { OMNISITE_VERSION } from '../config/version';
 
 export default function GatewayPage() {
   const router = useRouter();
@@ -211,7 +212,7 @@ export default function GatewayPage() {
         </form>
         
         <span className="text-[9px] text-slate-600 text-center font-mono">
-          OmniSite SDSS v1.0.0-prototype | Secure Internal Network Only
+          OmniSite SDSS v{OMNISITE_VERSION} | Secure Internal Network Only
         </span>
 
       </div>

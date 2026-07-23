@@ -7,6 +7,7 @@ import PasswordChangeModal from '@/components/PasswordChangeModal';
 import RagRegulationModal from '@/components/RagRegulationModal';
 import StepGuideModal from '@/components/StepGuideModal';
 import AdminConsoleModal from '@/components/AdminConsoleModal';
+import { OMNISITE_DISPLAY_VERSION } from '@/config/version';
 
 // Next.js API Fetch 래퍼 (JWT 세션 자동 바인딩)
 const apiFetch = (url, options = {}) => {
@@ -509,7 +510,7 @@ export default function Dashboard() {
       <header className="fixed top-0 left-0 right-0 h-16 glass-panel rounded-none border-t-0 border-x-0 z-45 px-8 flex justify-between items-center bg-slate-950/90 backdrop-blur-md">
         <div className="flex items-center gap-3">
           <Link href="/spatial" className="text-xl font-bold tracking-tight text-white hover:text-blue-400 transition-all flex items-center gap-2">
-            OmniSite <span className="text-[10px] bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded border border-blue-500/30">B2G SDSS v1.4</span>
+            OmniSite <span className="text-[10px] bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded border border-blue-500/30">{OMNISITE_DISPLAY_VERSION}</span>
           </Link>
         </div>
         <nav className="flex items-center gap-6 text-xs font-semibold">
@@ -940,6 +941,41 @@ export default function Dashboard() {
                   닫기
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 🔒 커스텀 Glassmorphism Confirm 모달 렌더러 */}
+      {confirmModal.show && (
+        <div className="fixed inset-0 bg-slate-950/85 backdrop-blur-md z-[150] flex items-center justify-center p-4">
+          <div className="glass-panel w-full max-w-md p-6 flex flex-col gap-4 relative animate-fade-in text-slate-100 border border-slate-800 rounded-2xl shadow-2xl">
+            <div className="flex items-center gap-3 border-b border-slate-800/80 pb-3">
+              <span className="text-xl">⚠️</span>
+              <h4 className="text-sm font-bold text-white">{confirmModal.title}</h4>
+            </div>
+
+            <p className="text-xs text-slate-300 leading-relaxed whitespace-pre-line font-normal">
+              {confirmModal.message}
+            </p>
+
+            <div className="flex justify-end gap-2.5 mt-3 pt-3 border-t border-slate-800/60">
+              <button 
+                onClick={() => setConfirmModal({ show: false, title: '', message: '', onConfirm: null })}
+                className="bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold px-4 py-2 rounded-xl transition-all cursor-pointer"
+              >
+                취소
+              </button>
+              <button 
+                onClick={() => {
+                  const cb = confirmModal.onConfirm;
+                  setConfirmModal({ show: false, title: '', message: '', onConfirm: null });
+                  if (cb) cb();
+                }}
+                className="bg-gradient-to-r from-rose-500 to-rose-600 hover:from-rose-600 hover:to-rose-700 text-white text-xs font-extrabold px-5 py-2 rounded-xl transition-all shadow-md cursor-pointer"
+              >
+                ✓ 확인 및 진행
+              </button>
             </div>
           </div>
         </div>

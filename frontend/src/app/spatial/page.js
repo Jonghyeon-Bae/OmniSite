@@ -12,6 +12,7 @@ import AdminConsoleModal from '../../components/AdminConsoleModal';
 import PasswordChangeModal from '../../components/PasswordChangeModal';
 import RagRegulationModal from '../../components/RagRegulationModal';
 import StepGuideModal from '../../components/StepGuideModal';
+import { OMNISITE_DISPLAY_VERSION } from '../../config/version';
 
 const apiFetch = (url, options = {}) => {
   const token = typeof window !== 'undefined' 
@@ -1579,7 +1580,7 @@ export default function Home() {
       <header className="absolute top-0 left-0 right-0 h-16 glass-panel rounded-none border-t-0 border-x-0 z-45 px-8 flex justify-between items-center">
         <div className="flex items-center gap-3">
           <span className="text-xl font-bold tracking-tight text-white">OmniSite</span>
-          <span className="text-[10px] bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded border border-blue-500/30">B2G SDSS v1.0</span>
+          <span className="text-[10px] bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded border border-blue-500/30">{OMNISITE_DISPLAY_VERSION}</span>
         </div>
         <nav className="flex items-center gap-8 text-xs font-semibold">
           <Link href="/spatial" className="text-white border-b-2 border-blue-500 pb-1">입지분석 메인 (Map)</Link>

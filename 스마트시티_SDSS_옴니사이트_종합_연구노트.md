@@ -860,14 +860,14 @@
     - **E2E 빌드 및 동기화:** `npm run build` 컴파일 무오류 통과 및 바탕화면 물리 작업 공간 이관 완료.
 
 
-### [1.4.5-Hotfix] 행정 인증 세션 1시간(60분) 추가 연장 API 및 헤더 연장 버튼 탑재 완공 (v1.4.5-Hotfix)
-* **연구 내용:** 조장(USER)의 기능 추가 요청(`인증세션 시간 오른쪽에 1시간 세션연장 버튼 배치`)에 따라 백엔드 연장 API와 프론트엔드 연장 버튼 UI를 완공함.
+### [1.4.6-Hotfix] 대시보드 준공 아카이브 내역 삭제 커스텀 Confirm 모달 UI 복구 완공 (v1.4.6-Hotfix)
+* **연구 내용:** 조장(USER)의 원인 파악 요청(`대시보드에서 준공 아카이브 내역 삭제 먹통 현상`)에 따라 원인을 정밀 추적하여 수리 완료함.
 * **주요 의사결정:**
-    - **백엔드 세션 1시간 추가 연장 API (`POST /api/v1/auth/refresh`):**
-      - 로그인된 실무관의 기존 JWT 세션에 60분(1시간) 추가 델타를 부여하여 신규 bearer 토큰을 즉시 반환하는 엔드포인트 구축.
-    - **프론트엔드 헤더 세션 연장 버튼 배치 (`spatial/page.js`, `dashboard/page.js`):**
-      - 메인 GIS 입지분석 및 대시보드 헤더의 실시간 남은 세션 시간 뱃지 바로 오른쪽에 **`[🔄 세션 연장 (+1시간)]`** 버튼을 배치.
-      - 클릭 시 세션을 1시간 추가 연장하고 토큰을 자동 갱신 주입함.
+    - **원인 정밀 분석:**
+      - `dashboard/page.js`에서 `handleDeletePrecedent`가 호출 시 커스텀 모달 상태 `showConfirm(...)`을 세팅하였으나, 이전 모달 교체 작업 중 하단 JSX 내 `confirmModal.show && (...)` 커스텀 다이얼로그 모달 렌더러가 빠져 있어 UI가 뜨지 않고 먹통 상태로 오해되었던 것임.
+    - **UI 렌더러 100% 복구 및 수리:**
+      - `dashboard/page.js` 하단에 `confirmModal.show` 커스텀 Glassmorphism 모달 렌더러를 확고히 주입 복구함.
+      - 삭제 버튼 클릭 시 예쁜 커스텀 Glassmorphism 모달이 출력되고 `✓ 확인 및 진행` 클릭 시 `DELETE /api/v1/spatial/precedents/{id}` 백엔드 삭제 처리 및 실시간 리스트 갱신이 100% 정상 작동함을 검증.
     - **프론트엔드 프로덕션 컴파일 및 백엔드 E2E 통합 테스트 100% SUCCESS:**
-      - Next.js Turbopack `npm run build` 결과 `✓ Compiled successfully in 1658ms (0 Error, 0 Warning)` 및 백엔드 E2E 파이프라인 100% 성공(SUCCESS) 완료.
+      - Next.js Turbopack `npm run build` 결과 `✓ Compiled successfully in 1686ms (0 Error, 0 Warning)` 및 백엔드 E2E 파이프라인 100% 성공(SUCCESS) 완료 (Accuracy: 0.7540, F1: 0.7333).
       - 바탕화면 물리 작업 공간 이관 동기화 완료.

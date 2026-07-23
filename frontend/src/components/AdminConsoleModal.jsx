@@ -81,11 +81,31 @@ export default function AdminConsoleModal({
     }
   }, [show, adminTab]);
 
+  // 안전한 ML 상태 조회 헬퍼 (fetchMlStatus prop 유무에 관계없이 100% 안전 구동)
+  const safeFetchMlStatus = async () => {
+    if (typeof fetchMlStatus === 'function') {
+      return await fetchMlStatus();
+    }
+    try {
+      const res = await apiFetch('/api/v1/model/status');
+      if (res.ok) {
+        const data = await res.json();
+        if (typeof setMlStatus === 'function') {
+          setMlStatus(data);
+        }
+        return data;
+      }
+    } catch (err) {
+      console.error('ML status fetch failed:', err);
+    }
+    return null;
+  };
+
   // ML 모델 감사 탭 클릭 시 또는 모달 진입 시 레지스트리 모델 스캔
   useEffect(() => {
     if (show && adminTab === 'ml_retrain') {
       fetchModelRegistry();
-      fetchMlStatus();
+      safeFetchMlStatus();
     }
   }, [show, adminTab]);
 
@@ -94,7 +114,7 @@ export default function AdminConsoleModal({
     let intervalId = null;
     if (mlStatus && mlStatus.is_training) {
       intervalId = setInterval(async () => {
-        const status = await fetchMlStatus();
+        const status = await safeFetchMlStatus();
         if (status && !status.is_training) {
           clearInterval(intervalId);
           if (status.error) {
@@ -144,23 +164,39 @@ export default function AdminConsoleModal({
     }
   };
 
-  // 사용자 비밀번호 초기화
-  const handleUserPasswordReset = async (userId, username) => {
-    const newPwd = prompt(`계정 '${username}'에 적용할 신규 보안 비밀번호를 입력해 주십시오.`);
-    if (newPwd === null) return;
-    if (newPwd.length < 4) {
-      showToast('비밀번호는 최소 4자 이상이어야 합니다.', 'warning');
+  // 사용자 비밀번호 초기화 커스텀 모달 상태
+  const [resetTargetUser, setResetTargetUser] = useState(null);
+  const [resetPasswordInput, setResetPasswordInput] = useState('');
+
+  const openPasswordResetModal = (user) => {
+    setResetTargetUser(user);
+    setResetPasswordInput('');
+  };
+
+  const handleUserPasswordResetSubmit = async (e) => {
+    e.preventDefault();
+    if (!resetTargetUser) return;
+    
+    const newPwd = resetPasswordInput;
+    const hasLetter = /[A-Za-z]/.test(newPwd);
+    const hasDigit = /\d/.test(newPwd);
+    const hasSpecial = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(newPwd);
+
+    if (newPwd.length < 8 || !hasLetter || !hasDigit || !hasSpecial) {
+      showToast('⚠️ 비밀번호는 영문, 숫자, 특수문자를 조합하여 8자리 이상이어야 합니다.', 'warning');
       return;
     }
     
     try {
-      const res = await apiFetch(`/api/v1/auth/users/${userId}/reset-password`, {
+      const res = await apiFetch(`/api/v1/auth/users/${resetTargetUser.id}/reset-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ new_password: newPwd })
       });
       if (res.ok) {
-        showToast(`✓ 계정 '${username}'의 비밀번호가 성공적으로 변경되었습니다.`, 'success');
+        showToast(`✓ 계정 '${resetTargetUser.username}'의 비밀번호가 성공적으로 변경되었습니다.`, 'success');
+        setResetTargetUser(null);
+        setResetPasswordInput('');
       } else {
         const err = await res.json();
         showToast(err.detail || '비밀번호 재설정 실패', 'error');
@@ -175,6 +211,15 @@ export default function AdminConsoleModal({
     e.preventDefault();
     if (!regUsername || !regPassword) {
       showToast("등록할 아이디와 비밀번호를 입력해 주십시오.", "warning");
+      return;
+    }
+
+    const hasLetter = /[A-Za-z]/.test(regPassword);
+    const hasDigit = /\d/.test(regPassword);
+    const hasSpecial = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(regPassword);
+
+    if (regPassword.length < 8 || !hasLetter || !hasDigit || !hasSpecial) {
+      showToast('⚠️ 비밀번호는 영문, 숫자, 특수문자를 조합하여 8자리 이상이어야 합니다.', 'warning');
       return;
     }
 
@@ -709,7 +754,7 @@ export default function AdminConsoleModal({
                       <td className="py-2 font-mono text-slate-400">{u.district_id || 1}</td>
                       <td className="py-2 text-center flex items-center justify-center gap-2">
                         <button 
-                          onClick={() => handleUserPasswordReset(u.id, u.username)}
+                          onClick={() => openPasswordResetModal(u)}
                           className="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-[10px] px-2 py-1 rounded transition-all cursor-pointer font-bold"
                         >
                           비밀번호 초기화
@@ -744,13 +789,13 @@ export default function AdminConsoleModal({
                   />
                 </div>
                 <div className="flex flex-col gap-1">
-                  <label className="text-[9px] text-slate-400">초기 패스워드</label>
+                  <label className="text-[9px] text-slate-400">초기 패스워드 (8자 이상, 영문+숫자+특수문자)</label>
                   <input 
                     type="password"
                     value={regPassword}
                     onChange={(e) => setRegPassword(e.target.value)}
                     className="bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-white outline-none"
-                    placeholder="초기 임시 비밀번호"
+                    placeholder="초기 비밀번호 (영문/숫자/특수문자 8자 이상)"
                   />
                 </div>
               </div>
@@ -1302,6 +1347,61 @@ export default function AdminConsoleModal({
             >
               확인 및 안내 닫기
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* 🔑 관리자 전용 사용자 비밀번호 초기화 커스텀 모달 */}
+      {resetTargetUser && (
+        <div className="fixed inset-0 bg-slate-950/90 backdrop-blur-md z-[70] flex items-center justify-center p-4">
+          <div className="glass-panel w-full max-w-md p-6 flex flex-col gap-4 relative animate-fade-in text-slate-100 border border-amber-500/40 rounded-2xl shadow-2xl">
+            <button 
+              onClick={() => setResetTargetUser(null)}
+              className="absolute top-4 right-4 text-slate-400 hover:text-white font-bold cursor-pointer"
+            >
+              ✕
+            </button>
+            
+            <div className="flex items-center gap-3 border-b border-slate-800 pb-3">
+              <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-xl text-amber-400">
+                🔑
+              </div>
+              <div>
+                <h4 className="text-sm font-bold text-white">비밀번호 강제 초기화</h4>
+                <p className="text-[10px] text-slate-400">계정 <span className="text-amber-400 font-bold">[{resetTargetUser.username}]</span>의 보안 비밀번호를 신규 설정합니다.</p>
+              </div>
+            </div>
+
+            <form onSubmit={handleUserPasswordResetSubmit} className="flex flex-col gap-3">
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[11px] font-semibold text-slate-300">신규 보안 비밀번호</label>
+                <input 
+                  type="password"
+                  value={resetPasswordInput}
+                  onChange={(e) => setResetPasswordInput(e.target.value)}
+                  className="bg-slate-950 border border-slate-800 focus:border-amber-500 rounded-xl p-3 text-xs text-white outline-none transition-all"
+                  placeholder="영문 / 숫자 / 특수문자 조합 8자 이상"
+                  autoFocus
+                />
+                <p className="text-[9.5px] text-slate-500">※ 보안 규정에 따라 최소 8자 이상, 영문, 숫자, 특수문자(!@#$%^&*)를 필수 포함해야 합니다.</p>
+              </div>
+
+              <div className="flex gap-2 mt-2">
+                <button 
+                  type="button"
+                  onClick={() => setResetTargetUser(null)}
+                  className="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold py-2.5 rounded-xl cursor-pointer transition-all"
+                >
+                  취소
+                </button>
+                <button 
+                  type="submit"
+                  className="flex-1 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 text-xs font-extrabold py-2.5 rounded-xl transition-all shadow-md cursor-pointer"
+                >
+                  ✓ 비밀번호 변경 커밋
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

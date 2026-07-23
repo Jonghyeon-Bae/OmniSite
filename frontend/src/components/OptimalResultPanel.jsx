@@ -354,17 +354,20 @@ export default function OptimalResultPanel({
             <button
               onClick={runSimulation}
               disabled={simStep > 0 && simStep < 6}
-              className="w-full bg-rose-600 hover:bg-rose-700 text-white font-semibold text-xs py-3.5 rounded-xl transition-all cursor-pointer shadow-lg shadow-rose-900/30 flex items-center justify-center gap-1.5 disabled:opacity-60"
+              className="w-full bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs py-3.5 rounded-xl transition-all cursor-pointer shadow-lg shadow-rose-900/30 flex items-center justify-center gap-1.5 disabled:opacity-60"
             >
               {simStep > 0 && simStep < 6 ? (
                 <>
                   <span className="w-4 h-4 border-2 border-t-transparent border-white rounded-full animate-spin shrink-0" />
-                  심의 토론 에이전트 스트리밍 중...
+                  3자 페르소나 심의 토론 진행 중...
                 </>
               ) : (
-                `${activeTab.toUpperCase()} 갈등 심의 시뮬레이터 실행 (GPT-4o)`
+                `🏛️ ${activeTab.toUpperCase()} Step 6 모의 심의 및 워드/PDF 보고서 발급`
               )}
             </button>
+            <p className="text-[10px] text-center text-sky-400 font-medium mt-1">
+              ※ 토론 완료 시 📄 워드(.docx) 및 📝 PDF 공문서 보고서 자동 생성/발급
+            </p>
           </div>
         </div>
       )}

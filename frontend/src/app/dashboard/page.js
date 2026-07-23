@@ -2,6 +2,11 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import PasswordChangeModal from '@/components/PasswordChangeModal';
+import RagRegulationModal from '@/components/RagRegulationModal';
+import StepGuideModal from '@/components/StepGuideModal';
+import AdminConsoleModal from '@/components/AdminConsoleModal';
 
 // Next.js API Fetch 래퍼 (JWT 세션 자동 바인딩)
 const apiFetch = (url, options = {}) => {
@@ -16,11 +21,123 @@ const apiFetch = (url, options = {}) => {
   return nativeFetch ? nativeFetch(url, { ...options, headers }) : Promise.reject(new Error('Fetch not available'));
 };
 
+const parseJwt = (token) => {
+  try {
+    const base64Url = token.split('.')[1];
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    const jsonPayload = decodeURIComponent(atob(base64).split('').map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join(''));
+    return JSON.parse(jsonPayload);
+  } catch (e) {
+    return null;
+  }
+};
+
 export default function Dashboard() {
+  const router = useRouter();
   const [historyList, setHistoryList] = useState([]);
   const [precedentList, setPrecedentList] = useState([]);
   const [activeTab, setActiveTab] = useState('history'); // 'history' | 'precedents'
   const [isLoading, setIsLoading] = useState(true);
+
+  // 헤더 팝업 모달 상태 (spatial 헤더 일치화)
+  const [showPasswordChangeModal, setShowPasswordChangeModal] = useState(false);
+  const [showRagModal, setShowRagModal] = useState(false);
+  const [showGuideModal, setShowGuideModal] = useState(false);
+  const [showAdminConsoleModal, setShowAdminConsoleModal] = useState(false);
+  const [toastMessage, setToastMessage] = useState(null);
+  const [mlStatus, setMlStatus] = useState({ is_training: false });
+  
+  // 🔒 JWT 실시간 토큰 남은 시간 타이머 상태
+  const [tokenTimeLeft, setTokenTimeLeft] = useState('');
+  const [isTokenValid, setIsTokenValid] = useState(true);
+
+  // 🔒 커스텀 Glassmorphism Confirm 모달 상태
+  const [confirmModal, setConfirmModal] = useState({
+    show: false,
+    title: '',
+    message: '',
+    onConfirm: null
+  });
+
+  const showConfirm = (title, message, onConfirm) => {
+    setConfirmModal({
+      show: true,
+      title,
+      message,
+      onConfirm
+    });
+  };
+
+  const showToast = (msg, type = 'info') => {
+    setToastMessage({ msg, type });
+    setTimeout(() => setToastMessage(null), 3500);
+  };
+
+  // 🔒 JWT 토큰 실시간 유효성 검증 및 카운트다운 타이머 (새로고침 대응)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    let token = sessionStorage.getItem('token');
+    if (!token) {
+      token = localStorage.getItem('token');
+      if (token) {
+        sessionStorage.setItem('token', token);
+      }
+    }
+
+    if (!token) {
+      setIsTokenValid(false);
+      alert("🔒 행정 인증 세션이 존재하지 않습니다. 로그인 페이지로 이동합니다.");
+      router.push('/');
+      return;
+    }
+
+    // 마운트 / 새로고침 시 백엔드 실시간 유효성 200 OK 판정 (/api/v1/auth/me)
+    apiFetch('/api/v1/auth/me')
+      .then(res => {
+        if (!res.ok) {
+          setIsTokenValid(false);
+          sessionStorage.clear();
+          localStorage.removeItem('token');
+          alert("🔒 행정 인증 세션이 만료되거나 무효화되었습니다. 다시 로그인해 주십시오.");
+          router.push('/');
+        } else {
+          setIsTokenValid(true);
+        }
+      })
+      .catch(() => {
+        setIsTokenValid(false);
+      });
+
+    // 1초 간격 실시간 토큰 남은 시간 카운트다운
+    const interval = setInterval(() => {
+      const currentToken = sessionStorage.getItem('token') || localStorage.getItem('token');
+      if (!currentToken) {
+        setTokenTimeLeft('만료됨');
+        return;
+      }
+      const payload = parseJwt(currentToken);
+      if (payload && payload.exp) {
+        const remainingSec = Math.floor(payload.exp - Date.now() / 1000);
+        if (remainingSec <= 0) {
+          setTokenTimeLeft('만료됨');
+          setIsTokenValid(false);
+          sessionStorage.clear();
+          localStorage.removeItem('token');
+          alert("🔒 로그인 세션 시간이 만료되었습니다. 다시 로그인해 주십시오.");
+          router.push('/');
+        } else {
+          const m = Math.floor(remainingSec / 60);
+          const s = remainingSec % 60;
+          setTokenTimeLeft(`${m}분 ${s < 10 ? '0' : ''}${s}초`);
+        }
+      } else {
+        setTokenTimeLeft('유효 세션');
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [router]);
 
   // FAQ 아코디언 상태
   const [openFaq, setOpenFaq] = useState(null);
@@ -116,76 +233,69 @@ export default function Dashboard() {
         
         if (data.status === "already_exists") {
           // 중복 실증 준공 사례 업로드 감지 분기
-          const confirmOverwrite = window.confirm(
-            `[실증 준공 사례 중복 감지]\n\n` +
-            `• 대상 PNU: ${data.pnu}\n` +
-            `• 기존 파일: ${data.existing_title}\n\n` +
-            `이미 동일 필지(PNU)로 등록된 실증 준공 사례가 존재합니다. 기존 사례를 삭제하고 덮어쓰시겠습니까?`
-          );
-          
-          if (confirmOverwrite) {
-            setIsRegistering(true);
-            try {
-              const regRes = await apiFetch(`/api/v1/spatial/history/audit-register-precedent`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  pnu: data.pnu,
-                  jibun: data.jibun,
-                  filename: data.filename,
-                  textContent: data.textContent,
-                  overwrite: true
-                })
-              });
-              
-              if (regRes.ok) {
-                alert("✓ 성공 사례가 기존 데이터를 덮어쓰고 정상 갱신되었습니다!");
-                refreshAllData();
-              } else {
-                const regErr = await regRes.json();
-                alert(`성공사례 덮어쓰기 실패: ${regErr.detail || '알 수 없는 오류'}`);
+          showConfirm(
+            "⚠️ 실증 준공 사례 중복 감지",
+            `대상 PNU: ${data.pnu}\n기존 파일: ${data.existing_title}\n\n이미 동일 필지(PNU)로 등록된 실증 준공 사례가 존재합니다. 기존 사례를 삭제하고 덮어쓰시겠습니까?`,
+            async () => {
+              setIsRegistering(true);
+              try {
+                const regRes = await apiFetch(`/api/v1/spatial/history/audit-register-precedent`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    pnu: data.pnu,
+                    jibun: data.jibun,
+                    filename: data.filename,
+                    textContent: data.textContent,
+                    overwrite: true
+                  })
+                });
+                
+                if (regRes.ok) {
+                  showToast("✓ 성공 사례가 기존 데이터를 덮어쓰고 정상 갱신되었습니다!", "success");
+                  refreshAllData();
+                } else {
+                  const regErr = await regRes.json();
+                  showToast(`성공사례 덮어쓰기 실패: ${regErr.detail || '알 수 없는 오류'}`, "error");
+                }
+              } finally {
+                setIsRegistering(false);
               }
-            } finally {
-              setIsRegistering(false);
             }
-          }
+          );
         } else if (data.status === "not_found") {
           // 2단계: 매칭되는 심의 이력이 없는 경우 -> 자가학습 지식 아카이브 편입 유도 모달/컴펌
-          const confirmRegister = window.confirm(
-            `[미등록 준공 공문서 감지]\n\n` +
-            `• 주소: ${data.jibun}\n` +
-            `• 필지 PNU: ${data.pnu || '미추출'}\n\n` +
-            `시스템 내에 이 필지에 관한 과거 모의 심의 이력이 존재하지 않습니다.\n` +
-            `이 문서를 RAG 성공 사례(지식베이스)에 축적하여 AI 자가학습 참고자료로 등록하시겠습니까?`
-          );
-          
-          if (confirmRegister) {
-            setIsRegistering(true);
-            try {
-              // 성공사례 지식 적재 API 호출
-              const regRes = await apiFetch(`/api/v1/spatial/history/audit-register-precedent`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  pnu: data.pnu,
-                  jibun: data.jibun,
-                  filename: data.filename,
-                  textContent: data.textContent,
-                  overwrite: false
-                })
-              });
-              
-              if (regRes.ok) {
-                alert("✓ 성공 사례 및 AI 자가학습 RAG 지식 아카이브 적재가 무사히 완료되었습니다!");
-                refreshAllData(); // 실시간 전체 리스트/통계 갱신
-              } else {
-                const regErr = await regRes.json();
-                alert(`성공사례 적재 실패: ${regErr.detail || '알 수 없는 오류'}`);
+          showConfirm(
+            "💡 미등록 준공 공문서 감지",
+            `주소: ${data.jibun}\n필지 PNU: ${data.pnu || '미추출'}\n\n시스템 내에 이 필지에 관한 과거 모의 심의 이력이 존재하지 않습니다.\n이 문서를 RAG 성공 사례(지식베이스)에 축적하여 AI 자가학습 참고자료로 등록하시겠습니까?`,
+            async () => {
+              setIsRegistering(true);
+              try {
+                // 성공사례 지식 적재 API 호출
+                const regRes = await apiFetch(`/api/v1/spatial/history/audit-register-precedent`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    pnu: data.pnu,
+                    jibun: data.jibun,
+                    filename: data.filename,
+                    textContent: data.textContent,
+                    overwrite: false
+                  })
+                });
+                
+                if (regRes.ok) {
+                  showToast("✓ 성공 사례 및 AI 자가학습 RAG 지식 아카이브 적재가 완료되었습니다!", "success");
+                  refreshAllData(); // 실시간 전체 리스트/통계 갱신
+                } else {
+                  const regErr = await regRes.json();
+                  showToast(`성공사례 적재 실패: ${regErr.detail || '알 수 없는 오류'}`, "error");
+                }
+              } finally {
+                setIsRegistering(false);
               }
-            } finally {
-              setIsRegistering(false);
             }
-          }
+          );
         } else {
           // 매칭 성공 케이스
           setAuditResult({
@@ -209,35 +319,45 @@ export default function Dashboard() {
   // 모의 심의 이력 삭제 핸들러
   const handleDeleteHistory = async (id, e) => {
     e.stopPropagation();
-    if (!window.confirm(`선택한 모의 심의 이력 #${id}을 영구 삭제하시겠습니까?`)) return;
-    try {
-      const res = await apiFetch(`/api/v1/spatial/history/${id}`, { method: 'DELETE' });
-      if (res.ok) {
-        alert("✓ 심의 이력이 정상 삭제되었습니다.");
-        refreshAllData();
-      } else {
-        alert("이력 삭제에 실패했습니다.");
+    showConfirm(
+      "🗑️ 심의 이력 삭제 확인",
+      `선택한 모의 심의 이력 #${id}을 영구 삭제하시겠습니까?\n이 작업은 복구할 수 없습니다.`,
+      async () => {
+        try {
+          const res = await apiFetch(`/api/v1/spatial/history/${id}`, { method: 'DELETE' });
+          if (res.ok) {
+            showToast("✓ 심의 이력이 정상 삭제되었습니다.", "success");
+            refreshAllData();
+          } else {
+            showToast("이력 삭제에 실패했습니다.", "error");
+          }
+        } catch (err) {
+          showToast(`삭제 중 오류 발생: ${err.message}`, "error");
+        }
       }
-    } catch (err) {
-      alert(`삭제 중 오류 발생: ${err.message}`);
-    }
+    );
   };
 
   // 실증 준공 사례 삭제 핸들러
   const handleDeletePrecedent = async (id, e) => {
     e.stopPropagation();
-    if (!window.confirm(`선택한 실증 준공 사례 #${id}을 RAG 지식베이스에서 영구 삭제하시겠습니까?`)) return;
-    try {
-      const res = await apiFetch(`/api/v1/spatial/precedents/${id}`, { method: 'DELETE' });
-      if (res.ok) {
-        alert("✓ 실증 준공 사례가 성공적으로 삭제되었습니다.");
-        refreshAllData();
-      } else {
-        alert("사례 삭제에 실패했습니다.");
+    showConfirm(
+      "🗑️ 실증 준공 사례 삭제 확인",
+      `선택한 실증 준공 사례 #${id}을 RAG 지식베이스에서 영구 삭제하시겠습니까?\n삭제 시 AI 자가학습 지식 데이터셋에서 제외됩니다.`,
+      async () => {
+        try {
+          const res = await apiFetch(`/api/v1/spatial/precedents/${id}`, { method: 'DELETE' });
+          if (res.ok) {
+            showToast("✓ 실증 준공 사례가 성공적으로 삭제되었습니다.", "success");
+            refreshAllData();
+          } else {
+            showToast("사례 삭제에 실패했습니다.", "error");
+          }
+        } catch (err) {
+          showToast(`삭제 중 오류 발생: ${err.message}`, "error");
+        }
       }
-    } catch (err) {
-      alert(`삭제 중 오류 발생: ${err.message}`);
-    }
+    );
   };
 
   // 과거 토론 로그 목업 조회
@@ -362,18 +482,38 @@ export default function Dashboard() {
   return (
     <div className="relative min-h-screen bg-slate-950 text-slate-100 font-sans pt-20">
       
-      {/* 1. 상단 글로벌 네비게이션 헤더 */}
-      <header className="absolute top-0 left-0 right-0 h-16 glass-panel rounded-none border-t-0 border-x-0 z-45 px-8 flex justify-between items-center">
+      {/* 1. 상단 글로벌 네비게이션 헤더 (spatial 헤더 통합 일치화) */}
+      <header className="fixed top-0 left-0 right-0 h-16 glass-panel rounded-none border-t-0 border-x-0 z-45 px-8 flex justify-between items-center bg-slate-950/90 backdrop-blur-md">
         <div className="flex items-center gap-3">
-          <span className="text-xl font-bold tracking-tight text-white">OmniSite</span>
-          <span className="text-[10px] bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded border border-blue-500/30">B2G SDSS v1.0</span>
+          <Link href="/spatial" className="text-xl font-bold tracking-tight text-white hover:text-blue-400 transition-all flex items-center gap-2">
+            OmniSite <span className="text-[10px] bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded border border-blue-500/30">B2G SDSS v1.4</span>
+          </Link>
         </div>
-        <nav className="flex items-center gap-8 text-xs font-semibold">
-          <Link href="/" className="text-slate-400 hover:text-white transition-all pb-1">입지분석 메인 (Map)</Link>
-          <Link href="/dashboard" className="text-white border-b-2 border-blue-500 pb-1">이력 대시보드 (Analytics)</Link>
+        <nav className="flex items-center gap-6 text-xs font-semibold">
+          <Link href="/spatial" className="text-slate-400 hover:text-white transition-all pb-1 flex items-center gap-1">
+            🏠 GIS 입지분석
+          </Link>
+          <Link href="/dashboard" className="text-blue-400 border-b-2 border-blue-500 pb-1 flex items-center gap-1 font-bold">
+            📊 의사결정 대시보드
+          </Link>
+          <button 
+            onClick={() => setShowPasswordChangeModal(true)} 
+            className="text-slate-400 hover:text-slate-200 transition-all cursor-pointer flex items-center gap-1"
+          >
+            🔑 암호 변경
+          </button>
+          <button 
+            onClick={() => setShowAdminConsoleModal(true)} 
+            className="text-slate-400 hover:text-slate-200 transition-all cursor-pointer flex items-center gap-1"
+          >
+            ⚙️ 관리자 콘솔
+          </button>
         </nav>
-        <div className="text-xs text-slate-400">
-          행정망 인증 토큰 활성화됨
+        {/* JWT 실시간 남은 세션 타이머 뱃지 [v1.4.2] */}
+        <div className="bg-slate-900/90 px-3 py-1.5 rounded-lg border border-slate-800 flex items-center gap-1.5">
+          <span className={`w-2 h-2 rounded-full ${isTokenValid ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`}></span>
+          <span className="text-[11px] text-slate-300">인증 세션:</span>
+          <span className="text-[11px] font-mono font-bold text-amber-400">⏱️ {tokenTimeLeft || '검증 중...'}</span>
         </div>
       </header>
 
@@ -776,6 +916,42 @@ export default function Dashboard() {
           <div className="w-10 h-10 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
           <p className="text-sm font-bold text-emerald-400 font-mono">🧠 pgvector RAG 벡터 지식베이스 임베딩 축적 및 자가학습 적재 연산 중...</p>
           <p className="text-xs text-slate-400">잠시만 기다려 주십시오. 실측 텍스트를 청킹 임베딩 처리하여 덤프 중입니다.</p>
+        </div>
+      )}
+
+      {/* 헤더 일치화 모달 바인딩 4종 */}
+      <PasswordChangeModal 
+        show={showPasswordChangeModal} 
+        onClose={() => setShowPasswordChangeModal(false)} 
+        apiFetch={apiFetch} 
+        showToast={showToast}
+        router={router}
+      />
+      <RagRegulationModal 
+        show={showRagModal} 
+        onClose={() => setShowRagModal(false)} 
+        apiFetch={apiFetch} 
+      />
+      <StepGuideModal 
+        show={showGuideModal} 
+        onClose={() => setShowGuideModal(false)} 
+      />
+      <AdminConsoleModal 
+        show={showAdminConsoleModal} 
+        onClose={() => setShowAdminConsoleModal(false)} 
+        apiFetch={apiFetch} 
+        showToast={showToast}
+        mlStatus={mlStatus}
+        setMlStatus={setMlStatus}
+      />
+
+      {/* 토스트 메시지 렌더러 */}
+      {toastMessage && (
+        <div className={`fixed bottom-6 right-6 z-[100] px-4 py-3 rounded-xl text-xs font-semibold text-white shadow-2xl backdrop-blur-md border animate-bounce ${
+          toastMessage.type === 'error' ? 'bg-rose-950/90 border-rose-500/50' : 
+          toastMessage.type === 'warning' ? 'bg-amber-950/90 border-amber-500/50' : 'bg-emerald-950/90 border-emerald-500/50'
+        }`}>
+          {toastMessage.msg}
         </div>
       )}
 

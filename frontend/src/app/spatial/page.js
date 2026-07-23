@@ -25,25 +25,86 @@ const apiFetch = (url, options = {}) => {
   return nativeFetch ? nativeFetch(url, { ...options, headers }) : Promise.reject(new Error('Fetch not available'));
 };
 
+const parseJwt = (token) => {
+  try {
+    const base64Url = token.split('.')[1];
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    const jsonPayload = decodeURIComponent(atob(base64).split('').map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join(''));
+    return JSON.parse(jsonPayload);
+  } catch (e) {
+    return null;
+  }
+};
+
 export default function Home() {
   const router = useRouter();
+  const [tokenTimeLeft, setTokenTimeLeft] = useState('');
+  const [isTokenValid, setIsTokenValid] = useState(true);
 
-  // 🔒 행정망 인증 세션 가드 (페이지 새로고침 대응: sessionStorage & localStorage 이중 복원)
+  // 🔒 JWT 토큰 실시간 유효성 검증 및 카운트다운 타이머 (새로고침 대응)
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      let token = sessionStorage.getItem('token');
-      if (!token) {
-        token = localStorage.getItem('token');
-        if (token) {
-          // 새로고침 시 localStorage의 토큰을 sessionStorage로 자동 동기화 복원
-          sessionStorage.setItem('token', token);
-        }
-      }
-      if (!token) {
-        alert("🔒 행정 인증 세션이 존재하지 않거나 만료되었습니다. 로그인 페이지로 이동합니다.");
-        router.push('/');
+    if (typeof window === 'undefined') return;
+
+    let token = sessionStorage.getItem('token');
+    if (!token) {
+      token = localStorage.getItem('token');
+      if (token) {
+        sessionStorage.setItem('token', token);
       }
     }
+
+    if (!token) {
+      setIsTokenValid(false);
+      alert("🔒 행정 인증 세션이 존재하지 않습니다. 로그인 페이지로 이동합니다.");
+      router.push('/');
+      return;
+    }
+
+    // 마운트 / 새로고침 시 백엔드 실시간 유효성 200 OK 판정 (/api/v1/auth/me)
+    apiFetch('/api/v1/auth/me')
+      .then(res => {
+        if (!res.ok) {
+          setIsTokenValid(false);
+          sessionStorage.clear();
+          localStorage.removeItem('token');
+          alert("🔒 행정 인증 세션이 만료되거나 무효화되었습니다. 다시 로그인해 주십시오.");
+          router.push('/');
+        } else {
+          setIsTokenValid(true);
+        }
+      })
+      .catch(() => {
+        setIsTokenValid(false);
+      });
+
+    // 1초 간격 실시간 토큰 남은 시간 카운트다운
+    const interval = setInterval(() => {
+      const currentToken = sessionStorage.getItem('token') || localStorage.getItem('token');
+      if (!currentToken) {
+        setTokenTimeLeft('만료됨');
+        return;
+      }
+      const payload = parseJwt(currentToken);
+      if (payload && payload.exp) {
+        const remainingSec = Math.floor(payload.exp - Date.now() / 1000);
+        if (remainingSec <= 0) {
+          setTokenTimeLeft('만료됨');
+          setIsTokenValid(false);
+          sessionStorage.clear();
+          localStorage.removeItem('token');
+          alert("🔒 로그인 세션 시간이 만료되었습니다. 다시 로그인해 주십시오.");
+          router.push('/');
+        } else {
+          const m = Math.floor(remainingSec / 60);
+          const s = remainingSec % 60;
+          setTokenTimeLeft(`${m}분 ${s < 10 ? '0' : ''}${s}초`);
+        }
+      } else {
+        setTokenTimeLeft('유효 세션');
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
   }, [router]);
 
   // 플랫폼 단계별 상태 제어 (Pipeline Wizard Steps)
@@ -892,6 +953,24 @@ export default function Home() {
           draggable: false
         }).addTo(map);
 
+        // [v1.4.0-Rev142] Top 5 필지 지적도 경계선 Polygon GeoJSON 오버레이 부착
+        if (parcel.geojson_geom) {
+          try {
+            const polyColor = isSelected ? '#3b82f6' : (isNational ? '#0ea5e9' : '#10b981');
+            const candPolyLayer = L.geoJSON(parcel.geojson_geom, {
+              style: {
+                color: polyColor,
+                fillColor: polyColor,
+                fillOpacity: isSelected ? 0.35 : 0.18,
+                weight: isSelected ? 2.5 : 1.5
+              }
+            }).addTo(map);
+            markersRef.current[`polygon_${key}`] = candPolyLayer;
+          } catch (polyErr) {
+            console.warn(`[GeoJSON Poly Render Warning] ${key}:`, polyErr);
+          }
+        }
+
         marker.on('click', () => {
           setActiveTab(key);
         });
@@ -1492,6 +1571,13 @@ export default function Home() {
           </button>
         </nav>
         <div className="flex items-center gap-3">
+          {/* JWT 실시간 남은 세션 타이머 뱃지 [v1.4.2] */}
+          <div className="bg-slate-900/90 px-3 py-1.5 rounded-lg border border-slate-800 flex items-center gap-1.5">
+            <span className={`w-2 h-2 rounded-full ${isTokenValid ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`}></span>
+            <span className="text-[11px] text-slate-300">인증 세션:</span>
+            <span className="text-[11px] font-mono font-bold text-amber-400">⏱️ {tokenTimeLeft || '검증 중...'}</span>
+          </div>
+
           <button 
             onClick={() => {
               setShowRegulationListModal(true);

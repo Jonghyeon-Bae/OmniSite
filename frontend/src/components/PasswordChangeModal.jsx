@@ -24,8 +24,12 @@ export default function PasswordChangeModal({
       return;
     }
 
-    if (newPassword.length < 4) {
-      showToast('새 비밀번호는 최소 4자 이상이어야 합니다.', 'warning');
+    const hasLetter = /[A-Za-z]/.test(newPassword);
+    const hasDigit = /\d/.test(newPassword);
+    const hasSpecial = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(newPassword);
+
+    if (newPassword.length < 8 || !hasLetter || !hasDigit || !hasSpecial) {
+      showToast('⚠️ 비밀번호는 영문, 숫자, 특수문자를 조합하여 8자리 이상이어야 합니다.', 'warning');
       return;
     }
 
@@ -77,7 +81,7 @@ export default function PasswordChangeModal({
         </button>
         <div>
           <h3 className="text-sm font-bold text-white mb-1">🔑 비밀번호 자가 변경</h3>
-          <p className="text-[10px] text-slate-400">보안 등급 유지를 위해 주기적으로 비밀번호를 변경해 주십시오.</p>
+          <p className="text-[10px] text-amber-400 font-medium">※ 영문, 숫자, 특수문자 조합 8자리 이상 필수</p>
         </div>
 
         <form onSubmit={handleSelfPasswordChangeSubmit} className="flex flex-col gap-3">
@@ -99,7 +103,7 @@ export default function PasswordChangeModal({
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
               className="bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-white outline-none"
-              placeholder="새 비밀번호 입력 (4자 이상)"
+              placeholder="새 비밀번호 입력 (영문/숫자/특수문자 8자 이상)"
             />
           </div>
 

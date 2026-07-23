@@ -76,11 +76,21 @@ export default function DebateSimulatorModal({
         body: JSON.stringify(payload)
       });
       if (!res.ok) throw new Error('PDF 다운로드 실패');
+      
+      let filename = `OmniSite_Report_${(payload.candidate_jibun || '용산구').replace(/ /g, '_')}.pdf`;
+      const cd = res.headers.get('Content-Disposition');
+      if (cd) {
+        const match = cd.match(/filename\*=UTF-8''(.+)$/i) || cd.match(/filename="?([^";]+)"?/i);
+        if (match && match[1]) {
+          filename = decodeURIComponent(match[1]);
+        }
+      }
+
       const blob = await res.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `OmniSite_Report_${payload.candidate_jibun.replace(/ /g, '_')}.pdf`;
+      a.download = filename;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -111,11 +121,21 @@ export default function DebateSimulatorModal({
         body: JSON.stringify(payload)
       });
       if (!res.ok) throw new Error('DOCX 다운로드 실패');
+      
+      let filename = `OmniSite_Report_${(payload.candidate_jibun || '용산구').replace(/ /g, '_')}.docx`;
+      const cd = res.headers.get('Content-Disposition');
+      if (cd) {
+        const match = cd.match(/filename\*=UTF-8''(.+)$/i) || cd.match(/filename="?([^";]+)"?/i);
+        if (match && match[1]) {
+          filename = decodeURIComponent(match[1]);
+        }
+      }
+
       const blob = await res.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `OmniSite_Report_${payload.candidate_jibun.replace(/ /g, '_')}.docx`;
+      a.download = filename;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);

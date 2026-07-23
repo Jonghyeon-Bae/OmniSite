@@ -108,8 +108,12 @@ export default function GatewayPage() {
       alert("보안 정책상 기본 비밀번호('admin1234')는 재사용할 수 없습니다.");
       return;
     }
-    if (newPassword.length < 4) {
-      alert("안전한 구동을 위해 4자리 이상의 비밀번호로 셋업하십시오.");
+    const hasLetter = /[A-Za-z]/.test(newPassword);
+    const hasDigit = /\d/.test(newPassword);
+    const hasSpecial = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(newPassword);
+
+    if (newPassword.length < 8 || !hasLetter || !hasDigit || !hasSpecial) {
+      alert("⚠️ 안전한 행정 구동을 위해 영문, 숫자, 특수문자 조합 8자리 이상의 비밀번호로 셋업하십시오.");
       return;
     }
 
@@ -232,7 +236,7 @@ export default function GatewayPage() {
                 <label className="text-[10px] text-slate-400 font-semibold">새 비밀번호 입력</label>
                 <input 
                   type="password"
-                  placeholder="새로운 비밀번호 (4자 이상)"
+                  placeholder="새로운 비밀번호 (영문/숫자/특수문자 8자 이상)"
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
                   className="bg-slate-950/60 border border-slate-800 focus:border-rose-500/80 rounded-lg p-2.5 text-xs text-white outline-none transition-all"

@@ -78,23 +78,44 @@ const STEP_GUIDE_DATA = {
     ]
   },
   5: {
-    title: 'Step 5. RAG 법규 준공 감리 & AI 3자 모의 토론 (Audit & Multi-Agent Debate)',
-    subtitle: '조례 자동 교차 검증 및 AI 페르소나 모의 공청회 시뮬레이션',
-    icon: '💬',
+    title: 'Step 5. RAG 법무 조례 교차 준공 감리 (Automated Policy Audit)',
+    subtitle: 'pgvector 조례 벡터 데이터베이스 RAG 교차 자동 감리 단계',
+    icon: '📄',
     badgeColor: 'bg-purple-500/20 border-purple-500/40 text-purple-400',
-    description: '선택된 후보지에 대하여 RAG 법령 검증과 AI 페르소나그룹 모의 토론이 순차적으로 집행됩니다.',
+    description: '선택된 최적 후보지에 대해 자치구 조례 PDF 텍스트와 필지 실측 공간 수치를 pgvector 코사인 유사도로 판독하여 적합/부적합/조건부 적합 판정을 즉시 도출합니다.',
     items: [
       {
         head: '📄 pgvector RAG 자동 감리',
         body: '업로드된 자치구 조례 PDF 텍스트와 필지 실측 공간 수치를 AI가 판독하여 [적합/부적합/조건부 적합] 판정 도출'
       },
       {
-        head: '💬 3자 AI 모의 공청회 토론',
-        body: '상인 대표, 주민 대표, 갈등조정관 3인의 AI가 대화를 주고받으며 민원 갈등을 사전에 예측하고 현실적 상생 중재안 도출'
+        head: '🛡️ 판례 및 과거 심의 이력 RAG 연동',
+        body: '지자체 과거 행정 심의 의결례 및 판례 텍스트와 매칭하여 적법성 지수를 95% 이상으로 확증'
       },
       {
         head: '💾 ML 자가학습 편입',
         body: '[자가학습 적재] 버튼 클릭 시 준공 성공 데이터가 ML 모델로 적재되어 AI 갈등 예측 정밀도가 자동으로 향상됨'
+      }
+    ]
+  },
+  6: {
+    title: 'Step 6. AI 3자 멀티에이전트 모의 심의 & 워드/PDF 공문서 발급',
+    subtitle: '3자 페르소나 모의 공청회 토론 및 편집 가능 워드(.docx)/PDF 보고서 즉시 생성',
+    icon: '🏛️',
+    badgeColor: 'bg-rose-500/20 border-rose-500/40 text-rose-400',
+    description: '상인대표, 주민대표, 갈등조정관 3인의 AI 페르소나가 대화를 주고받으며 민원 갈등을 사전에 조정하고, 최종 결과물을 워드(.docx) 및 PDF 공식 공문서로 즉시 발급합니다.',
+    items: [
+      {
+        head: '💬 3자 AI 멀티에이전트 모의 공청회',
+        body: '주민, 상인, 위원 간 직관적 대화를 주고받으며 사전 갈등 민감도를 시뮬레이션하고 현실적 상생 중재안 도출'
+      },
+      {
+        head: '📄 워드(.docx) 편집 가능 공문서 보고서 즉시 발급',
+        body: '행정 실무자가 직접 텍스트와 표를 수정할 수 있는 정갈한 양식의 `.docx` 워드 보고서 파일 발급'
+      },
+      {
+        head: '📝 WeasyPrint PDF 공식 심의 결재 보고서 발급',
+        body: '소관 자치구청장 명의 직인생략 공인 서식의 PDF 심의 결과 보고서 생성 및 다운로드'
       }
     ]
   }
@@ -123,7 +144,7 @@ export default function StepGuideModal({ show, onClose, initialStep = 1 }) {
           ✕
         </button>
 
-        {/* 모달 상단 탭 바 (Step 1 ~ Step 5 통합 탐색) */}
+        {/* 모달 상단 탭 바 (Step 1 ~ Step 6 통합 탐색) */}
         <div className="flex items-center justify-between border-b border-slate-800 pb-3">
           <div className="flex items-center gap-2">
             <span className="text-base font-bold text-amber-400">💡 공간 의사결정 파이프라인 실무 가이드</span>
@@ -132,7 +153,7 @@ export default function StepGuideModal({ show, onClose, initialStep = 1 }) {
         </div>
 
         <div className="flex bg-slate-950 p-1 rounded-xl border border-slate-800">
-          {[1, 2, 3, 4, 5].map(stepNum => (
+          {[1, 2, 3, 4, 5, 6].map(stepNum => (
             <button
               key={stepNum}
               onClick={() => setActiveTab(stepNum)}

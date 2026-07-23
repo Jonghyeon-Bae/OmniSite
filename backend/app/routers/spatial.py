@@ -32,8 +32,27 @@ try:
     from docx.shared import Pt, RGBColor, Inches
     from docx.enum.text import WD_ALIGN_PARAGRAPH
     from docx.enum.table import WD_TABLE_ALIGNMENT
+    from docx.oxml import parse_xml
+    from docx.oxml.ns import nsdecls
 except ImportError:
     docx = None
+
+def set_docx_font(run, font_name="맑은 고딕", size_pt=None, bold=None, color_rgb=None):
+    if run is None:
+        return
+    run.font.name = font_name
+    if size_pt is not None:
+        run.font.size = Pt(size_pt)
+    if bold is not None:
+        run.font.bold = bold
+    if color_rgb is not None:
+        run.font.color.rgb = color_rgb
+    try:
+        rPr = run._r.get_or_add_rPr()
+        rFonts = parse_xml(f'<w:rFonts {nsdecls("w")} w:ascii="{font_name}" w:hAnsi="{font_name}" w:eastAsia="{font_name}" w:cs="{font_name}"/>')
+        rPr.append(rFonts)
+    except Exception:
+        pass
 
 # App & Local Services & Imports
 from app.database import get_db
@@ -1027,6 +1046,21 @@ async def recommend_optimal_sites(
             # XAI 추천 사유 빌드
             reason_text = generate_recommendation_reason(cand, facility_type)
             
+            # [v1.4.0-Rev142] 상위 Top 5 필지 지적도 경계선 핀포인트 GeoJSON 인출
+            geojson_data = None
+            try:
+                cad_q = text("""
+                    SELECT ST_AsGeoJSON(ST_Transform(geom, 4326))
+                    FROM cadastral_lands
+                    WHERE id = :cid OR pnu = :cpnu
+                    LIMIT 1
+                """)
+                cad_res = db.execute(cad_q, {"cid": cand["id"], "cpnu": cand["pnu"]}).scalar()
+                if cad_res:
+                    geojson_data = json.loads(cad_res)
+            except Exception as cad_err:
+                print(f"[GeoJSON Fetch Warning] {cad_err}")
+
             results[rank] = {
                 "id": cand["id"],
                 "pnu": cand["pnu"],
@@ -1037,6 +1071,7 @@ async def recommend_optimal_sites(
                 "cssGrade": css_grade,
                 "lat": cand["lat"],
                 "lng": cand["lng"],
+                "geojson_geom": geojson_data,
                 "simulated": True if rank == "top1" else False,
                 "is_fallback": bool(cand.get("is_fallback_warning", False)),
                 "criteria_scores": cand["scores"],
@@ -2046,11 +2081,16 @@ async def download_report_pdf(req: ReportDownloadRequest, db: Session = Depends(
         doc.build(story)
         buffer.seek(0)
         
+        import urllib.parse
+        pdf_jibun_clean = (req.candidate_jibun or '용산구').replace(' ', '_')
+        pdf_utf8_filename = urllib.parse.quote(f"OmniSite_모의심의보고서_{pdf_jibun_clean}.pdf")
+        
         return StreamingResponse(
             buffer,
             media_type="application/pdf",
             headers={
-                "Content-Disposition": "attachment; filename=OmniSite_Gov_Report.pdf"
+                "Content-Disposition": f"attachment; filename=\"OmniSite_Gov_Report.pdf\"; filename*=UTF-8''{pdf_utf8_filename}",
+                "Access-Control-Expose-Headers": "Content-Disposition"
             }
         )
     except Exception as e:
@@ -2084,26 +2124,20 @@ async def download_report_docx(req: ReportDownloadRequest, db: Session = Depends
         p_title = doc.add_paragraph()
         p_title.alignment = WD_ALIGN_PARAGRAPH.CENTER
         run_title = p_title.add_run(f"[{district_name}] 스마트시티 SDSS 입지 적합성 및 모의 심의 보고서")
-        run_title.font.name = "맑은 고딕"
-        run_title.font.size = Pt(16)
-        run_title.font.bold = True
-        run_title.font.color.rgb = RGBColor(15, 23, 42)
+        set_docx_font(run_title, font_name="맑은 고딕", size_pt=16, bold=True, color_rgb=RGBColor(15, 23, 42))
 
         # 부제목 / 발급 정보
         p_sub = doc.add_paragraph()
         p_sub.alignment = WD_ALIGN_PARAGRAPH.CENTER
         run_sub = p_sub.add_run(f"문서번호: OMNISITE-REPORT-{datetime.datetime.now().strftime('%Y%m%d%H%M')} | 소관지자체: {district_name} 스마트도시과")
-        run_sub.font.name = "맑은 고딕"
-        run_sub.font.size = Pt(9)
-        run_sub.font.color.rgb = RGBColor(100, 116, 139)
+        set_docx_font(run_sub, font_name="맑은 고딕", size_pt=9, color_rgb=RGBColor(100, 116, 139))
         
         doc.add_paragraph() # Spacer
 
         # 2. Section 1: 추천 후보 부지 정보
         h1 = doc.add_heading("1. 입지 선정 후보 부지 명세", level=1)
         for r in h1.runs:
-            r.font.name = "맑은 고딕"
-            r.font.color.rgb = RGBColor(30, 41, 59)
+            set_docx_font(r, font_name="맑은 고딕", color_rgb=RGBColor(30, 41, 59))
 
         table_info = doc.add_table(rows=5, cols=2)
         table_info.alignment = WD_TABLE_ALIGNMENT.CENTER
@@ -2127,19 +2161,15 @@ async def download_report_docx(req: ReportDownloadRequest, db: Session = Depends
             row_cells = table_info.rows[idx].cells
             row_cells[0].text = k
             row_cells[1].text = v
-            row_cells[0].paragraphs[0].runs[0].font.bold = True
-            row_cells[0].paragraphs[0].runs[0].font.name = "맑은 고딕"
-            row_cells[0].paragraphs[0].runs[0].font.size = Pt(10)
-            row_cells[1].paragraphs[0].runs[0].font.name = "맑은 고딕"
-            row_cells[1].paragraphs[0].runs[0].font.size = Pt(10)
+            set_docx_font(row_cells[0].paragraphs[0].runs[0], font_name="맑은 고딕", size_pt=10, bold=True)
+            set_docx_font(row_cells[1].paragraphs[0].runs[0], font_name="맑은 고딕", size_pt=10)
 
         doc.add_paragraph() # Spacer
 
         # 3. Section 2: AHP 공간 의사결정 가중치 명세
         h2 = doc.add_heading("2. AHP 공간 의사결정 평가 가중치 (C.R. ≤ 0.1 검증 완료)", level=1)
         for r in h2.runs:
-            r.font.name = "맑은 고딕"
-            r.font.color.rgb = RGBColor(30, 41, 59)
+            set_docx_font(r, font_name="맑은 고딕", color_rgb=RGBColor(30, 41, 59))
 
         ahp_dict = req.ahp_weights or {}
         if ahp_dict:
@@ -2150,8 +2180,8 @@ async def download_report_docx(req: ReportDownloadRequest, db: Session = Depends
             hdr_cells = table_ahp.rows[0].cells
             hdr_cells[0].text = "평가 항목 (Criteria)"
             hdr_cells[1].text = "산출 가중치 (Weight)"
-            hdr_cells[0].paragraphs[0].runs[0].font.bold = True
-            hdr_cells[1].paragraphs[0].runs[0].font.bold = True
+            set_docx_font(hdr_cells[0].paragraphs[0].runs[0], font_name="맑은 고딕", size_pt=10, bold=True)
+            set_docx_font(hdr_cells[1].paragraphs[0].runs[0], font_name="맑은 고딕", size_pt=10, bold=True)
             
             for row_idx, (k, val) in enumerate(ahp_dict.items(), start=1):
                 r_cells = table_ahp.rows[row_idx].cells
@@ -2161,19 +2191,18 @@ async def download_report_docx(req: ReportDownloadRequest, db: Session = Depends
                     r_cells[1].text = f"{w_num:.4f} ({w_num*100:.1f}%)"
                 except Exception:
                     r_cells[1].text = str(val)
-                r_cells[0].paragraphs[0].runs[0].font.name = "맑은 고딕"
-                r_cells[1].paragraphs[0].runs[0].font.name = "맑은 고딕"
+                set_docx_font(r_cells[0].paragraphs[0].runs[0], font_name="맑은 고딕", size_pt=10)
+                set_docx_font(r_cells[1].paragraphs[0].runs[0], font_name="맑은 고딕", size_pt=10)
         else:
             p_no_ahp = doc.add_paragraph("※ 기본 규정 AHP 동적 가중치 모델이 적용되었습니다.")
-            p_no_ahp.runs[0].font.name = "맑은 고딕"
+            set_docx_font(p_no_ahp.runs[0], font_name="맑은 고딕")
 
         doc.add_paragraph() # Spacer
 
         # 4. Section 3: 3자 페르소나 모의 심의 토론 전문
         h3 = doc.add_heading("3. AI 3자 멀티에이전트 모의 심의 토론 기록", level=1)
         for r in h3.runs:
-            r.font.name = "맑은 고딕"
-            r.font.color.rgb = RGBColor(30, 41, 59)
+            set_docx_font(r, font_name="맑은 고딕", color_rgb=RGBColor(30, 41, 59))
 
         if req.debate_logs:
             for log_item in req.debate_logs:
@@ -2188,16 +2217,14 @@ async def download_report_docx(req: ReportDownloadRequest, db: Session = Depends
                 p_log = doc.add_paragraph()
                 p_log.paragraph_format.space_after = Pt(4)
                 r_s = p_log.add_run(f"[{sender}] ")
-                r_s.font.name = "맑은 고딕"
-                r_s.font.bold = True
-                r_s.font.color.rgb = RGBColor(2, 132, 199) if "의장" in sender or "위원" in sender else (RGBColor(225, 29, 72) if "주민" in sender else RGBColor(16, 185, 129))
+                s_color = RGBColor(2, 132, 199) if "의장" in sender or "위원" in sender else (RGBColor(225, 29, 72) if "주민" in sender else RGBColor(16, 185, 129))
+                set_docx_font(r_s, font_name="맑은 고딕", bold=True, color_rgb=s_color)
                 
                 r_t = p_log.add_run(str(text_content))
-                r_t.font.name = "맑은 고딕"
-                r_t.font.size = Pt(9.5)
+                set_docx_font(r_t, font_name="맑은 고딕", size_pt=9.5)
         else:
             p_no_log = doc.add_paragraph("※ 모의 심의 토론 로그가 제공되지 않았습니다.")
-            p_no_log.runs[0].font.name = "맑은 고딕"
+            set_docx_font(p_no_log.runs[0], font_name="맑은 고딕")
 
         doc.add_paragraph() # Spacer
 
@@ -2205,18 +2232,18 @@ async def download_report_docx(req: ReportDownloadRequest, db: Session = Depends
         p_foot = doc.add_paragraph()
         p_foot.alignment = WD_ALIGN_PARAGRAPH.CENTER
         r_foot = p_foot.add_run("본 보고서는 스마트시티 SDSS 옴니사이트(OmniSite)에 의해 생성된 공식 행정 심의 의결 문서입니다.")
-        r_foot.font.name = "맑은 고딕"
-        r_foot.font.size = Pt(8.5)
-        r_foot.font.color.rgb = RGBColor(148, 163, 184)
+        set_docx_font(r_foot, font_name="맑은 고딕", size_pt=8.5, color_rgb=RGBColor(148, 163, 184))
 
         # BytesIO 스트리밍 반환
         buffer = io.BytesIO()
-        doc.save(buffer)
-        buffer.seek(0)
+        import urllib.parse
+        ascii_filename = f"OmniSite_Report_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.docx"
+        jibun_clean = (req.candidate_jibun or '용산구').replace(' ', '_')
+        utf8_filename = urllib.parse.quote(f"OmniSite_모의심의보고서_{jibun_clean}.docx")
         
-        filename = f"OmniSite_Report_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.docx"
         headers = {
-            'Content-Disposition': f'attachment; filename="{filename}"'
+            'Content-Disposition': f'attachment; filename="{ascii_filename}"; filename*=UTF-8\'\'{utf8_filename}',
+            'Access-Control-Expose-Headers': 'Content-Disposition'
         }
         return StreamingResponse(
             buffer,

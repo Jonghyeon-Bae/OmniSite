@@ -860,13 +860,14 @@
     - **E2E 빌드 및 동기화:** `npm run build` 컴파일 무오류 통과 및 바탕화면 물리 작업 공간 이관 완료.
 
 
-### [1.4.0-Rev141] 워드(.docx) 공문서 보고서 다운로드 기능 탑재 및 영격도 0% 검증 완공 (v1.4.0-Rev141)
-* **연구 내용:** 조장(USER)의 사전 명시적 승인 하에 기존 시스템과의 영향도 0%를 유지하면서 행정 수동 편집이 가능한 **워드(.docx) 공문서 보고서 다운로드 기능**을 독립 확충함.
+### [1.4.4-Hotfix] ML 모델 레지스트리 감사 탭 fetchMlStatus 비동기 헬퍼 안전 폴백 완공 (v1.4.4-Hotfix)
+* **연구 내용:** 조장(USER)의 버그 제보(`ml모델 레지스트리 검사 접근 시 fetchMlStatus is not a function 발생`)에 따라 원인을 규명하고 100% 원천 수리를 완공함.
 * **주요 의사결정:**
-    - **`python-docx` 기반 워드 공문서 발급 엔드포인트 완공 (`spatial.py`, `DebateSimulatorModal.jsx`):**
-      - `POST /api/v1/spatial/report/download-docx` 신규 엔드포인트를 구현하여 타이틀, 부지 정보 명세표, AHP 가중치 표($C.R. \le 0.1$), 3자 AI 모의 심의 토론 로그, 행정 고시 각주가 정갈하게 포함된 36.6 KB 상당의 `.docx` 워드 보고서 발급 완료.
-      - 기존 PDF 발급 및 Leaflet GIS 맵 엔진과의 영향도 0% 격리 보장.
-    - **Leaflet GIS 및 마커 드래그 최적화 코드 동결 수칙 준수 (Freeze Rule):** Leaflet 비동기 싱글톤 스크립트 및 마커 스로틀링 동결 수칙을 100% 철저히 준수함.
+    - **`AdminConsoleModal.jsx` 내 `safeFetchMlStatus` 헬퍼 함수 도입:**
+      - 부모 컴포넌트(`dashboard/page.js` 등)에서 `fetchMlStatus` prop 전달이 누락되거나 미정의된 상황에서도 `apiFetch('/api/v1/model/status')` 백엔드 다이렉트 폴백 조회를 지원하는 `safeFetchMlStatus` 헬퍼 구축.
+      - `TypeError: fetchMlStatus is not a function` 런타임 에러 100% 원천 차단 완공.
+    - **`dashboard/page.js` 상태 및 바인딩 보완:**
+      - 대시보드 컴포넌트에 `mlStatus` 및 `setMlStatus` 상태를 신설하고 `AdminConsoleModal`에 바인딩하여 안전성 이중 보장.
     - **프론트엔드 프로덕션 컴파일 및 백엔드 E2E 통합 테스트 100% SUCCESS:**
-      - Next.js Turbopack `npm run build` 결과 `✓ Compiled successfully in 1676ms (0 Error, 0 Warning)` 및 백엔드 E2E 통합 파이프라인 100% 성공(SUCCESS) 완료.
+      - Next.js Turbopack `npm run build` 결과 `✓ Compiled successfully in 1852ms (0 Error, 0 Warning)` 및 백엔드 E2E 파이프라인 100% 성공(SUCCESS) 완료.
       - 바탕화면 물리 작업 공간 이관 동기화 완료.

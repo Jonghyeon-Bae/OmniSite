@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import text
 from datetime import timedelta
 
+import re
 from app.database import get_db
 from app.utils.auth import (
     verify_password,
@@ -12,6 +13,22 @@ from app.utils.auth import (
     get_current_user,
     get_current_admin
 )
+
+def validate_password_strength(password: str) -> None:
+    if not password or len(password) < 8:
+        raise HTTPException(
+            status_code=400,
+            detail="비밀번호는 최소 8자리 이상이어야 합니다."
+        )
+    has_letter = bool(re.search(r"[A-Za-z]", password))
+    has_digit = bool(re.search(r"\d", password))
+    has_special = bool(re.search(r"[!@#$%^&*()_+\-=\[\]{};':\"\\|,.<>/?]", password))
+    
+    if not (has_letter and has_digit and has_special):
+        raise HTTPException(
+            status_code=400,
+            detail="비밀번호는 영문, 숫자, 특수문자를 모두 포함하여 8자리 이상이어야 합니다."
+        )
 
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 
@@ -71,6 +88,9 @@ async def login(req: UserLoginRequest, db: Session = Depends(get_db)):
 # --- 3. 회원가입 API (관리자 가드 걸어둠: 어드민만 신규 가입 등록 가능) ---
 @router.post("/register")
 async def register(req: UserRegisterRequest, db: Session = Depends(get_db), current_admin: dict = Depends(get_current_admin)):
+    # 신규 비밀번호 규칙(영문+숫자+특수문자 8자 이상) 검증
+    validate_password_strength(req.password)
+
     # 기존 유저네임 중복 조사
     check_query = text("SELECT COUNT(*) FROM users WHERE username = :username")
     exists = db.execute(check_query, {"username": req.username}).scalar()
@@ -129,6 +149,7 @@ class PasswordChangeRequest(BaseModel):
 
 @router.post("/change-password")
 async def change_password(req: PasswordChangeRequest, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
+    validate_password_strength(req.new_password)
     query = text("SELECT password_hash FROM users WHERE username = :username")
     row = db.execute(query, {"username": current_user["username"]}).fetchone()
     if not row:
@@ -195,6 +216,7 @@ class PasswordResetRequest(BaseModel):
 
 @router.post("/users/{user_id}/reset-password")
 async def reset_user_password(user_id: int, req: PasswordResetRequest, db: Session = Depends(get_db), current_admin: dict = Depends(get_current_admin)):
+    validate_password_strength(req.new_password)
     check_query = text("SELECT username FROM users WHERE id = :id")
     user = db.execute(check_query, {"id": user_id}).fetchone()
     if not user:

@@ -61,6 +61,92 @@ from app.services.llm_audit_service import analyze_audit_document_via_llm
 
 router = APIRouter(prefix="/api/v1", tags=["spatial"])
 
+from datetime import datetime, timezone, timedelta
+
+def get_kst_now():
+    """한국 표준시 (KST: UTC+9) 현재 시각 구하기"""
+    return datetime.now(timezone(timedelta(hours=9)))
+
+# === [AUDIT LOG HELPER & ENDPOINT] ===
+def save_pipeline_log(db, step_number: str, action_type: str, detail_dict: dict, session_id: str = 'SESSION_ADMIN'):
+    try:
+        try:
+            db.rollback()
+        except Exception:
+            pass
+        db.execute(text("""
+            CREATE TABLE IF NOT EXISTS pipeline_execution_logs (
+                id SERIAL PRIMARY KEY,
+                session_id VARCHAR(100) DEFAULT 'SESSION_DEFAULT',
+                step_number VARCHAR(20) NOT NULL,
+                action_type VARCHAR(50) NOT NULL,
+                detail_json JSONB,
+                created_at TIMESTAMP DEFAULT (CURRENT_TIMESTAMP AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Seoul')
+            );
+        """))
+        db.commit()
+
+        kst_now_str = get_kst_now().strftime('%Y-%m-%d %H:%M:%S')
+        db.execute(text("""
+            INSERT INTO pipeline_execution_logs (session_id, step_number, action_type, detail_json, created_at)
+            VALUES (:session_id, :step_number, :action_type, :detail_json, :created_at)
+        """), {
+            "session_id": session_id,
+            "step_number": step_number,
+            "action_type": action_type,
+            "detail_json": json.dumps(detail_dict, ensure_ascii=False),
+            "created_at": kst_now_str
+        })
+        db.commit()
+    except Exception as e:
+        try:
+            db.rollback()
+        except Exception:
+            pass
+        print(f"[Audit Log Error] Failed to save execution log: {e}")
+
+@router.get("/spatial/logs")
+def get_pipeline_execution_logs(limit: int = 50, db: Session = Depends(get_db)):
+    try:
+        db.execute(text("""
+            CREATE TABLE IF NOT EXISTS pipeline_execution_logs (
+                id SERIAL PRIMARY KEY,
+                session_id VARCHAR(100) DEFAULT 'SESSION_DEFAULT',
+                step_number VARCHAR(20) NOT NULL,
+                action_type VARCHAR(50) NOT NULL,
+                detail_json JSONB,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        """))
+        db.commit()
+
+        rows = db.execute(text("""
+            SELECT id, session_id, step_number, action_type, detail_json, created_at
+            FROM pipeline_execution_logs
+            ORDER BY id DESC
+            LIMIT :limit
+        """), {"limit": limit}).fetchall()
+
+        logs = []
+        for r in rows:
+            detail = r[4]
+            if isinstance(detail, str):
+                try:
+                    detail = json.loads(detail)
+                except Exception:
+                    pass
+            logs.append({
+                "id": r[0],
+                "session_id": r[1],
+                "step_number": r[2],
+                "action_type": r[3],
+                "detail_json": detail,
+                "created_at": r[5].isoformat() if r[5] else None
+            })
+        return {"status": "success", "count": len(logs), "logs": logs}
+    except Exception as e:
+        return {"status": "error", "message": str(e), "logs": []}
+
 
 # === [PHASE 1: DYNAMIC ML MODEL REGISTRY LOAD] ===
 class ModelRegistry:
@@ -1096,6 +1182,21 @@ async def recommend_optimal_sites(
                 "shops_summary": cand.get("shops_summary", "")
             }
 
+        # [Step 4 Audit Log Save]
+        try:
+            top1 = results.get("top1", {})
+            save_pipeline_log(db, 'STEP_4', '[ISI_RECOMMEND]', {
+                'facility_type': facility_type,
+                'candidates_count': len(results),
+                'top1_pnu': top1.get('pnu', ''),
+                'top1_jibun': top1.get('jibun', ''),
+                'top1_isi_score': top1.get('isi_score', 0.0),
+                'top1_ahp_score': top1.get('ahp_score', 0.0),
+                'top1_css_penalty_pct': top1.get('css_penalty_pct', 0.0)
+            })
+        except Exception as log_err:
+            print(f"[Step 4 Log Save Error] {log_err}")
+
         return {
             "facility_type": facility_type,
             "weights_used": criteria_weights,
@@ -1174,6 +1275,18 @@ async def check_boundary_containment(req: BoundaryCheckRequest, db: Session = De
         res = db.execute(query, {"district_id": req.district_id, "lng": req.lng, "lat": req.lat}).scalar()
         contained = bool(res) if res is not None else (126.9450 <= req.lng <= 127.0155 and 37.5150 <= req.lat <= 37.5650)
         
+        # [Step 2 Audit Log Save]
+        try:
+            save_pipeline_log(db, 'STEP_2', '[HITL_ALIGN]', {
+                'lat': req.lat,
+                'lng': req.lng,
+                'district_id': req.district_id,
+                'contained': contained,
+                'user_exclusion_violated': user_excl_violated
+            })
+        except Exception as log_err:
+            print(f"[Step 2 Log Save Error] {log_err}")
+
         return {
             "contained": contained,
             "user_exclusion_violated": user_excl_violated,
@@ -1641,7 +1754,7 @@ async def stream_debate_sim(req: DebateRequest, db: Session = Depends(get_db)):
         "당신은 스마트시티 입지 선정 주민 공청회 및 심의회에서 [찬성 측 (상인대표)] 역할을 맡은 실제 상권 대표입니다.\n\n"
         "## 대화 톤앤매너 수칙\n"
         "1. 절대로 보고서 읽는 로봇이나 딱딱한 템플릿 문체를 쓰지 마십시오. 실제로 현장에서 생업에 종사하는 상인이 사람 대 사람으로 호소하고 설득하는 자연스러운 구어체 말투를 사용하십시오.\n"
-        "2. 주민 대표가 지적하는 생활 민원이나 오염 우려를 무작정 무시하지 말고, '주민분들 걱정하시는 마음 충분히 이해합니다. 하지만...'처럼 사람다운 공감 표현을 섞어 대화를 이어가십시오.\n"
+        "2. 주민 대표가 지적하는 생활 민원이나 오염 우려를 무작정 무시하지 말고, '반대 측 주민분들께서 걱정하시는 마음 충분히 이해합니다'처럼 자연스러운 구어체를 쓰되, 절대로 '[반대측]' 또는 '[찬성측]' 같은 대명사 브라켓 기호 태그 문자를 대사 중에 직접 쓰지 마십시오. (대신 '반대 측 주민분들'이나 '상인분들'로 표현하십시오)\n"
         "3. 대사 앞에 마크다운 기호 `**`나 딱딱한 접두어를 절대 붙이지 마십시오.\n\n"
         f"{base_context}"
     )
@@ -1650,7 +1763,7 @@ async def stream_debate_sim(req: DebateRequest, db: Session = Depends(get_db)):
         "당신은 스마트시티 입지 선정 주민 공청회 및 심의회에서 [반대 측 (주민대표)] 역할을 맡은 실제 마을 거주자입니다.\n\n"
         "## 대화 톤앤매너 수칙\n"
         "1. 절대로 기계적이고 형식적인 문장을 뱉지 마십시오. 실제 골목 주거 정주 환경과 아이들 보행 안전을 우려하는 아파트/주택 주민의 생생하고 날 선 인간적 목소리로 대화하십시오.\n"
-        "2. 상인 측의 영업 입장도 이해는 하지만, 쓰레기나 악취, 안전사고 우려가 해소되지 않는 한 선뜻 찬성할 수 없는 거주자의 진솔하고 구체적인 걱정을 사람 말투로 나누십시오.\n"
+        "2. 상인 측의 영업 입장도 이해는 하지만, 쓰레기나 악취, 안전사고 우려가 해소되지 않는 한 선뜻 찬성할 수 없는 거주자의 진솔하고 구체적인 걱정을 표현하십시오. 절대로 대사 문장 중간에 '[반대측]'이나 '[찬성측]' 같은 대명사 브라켓 기호 태그 문자를 쓰지 마십시오. (대신 '상인분들' 또는 '주민들'로 표현하십시오)\n"
         "3. 대사 앞에 마크다운 기호 `**`나 딱딱한 접두어를 절대 붙이지 마십시오.\n\n"
         f"{base_context}"
     )
@@ -1659,7 +1772,7 @@ async def stream_debate_sim(req: DebateRequest, db: Session = Depends(get_db)):
         "당신은 스마트시티 입지 선정 현장에서 주민과 상인을 중재하는 [정부 측 (갈등조정관)] 행정관입니다.\n\n"
         "## 대화 톤앤매너 수칙\n"
         "1. 훈계조나 서면 매뉴얼 말투가 아닌, 과열된 공청회 현장의 감정을 부드럽게 다독이고 상생할 수 있는 현실적 중재안(이격거리 후퇴, 주민 상시 점검권 공식 위임)을 신뢰감 있게 건네는 인간적인 지자체 주무관의 말투를 쓰십시오.\n"
-        "2. 절대로 대사 중간에 '[모의 심의 완료]'나 '[시스템]' 같은 시스템 태그 문구를 직접 출력하지 마십시오. 대화 내용은 순수 자연스러운 인간 구어체만 뱉으십시오.\n"
+        "2. 절대로 대사 중간에 '[모의 심의 완료]'나 '[시스템]', '[반대측]', '[찬성측]' 같은 시스템/대명사 브라켓 태그 문구를 직접 출력하지 마십시오. 대화 내용은 순수 자연스러운 인간 구어체만 뱉으십시오.\n"
         "3. 대사 앞에 마크다운 기호 `**`나 딱딱한 접두어를 절대 붙이지 마십시오.\n\n"
         f"{base_context}"
     )
@@ -1732,6 +1845,14 @@ async def stream_debate_sim(req: DebateRequest, db: Session = Depends(get_db)):
 
                 try:
                     save_debate_log_to_file(req, full_text)
+                    # [Step 5 Audit Log Save]
+                    save_pipeline_log(db, 'STEP_5', '[DEBATE_COMPLETE]', {
+                        'target_jibun': getattr(req, 'candidate_jibun', ''),
+                        'facility_type': getattr(req, 'facility_type', ''),
+                        'intensity_level': getattr(req, 'intensity_level', ''),
+                        'status': '토론 완료',
+                        'audit_state': '실증 성공'
+                    })
                 except Exception as fs_err:
                     print(f"[File Log Save Error] {fs_err}")
 
@@ -2133,6 +2254,17 @@ async def download_report_pdf(req: ReportDownloadRequest, db: Session = Depends(
         pdf_jibun_clean = (req.candidate_jibun or '용산구').replace(' ', '_')
         pdf_utf8_filename = urllib.parse.quote(f"OmniSite_모의심의보고서_{pdf_jibun_clean}.pdf")
         
+        # [Step 5 Audit Log Save]
+        try:
+            save_pipeline_log(db, 'STEP_5', '[REPORT_DOWNLOAD]', {
+                'target_jibun': req.candidate_jibun,
+                'target_pnu': req.candidate_pnu,
+                'facility_type': req.facility_type,
+                'format': 'PDF'
+            })
+        except Exception as log_err:
+            print(f"[Step 5 Report Log Save Error] {log_err}")
+
         return StreamingResponse(
             buffer,
             media_type="application/pdf",
@@ -2287,19 +2419,34 @@ async def download_report_docx(req: ReportDownloadRequest, db: Session = Depends
 
         # BytesIO 스트리밍 반환
         buffer = io.BytesIO()
+        doc.save(buffer)
+        buffer.seek(0)
+
         import urllib.parse
         ascii_filename = f"OmniSite_Report_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.docx"
         jibun_clean = (req.candidate_jibun or '용산구').replace(' ', '_')
         utf8_filename = urllib.parse.quote(f"OmniSite_모의심의보고서_{jibun_clean}.docx")
         
-        headers = {
+        headers_dict = {
             'Content-Disposition': f'attachment; filename="{ascii_filename}"; filename*=UTF-8\'\'{utf8_filename}',
             'Access-Control-Expose-Headers': 'Content-Disposition'
         }
+
+        # [Audit Log Save]
+        try:
+            save_pipeline_log(db, 'STEP_5', '[REPORT_DOWNLOAD_DOCX]', {
+                'target_jibun': req.candidate_jibun,
+                'target_pnu': req.candidate_pnu,
+                'facility_type': req.facility_type,
+                'format': 'DOCX'
+            })
+        except Exception as log_err:
+            print(f"[DOCX Download Audit Log Error] {log_err}")
+
         return StreamingResponse(
             buffer,
             media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-            headers=headers
+            headers=headers_dict
         )
     except Exception as e:
         print(f"[download_report_docx Error] {e}")
@@ -2331,6 +2478,16 @@ async def create_user_exclusion(req: UserExclusionCreateRequest, db: Session = D
         db.execute(insert_query, {"zone_name": req.zone_name, "wkt": wkt, "memo": req.memo})
         db.commit()
         
+        # [Audit Log Save]
+        try:
+            save_pipeline_log(db, 'STEP_2', '[EXCLUSION_CREATE]', {
+                'zone_name': req.zone_name,
+                'memo': req.memo,
+                'points_count': len(coords)
+            })
+        except Exception as log_err:
+            print(f"[Exclusion Create Audit Log Error] {log_err}")
+
         return {"status": "success", "message": f"성공적으로 '{req.zone_name}' 사용자 금지구역이 적재 및 고정되었습니다."}
     except Exception as e:
         db.rollback()
@@ -2378,6 +2535,15 @@ async def delete_user_exclusion(zone_id: int, db: Session = Depends(get_db)):
         db.commit()
         if result.rowcount == 0:
             raise HTTPException(status_code=404, detail="해당 금지구역을 찾을 수 없습니다.")
+        
+        # [Audit Log Save]
+        try:
+            save_pipeline_log(db, 'STEP_2', '[EXCLUSION_DELETE]', {
+                'zone_id': zone_id
+            })
+        except Exception as log_err:
+            print(f"[Exclusion Delete Audit Log Error] {log_err}")
+
         return {"status": "success", "message": f"성공적으로 금지구역(ID: {zone_id})을 삭제했습니다."}
     except HTTPException:
         raise

@@ -45,16 +45,20 @@ export default function PasswordChangeModal({
       });
 
       if (res.ok) {
-        showToast('✓ 비밀번호 변경이 정상 완료되었습니다. 세션 보안을 위해 다시 로그인해 주십시오.', 'success');
+        alert('🔑 비밀번호 자가 변경이 완료되었습니다!\n변경된 새 비밀번호로 다시 로그인해 주십시오.');
         sessionStorage.clear();
-        router.push('/');
         onClose();
+        if (router) {
+          router.push('/');
+        } else {
+          window.location.href = '/';
+        }
       } else {
         const err = await res.json();
-        showToast(err.detail || '비밀번호 변경 실패', 'error');
+        alert(`⚠️ 비밀번호 변경 실패: ${err.detail || '기존 비밀번호가 일치하지 않거나 새 비밀번호 규격을 충족하지 않습니다.'}`);
       }
     } catch (err) {
-      showToast('비밀번호 변경 중 오류 발생: ' + err.message, 'error');
+      alert('⚠️ 비밀번호 변경 중 오류 발생: ' + err.message);
     } finally {
       setIsChangingPassword(false);
       setOldPassword('');

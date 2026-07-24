@@ -3,6 +3,7 @@ import React from 'react';
 export default function SidebarControl({
   pipelineStep,
   setPipelineStep,
+  handlePipelineReset,
   isAuditComplete,
   triggerFileAudit,
   isUploading,
@@ -39,9 +40,20 @@ export default function SidebarControl({
           <h2 className="text-sm font-bold text-white mb-0.5">입지선정 기준 설정</h2>
           <p className="text-[10px] text-slate-400">데이터 적재 및 가중치 의사결정 수립</p>
         </div>
-        <span className="text-xs bg-blue-600/20 text-blue-400 px-2.5 py-1 rounded-full font-bold">
-          Step {pipelineStep} / 6
-        </span>
+        <div className="flex items-center gap-2">
+          {handlePipelineReset && (
+            <button
+              onClick={handlePipelineReset}
+              className="text-[10px] bg-slate-800/80 hover:bg-slate-700 text-slate-300 px-2 py-1 rounded border border-slate-700 transition-all cursor-pointer"
+              title="파이프라인 상태 완전 초기화"
+            >
+              🔄 리셋
+            </button>
+          )}
+          <span className="text-xs bg-blue-600/20 text-blue-400 px-2.5 py-1 rounded-full font-bold">
+            Step {pipelineStep} / 6
+          </span>
+        </div>
       </div>
 
       {/* ========================================================================= */}

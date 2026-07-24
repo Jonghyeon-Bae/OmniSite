@@ -106,6 +106,19 @@ async def lock_ahp_model(request: AHPLockRequest, db: Session = Depends(get_db))
         db.commit()
         model_id = result.scalar()
         
+        # [Step 3 Audit Log Save]
+        try:
+            from app.routers.spatial import save_pipeline_log
+            save_pipeline_log(db, 'STEP_3', '[AHP_LOCK]', {
+                'model_id': model_id,
+                'consistency_ratio': round(cr, 4),
+                'criteria_weights': request.criteria_weights,
+                'district_id': request.district_id,
+                'facility_type': request.facility_type
+            })
+        except Exception as log_err:
+            print(f"[Step 3 Log Save Error] {log_err}")
+
         return {
             "status": "success",
             "message": "AHP 가중치 프로파일이 C.R. 검증 통과 및 락(Lock) 저장 완료되었습니다.",

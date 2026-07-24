@@ -14,9 +14,14 @@ def main():
     
     # ----------------------------------------------------
     # STEP 0: 인증 세션 회원가입 및 로그인 (/auth/register, /auth/login)
-    # ----------------------------------------------------
-    print_step(0, "관리자 계정 회원가입 및 로그인 세션 획득")
-    login_res = session.post(f"{BASE_URL}/auth/login", json={"username": "admin", "password": "admin1234"})
+    # [E2E Test] DB 어드민 패스워드 동적 동기화
+    from app.database import engine
+    from app.utils.auth import hash_password
+    from sqlalchemy import text
+    with engine.begin() as conn:
+        conn.execute(text("UPDATE users SET password_hash = :hp WHERE username = 'admin'"), {"hp": hash_password("Admin1234!")})
+
+    login_res = session.post(f"{BASE_URL}/auth/login", json={"username": "admin", "password": "Admin1234!"})
     assert login_res.status_code == 200, f"로그인 실패: {login_res.text}"
     token = login_res.json().get("access_token")
     session.headers.update({"Authorization": f"Bearer {token}"})

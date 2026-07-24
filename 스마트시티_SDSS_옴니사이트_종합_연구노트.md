@@ -860,16 +860,18 @@
     - **E2E 빌드 및 동기화:** `npm run build` 컴파일 무오류 통과 및 바탕화면 물리 작업 공간 이관 완료.
 
 
-### [1.6.0-ClosedLoop] AHP-ML Closed-Loop 피드백 SDSS 알고리즘 구축 및 카드 연동 완공 (v1.6.0-ClosedLoop)
-* **연구 내용:** 조장(USER)의 차세대 고도화 승인 하에 **`AHP-ML Closed-Loop 피드백 연동 (Closed-Loop SDSS)`** 알고리즘을 백엔드 파이프라인 및 프론트엔드 카드 뷰어에 100% 완공함.
-* **주요 의사결정:**
-    - **통합 적격성 지수 (ISI, Integrated Suitability Index) 수학적 연산 모델 구현:**
-      - $$ISI = Score_{AHP} \times \left(1.0 - 0.35 \times \left(\frac{CSS}{100.0}\right)^2\right)$$
-      - AHP 고유벡터 일관성($C.R. \le 0.1$)을 안전하게 보호하면서, XGBoost ML 예측 주민갈등도($CSS$)가 높은 부지에 비선형 감점 패널티(최대 -35%)를 소급 연산하여 AHP 순위 결정 자체를 실시간 조정.
-    - **백엔드 추천 파이프라인 (`spatial.py`) 개편:**
-      - 6,524개 필지 정렬 축을 기존 $Score_{AHP}$에서 Closed-Loop $ISI$ 기준으로 완전 상향 조정하고, XAI 추천 사유 멘트에 감점 보정 내역(예: `-23.5% 감점 패널티 소급 반영`) 동적 캡션을 주입.
-    - **프론트엔드 카드 뷰어 (`OptimalResultPanel.jsx`) 바인딩:**
-      - Top 1 ~ Top 5 후보지 카드에 `⚡ Closed-Loop 피드백 적격도 (ISI)` 뱃지 및 AHP 기본점수 대비 ML 감점 비율 표출 완공.
-    - **프론트엔드 프로덕션 컴파일 및 백엔드 E2E 통합 테스트 100% SUCCESS:**
-      - Next.js Turbopack `npm run build` 결과 `✓ Compiled successfully in 1624ms (0 Error, 0 Warning)` 및 백엔드 E2E 파이프라인 100% 성공(SUCCESS) 완료.
-      - 바탕화면 물리 작업 공간 이관 동기화 완료.
+### [1.7.2-AuditLogFull] 옴니사이트 UI/시스템 전 기능 감사 로그(Audit Log) 전수 수거 완공 (v1.7.2-AuditLogFull)
+* **연구 내용:** 조장(USER)의 명시적 지시에 따라 옴니사이트 UI 및 백엔드 상에 존재하는 **모든 시스템/행정 기능(RAG 조례 업로드/삭제, 파이프라인 리셋, 가상 금지구역 생성/삭제, DOCX/PDF 보고서 인출, 계정/보안 변경)에 대해 100% 감사 로그 전수 적재 시스템**을 완공함.
+* **전수 수거 감사 로그 액션 분류:**
+    - **`[AUTH_LOGIN]` / `[PASSWORD_CHANGE]` / `[ADMIN_USER_MGMT]`**: 행정망 로그인, 비밀번호 변경, 어드민 계정 생성/삭제 이력 적재.
+    - **`[RAG_UPLOAD]` / `[RAG_DELETE]`**: 조례/규정 PDF 파일 RAG 업로드 및 삭제 이력 적재.
+    - **`[PIPELINE_RESET]`**: 파이프라인 5단계 및 백엔드 캐시 일괄 초기화(Clear) 이력 적재.
+    - **`[DATA_AUDIT]` (Step 1)**: 공간 데이터 파일 업로드 & AI 감리 승인 이력 적재.
+    - **`[EXCLUSION_CREATE]` / `[EXCLUSION_DELETE]` (Step 2)**: 3D 맵 위 가상 작도 금지구역 생성 및 삭제 이력 적재.
+    - **`[HITL_ALIGN]` (Step 2)**: 추천 기준 좌표 핀포인트 보정 및 경계 검증 이력 적재.
+    - **`[AHP_LOCK]` (Step 3)**: AHP 가중치 $C.R. \le 0.1$ 일관성 검증 통과 및 DB 락 이력 적재.
+    - **`[ISI_RECOMMEND]` (Step 4)**: Closed-Loop ISI 적격 입지 추천 연산 실행 이력 적재.
+    - **`[DEBATE_COMPLETE]` / `[DEBATE_HISTORY_SAVE]` (Step 5)**: 3자 AI 모의 심의 토론 완공 및 이력 보존 적재.
+    - **`[REPORT_DOWNLOAD]` / `[REPORT_DOWNLOAD_DOCX]` (Step 5)**: PDF / DOCX 전자정부 공문서 발급 다운로드 이력 적재.
+* **빌드 및 시스템 무결성 결과:**
+    - Next.js Turbopack `npm run build` 결과 `✓ Compiled successfully in 1668ms (0 Error, 0 Warning)` 검증 및 Uvicorn hot-reload 완공.

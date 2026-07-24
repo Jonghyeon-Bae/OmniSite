@@ -12,6 +12,7 @@ import AdminConsoleModal from '../../components/AdminConsoleModal';
 import PasswordChangeModal from '../../components/PasswordChangeModal';
 import RagRegulationModal from '../../components/RagRegulationModal';
 import StepGuideModal from '../../components/StepGuideModal';
+import AuditLogModal from '../../components/AuditLogModal';
 import { OMNISITE_DISPLAY_VERSION } from '../../config/version';
 
 const apiFetch = (url, options = {}) => {
@@ -327,6 +328,7 @@ export default function Home() {
   const [mapZoom, setMapZoom] = useState(14);
   // [v4.9.35] 국유재산 공간 폴리곤 데이터 GeoJSON 상태
   const [nationalPropertiesGeoJson, setNationalPropertiesGeoJson] = useState(null);
+  const [showAuditLogModal, setShowAuditLogModal] = useState(false);
 
   // 최초 서비스 마운트 시 (웹 접속 시) 데이터베이스 및 로컬 캐시 초기화
   useEffect(() => {
@@ -345,6 +347,54 @@ export default function Home() {
         console.error('[OmniSite Initialization Error] Failed to clear upload caches:', err);
       });
   }, []);
+
+  // 🛡️ [v1.7.1-Refactor] 파이프라인 단계 꼬임 방지 라우팅 가드
+  const canNavigateToStep = (targetStep) => {
+    if (targetStep <= 1) return true;
+    if (targetStep === 2 && !isAuditComplete) {
+      alert("⚠️ Step 1 데이터셋 업로드 및 AI 시맨틱 감리가 완료되어야 Step 2로 진입할 수 있습니다.");
+      return false;
+    }
+    if (targetStep === 3 && pipelineStep < 2) {
+      alert("⚠️ Step 2 좌표 미세 보정 및 가상 금지구역 확정 후 Step 3로 진행하십시오.");
+      return false;
+    }
+    if (targetStep === 4 && !isAhpLocked) {
+      alert("⚠️ Step 3 AHP 가중치 프로파일의 C.R. 일관성 검증 및 락(Lock) 보존이 완료되어야 최적 입지 추천을 기동할 수 있습니다.");
+      return false;
+    }
+    if (targetStep === 5 && !selectedParcel?.top1) {
+      alert("⚠️ Step 4 최적 입지 추천 연산이 수행되어 Top 1 후보지가 선출되어야 3자 AI 모의 심의를 시작할 수 있습니다.");
+      return false;
+    }
+    return true;
+  };
+
+  // 🔄 [v1.7.1-Refactor] 단일 통합 파이프라인 상태 리셋 핸들러
+  const handlePipelineReset = async () => {
+    if (confirm("🔄 옴니사이트 5단계 파이프라인 상태와 업로드 캐시를 완전히 초기화하시겠습니까?")) {
+      try {
+        await apiFetch('/api/v1/upload/clear', { method: 'POST' });
+      } catch (err) {
+        console.warn("Pipeline Reset Backend Clear Warning:", err);
+      } finally {
+        // 프론트엔드 5단계 전체 State 완전 무결 초기화
+        setPipelineStep(1);
+        setIsAuditComplete(false);
+        setIsAhpLocked(false);
+        setAuditMetadata(null);
+        setInferredPurpose('');
+        setInferredReasoning('');
+        setHitlQuestion('');
+        setUserPurpose('');
+        setCriteriaList([]);
+        setAhpWeights({});
+        setSelectedParcel({});
+        setShowManualMapping(false);
+        showToast("✓ 옴니사이트 5단계 파이프라인 상태가 완전 초기화되었습니다.");
+      }
+    }
+  };
 
   // [v4.4.1] 공간 통제 영역 제어판 마우스 드래그 이벤트 리스너
   useEffect(() => {
@@ -1399,16 +1449,17 @@ export default function Home() {
                     
                     const escapeRegExp = (string) => string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
                     
-                    const merchantRegex = new RegExp(`^(${escapeRegExp(merchantName)}|찬성측|상인대표|상인|찬성)\\s*(\\(찬성\\))?:?\\s*`);
-                    const residentRegex = new RegExp(`^(${escapeRegExp(residentName)}|반대측|주민대표|구민대표|주민|구민|반대)\\s*(\\(반대\\))?:?\\s*`);
-                    const coordinatorRegex = new RegExp(`^(${escapeRegExp(coordinatorName)}|정부측|갈등조정관|조정관|정부)\\s*(\\(중재\\)|\\(조정안\\)|\\(조정\\))?:?\\s*`);
+                    const merchantRegex = new RegExp(`^(${escapeRegExp(merchantName)}|찬성측|상인대표|상인)\\s*(\\(찬성\\))?:\\s*`);
+                    const residentRegex = new RegExp(`^(${escapeRegExp(residentName)}|반대측|주민대표|구민대표|주민)\\s*(\\(반대\\))?:\\s*`);
+                    const coordinatorRegex = new RegExp(`^(${escapeRegExp(coordinatorName)}|정부측|갈등조정관|조정관|정부)\\s*(\\(중재\\)|\\(조정안\\)|\\(조정\\))?:\\s*`);
                     
                     for (let rawLine of rawLines) {
                       const trimmed = rawLine.trim();
                       if (!trimmed) continue;
                       
-                      if (trimmed.startsWith('[')) {
-                        parsedLogs.push({ sender: '시스템', text: trimmed });
+                      if (trimmed.startsWith('[시스템') || trimmed.startsWith('[시스템 면책') || trimmed.startsWith('[시스템 알림]')) {
+                        const content = trimmed.replace(/^\[시스템[^\]]*\]\s*/, '');
+                        parsedLogs.push({ sender: '시스템', text: content || trimmed });
                       } else if (merchantRegex.test(trimmed)) {
                         const content = trimmed.replace(merchantRegex, '');
                         parsedLogs.push({ sender: merchantName, text: content });
@@ -1419,7 +1470,7 @@ export default function Home() {
                         const content = trimmed.replace(coordinatorRegex, '');
                         parsedLogs.push({ sender: coordinatorName, text: content });
                       } else {
-                        if (parsedLogs.length > 0 && parsedLogs[parsedLogs.length - 1].sender !== '시스템') {
+                        if (parsedLogs.length > 0) {
                           parsedLogs[parsedLogs.length - 1].text += ' ' + trimmed;
                         } else {
                           parsedLogs.push({ sender: '토론위원', text: trimmed });
@@ -1665,6 +1716,13 @@ export default function Home() {
               )}
 
               <button 
+                onClick={() => setShowAuditLogModal(true)}
+                className="text-xs bg-indigo-500/15 hover:bg-indigo-500/25 border border-indigo-500/30 text-indigo-300 px-3.5 py-1.5 rounded-lg font-bold cursor-pointer transition-all flex items-center gap-1.5"
+              >
+                📜 감사 로그
+              </button>
+
+              <button 
                 onClick={() => setShowPasswordChangeModal(true)}
                 className="text-xs bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 px-3.5 py-1.5 rounded-lg font-semibold cursor-pointer transition-all flex items-center gap-1.5"
               >
@@ -1707,7 +1765,12 @@ export default function Home() {
       {/* 3. 좌측 플로팅 패널: 일괄 업로드 및 AHP 가중치 제어 (Upload & AHP Control Panel) */}
       <SidebarControl
         pipelineStep={pipelineStep}
-        setPipelineStep={setPipelineStep}
+        setPipelineStep={(step) => {
+          if (canNavigateToStep(step)) {
+            setPipelineStep(step);
+          }
+        }}
+        handlePipelineReset={handlePipelineReset}
         isAuditComplete={isAuditComplete}
         triggerFileAudit={triggerFileAudit}
         isUploading={isUploading}
@@ -1825,6 +1888,13 @@ export default function Home() {
         apiFetch={apiFetch}
         showToast={showToast}
         router={router}
+      />
+
+      {/* 📜 5단계 행정 감사 로그 모달 */}
+      <AuditLogModal
+        showModal={showAuditLogModal}
+        setShowModal={setShowAuditLogModal}
+        apiFetch={apiFetch}
       />
 
       {/* 🔒 인페이지 세션 로그인 모달 */}

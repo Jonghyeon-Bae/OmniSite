@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import text
 from app.config import settings
 from app.database import get_db
-from app.utils.auth import get_current_admin
+from app.utils.auth import get_current_admin, get_current_user
 import pandas as pd
 from app.database import engine
 import shapefile
@@ -566,11 +566,18 @@ async def delete_regulation(filename: str, current_admin: dict = Depends(get_cur
         # 원본 파일 물리 삭제
         os.remove(file_path)
         
-        # 캐싱된 텍스트 파일도 존재하면 삭제
-        cache_path = file_path + ".txt"
-        if os.path.exists(cache_path):
-            os.remove(cache_path)
-            
+        # [Audit Log Save]
+        try:
+            from app.routers.spatial import save_pipeline_log
+            from app.database import SessionLocal
+            with SessionLocal() as db_log:
+                save_pipeline_log(db_log, 'SYSTEM', '[RAG_DELETE]', {
+                    'filename': filename,
+                    'action': 'delete_regulation'
+                }, session_id=current_admin.get('username', 'admin'))
+        except Exception as log_err:
+            print(f"[RAG Delete Audit Log Error] {log_err}")
+
         return {"message": f"성공적으로 {filename} 및 연관 캐시를 삭제했습니다."}
     except Exception as e:
         if isinstance(e, HTTPException):
@@ -1021,6 +1028,19 @@ async def audit_upload_files(request: AuditRequest, db: Session = Depends(get_db
     if rag_applied is True or (isinstance(rules_matched_global, list) and len(rules_matched_global) > 0):
         has_regulations = True
 
+    # [Step 1 Audit Log Save]
+    try:
+        from app.routers.spatial import save_pipeline_log
+        save_pipeline_log(db, 'STEP_1', '[DATA_AUDIT]', {
+            'inferred_purpose': inferred_purpose,
+            'inferred_domain_tag': inferred_domain_tag,
+            'uploaded_files': request.filenames,
+            'has_regulations': has_regulations,
+            'criteria_count': len(criteria_global)
+        })
+    except Exception as log_err:
+        print(f"[Step 1 Log Save Error] {log_err}")
+
     return {
         "message": "실물 기반 AI 시맨틱 감리 분석이 완료되었습니다.",
         "inferred_purpose": inferred_purpose,
@@ -1421,7 +1441,7 @@ async def commit_hitl_data(request: HITLCommitRequest, db: Session = Depends(get
 
 # --- [Step 1-0] 캐시 파일 일괄 제거 API ---
 @router.post("/upload/clear")
-async def clear_uploaded_caches(db: Session = Depends(get_db), current_admin: dict = Depends(get_current_admin)):
+async def clear_uploaded_caches(db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
     try:
         purged_files = []
         if os.path.exists(UPLOAD_DIR):
@@ -1441,17 +1461,26 @@ async def clear_uploaded_caches(db: Session = Depends(get_db), current_admin: di
 
         # v4.4.1 사용자 정의 금지구역 테이블 및 v4.4.3 규제 라이브러리 초기화 연동 (Mock 데이터 소거)
         try:
-            # [v4.9.27] 가상작도 금지구역 보존을 위해 TRUNCATE user_exclusion_zones 제거
-            # db.execute(text("TRUNCATE TABLE user_exclusion_zones RESTART IDENTITY CASCADE"))
             db.execute(text("TRUNCATE TABLE domain_regulation_rules RESTART IDENTITY CASCADE"))
             db.commit()
         except Exception as db_ex:
             db.rollback()
-            print(f"[DB Clear Error] user_exclusion_zones/domain_regulation_rules: {db_ex}")
+            print(f"[DB Clear Error] domain_regulation_rules: {db_ex}")
         
+        # [Audit Log Save]
+        try:
+            from app.routers.spatial import save_pipeline_log
+            user_name = current_user.get('username', 'user') if isinstance(current_user, dict) else 'user'
+            save_pipeline_log(db, 'SYSTEM', '[PIPELINE_RESET]', {
+                'purged_files_count': len(purged_files),
+                'action': 'pipeline_reset'
+            }, session_id=user_name)
+        except Exception as log_err:
+            print(f"[Pipeline Reset Audit Log Error] {log_err}")
+
         return {
             "status": "success",
-            "message": f"성공적으로 {len(purged_files)}개의 임시 공간 데이터/캐시 파일, 메모리 캐시 및 사용자 지정 금역 테이블을 초기화(Clear)했습니다.",
+            "message": f"성공적으로 {len(purged_files)}개의 임시 공간 데이터/캐시 파일 및 파이프라인 상태가 초기화(Clear)되었습니다.",
             "purged_files": purged_files
         }
     except Exception as e:

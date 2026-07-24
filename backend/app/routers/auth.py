@@ -73,6 +73,18 @@ async def login(req: UserLoginRequest, db: Session = Depends(get_db)):
     if user[1] == "admin" and verify_password("admin1234", user[2]):
         require_password_change = True
         
+    # [Audit Log Save]
+    try:
+        from app.routers.spatial import save_pipeline_log
+        save_pipeline_log(db, 'SYSTEM', '[AUTH_LOGIN]', {
+            'username': user[1],
+            'role': user[3],
+            'department': user[4],
+            'district_id': user[5]
+        }, session_id=user[1])
+    except Exception as log_err:
+        print(f"[Auth Login Audit Log Error] {log_err}")
+
     return {
         "access_token": access_token,
         "token_type": "bearer",
@@ -119,6 +131,18 @@ async def register(req: UserRegisterRequest, db: Session = Depends(get_db), curr
                 "district_id": req.district_id
             }).fetchone()
         db.commit()
+
+        # [Audit Log Save]
+        try:
+            from app.routers.spatial import save_pipeline_log
+            save_pipeline_log(db, 'SYSTEM', '[ADMIN_USER_MGMT]', {
+                'action': 'register_user',
+                'target_username': req.username,
+                'role': req.role,
+                'department': req.department
+            }, session_id=current_admin.get('username', 'admin'))
+        except Exception as log_err:
+            print(f"[Register Audit Log Error] {log_err}")
     except Exception as e:
         db.rollback()
         raise HTTPException(
@@ -163,11 +187,21 @@ async def change_password(req: PasswordChangeRequest, db: Session = Depends(get_
     try:
         db.execute(update_query, {"new_hash": new_hash, "username": current_user["username"]})
         db.commit()
+
+        # [Audit Log Save] - commit 이후 독립 감사 로그 기록
+        try:
+            from app.routers.spatial import save_pipeline_log
+            save_pipeline_log(db, 'SYSTEM', '[PASSWORD_CHANGE]', {
+                'username': current_user["username"],
+                'status': 'success'
+            }, session_id=current_user["username"])
+        except Exception as log_err:
+            print(f"[Password Change Audit Log Error] {log_err}")
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"비밀번호 변경 중 오류가 발생했습니다: {str(e)}")
         
-    return {"status": "success", "message": "비밀번호가 성공적으로 변경되었습니다."}
+    return {"status": "success", "message": "비밀번호가 성공적으로 변경되었습니다. 변경된 비밀번호로 다시 로그인하십시오."}
 
 # --- 6. 전체 사용자 계정 목록 조회 API (어드민 전용) ---
 @router.get("/users")
@@ -198,17 +232,29 @@ async def delete_user(user_id: int, db: Session = Depends(get_db), current_admin
         raise HTTPException(status_code=404, detail="해당 사용자를 찾을 수 없습니다.")
         
     if user[0] == "admin":
-        raise HTTPException(status_code=400, detail="시스템 기본 최고 관리자 계정('admin')은 삭제할 수 없습니다.")
-        
+        raise HTTPException(status_code=400, detail="기본 최상위 admin 계정은 삭제할 수 없습니다.")
+
+    target_username = user[0]
     delete_query = text("DELETE FROM users WHERE id = :id")
     try:
         db.execute(delete_query, {"id": user_id})
         db.commit()
+
+        # [Audit Log Save]
+        try:
+            from app.routers.spatial import save_pipeline_log
+            save_pipeline_log(db, 'SYSTEM', '[ADMIN_USER_MGMT]', {
+                'action': 'delete_user',
+                'target_username': target_username,
+                'target_user_id': user_id
+            }, session_id=current_admin.get('username', 'admin'))
+        except Exception as log_err:
+            print(f"[Delete User Audit Log Error] {log_err}")
     except Exception as e:
         db.rollback()
-        raise HTTPException(status_code=500, detail=f"사용자 삭제 중 오류가 발생했습니다: {str(e)}")
-        
-    return {"status": "success", "message": f"계정 '{user[0]}'이 성공적으로 삭제되었습니다."}
+        raise HTTPException(status_code=500, detail=f"사용자 계정 삭제 중 오류 발생: {str(e)}")
+
+    return {"status": "success", "message": f"성공적으로 계정('{target_username}')을 삭제했습니다."}
 
 # --- 8. 사용자 패스워드 강제 초기화 API (어드민 전용) ---
 class PasswordResetRequest(BaseModel):

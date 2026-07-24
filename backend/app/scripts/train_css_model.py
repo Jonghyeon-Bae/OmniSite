@@ -43,12 +43,13 @@ df = pd.read_sql = pd.read_csv(dataset_path)
 X = df[['land_use_code', 'ownership_type', 'area', 'dist_to_school', 'dist_to_childcare']].copy()
 y = df['target_label'].copy()
 
-# Fill missing/NaN values defensively
+# Fill missing/NaN values defensively (거리 캡핑 1,000.0m 임계값 적용으로 StandardScaler 왜곡 완치)
+MAX_EFFECTIVE_DISTANCE = 1000.0
 X['land_use_code'] = X['land_use_code'].fillna('대')
 X['ownership_type'] = X['ownership_type'].fillna('국유지')
 X['area'] = X['area'].fillna(X['area'].median())
-X['dist_to_school'] = X['dist_to_school'].fillna(9999.0)
-X['dist_to_childcare'] = X['dist_to_childcare'].fillna(9999.0)
+X['dist_to_school'] = X['dist_to_school'].fillna(MAX_EFFECTIVE_DISTANCE).clip(upper=MAX_EFFECTIVE_DISTANCE)
+X['dist_to_childcare'] = X['dist_to_childcare'].fillna(MAX_EFFECTIVE_DISTANCE).clip(upper=MAX_EFFECTIVE_DISTANCE)
 
 # 2. Train-Test Split (80% Train, 20% Test)
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)

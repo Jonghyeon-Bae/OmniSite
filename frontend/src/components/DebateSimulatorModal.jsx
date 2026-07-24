@@ -27,6 +27,7 @@ export default function DebateSimulatorModal({
         district_id: districtId || 1,
         facility_type: inferredDomainTag || "city_feature",
         inferred_purpose: inferredPurpose || "입지 분석",
+        candidate_pnu: currentParcel.pnu || currentParcel.PNU || "",
         candidate_jibun: currentParcel.jibun || "용산구 미지정 부지",
         candidate_css: currentParcel.css || 50,
         candidate_lat: currentParcel.lat || 37.53,
@@ -106,6 +107,7 @@ export default function DebateSimulatorModal({
         district_id: 1,
         facility_type: currentParcel.facility_type || "공공 시설",
         inferred_purpose: inferredPurpose || inferredDomainTag || "지능형 스마트시티 시설물",
+        candidate_pnu: currentParcel.pnu || currentParcel.PNU || "",
         candidate_jibun: currentParcel.jibun || "용산구 미지정 부지",
         candidate_css: currentParcel.css || 50,
         candidate_lat: currentParcel.lat || 37.53,
@@ -146,52 +148,61 @@ export default function DebateSimulatorModal({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-6">
-      <div className="w-[800px] h-[550px] glass-panel p-6 flex flex-col justify-between">
-        <div className="flex justify-between items-center border-b border-slate-800 pb-3">
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-6 animate-fade-in">
+      <div className="glass-panel w-full max-w-[1050px] h-[680px] max-h-[90vh] p-8 flex flex-col justify-between rounded-2xl border border-slate-800 shadow-2xl">
+        <div className="flex justify-between items-center border-b border-slate-800/80 pb-4">
           <div>
-            <h3 className="text-sm font-semibold text-slate-300">
-              [{inferredPurpose || inferredDomainTag || '공공 인프라'}] 실시간 3자 AI 모의 심의 토론
+            <h3 className="text-base font-bold text-slate-200 flex items-center gap-2">
+              <span>⚡ [{inferredPurpose || inferredDomainTag || '공공 인프라'}] 실시간 3자 AI 모의 심의 토론</span>
             </h3>
-            <p className="text-[10px] text-slate-500">Target PNU: {currentParcel.pnu || 'PNU 미지정'}</p>
+            <p className="text-xs text-slate-400 mt-1">Target PNU: <span className="font-mono text-amber-400 font-semibold">{currentParcel.pnu || 'PNU 미지정'}</span></p>
           </div>
           <button 
             onClick={() => setShowSimModal(false)}
-            className="text-slate-400 hover:text-white text-lg font-bold cursor-pointer"
+            className="text-slate-400 hover:text-white text-xl font-bold cursor-pointer transition-all p-1 hover:bg-slate-800/60 rounded-lg"
+            title="닫기"
           >
             &times;
           </button>
         </div>
 
         {/* 터미널 대화 스크롤 */}
-        <div className="flex-1 my-4 bg-slate-950/70 rounded-xl p-4 overflow-y-auto font-mono text-xs flex flex-col gap-3 border border-slate-900/80">
+        <div className="flex-1 my-5 bg-slate-950/80 rounded-xl p-5 overflow-y-auto font-mono text-xs flex flex-col gap-3.5 border border-slate-800/80 shadow-inner">
           {simLogs.map((log, index) => {
             const sender = log.sender || '';
-            let textClass = 'text-slate-300';
+            let badgeStyle = 'bg-slate-800 text-slate-300 border-slate-700';
             
             if (sender.includes('보건') || sender.includes('구청') || sender.includes('공무원') || sender.includes('정부')) {
-              textClass = 'text-sky-400 font-medium';
+              badgeStyle = 'bg-sky-500/20 text-sky-300 border-sky-500/40';
             } else if (sender.includes('상인') || sender.includes('소상공인') || sender.includes('찬성') || sender.includes('번영회')) {
-              textClass = 'text-rose-400 font-medium';
+              badgeStyle = 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40';
             } else if (sender.includes('주민') || sender.includes('시민') || sender.includes('반대') || sender.includes('학부모')) {
-              textClass = 'text-emerald-400 font-medium';
+              badgeStyle = 'bg-rose-500/20 text-rose-300 border-rose-500/40';
             } else if (sender.includes('시스템') || sender.includes('조정') || sender.includes('중재') || sender.includes('심의')) {
-              textClass = 'text-amber-400 font-semibold';
+              badgeStyle = 'bg-amber-500/20 text-amber-300 border-amber-500/40';
             }
+
+            const formattedText = log.text
+              ? log.text.replace(/([.!?])\s+(?=[가-힣A-Za-z0-9])/g, (m, p1) => `${p1}\n\n`)
+              : '';
             
             return (
-              <div key={index} className={`flex gap-2 items-start leading-relaxed ${textClass}`}>
-                <span className="shrink-0 font-bold font-sans">
+              <div key={index} className="flex gap-3 leading-relaxed text-xs items-start bg-slate-900/40 p-3.5 rounded-xl border border-slate-800/60 shadow-sm">
+                <span className={`font-bold shrink-0 px-2.5 py-1 rounded-lg text-[11px] self-start flex items-center justify-center border shadow-sm ${badgeStyle}`}>
                   [{sender}]
                 </span>
-                <span className="mt-0.5">{log.text}</span>
+                <div className="text-slate-200 whitespace-pre-line leading-relaxed flex-1 font-sans text-xs space-y-2">
+                  {formattedText}
+                </div>
               </div>
             );
           })}
           {simStep < 6 ? (
-            <div className="text-slate-500 animate-pulse">... 에이전트 심의 분석 진행 중 ...</div>
+            <div className="text-slate-500 animate-pulse font-mono text-xs my-2">... AI 멀티에이전트 심의 분석 및 전문가 토론 진행 중 ...</div>
           ) : (
-            <div className="text-emerald-500 font-bold animate-pulse">✓ 에이전트 심의 분석 완료 (PDF 보고서 다운로드 가능)</div>
+            <div className="text-emerald-400 font-bold animate-pulse text-xs border-t border-slate-800/60 pt-3 flex items-center gap-1.5">
+              <span>✓ AI 멀티에이전트 모의 심의 토론 완료 (공통 합의안 도달 & 보고서 발급 가능)</span>
+            </div>
           )}
         </div>
 

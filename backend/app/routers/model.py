@@ -250,9 +250,10 @@ def background_model_train(domain="smoking_zone"):
         X['ownership_type'] = X['ownership_type'].fillna('국유지')
         X['building_use'] = X['building_use'].fillna('미지정')
         X['area'] = X['area'].fillna(X['area'].median())
+        MAX_EFFECTIVE_DISTANCE = 1000.0
         for nf in numeric_features:
             if nf != 'area':
-                X[nf] = X[nf].fillna(9999.0)
+                X[nf] = X[nf].fillna(MAX_EFFECTIVE_DISTANCE).clip(upper=MAX_EFFECTIVE_DISTANCE)
         
         # 3. Train-Test Split
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)

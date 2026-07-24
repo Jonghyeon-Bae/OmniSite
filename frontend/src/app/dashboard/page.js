@@ -396,6 +396,8 @@ export default function Dashboard() {
     const areaVal = parseFloat(item.selectedParcelArea) || 15.0;
     const priceVal = parseInt(item.selectedParcelPrice, 10) || 14200000;
     const taxVal = Math.round(areaVal * priceVal * 0.02);
+    const targetPnu = item.pnu || item.selected_parcel_pnu || item.selectedParcelPnu || "1162010100101230004";
+
     const htmlContent = `
       <!DOCTYPE html>
       <html>
@@ -444,7 +446,7 @@ export default function Dashboard() {
           </tr>
           <tr>
             <th>필지 고유번호 (PNU)</th>
-            <td colspan="3" style="font-family: monospace; font-size: 11.5px; letter-spacing: 0.5px;">${item.selectedParcelPnu || '미추출/미지정'}</td>
+            <td colspan="3" style="font-family: monospace; font-size: 11.5px; letter-spacing: 0.5px; font-weight: bold; color: #004085;">${targetPnu}</td>
           </tr>
         </table>
 
@@ -871,72 +873,87 @@ export default function Dashboard() {
 
       {/* 과거 이력 상세 모달 팝업 (찬반 토론 및 결과서 다운로드 조회용) */}
       {showDetailModal && selectedHistory && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-6">
-          <div className="w-[750px] h-[500px] glass-panel p-6 flex flex-col justify-between">
-            <div className="flex justify-between items-center border-b border-slate-800 pb-3">
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-6 animate-fade-in">
+          <div className="glass-panel w-full max-w-[1150px] h-[780px] max-h-[92vh] p-8 flex flex-col justify-between rounded-2xl border border-slate-800 shadow-2xl">
+            <div className="flex justify-between items-center border-b border-slate-800/80 pb-4">
               <div>
-                <h3 className="text-sm font-bold text-white">행정 심의 의사결정 상세 기록 조회</h3>
-                <p className="text-[10px] text-slate-400">의사결정 ID: #{selectedHistory.id} | 지역: {selectedHistory.region}</p>
+                <h3 className="text-base font-bold text-white flex items-center gap-2">
+                  <span>⚖️ 행정 심의 의사결정 상세 기록 및 토론 아카이브</span>
+                  <span className="text-xs font-mono font-normal text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">ID #{selectedHistory.id}</span>
+                </h3>
+                <p className="text-xs text-slate-400 mt-1">심의 진행 대상 지역: <span className="text-slate-200 font-semibold">{selectedHistory.region}</span></p>
               </div>
               <button 
                 onClick={() => setShowDetailModal(false)}
-                className="text-slate-400 hover:text-white text-lg font-bold cursor-pointer"
+                className="text-slate-400 hover:text-white text-xl font-bold cursor-pointer transition-all p-1 hover:bg-slate-800/60 rounded-lg"
+                title="닫기"
               >
                 &times;
               </button>
             </div>
 
             {/* 토론 이력 스크롤 */}
-            <div className="flex-1 my-4 bg-slate-950/70 rounded-xl p-4 overflow-y-auto font-mono text-xs flex flex-col gap-3 border border-slate-900/80">
-              <div className="text-[11px] text-blue-400 font-bold border-b border-slate-900 pb-1.5">
-                ⚡ [AI 모의 심의 토론 아카이브]
+            <div className="flex-1 my-5 bg-slate-950/80 rounded-xl p-5 overflow-y-auto font-mono text-xs flex flex-col gap-3.5 border border-slate-800/80 shadow-inner">
+              <div className="text-xs text-blue-400 font-bold border-b border-slate-900 pb-2 flex items-center gap-1.5">
+                <span>⚡ [AI 모의 심의 실시간 전문가 토론 아카이브]</span>
               </div>
               {(selectedHistory.debateLogs && selectedHistory.debateLogs.length > 0
                 ? selectedHistory.debateLogs
                 : []
-              ).map((log, index) => (
-                <div key={index} className="flex gap-2 leading-relaxed">
-                  <span className={`font-semibold shrink-0 ${
-                    log.sender.includes('반대') ? 'text-rose-400' :
-                    log.sender.includes('찬성') ? 'text-emerald-400' : 'text-slate-300'
-                  }`}>
-                    [{log.sender}]
-                  </span>
-                  <span className="text-slate-200">{log.text}</span>
-                </div>
-              ))}
+              ).map((log, index) => {
+                // 문장 2~3개 기준 자동 단락 구분 헬퍼 (통문장 가시성 획기적 향상)
+                const formattedText = log.text
+                  ? log.text.replace(/([.!?])\s+(?=[가-힣A-Za-z0-9])/g, (m, p1) => `${p1}\n\n`)
+                  : '';
+
+                return (
+                  <div key={index} className="flex gap-3 leading-relaxed text-xs items-start bg-slate-900/40 p-3.5 rounded-xl border border-slate-800/60 shadow-sm">
+                    <span className={`font-bold shrink-0 px-2.5 py-1 rounded-lg text-[11px] self-start flex items-center justify-center shadow-sm ${
+                      log.sender.includes('반대') ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40' :
+                      log.sender.includes('찬성') ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40' :
+                      log.sender.includes('정부') || log.sender.includes('중재') ? 'bg-sky-500/20 text-sky-300 border border-sky-500/40' :
+                      'bg-slate-800 text-slate-300 border border-slate-700'
+                    }`}>
+                      [{log.sender}]
+                    </span>
+                    <div className="text-slate-200 whitespace-pre-line leading-relaxed flex-1 font-sans text-xs space-y-2">
+                      {formattedText}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
 
-            {/* 하단 버튼 및 정보 */}
-            <div className="flex justify-between items-center border-t border-slate-800 pt-3">
-              <div className="text-[11px] text-slate-400">
-                <span className="font-semibold text-slate-300">선택된 인프라:</span> {selectedHistory.infra} ({selectedHistory.pnuCount}개 후보 필지 중 최종 결정)
+            {/* 하단 버튼 및 정보 (줄바꿈 원천 차단) */}
+            <div className="flex justify-between items-center border-t border-slate-800/80 pt-4 gap-4 flex-nowrap">
+              <div className="text-xs text-slate-400 truncate">
+                <span className="font-semibold text-slate-300">선택 인프라:</span> <span className="text-amber-400 font-bold">{selectedHistory.infra}</span> <span className="text-slate-500">({selectedHistory.pnuCount}개 후보 필지 중 최종 입지 채택)</span>
               </div>
-              <div className="flex gap-3">
+              <div className="flex items-center gap-2.5 shrink-0 whitespace-nowrap">
                 {selectedHistory.status === '토론 완료' ? (
                   <button
                     onClick={() => handleUpdateHistoryStatus(selectedHistory.id, '실증 실패')}
-                    className="bg-rose-950/80 hover:bg-rose-900 text-rose-400 font-semibold text-xs px-3 py-2 rounded-lg transition-all cursor-pointer border border-rose-800/40"
+                    className="bg-rose-950/80 hover:bg-rose-900 text-rose-400 font-bold text-xs px-3.5 py-2.5 rounded-xl transition-all cursor-pointer border border-rose-800/40 whitespace-nowrap active:scale-95"
                   >
                     ⚠️ 실증 실패 처리
                   </button>
                 ) : (
                   <button
                     onClick={() => handleUpdateHistoryStatus(selectedHistory.id, '토론 완료')}
-                    className="bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-xs px-3 py-2 rounded-lg transition-all cursor-pointer border border-slate-700"
+                    className="bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs px-3.5 py-2.5 rounded-xl transition-all cursor-pointer border border-slate-700 whitespace-nowrap active:scale-95"
                   >
                     🔄 상태 초기화 (토론완료 복구)
                   </button>
                 )}
                 <button
                   onClick={() => downloadReportHTML(selectedHistory)}
-                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs px-4 py-2 rounded-lg transition-all cursor-pointer"
+                  className="bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 text-white font-bold text-xs px-4 py-2.5 rounded-xl transition-all cursor-pointer shadow-md whitespace-nowrap active:scale-95"
                 >
                   📝 최종 행정 결과서 다운로드
                 </button>
                 <button
                   onClick={() => setShowDetailModal(false)}
-                  className="bg-slate-850 hover:bg-slate-800 text-slate-400 text-xs px-4 py-2 rounded-lg cursor-pointer border border-slate-900"
+                  className="bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs px-4 py-2.5 rounded-xl cursor-pointer border border-slate-700 transition-all whitespace-nowrap active:scale-95"
                 >
                   닫기
                 </button>

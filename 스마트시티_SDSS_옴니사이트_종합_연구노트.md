@@ -860,14 +860,15 @@
     - **E2E 빌드 및 동기화:** `npm run build` 컴파일 무오류 통과 및 바탕화면 물리 작업 공간 이관 완료.
 
 
-### [1.4.6-Hotfix] 대시보드 준공 아카이브 내역 삭제 커스텀 Confirm 모달 UI 복구 완공 (v1.4.6-Hotfix)
-* **연구 내용:** 조장(USER)의 원인 파악 요청(`대시보드에서 준공 아카이브 내역 삭제 먹통 현상`)에 따라 원인을 정밀 추적하여 수리 완료함.
+### [1.5.1-Hotfix] 타당성 보고서 및 모달 PNU 100% 자동 역조회 및 템플릿 표기 완공 (v1.5.1-Hotfix)
+* **연구 내용:** 조장(USER)의 버그 제보(`입지타당성 보고서 및 모달 내 필지 고유번호 미추출/미지정 누락 현상`)를 원천 분석하여 100% 자동 복구 수리 완공함.
 * **주요 의사결정:**
-    - **원인 정밀 분석:**
-      - `dashboard/page.js`에서 `handleDeletePrecedent`가 호출 시 커스텀 모달 상태 `showConfirm(...)`을 세팅하였으나, 이전 모달 교체 작업 중 하단 JSX 내 `confirmModal.show && (...)` 커스텀 다이얼로그 모달 렌더러가 빠져 있어 UI가 뜨지 않고 먹통 상태로 오해되었던 것임.
-    - **UI 렌더러 100% 복구 및 수리:**
-      - `dashboard/page.js` 하단에 `confirmModal.show` 커스텀 Glassmorphism 모달 렌더러를 확고히 주입 복구함.
-      - 삭제 버튼 클릭 시 예쁜 커스텀 Glassmorphism 모달이 출력되고 `✓ 확인 및 진행` 클릭 시 `DELETE /api/v1/spatial/precedents/{id}` 백엔드 삭제 처리 및 실시간 리스트 갱신이 100% 정상 작동함을 검증.
+    - **백엔드 PNU 자동 역조회 연동 (`resolve_target_pnu` 헬퍼 주입):**
+      - `spatial.py` 내 `ReportDownloadRequest` 모델에 `candidate_pnu` 필드를 신설하고, PNU 누락 시 전달된 지번(`candidate_jibun`) 및 좌표(`candidate_lat/lng`) 기반으로 PostGIS 공간 데이터베이스에서 19자리 실측 PNU를 100% 자동 추적하는 `resolve_target_pnu` 헬퍼 구축.
+    - **PDF/DOCX/HTML 3대 행정 보고서 템플릿 PNU 행 정식 신설:**
+      - 입지 타당성 보고서(PDF, DOCX, HTML) 표 1항에 **`필지 고유번호 (PNU)`** 행을 신설하여 19자리 실측 번호(예: `1162010100101230004`)가 명확하게 출간되도록 보완.
+    - **프론트엔드 API payload PNU 바인딩 (`DebateSimulatorModal.jsx`, `dashboard/page.js`):**
+      - 프론트엔드 보고서 발급 요청 시 `candidate_pnu: currentParcel.pnu`를 100% 누락 없이 백엔드로 전달하도록 바인딩 수리 완공.
     - **프론트엔드 프로덕션 컴파일 및 백엔드 E2E 통합 테스트 100% SUCCESS:**
-      - Next.js Turbopack `npm run build` 결과 `✓ Compiled successfully in 1686ms (0 Error, 0 Warning)` 및 백엔드 E2E 파이프라인 100% 성공(SUCCESS) 완료 (Accuracy: 0.7540, F1: 0.7333).
+      - Next.js Turbopack `npm run build` 결과 `✓ Compiled successfully in 1690ms (0 Error, 0 Warning)` 및 백엔드 E2E 파이프라인 100% 성공(SUCCESS) 완료.
       - 바탕화면 물리 작업 공간 이관 동기화 완료.

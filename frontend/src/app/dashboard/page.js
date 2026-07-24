@@ -536,23 +536,25 @@ export default function Dashboard() {
           </button>
         </nav>
         {/* JWT 실시간 남은 세션 타이머 뱃지 및 세션 연장 버튼 [v1.4.5] */}
-        <div className="flex items-center gap-2">
-          <div className="bg-slate-900/90 px-3 py-1.5 rounded-lg border border-slate-800 flex items-center gap-1.5">
-            <span className={`w-2 h-2 rounded-full ${isTokenValid ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`}></span>
-            <span className="text-[11px] text-slate-300">인증 세션:</span>
-            <span className="text-[11px] font-mono font-bold text-amber-400">⏱️ {tokenTimeLeft || '검증 중...'}</span>
-          </div>
+        {isTokenValid && (
+          <div className="flex items-center gap-2">
+            <div className="bg-slate-900/90 px-3 py-1.5 rounded-lg border border-slate-800 flex items-center gap-1.5">
+              <span className={`w-2 h-2 rounded-full ${isTokenValid ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`}></span>
+              <span className="text-[11px] text-slate-300">인증 세션:</span>
+              <span className="text-[11px] font-mono font-bold text-amber-400">⏱️ {tokenTimeLeft || '검증 중...'}</span>
+            </div>
 
-          <button
-            type="button"
-            onClick={handleRefreshSession}
-            disabled={isRefreshingToken}
-            className="text-xs bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-amber-500/50 text-slate-200 hover:text-amber-400 px-3 py-1.5 rounded-lg font-bold cursor-pointer transition-all flex items-center gap-1 shadow-sm active:scale-95"
-            title="클릭 시 로그인 세션 만료 시간을 1시간 추가 연장합니다"
-          >
-            <span>🔄 세션 연장 (+1시간)</span>
-          </button>
-        </div>
+            <button
+              type="button"
+              onClick={handleRefreshSession}
+              disabled={isRefreshingToken}
+              className="text-xs bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-amber-500/50 text-slate-200 hover:text-amber-400 px-3 py-1.5 rounded-lg font-bold cursor-pointer transition-all flex items-center gap-1 shadow-sm active:scale-95"
+              title="클릭 시 로그인 세션 만료 시간을 1시간 추가 연장합니다"
+            >
+              <span>🔄 세션 연장 (+1시간)</span>
+            </button>
+          </div>
+        )}
       </header>
 
       {/* 2. 대시보드 레이아웃 본문 */}

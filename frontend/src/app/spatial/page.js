@@ -42,47 +42,41 @@ export default function Home() {
   const [tokenTimeLeft, setTokenTimeLeft] = useState('');
   const [isTokenValid, setIsTokenValid] = useState(true);
 
-  // 🔒 JWT 토큰 실시간 유효성 검증 및 카운트다운 타이머 (새로고침 대응)
+  // 🔒 순수 세션 JWT 실시간 유효성 검증 및 카운트다운 타이머 (sessionStorage 단일)
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    let token = sessionStorage.getItem('token');
-    if (!token) {
-      token = localStorage.getItem('token');
-      if (token) {
-        sessionStorage.setItem('token', token);
-      }
-    }
-
+    const token = sessionStorage.getItem('token');
     if (!token) {
       setIsTokenValid(false);
-      alert("🔒 행정 인증 세션이 존재하지 않습니다. 로그인 페이지로 이동합니다.");
-      router.push('/');
+      setIsLoggedIn(false);
       return;
     }
 
-    // 마운트 / 새로고침 시 백엔드 실시간 유효성 200 OK 판정 (/api/v1/auth/me)
+    // 마운트 시 백엔드 실시간 유효성 200 OK 판정 (/api/v1/auth/me)
     apiFetch('/api/v1/auth/me')
       .then(res => {
         if (!res.ok) {
           setIsTokenValid(false);
+          setIsLoggedIn(false);
           sessionStorage.clear();
-          localStorage.removeItem('token');
-          alert("🔒 행정 인증 세션이 만료되거나 무효화되었습니다. 다시 로그인해 주십시오.");
-          router.push('/');
         } else {
           setIsTokenValid(true);
+          setIsLoggedIn(true);
         }
       })
       .catch(() => {
         setIsTokenValid(false);
+        setIsLoggedIn(false);
       });
 
     // 1초 간격 실시간 토큰 남은 시간 카운트다운
     const interval = setInterval(() => {
-      const currentToken = sessionStorage.getItem('token') || localStorage.getItem('token');
+      const currentToken = sessionStorage.getItem('token');
       if (!currentToken) {
         setTokenTimeLeft('만료됨');
+        setIsTokenValid(false);
+        setIsLoggedIn(false);
         return;
       }
       const payload = parseJwt(currentToken);
@@ -91,10 +85,9 @@ export default function Home() {
         if (remainingSec <= 0) {
           setTokenTimeLeft('만료됨');
           setIsTokenValid(false);
+          setIsLoggedIn(false);
           sessionStorage.clear();
-          localStorage.removeItem('token');
           alert("🔒 로그인 세션 시간이 만료되었습니다. 다시 로그인해 주십시오.");
-          router.push('/');
         } else {
           const m = Math.floor(remainingSec / 60);
           const s = remainingSec % 60;
@@ -106,7 +99,7 @@ export default function Home() {
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [router]);
+  }, []);
 
   // 🔒 1시간 세션 연장 핸들러
   const [isRefreshingToken, setIsRefreshingToken] = useState(false);
@@ -145,6 +138,54 @@ export default function Home() {
   const [userRole, setUserRole] = useState('user');
   const [department, setDepartment] = useState('스마트도시과');
   const [userDistrictId, setUserDistrictId] = useState(1); // 동적 자치구 ID (Default: 1)
+
+  // 🔒 인페이지 팝업 로그인 모달 제어 상태
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [loginUsername, setLoginUsername] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
+  const [loginLoading, setLoginLoading] = useState(false);
+
+  const handleInlineLogin = async (e) => {
+    e.preventDefault();
+    if (!loginUsername || !loginPassword) {
+      alert("아이디와 비밀번호를 모두 입력해 주십시오.");
+      return;
+    }
+    setLoginLoading(true);
+    try {
+      const res = await fetch('/api/v1/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: loginUsername, password: loginPassword })
+      });
+      
+      if (res.ok) {
+        const data = await res.json();
+        sessionStorage.setItem('token', data.access_token);
+        sessionStorage.setItem('username', data.user.username);
+        sessionStorage.setItem('role', data.user.role);
+        sessionStorage.setItem('department', data.user.department);
+        sessionStorage.setItem('district_id', data.user.district_id);
+
+        setIsLoggedIn(true);
+        setIsTokenValid(true);
+        setMunicipalId(data.user.username);
+        setUserRole(data.user.role);
+        setDepartment(data.user.department);
+        setUserDistrictId(data.user.district_id || 1);
+        setShowLoginModal(false);
+        setLoginPassword('');
+        alert(`✓ ${data.user.username} 실무관님, 행정망 세션 인증 성공. 소속: ${data.user.department}`);
+      } else {
+        const errData = await res.json();
+        alert(errData.detail || "로그인 인증에 실패했습니다. 아이디와 비밀번호를 재확인하십시오.");
+      }
+    } catch (err) {
+      alert("서버 연결에 실패했습니다: " + err.message);
+    } finally {
+      setLoginLoading(false);
+    }
+  };
 
   // [Phase 2] 관리자 콘솔 및 시드 데이터 적재 상태
   const [showAdminConsoleModal, setShowAdminConsoleModal] = useState(false);
@@ -338,8 +379,8 @@ export default function Home() {
   // 컴포넌트 마운트 및 새로고침 시 백엔드 실시간 JWT 토큰 유효성 동기 검증 (/api/v1/auth/me)
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const token = sessionStorage.getItem('token');
-      const savedUser = sessionStorage.getItem('username');
+      const token = sessionStorage.getItem('token') || localStorage.getItem('token');
+      const savedUser = sessionStorage.getItem('username') || localStorage.getItem('username');
       
       if (token && savedUser) {
         // 백엔드 서버에 토큰 유효성 실시간 감사 요청
@@ -350,10 +391,16 @@ export default function Home() {
           if (res.ok) {
             return res.json();
           } else {
-            // 토큰 만료 또는 세션 해제 시 세션스토리지 자동 클리어 및 비로그인 전환
+            // 토큰 만료 또는 세션 해제 시 로컬/세션스토리지 자동 클리어 및 비로그인 전환
             console.warn("[Auth Verify Fail] 세션 토큰이 만료되었거나 유효하지 않습니다. 세션 초기화.");
             sessionStorage.clear();
+            localStorage.removeItem('token');
+            localStorage.removeItem('username');
+            localStorage.removeItem('role');
+            localStorage.removeItem('department');
+            localStorage.removeItem('district_id');
             setIsLoggedIn(false);
+            setIsTokenValid(false);
             setUserRole('user');
             setMunicipalId('');
             return null;
@@ -362,18 +409,26 @@ export default function Home() {
         .then(userData => {
           if (userData) {
             setIsLoggedIn(true);
+            setIsTokenValid(true);
             setMunicipalId(userData.username || savedUser);
-            setUserRole(userData.role || sessionStorage.getItem('role') || 'user');
-            setDepartment(userData.department || sessionStorage.getItem('department') || '스마트도시과');
-            const dist = userData.district_id || parseInt(sessionStorage.getItem('district_id') || '1', 10);
+            setUserRole(userData.role || sessionStorage.getItem('role') || localStorage.getItem('role') || 'user');
+            setDepartment(userData.department || sessionStorage.getItem('department') || localStorage.getItem('department') || '스마트도시과');
+            const dist = userData.district_id || parseInt(sessionStorage.getItem('district_id') || localStorage.getItem('district_id') || '1', 10);
             setUserDistrictId(!isNaN(dist) && dist ? dist : 1);
+
+            // 동기화 수립
+            sessionStorage.setItem('token', token);
+            sessionStorage.setItem('username', savedUser);
           }
         })
         .catch(err => {
           console.error("[Auth Verify Error] 실시간 토큰 검증 네트워크 예외:", err);
+          setIsLoggedIn(false);
+          setIsTokenValid(false);
         });
       } else {
         setIsLoggedIn(false);
+        setIsTokenValid(false);
       }
     }
   }, []);
@@ -1595,24 +1650,6 @@ export default function Home() {
           </button>
         </nav>
         <div className="flex items-center gap-3">
-          {/* JWT 실시간 남은 세션 타이머 뱃지 [v1.4.2] */}
-          <div className="bg-slate-900/90 px-3 py-1.5 rounded-lg border border-slate-800 flex items-center gap-1.5">
-            <span className={`w-2 h-2 rounded-full ${isTokenValid ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`}></span>
-            <span className="text-[11px] text-slate-300">인증 세션:</span>
-            <span className="text-[11px] font-mono font-bold text-amber-400">⏱️ {tokenTimeLeft || '검증 중...'}</span>
-          </div>
-
-          {/* 🔒 1시간 세션 연장 버튼 [v1.4.5] */}
-          <button
-            type="button"
-            onClick={handleRefreshSession}
-            disabled={isRefreshingToken}
-            className="text-xs bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-amber-500/50 text-slate-200 hover:text-amber-400 px-3 py-1.5 rounded-lg font-bold cursor-pointer transition-all flex items-center gap-1 shadow-sm active:scale-95"
-            title="클릭 시 로그인 세션 만료 시간을 1시간 추가 연장합니다"
-          >
-            <span>🔄 세션 연장 (+1시간)</span>
-          </button>
-
           <button 
             onClick={() => {
               setShowRegulationListModal(true);
@@ -1623,8 +1660,26 @@ export default function Home() {
             📋 조례 목록 조회
           </button>
 
-          {isLoggedIn ? (
+          {isLoggedIn && isTokenValid ? (
             <div className="flex items-center gap-3">
+              {/* JWT 실시간 남은 세션 타이머 뱃지 [v1.4.2] */}
+              <div className="bg-slate-900/90 px-3 py-1.5 rounded-lg border border-slate-800 flex items-center gap-1.5">
+                <span className={`w-2 h-2 rounded-full ${isTokenValid ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`}></span>
+                <span className="text-[11px] text-slate-300">인증 세션:</span>
+                <span className="text-[11px] font-mono font-bold text-amber-400">⏱️ {tokenTimeLeft || '검증 중...'}</span>
+              </div>
+
+              {/* 🔒 1시간 세션 연장 버튼 [v1.4.5] */}
+              <button
+                type="button"
+                onClick={handleRefreshSession}
+                disabled={isRefreshingToken}
+                className="text-xs bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-amber-500/50 text-slate-200 hover:text-amber-400 px-3 py-1.5 rounded-lg font-bold cursor-pointer transition-all flex items-center gap-1 shadow-sm active:scale-95"
+                title="클릭 시 로그인 세션 만료 시간을 1시간 추가 연장합니다"
+              >
+                <span>🔄 세션 연장 (+1시간)</span>
+              </button>
+
               {/* 소속 부서 및 실무관 식별 */}
               <span className="text-[10px] bg-slate-800/80 border border-slate-700/80 text-slate-300 px-3 py-1.5 rounded-lg font-medium">
                 🏢 {department} | <span className="font-bold text-white">{municipalId}</span> 실무관
@@ -1802,6 +1857,72 @@ export default function Home() {
         showToast={showToast}
         router={router}
       />
-</div>
+
+      {/* 🔒 인페이지 세션 로그인 모달 */}
+      {showLoginModal && (
+        <div className="fixed inset-0 bg-black/75 backdrop-blur-md z-50 flex items-center justify-center p-6 animate-fade-in">
+          <div className="glass-panel w-full max-w-md p-8 rounded-2xl border border-slate-800 bg-slate-900/90 shadow-2xl flex flex-col gap-6 relative">
+            <button 
+              onClick={() => setShowLoginModal(false)}
+              className="absolute top-4 right-4 text-slate-400 hover:text-white text-xl font-bold cursor-pointer"
+            >
+              &times;
+            </button>
+            <div className="text-center">
+              <span className="text-[10px] bg-blue-500/15 border border-blue-500/30 text-blue-400 px-3 py-1 rounded-full font-bold uppercase tracking-wider">
+                OmniSite Executive Login
+              </span>
+              <h3 className="text-lg font-bold text-white mt-3">행정망 세션 재인증</h3>
+              <p className="text-xs text-slate-400 mt-1">
+                도시행정 인프라 심의권한 확인을 위해 실무자 계정으로 로그인하십시오.
+              </p>
+            </div>
+
+            <form onSubmit={handleInlineLogin} className="flex flex-col gap-4">
+              <div>
+                <label className="text-xs font-semibold text-slate-300 mb-1 block">실무관 아이디 (Username)</label>
+                <input 
+                  type="text"
+                  value={loginUsername}
+                  onChange={(e) => setLoginUsername(e.target.value)}
+                  placeholder="예: admin, yongsan_user"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-blue-500 transition-all"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-slate-300 mb-1 block">인증 비밀번호 (Password)</label>
+                <input 
+                  type="password"
+                  value={loginPassword}
+                  onChange={(e) => setLoginPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-blue-500 transition-all"
+                  required
+                />
+              </div>
+
+              <div className="flex justify-end gap-3 mt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowLoginModal(false)}
+                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold rounded-xl transition-all cursor-pointer"
+                >
+                  취소
+                </button>
+                <button
+                  type="submit"
+                  disabled={loginLoading}
+                  className="px-5 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-xl transition-all shadow-md active:scale-95 disabled:opacity-50 cursor-pointer"
+                >
+                  {loginLoading ? '인증 확인 중...' : '🔒 로그인 승인'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }

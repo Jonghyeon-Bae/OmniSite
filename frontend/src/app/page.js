@@ -68,12 +68,6 @@ export default function GatewayPage() {
         sessionStorage.setItem('department', data.user.department);
         sessionStorage.setItem('district_id', data.user.district_id);
         
-        localStorage.setItem('token', data.access_token);
-        localStorage.setItem('username', data.user.username);
-        localStorage.setItem('role', data.user.role);
-        localStorage.setItem('department', data.user.department);
-        localStorage.setItem('district_id', data.user.district_id);
-        
         if (data.require_password_change) {
           // 최초 로그인 패스워드 강제 변경 유도 가동
           alert(`⚠️ 보안 수칙 경고: 최초 로그인(혹은 기본 비밀번호 감출) 상태입니다. 안전을 위해 관리자 인증 비밀번호를 즉시 변경해야 합니다.`);

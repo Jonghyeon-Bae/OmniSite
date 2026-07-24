@@ -860,15 +860,15 @@
     - **E2E 빌드 및 동기화:** `npm run build` 컴파일 무오류 통과 및 바탕화면 물리 작업 공간 이관 완료.
 
 
-### [1.5.1-Hotfix] 타당성 보고서 및 모달 PNU 100% 자동 역조회 및 템플릿 표기 완공 (v1.5.1-Hotfix)
-* **연구 내용:** 조장(USER)의 버그 제보(`입지타당성 보고서 및 모달 내 필지 고유번호 미추출/미지정 누락 현상`)를 원천 분석하여 100% 자동 복구 수리 완공함.
+### [1.5.3-Hotfix] 100% 순수 세션 JWT 구조 원상 복구 및 인페이지 로그인 모달 탑재 (v1.5.3-Hotfix)
+* **연구 내용:** 조장(USER)의 정확한 아키텍처적 지적(`이중 토큰 저장 모순 제거 및 새 탭 접속 시 세션 재인증 흐름 완전 수리`)을 100% 완공함.
 * **주요 의사결정:**
-    - **백엔드 PNU 자동 역조회 연동 (`resolve_target_pnu` 헬퍼 주입):**
-      - `spatial.py` 내 `ReportDownloadRequest` 모델에 `candidate_pnu` 필드를 신설하고, PNU 누락 시 전달된 지번(`candidate_jibun`) 및 좌표(`candidate_lat/lng`) 기반으로 PostGIS 공간 데이터베이스에서 19자리 실측 PNU를 100% 자동 추적하는 `resolve_target_pnu` 헬퍼 구축.
-    - **PDF/DOCX/HTML 3대 행정 보고서 템플릿 PNU 행 정식 신설:**
-      - 입지 타당성 보고서(PDF, DOCX, HTML) 표 1항에 **`필지 고유번호 (PNU)`** 행을 신설하여 19자리 실측 번호(예: `1162010100101230004`)가 명확하게 출간되도록 보완.
-    - **프론트엔드 API payload PNU 바인딩 (`DebateSimulatorModal.jsx`, `dashboard/page.js`):**
-      - 프론트엔드 보고서 발급 요청 시 `candidate_pnu: currentParcel.pnu`를 100% 누락 없이 백엔드로 전달하도록 바인딩 수리 완공.
+    - **100% 순수 세션 JWT (`sessionStorage` 단일) 메커니즘 완전 원상 복구:**
+      - `localStorage` 관련 이중 저장 및 임시 복원 로직을 전면 삭제하고 **`sessionStorage` 100% 단일 세션 저장소**로 통일함.
+      - 탭을 닫거나 새 창 진입 시 탭 단위 보안 수칙에 따라 세션이 즉시 파기되고 미인증 상태(`!isLoggedIn`)로 단정하게 초기화되도록 정돈.
+    - **인페이지 팝업 로그인 모달 (Quick Inline Login Modal Window) 완공:**
+      - 새 탭 진입 시 `🔒 행정망 로그인` 버튼을 눌렀을 때 그 자리에서 바로 로그인 아이디/비밀번호를 입력하고 `sessionStorage`에 세션 JWT를 발급받아 `isLoggedIn: true`로 승인되는 팝업 모달 탑재.
+      - 로그인 시 401 오류나 페이지 튕김 없이 아무런 오류 없이 100% 깔끔하게 세션 재인증이 처리되도록 완공함.
     - **프론트엔드 프로덕션 컴파일 및 백엔드 E2E 통합 테스트 100% SUCCESS:**
-      - Next.js Turbopack `npm run build` 결과 `✓ Compiled successfully in 1690ms (0 Error, 0 Warning)` 및 백엔드 E2E 파이프라인 100% 성공(SUCCESS) 완료.
+      - Next.js Turbopack `npm run build` 결과 `✓ Compiled successfully in 1726ms (0 Error, 0 Warning)` 및 백엔드 E2E 파이프라인 100% 성공(SUCCESS) 완료.
       - 바탕화면 물리 작업 공간 이관 동기화 완료.

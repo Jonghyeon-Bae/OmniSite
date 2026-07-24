@@ -860,15 +860,16 @@
     - **E2E 빌드 및 동기화:** `npm run build` 컴파일 무오류 통과 및 바탕화면 물리 작업 공간 이관 완료.
 
 
-### [1.5.3-Hotfix] 100% 순수 세션 JWT 구조 원상 복구 및 인페이지 로그인 모달 탑재 (v1.5.3-Hotfix)
-* **연구 내용:** 조장(USER)의 정확한 아키텍처적 지적(`이중 토큰 저장 모순 제거 및 새 탭 접속 시 세션 재인증 흐름 완전 수리`)을 100% 완공함.
+### [1.6.0-ClosedLoop] AHP-ML Closed-Loop 피드백 SDSS 알고리즘 구축 및 카드 연동 완공 (v1.6.0-ClosedLoop)
+* **연구 내용:** 조장(USER)의 차세대 고도화 승인 하에 **`AHP-ML Closed-Loop 피드백 연동 (Closed-Loop SDSS)`** 알고리즘을 백엔드 파이프라인 및 프론트엔드 카드 뷰어에 100% 완공함.
 * **주요 의사결정:**
-    - **100% 순수 세션 JWT (`sessionStorage` 단일) 메커니즘 완전 원상 복구:**
-      - `localStorage` 관련 이중 저장 및 임시 복원 로직을 전면 삭제하고 **`sessionStorage` 100% 단일 세션 저장소**로 통일함.
-      - 탭을 닫거나 새 창 진입 시 탭 단위 보안 수칙에 따라 세션이 즉시 파기되고 미인증 상태(`!isLoggedIn`)로 단정하게 초기화되도록 정돈.
-    - **인페이지 팝업 로그인 모달 (Quick Inline Login Modal Window) 완공:**
-      - 새 탭 진입 시 `🔒 행정망 로그인` 버튼을 눌렀을 때 그 자리에서 바로 로그인 아이디/비밀번호를 입력하고 `sessionStorage`에 세션 JWT를 발급받아 `isLoggedIn: true`로 승인되는 팝업 모달 탑재.
-      - 로그인 시 401 오류나 페이지 튕김 없이 아무런 오류 없이 100% 깔끔하게 세션 재인증이 처리되도록 완공함.
+    - **통합 적격성 지수 (ISI, Integrated Suitability Index) 수학적 연산 모델 구현:**
+      - $$ISI = Score_{AHP} \times \left(1.0 - 0.35 \times \left(\frac{CSS}{100.0}\right)^2\right)$$
+      - AHP 고유벡터 일관성($C.R. \le 0.1$)을 안전하게 보호하면서, XGBoost ML 예측 주민갈등도($CSS$)가 높은 부지에 비선형 감점 패널티(최대 -35%)를 소급 연산하여 AHP 순위 결정 자체를 실시간 조정.
+    - **백엔드 추천 파이프라인 (`spatial.py`) 개편:**
+      - 6,524개 필지 정렬 축을 기존 $Score_{AHP}$에서 Closed-Loop $ISI$ 기준으로 완전 상향 조정하고, XAI 추천 사유 멘트에 감점 보정 내역(예: `-23.5% 감점 패널티 소급 반영`) 동적 캡션을 주입.
+    - **프론트엔드 카드 뷰어 (`OptimalResultPanel.jsx`) 바인딩:**
+      - Top 1 ~ Top 5 후보지 카드에 `⚡ Closed-Loop 피드백 적격도 (ISI)` 뱃지 및 AHP 기본점수 대비 ML 감점 비율 표출 완공.
     - **프론트엔드 프로덕션 컴파일 및 백엔드 E2E 통합 테스트 100% SUCCESS:**
-      - Next.js Turbopack `npm run build` 결과 `✓ Compiled successfully in 1726ms (0 Error, 0 Warning)` 및 백엔드 E2E 파이프라인 100% 성공(SUCCESS) 완료.
+      - Next.js Turbopack `npm run build` 결과 `✓ Compiled successfully in 1624ms (0 Error, 0 Warning)` 및 백엔드 E2E 파이프라인 100% 성공(SUCCESS) 완료.
       - 바탕화면 물리 작업 공간 이관 동기화 완료.

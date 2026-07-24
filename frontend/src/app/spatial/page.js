@@ -16,7 +16,7 @@ import { OMNISITE_DISPLAY_VERSION } from '../../config/version';
 
 const apiFetch = (url, options = {}) => {
   const token = typeof window !== 'undefined' 
-    ? (sessionStorage.getItem('token') || localStorage.getItem('token')) 
+    ? sessionStorage.getItem('token') 
     : null;
   const headers = {
     ...options.headers,
@@ -42,7 +42,7 @@ export default function Home() {
   const [tokenTimeLeft, setTokenTimeLeft] = useState('');
   const [isTokenValid, setIsTokenValid] = useState(true);
 
-  // 🔒 순수 세션 JWT 실시간 유효성 검증 및 카운트다운 타이머 (sessionStorage 단일)
+  // 🔒 순수 세션 JWT 철통 라우트 가드 및 실시간 유효성 검증 (sessionStorage 단일)
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
@@ -50,6 +50,8 @@ export default function Home() {
     if (!token) {
       setIsTokenValid(false);
       setIsLoggedIn(false);
+      alert("🔒 행정 인증 세션이 존재하지 않습니다. 로그인 페이지로 이동합니다.");
+      router.push('/');
       return;
     }
 
@@ -60,9 +62,21 @@ export default function Home() {
           setIsTokenValid(false);
           setIsLoggedIn(false);
           sessionStorage.clear();
-        } else {
+          alert("🔒 행정 인증 세션이 만료되거나 무효화되었습니다. 다시 로그인해 주십시오.");
+          router.push('/');
+          return null;
+        }
+        return res.json();
+      })
+      .then(userData => {
+        if (userData) {
           setIsTokenValid(true);
           setIsLoggedIn(true);
+          setMunicipalId(userData.username || sessionStorage.getItem('username') || '');
+          setUserRole(userData.role || sessionStorage.getItem('role') || 'user');
+          setDepartment(userData.department || sessionStorage.getItem('department') || '스마트도시과');
+          const dist = userData.district_id || parseInt(sessionStorage.getItem('district_id') || '1', 10);
+          setUserDistrictId(!isNaN(dist) && dist ? dist : 1);
         }
       })
       .catch(() => {
@@ -88,6 +102,7 @@ export default function Home() {
           setIsLoggedIn(false);
           sessionStorage.clear();
           alert("🔒 로그인 세션 시간이 만료되었습니다. 다시 로그인해 주십시오.");
+          router.push('/');
         } else {
           const m = Math.floor(remainingSec / 60);
           const s = remainingSec % 60;
@@ -99,7 +114,7 @@ export default function Home() {
     }, 1000);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [router]);
 
   // 🔒 1시간 세션 연장 핸들러
   const [isRefreshingToken, setIsRefreshingToken] = useState(false);
@@ -112,7 +127,6 @@ export default function Home() {
         const data = await res.json();
         const newToken = data.access_token;
         sessionStorage.setItem('token', newToken);
-        localStorage.setItem('token', newToken);
         alert("✓ 로그인 세션이 성공적으로 1시간(60분) 연장되었습니다.");
       } else {
         alert("세션 연장에 실패했습니다. 다시 로그인해 주십시오.");
@@ -378,58 +392,13 @@ export default function Home() {
 
   // 컴포넌트 마운트 및 새로고침 시 백엔드 실시간 JWT 토큰 유효성 동기 검증 (/api/v1/auth/me)
   useEffect(() => {
+    // 과거 브라우저에 남아있던 localStorage 잔재 토큰 완전히 강제 청소
     if (typeof window !== 'undefined') {
-      const token = sessionStorage.getItem('token') || localStorage.getItem('token');
-      const savedUser = sessionStorage.getItem('username') || localStorage.getItem('username');
-      
-      if (token && savedUser) {
-        // 백엔드 서버에 토큰 유효성 실시간 감사 요청
-        fetch('/api/v1/auth/me', {
-          headers: { 'Authorization': `Bearer ${token}` }
-        })
-        .then(res => {
-          if (res.ok) {
-            return res.json();
-          } else {
-            // 토큰 만료 또는 세션 해제 시 로컬/세션스토리지 자동 클리어 및 비로그인 전환
-            console.warn("[Auth Verify Fail] 세션 토큰이 만료되었거나 유효하지 않습니다. 세션 초기화.");
-            sessionStorage.clear();
-            localStorage.removeItem('token');
-            localStorage.removeItem('username');
-            localStorage.removeItem('role');
-            localStorage.removeItem('department');
-            localStorage.removeItem('district_id');
-            setIsLoggedIn(false);
-            setIsTokenValid(false);
-            setUserRole('user');
-            setMunicipalId('');
-            return null;
-          }
-        })
-        .then(userData => {
-          if (userData) {
-            setIsLoggedIn(true);
-            setIsTokenValid(true);
-            setMunicipalId(userData.username || savedUser);
-            setUserRole(userData.role || sessionStorage.getItem('role') || localStorage.getItem('role') || 'user');
-            setDepartment(userData.department || sessionStorage.getItem('department') || localStorage.getItem('department') || '스마트도시과');
-            const dist = userData.district_id || parseInt(sessionStorage.getItem('district_id') || localStorage.getItem('district_id') || '1', 10);
-            setUserDistrictId(!isNaN(dist) && dist ? dist : 1);
-
-            // 동기화 수립
-            sessionStorage.setItem('token', token);
-            sessionStorage.setItem('username', savedUser);
-          }
-        })
-        .catch(err => {
-          console.error("[Auth Verify Error] 실시간 토큰 검증 네트워크 예외:", err);
-          setIsLoggedIn(false);
-          setIsTokenValid(false);
-        });
-      } else {
-        setIsLoggedIn(false);
-        setIsTokenValid(false);
-      }
+      localStorage.removeItem('token');
+      localStorage.removeItem('username');
+      localStorage.removeItem('role');
+      localStorage.removeItem('department');
+      localStorage.removeItem('district_id');
     }
   }, []);
 

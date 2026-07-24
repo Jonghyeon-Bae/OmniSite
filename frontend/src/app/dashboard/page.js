@@ -12,7 +12,7 @@ import { OMNISITE_DISPLAY_VERSION } from '@/config/version';
 // Next.js API Fetch 래퍼 (JWT 세션 자동 바인딩)
 const apiFetch = (url, options = {}) => {
   const token = typeof window !== 'undefined' 
-    ? (sessionStorage.getItem('token') || localStorage.getItem('token')) 
+    ? sessionStorage.getItem('token') 
     : null;
   const headers = {
     ...options.headers,
@@ -78,14 +78,7 @@ export default function Dashboard() {
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    let token = sessionStorage.getItem('token');
-    if (!token) {
-      token = localStorage.getItem('token');
-      if (token) {
-        sessionStorage.setItem('token', token);
-      }
-    }
-
+    const token = sessionStorage.getItem('token');
     if (!token) {
       setIsTokenValid(false);
       alert("🔒 행정 인증 세션이 존재하지 않습니다. 로그인 페이지로 이동합니다.");
@@ -93,13 +86,19 @@ export default function Dashboard() {
       return;
     }
 
+    // 과거 브라우저에 남아있던 localStorage 잔재 강제 완전 소거
+    localStorage.removeItem('token');
+    localStorage.removeItem('username');
+    localStorage.removeItem('role');
+    localStorage.removeItem('department');
+    localStorage.removeItem('district_id');
+
     // 마운트 / 새로고침 시 백엔드 실시간 유효성 200 OK 판정 (/api/v1/auth/me)
     apiFetch('/api/v1/auth/me')
       .then(res => {
         if (!res.ok) {
           setIsTokenValid(false);
           sessionStorage.clear();
-          localStorage.removeItem('token');
           alert("🔒 행정 인증 세션이 만료되거나 무효화되었습니다. 다시 로그인해 주십시오.");
           router.push('/');
         } else {
@@ -112,9 +111,10 @@ export default function Dashboard() {
 
     // 1초 간격 실시간 토큰 남은 시간 카운트다운
     const interval = setInterval(() => {
-      const currentToken = sessionStorage.getItem('token') || localStorage.getItem('token');
+      const currentToken = sessionStorage.getItem('token');
       if (!currentToken) {
         setTokenTimeLeft('만료됨');
+        setIsTokenValid(false);
         return;
       }
       const payload = parseJwt(currentToken);
@@ -124,7 +124,6 @@ export default function Dashboard() {
           setTokenTimeLeft('만료됨');
           setIsTokenValid(false);
           sessionStorage.clear();
-          localStorage.removeItem('token');
           alert("🔒 로그인 세션 시간이 만료되었습니다. 다시 로그인해 주십시오.");
           router.push('/');
         } else {
@@ -151,7 +150,6 @@ export default function Dashboard() {
         const data = await res.json();
         const newToken = data.access_token;
         sessionStorage.setItem('token', newToken);
-        localStorage.setItem('token', newToken);
         showToast("✓ 로그인 세션이 성공적으로 1시간(60분) 연장되었습니다.", "success");
       } else {
         showToast("세션 연장에 실패했습니다. 다시 로그인해 주십시오.", "error");

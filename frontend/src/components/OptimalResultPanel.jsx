@@ -223,6 +223,24 @@ export default function OptimalResultPanel({
                   )}
                 </div>
               </div>
+              {/* ⚡ AHP-ML Closed-Loop 피드백 점수 카드 */}
+              {currentParcel.isi_score && (
+                <div className="flex flex-col gap-1.5 mt-1 border-t border-slate-900/80 pt-2.5 bg-blue-950/20 p-3 rounded-xl border border-blue-500/20">
+                  <div className="flex justify-between items-center">
+                    <span className="text-[10px] bg-blue-500/15 text-blue-400 border border-blue-500/30 px-2 py-0.5 rounded font-bold flex items-center gap-1">
+                      ⚡ Closed-Loop 피드백 적격도 (ISI)
+                    </span>
+                    <span className="text-sm font-bold font-mono text-blue-400">
+                      {currentParcel.isi_score} 점
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center text-[10px] text-slate-400">
+                    <span>기본 AHP 다기준 점수: <strong className="text-slate-200">{currentParcel.ahp_score || currentParcel.isi_score}점</strong></span>
+                    <span>ML 갈등 감점: <strong className="text-rose-400">-{currentParcel.css_penalty_pct || 0}%</strong></span>
+                  </div>
+                </div>
+              )}
+
               {currentParcel.reason && (
                 <div className="flex flex-col gap-1 mt-1 border-t border-slate-900/60 pt-2">
                   <span className="text-[10px] text-emerald-500 font-semibold">입지 선정 사유 및 주변 환경 조언</span>

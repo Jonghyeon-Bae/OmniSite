@@ -804,14 +804,63 @@ async def recommend_optimal_sites(
             dist_val = float(cand.get("dist_from_ref", 0.0))
             
             # math.exp 패널티 연산
-            # [PEP8 Inline Import Cleaned]
             decay_multiplier = math.exp(-dist_val / decay_factor)
             total_score = total_score * decay_multiplier
 
             cand["total_score"] = round(total_score, 3)
 
-        # 6. 점수 내림차순 정렬 후, 공간적 중복 배제 필터링 (Dynamic Spatial Annealing)
-        candidates.sort(key=lambda x: x["total_score"], reverse=True)
+        # [v1.6.0-ClosedLoop] 인메모리 로딩된 XGBoost Pipeline ML 모델을 통한 필지별 ML CSS 추론 및 Closed-Loop ISI 피드백 통합 연산
+        model = model_registry.get_model(facility_type)
+        max_possible = sum(criteria_weights.values()) or 1.0
+
+        for cand in candidates:
+            css_score = 30
+            if model:
+                try:
+                    row_dict = {
+                        "land_use_code": cand.get("land_use_code") or "대",
+                        "ownership_type": cand.get("ownership_type") or "국유지",
+                        "building_use": "미지정",
+                        "area": float(cand.get("area", 100.0)),
+                        "dist_to_school": float(cand.get("dist_to_school", 9999.0)),
+                        "dist_to_childcare": float(cand.get("dist_to_childcare", 9999.0)),
+                        "dist_to_childcare_center": float(cand.get("dist_to_childcare", 9999.0)),
+                        "dist_to_nosmoking_zone": 15.0,
+                        "complaint_count": 50
+                    }
+                    X_pred = pd.DataFrame([row_dict])
+                    try:
+                        preprocessor = model.named_steps.get('preprocessor')
+                        if preprocessor:
+                            expected_cols = preprocessor.feature_names_in_
+                            for c in expected_cols:
+                                if c not in X_pred.columns:
+                                    X_pred[c] = 9999.0 if "dist_" in c else ("미지정" if "use" in c else 0)
+                            X_pred = X_pred[expected_cols]
+                    except Exception:
+                        pass
+                    prob_conflict = model.predict_proba(X_pred)[0][1]
+                    css_score = round(prob_conflict * 100)
+                    css_score = max(10, min(95, css_score))
+                except Exception:
+                    percentage = (cand["total_score"] / max_possible) * 100
+                    css_score = round(max(10, min(95, percentage)))
+            else:
+                percentage = (cand["total_score"] / max_possible) * 100
+                css_score = round(max(10, min(95, percentage)))
+
+            # [Closed-Loop ISI 공식] ISI = Score_AHP * (1.0 - 0.35 * (CSS/100.0)^2)
+            css_ratio = float(css_score) / 100.0
+            penalty_factor = 0.35 * (css_ratio ** 2)
+            isi_score = round(float(cand["total_score"]) * (1.0 - penalty_factor), 3)
+            css_penalty_pct = round(penalty_factor * 100, 1)
+
+            cand["css_score"] = css_score
+            cand["isi_score"] = isi_score
+            cand["css_penalty_pct"] = css_penalty_pct
+
+        # 6. Closed-Loop ISI (통합 적격도 점수) 내림차순 정렬 후, 공간적 중복 배제 필터링
+        candidates.sort(key=lambda x: x["isi_score"], reverse=True)
 
         # [v4.9.13] DB 메타데이터 연동 상호 이격거리 다양성 가드 (Spatial Diversity Filter)
         diversity_m = 150.0
@@ -977,9 +1026,16 @@ async def recommend_optimal_sites(
                 reasons.append("[보행 확인] 초등학교 어린이 보호구역 내 보행 안전 보차도 시인성 확보를 우선 검토해야 합니다.")
             elif type_str == "ev_charging":
                 reasons.append("[인프라 확인] 인근 변전 배전선로의 그리드 용량 가용 여부를 한전과 협의해야 합니다.")
-            elif type_str == "public_bicycle":
-                reasons.append("[대중교통 연계] 버스정류장 및 지하철역 노드와의 유기적인 환승 연계(라스트마일)를 극대화하도록 배치되었습니다.")
-                
+            # 4. AHP-ML Closed-Loop ISI 피드백 소급 멘트
+            css_penalty = cand_item.get("css_penalty_pct", 0.0)
+            isi_score = cand_item.get("isi_score", cand_item.get("total_score", 0.0))
+            css_score_val = cand_item.get("css_score", 30)
+            if css_penalty > 0:
+                reasons.append(
+                    f"⚡ [AHP-ML Closed-Loop 피드백] XGBoost ML 주민갈등 예측 점수({css_score_val}점)에 따른 감점 보정 패널티(-{css_penalty}%)가 실시간 소급 연산되어, "
+                    f"통합 적격도 점수(ISI: {isi_score}점) 기준 안전 입지 부지로 최종 확정 도출되었습니다."
+                )
+
             return " ".join(reasons)
 
         results = {}
@@ -988,51 +1044,7 @@ async def recommend_optimal_sites(
                 continue
             cand = filtered_candidates[idx]
             
-            # [v4.9.39] 인메모리 로딩된 XGBoost Pipeline ML 모델을 통한 실시간 지역 갈등 민감도(CSS) 확률 추론
-            model = model_registry.get_model(facility_type)
-            if model:
-                try:
-                    # 피처 DataFrame 빌드
-                    row_dict = {
-                        "land_use_code": cand["land_use_code"] or "대",
-                        "ownership_type": cand["ownership_type"] or "국유지",
-                        "building_use": "미지정",
-                        "area": float(cand["area"]),
-                        "dist_to_school": float(cand["dist_to_school"]),
-                        "dist_to_childcare": float(cand["dist_to_childcare"]),
-                        "dist_to_childcare_center": float(cand["dist_to_childcare"]),
-                        "dist_to_nosmoking_zone": 15.0,
-                        "complaint_count": 50
-                    }
-                    X_pred = pd.DataFrame([row_dict])
-                    
-                    # 파이프라인 전처리기 필수 컬럼 보완
-                    try:
-                        preprocessor = model.named_steps.get('preprocessor')
-                        if preprocessor:
-                            expected_cols = preprocessor.feature_names_in_
-                            for c in expected_cols:
-                                if c not in X_pred.columns:
-                                    X_pred[c] = 9999.0 if "dist_" in c else ("미지정" if "use" in c else 0)
-                            X_pred = X_pred[expected_cols]
-                    except Exception as prep_ex:
-                        pass
-
-                    # Y=1 (갈등) 발생 확률 추출
-                    prob_conflict = model.predict_proba(X_pred)[0][1]
-                    css_score = round(prob_conflict * 100)
-                    # 극단적인 스코어 왜곡 방지 보정 (10~95점 범위 유지)
-                    css_score = max(10, min(95, css_score))
-                    print(f"[ML Inference] CSS calculated via XGBoost: {css_score} for {cand['jibun']}")
-                except Exception as ml_ex:
-                    print(f"[ML Inference Fail] Falling back to AHP percentage. Error: {ml_ex}")
-                    percentage = (cand["total_score"] / max_possible) * 100
-                    css_score = round(max(10, min(95, percentage)))
-            else:
-                # [Fallback] 학습된 모델이 레지스트리에 없으면 기존 AHP 가중합 비율 스코어로 안전하게 수렴
-                percentage = (cand["total_score"] / max_possible) * 100
-                css_score = round(max(10, min(95, percentage)))
-            
+            css_score = cand.get("css_score", 30)
             if css_score >= 70:
                 css_grade = "상"
             elif css_score >= 40:
@@ -1069,6 +1081,10 @@ async def recommend_optimal_sites(
                 "area": int(cand["area"]),
                 "css": css_score,
                 "cssGrade": css_grade,
+                "ahp_score": cand.get("total_score", 0.0),
+                "isi_score": cand.get("isi_score", cand.get("total_score", 0.0)),
+                "css_penalty_pct": cand.get("css_penalty_pct", 0.0),
+                "is_closed_loop": True,
                 "lat": cand["lat"],
                 "lng": cand["lng"],
                 "geojson_geom": geojson_data,

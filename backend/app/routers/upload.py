@@ -287,10 +287,10 @@ def run_local_fallback_audit(pdf_text: str, filename: str, error_msg: str = None
         "rules_matched": rules_matched
     }
 
-def chunk_and_embed_pdf(file_path: str, filename: str, db: Session, district_id: int = 1, version_tag: str = "v1.0"):
+def chunk_and_embed_pdf(file_path: str, filename: str, db: Session, district_id: int = 1, version_tag: str = "v1.0") -> dict:
     text_content = extract_pdf_text(file_path)
     if not text_content:
-        return
+        return {"is_auto_matched": False, "matched_title": filename, "similarity": 0.0, "assigned_version": version_tag or "v1.0"}
     
     import re
     # 제\d+조 또는 제\d+조의\d+ 패턴 매칭
@@ -337,17 +337,60 @@ def chunk_and_embed_pdf(file_path: str, filename: str, db: Session, district_id:
     client = get_openai_client()
     if not client:
         print("[Warning] OpenAI client is not initialized. Skipping embedding for RAG database.")
-        return
+        return {"is_auto_matched": False, "matched_title": filename, "similarity": 0.0, "assigned_version": version_tag or "v1.0"}
         
-    # 조례명/파일명 정화 (확장자 제거)
-    clean_filename = os.path.splitext(filename)[0]
-    
     try:
         db.execute(text("ALTER TABLE district_regulations ADD COLUMN IF NOT EXISTS version_tag VARCHAR(30) DEFAULT 'v1.0';"))
         db.execute(text("ALTER TABLE district_regulations ADD COLUMN IF NOT EXISTS effective_date VARCHAR(20);"))
         db.commit()
     except Exception:
         pass
+
+    # === [RAG COSINE AUTO-VERSION BINDING ENGINE] ===
+    assigned_version = version_tag or "v1.0"
+    target_regulation_title = filename
+    is_auto_matched = False
+    similarity_pct = 0.0
+
+    summary_text = text_content[:1500].strip()
+    try:
+        summary_res = client.embeddings.create(
+            model="text-embedding-3-small",
+            input=summary_text
+        )
+        doc_vec = summary_res.data[0].embedding
+
+        sim_query = text("""
+            SELECT regulation_title, version_tag, 1 - (embedding <=> CAST(:doc_vec AS vector)) AS similarity
+            FROM district_regulations
+            WHERE embedding IS NOT NULL
+            ORDER BY similarity DESC
+            LIMIT 1;
+        """)
+        best_match = db.execute(sim_query, {"doc_vec": doc_vec}).fetchone()
+
+        if best_match and best_match[2] is not None and best_match[2] >= 0.80:
+            best_title, best_version, sim_score = best_match[0], best_match[1], float(best_match[2])
+            is_auto_matched = True
+            target_regulation_title = best_title
+            similarity_pct = round(sim_score * 100, 1)
+
+            ver_rows = db.execute(text("SELECT DISTINCT version_tag FROM district_regulations WHERE regulation_title = :title"), {"title": best_title}).fetchall()
+            ver_nums = []
+            for vr in ver_rows:
+                v_str = vr[0] or "v1.0"
+                match_num = re.search(r'v?(\d+)', v_str)
+                if match_num:
+                    ver_nums.append(int(match_num.group(1)))
+            
+            next_ver_num = (max(ver_nums) + 1) if ver_nums else 2
+            assigned_version = f"v{next_ver_num}.0"
+            print(f"[RAG Auto-Versioning] Matched existing '{best_title}' ({similarity_pct}%) -> Auto-assigned {assigned_version}")
+    except Exception as e:
+        print(f"[RAG Auto-Versioning Warning] Cosine matching skipped: {e}")
+
+    # 조례명/파일명 정화 (확장자 제거)
+    clean_filename = os.path.splitext(target_regulation_title)[0]
 
     for idx, (clause_num, body) in enumerate(raw_chunks):
         if not body.strip():
@@ -370,17 +413,24 @@ def chunk_and_embed_pdf(file_path: str, filename: str, db: Session, district_id:
             """)
             db.execute(query, {
                 "district_id": district_id,
-                "regulation_title": filename,
+                "regulation_title": target_regulation_title,
                 "clause_number": clause_num,
                 "content": enriched_content,
                 "embedding": embedding,
                 "category": "health_sanitation",
-                "version_tag": version_tag
+                "version_tag": assigned_version
             })
         except Exception as e:
             print(f"[Error] Failed to embed chunk {idx} of {filename}: {e}")
             
     db.commit()
+
+    return {
+        "is_auto_matched": is_auto_matched,
+        "matched_title": target_regulation_title,
+        "similarity": similarity_pct,
+        "assigned_version": assigned_version
+    }
 
 # 도메인 태그 유사도 기반 중복 방지 및 병합 헬퍼
 def get_or_create_merged_tag(domain_tag: str, reasoning: str, db: Session) -> str:
@@ -523,10 +573,12 @@ async def upload_regulation_files(
             while chunk := await file.read(1024 * 1024):
                 buffer.write(chunk)
 
-        # PDF일 경우 텍스트를 추출하여 pgvector DB에 적재
+        auto_res = {"is_auto_matched": False, "matched_title": filename, "similarity": 0.0, "assigned_version": v_tag}
         if ext == "pdf":
             try:
-                chunk_and_embed_pdf(saved_path, filename, db, version_tag=v_tag)
+                res = chunk_and_embed_pdf(saved_path, filename, db, version_tag=v_tag)
+                if res and isinstance(res, dict):
+                    auto_res = res
             except Exception as e:
                 print(f"[PDF RAG Error] {e}")
 
@@ -537,12 +589,21 @@ async def upload_regulation_files(
             "content_type": content_type,
             "extension": ext,
             "category": category,
-            "version_tag": v_tag,
+            "version_tag": auto_res.get("assigned_version", v_tag),
+            "is_auto_matched": auto_res.get("is_auto_matched", False),
+            "matched_title": auto_res.get("matched_title", filename),
+            "similarity": auto_res.get("similarity", 0.0),
             "saved_path": saved_path
         })
 
+    first_auto = uploaded_info[0] if uploaded_info else {}
+    if first_auto.get("is_auto_matched"):
+        msg = f"✓ [RAG 코사인 자동 매핑 {first_auto.get('similarity')}%] 기존 조례 '{first_auto.get('matched_title')}'의 개정안으로 자동 식별되어 {first_auto.get('version_tag')}로 등록되었습니다."
+    else:
+        msg = f"성공적으로 {len(files)}개 조례/시행규칙 파일({v_tag})을 등록 및 텍스트 캐싱 완료했습니다."
+
     return {
-        "message": f"성공적으로 {len(files)}개 조례/시행규칙 파일({v_tag})을 등록 및 텍스트 캐싱 완료했습니다.",
+        "message": msg,
         "files": uploaded_info
     }
 

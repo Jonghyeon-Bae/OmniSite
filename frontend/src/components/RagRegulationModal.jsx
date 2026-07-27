@@ -39,8 +39,9 @@ export default function RagRegulationModal({
         body: formData
       });
       if (res.ok) {
+        const data = await res.json();
         setRagUploadSuccess(true);
-        showToast(`✓ RAG 법규 조례 PDF(${versionTag})가 성공적으로 적재 및 임베딩 처리되었습니다.`, 'success');
+        showToast(data.message || `✓ RAG 법규 조례 PDF가 성공적으로 적재 및 임베딩 처리되었습니다.`, 'success');
         if (fetchRegulations) {
           fetchRegulations();
         }

@@ -238,6 +238,29 @@ export default function OptimalResultPanel({
                     <span>기본 AHP 다기준 점수: <strong className="text-slate-200">{currentParcel.ahp_score || currentParcel.isi_score}점</strong></span>
                     <span>ML 갈등 감점: <strong className="text-rose-400">-{currentParcel.css_penalty_pct || 0}%</strong></span>
                   </div>
+
+                  {/* XAI 듀얼 프로그레스 바 시각화 */}
+                  <div className="space-y-1.5 my-1.5 font-sans text-[10px] bg-slate-950/60 p-2.5 rounded-lg border border-slate-800/80">
+                    <div>
+                      <div className="flex justify-between text-slate-400 mb-0.5">
+                        <span>AHP 입지 수용성</span>
+                        <span className="text-blue-400 font-mono font-bold">{(100 - (currentParcel.css || 42) * 0.5).toFixed(1)}%</span>
+                      </div>
+                      <div className="w-full h-1.5 bg-slate-900 rounded-full overflow-hidden">
+                        <div className="h-full bg-blue-500 rounded-full transition-all duration-500 shadow-[0_0_10px_rgba(59,130,246,0.6)]" style={{ width: `${100 - (currentParcel.css || 42) * 0.5}%` }} />
+                      </div>
+                    </div>
+
+                    <div>
+                      <div className="flex justify-between text-slate-400 mb-0.5">
+                        <span>XGBoost 주민 갈등도 (CSS)</span>
+                        <span className="text-amber-400 font-mono font-bold">{currentParcel.css || 42}%</span>
+                      </div>
+                      <div className="w-full h-1.5 bg-slate-900 rounded-full overflow-hidden">
+                        <div className="h-full bg-amber-500 rounded-full transition-all duration-500 shadow-[0_0_10px_rgba(245,158,11,0.6)]" style={{ width: `${currentParcel.css || 42}%` }} />
+                      </div>
+                    </div>
+                  </div>
                 </div>
               )}
 

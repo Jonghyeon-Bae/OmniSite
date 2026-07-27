@@ -40,3 +40,30 @@ def verify_log_chain(logs: list) -> tuple[bool, int, str]:
         prev_hash = current_hash or recalculated
         
     return True, -1, "SHA-256 Hash Chain 100% Verified"
+
+def validate_step_integrity(current_step: int, metadata: dict) -> dict:
+    """
+    Validate pipeline step prerequisites and return step_validation metadata.
+    """
+    is_valid = True
+    reasons = []
+
+    if current_step >= 2 and not metadata.get("step_1_audit_passed", True):
+        is_valid = False
+        reasons.append("Step 1 AI data audit incomplete")
+    if current_step >= 3 and not metadata.get("step_2_geometry_valid", True):
+        is_valid = False
+        reasons.append("Step 2 geometry coordinates invalid")
+    if current_step >= 4 and not metadata.get("step_3_ahp_locked", True):
+        is_valid = False
+        reasons.append("Step 3 AHP consistency ratio unlocked")
+
+    return {
+        "pipeline_step": current_step,
+        "current_step_valid": is_valid,
+        "invalidation_reasons": reasons,
+        "step_1_audit_passed": metadata.get("step_1_audit_passed", True),
+        "step_2_geometry_valid": metadata.get("step_2_geometry_valid", True),
+        "step_3_ahp_locked": metadata.get("step_3_ahp_locked", True),
+        "validated_at": get_kst_now().isoformat()
+    }

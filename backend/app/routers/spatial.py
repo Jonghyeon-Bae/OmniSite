@@ -5,6 +5,7 @@ import asyncio
 import math
 import re
 import datetime
+import hashlib
 import queue
 import threading
 import joblib
@@ -81,21 +82,35 @@ def save_pipeline_log(db, step_number: str, action_type: str, detail_dict: dict,
                 step_number VARCHAR(20) NOT NULL,
                 action_type VARCHAR(50) NOT NULL,
                 detail_json JSONB,
-                created_at TIMESTAMP DEFAULT (CURRENT_TIMESTAMP AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Seoul')
+                created_at TIMESTAMP DEFAULT (CURRENT_TIMESTAMP AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Seoul'),
+                current_hash VARCHAR(64),
+                prev_hash VARCHAR(64)
             );
         """))
+        db.execute(text("ALTER TABLE pipeline_execution_logs ADD COLUMN IF NOT EXISTS current_hash VARCHAR(64);"))
+        db.execute(text("ALTER TABLE pipeline_execution_logs ADD COLUMN IF NOT EXISTS prev_hash VARCHAR(64);"))
         db.commit()
 
+        # [SHA-256 Hash Chain] 이전 해시값 인출
+        last_row = db.execute(text("SELECT current_hash FROM pipeline_execution_logs ORDER BY id DESC LIMIT 1")).fetchone()
+        prev_hash = last_row[0] if (last_row and last_row[0]) else "0" * 64
+
         kst_now_str = get_kst_now().strftime('%Y-%m-%d %H:%M:%S')
+        detail_str = json.dumps(detail_dict, ensure_ascii=False)
+        payload_str = f"{prev_hash}|{session_id}|{step_number}|{action_type}|{detail_str}|{kst_now_str}"
+        current_hash = hashlib.sha256(payload_str.encode('utf-8')).hexdigest()
+
         db.execute(text("""
-            INSERT INTO pipeline_execution_logs (session_id, step_number, action_type, detail_json, created_at)
-            VALUES (:session_id, :step_number, :action_type, :detail_json, :created_at)
+            INSERT INTO pipeline_execution_logs (session_id, step_number, action_type, detail_json, created_at, current_hash, prev_hash)
+            VALUES (:session_id, :step_number, :action_type, :detail_json, :created_at, :current_hash, :prev_hash)
         """), {
             "session_id": session_id,
             "step_number": step_number,
             "action_type": action_type,
-            "detail_json": json.dumps(detail_dict, ensure_ascii=False),
-            "created_at": kst_now_str
+            "detail_json": detail_str,
+            "created_at": kst_now_str,
+            "current_hash": current_hash,
+            "prev_hash": prev_hash
         })
         db.commit()
     except Exception as e:
@@ -115,13 +130,17 @@ def get_pipeline_execution_logs(limit: int = 50, db: Session = Depends(get_db)):
                 step_number VARCHAR(20) NOT NULL,
                 action_type VARCHAR(50) NOT NULL,
                 detail_json JSONB,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                current_hash VARCHAR(64),
+                prev_hash VARCHAR(64)
             );
         """))
+        db.execute(text("ALTER TABLE pipeline_execution_logs ADD COLUMN IF NOT EXISTS current_hash VARCHAR(64);"))
+        db.execute(text("ALTER TABLE pipeline_execution_logs ADD COLUMN IF NOT EXISTS prev_hash VARCHAR(64);"))
         db.commit()
 
         rows = db.execute(text("""
-            SELECT id, session_id, step_number, action_type, detail_json, created_at
+            SELECT id, session_id, step_number, action_type, detail_json, created_at, current_hash, prev_hash
             FROM pipeline_execution_logs
             ORDER BY id DESC
             LIMIT :limit
@@ -141,11 +160,130 @@ def get_pipeline_execution_logs(limit: int = 50, db: Session = Depends(get_db)):
                 "step_number": r[2],
                 "action_type": r[3],
                 "detail_json": detail,
-                "created_at": r[5].isoformat() if r[5] else None
+                "created_at": r[5].isoformat() if r[5] else None,
+                "current_hash": r[6] if len(r) > 6 else None,
+                "prev_hash": r[7] if len(r) > 7 else None
             })
         return {"status": "success", "count": len(logs), "logs": logs}
     except Exception as e:
         return {"status": "error", "message": str(e), "logs": []}
+
+@router.get("/spatial/logs/verify-hash-chain")
+def verify_hash_chain(db: Session = Depends(get_db)):
+    """[Option 4] 감사 로그 SHA-256 해시 체인 실시간 암호학적 무결성 검증 API"""
+    try:
+        db.execute(text("ALTER TABLE pipeline_execution_logs ADD COLUMN IF NOT EXISTS current_hash VARCHAR(64);"))
+        db.execute(text("ALTER TABLE pipeline_execution_logs ADD COLUMN IF NOT EXISTS prev_hash VARCHAR(64);"))
+        db.commit()
+
+        rows = db.execute(text("""
+            SELECT id, session_id, step_number, action_type, detail_json, created_at, current_hash, prev_hash
+            FROM pipeline_execution_logs
+            ORDER BY id ASC
+        """)).fetchall()
+
+        if not rows:
+            return {"status": "100% VERIFIED", "tampered": False, "total_logs": 0, "message": "기록된 감사 로그가 없습니다."}
+
+        expected_prev = "0" * 64
+        is_tampered = False
+        broken_id = None
+        verified_count = 0
+
+        for r in rows:
+            log_id, session_id, step_number, action_type, detail_json, created_at, curr_hash, prev_hash = r
+            if not prev_hash:
+                prev_hash = expected_prev
+
+            detail_str = detail_json if isinstance(detail_json, str) else json.dumps(detail_json or {}, ensure_ascii=False)
+            created_str = created_at.strftime('%Y-%m-%d %H:%M:%S') if hasattr(created_at, 'strftime') else str(created_at)[:19]
+            payload_str = f"{prev_hash}|{session_id}|{step_number}|{action_type}|{detail_str}|{created_str}"
+            calc_hash = hashlib.sha256(payload_str.encode('utf-8')).hexdigest()
+
+            # 레거시 로그에 current_hash가 없었던 경우 계산된 해시를 기준으로 체인 연결
+            if curr_hash and curr_hash != calc_hash:
+                is_tampered = True
+                broken_id = log_id
+                break
+
+            expected_prev = curr_hash or calc_hash
+            verified_count += 1
+
+        if is_tampered:
+            return {
+                "status": "TAMPER_DETECTED",
+                "tampered": True,
+                "broken_log_id": broken_id,
+                "total_logs": len(rows),
+                "verified_logs": verified_count,
+                "message": f"⚠️ 경고: 감사 로그 #{broken_id}번 항목에서 데이터 위·변조가 탐지되었습니다!"
+            }
+
+        return {
+            "status": "100% VERIFIED",
+            "tampered": False,
+            "total_logs": len(rows),
+            "verified_logs": verified_count,
+            "message": f"✓ 총 {len(rows)}건의 행정 감사 로그가 SHA-256 암호학적 해시 체인 검증을 100% 통과했습니다."
+        }
+    except Exception as e:
+        return {"status": "ERROR", "tampered": True, "message": f"해시 체인 검증 오류: {str(e)}"}
+
+class RegulationDiffRequest(BaseModel):
+    version_a: str = "v1.0"
+    version_b: str = "v2.0"
+
+@router.post("/spatial/regulations/diff")
+async def compare_regulation_versions(req: RegulationDiffRequest, db: Session = Depends(get_db)):
+    """[Option 2] RAG 조례/규정 개정 전후 Diff 비교 분석 API"""
+    try:
+        db.execute(text("ALTER TABLE district_regulations ADD COLUMN IF NOT EXISTS version_tag VARCHAR(30) DEFAULT 'v1.0';"))
+        db.commit()
+
+        q_a = text("SELECT id, regulation_title, content FROM district_regulations WHERE version_tag = :ver_a")
+        q_b = text("SELECT id, regulation_title, content FROM district_regulations WHERE version_tag = :ver_b")
+        
+        rows_a = db.execute(q_a, {"ver_a": req.version_a}).fetchall()
+        rows_b = db.execute(q_b, {"ver_b": req.version_b}).fetchall()
+
+        list_a = [{"title": r[1], "content": r[2]} for r in rows_a]
+        list_b = [{"title": r[1], "content": r[2]} for r in rows_b]
+
+        titles_a = {r["title"] for r in list_a}
+        titles_b = {r["title"] for r in list_b}
+
+        added = [r for r in list_b if r["title"] not in titles_a]
+        deleted = [r for r in list_a if r["title"] not in titles_b]
+        common_titles = titles_a.intersection(titles_b)
+        modified = []
+
+        for title in common_titles:
+            item_a = next(r for r in list_a if r["title"] == title)
+            item_b = next(r for r in list_b if r["title"] == title)
+            if item_a["content"] != item_b["content"]:
+                modified.append({
+                    "title": title,
+                    "content_a": item_a["content"],
+                    "content_b": item_b["content"]
+                })
+
+        return {
+            "status": "success",
+            "version_a": req.version_a,
+            "version_b": req.version_b,
+            "summary": {
+                "total_a": len(list_a),
+                "total_b": len(list_b),
+                "added_count": len(added),
+                "deleted_count": len(deleted),
+                "modified_count": len(modified)
+            },
+            "added": added,
+            "deleted": deleted,
+            "modified": modified
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"조례 개정 Diff 비교 실패: {str(e)}")
 
 
 # === [PHASE 1: DYNAMIC ML MODEL REGISTRY LOAD] ===

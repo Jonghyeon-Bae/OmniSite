@@ -3,7 +3,7 @@ import csv
 import re
 import json
 import joblib
-from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
+from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Depends
 from typing import List, Dict, Any, Optional
 from pydantic import BaseModel
 from pypdf import PdfReader
@@ -287,7 +287,7 @@ def run_local_fallback_audit(pdf_text: str, filename: str, error_msg: str = None
         "rules_matched": rules_matched
     }
 
-def chunk_and_embed_pdf(file_path: str, filename: str, db: Session, district_id: int = 1):
+def chunk_and_embed_pdf(file_path: str, filename: str, db: Session, district_id: int = 1, version_tag: str = "v1.0"):
     text_content = extract_pdf_text(file_path)
     if not text_content:
         return
@@ -342,6 +342,13 @@ def chunk_and_embed_pdf(file_path: str, filename: str, db: Session, district_id:
     # 조례명/파일명 정화 (확장자 제거)
     clean_filename = os.path.splitext(filename)[0]
     
+    try:
+        db.execute(text("ALTER TABLE district_regulations ADD COLUMN IF NOT EXISTS version_tag VARCHAR(30) DEFAULT 'v1.0';"))
+        db.execute(text("ALTER TABLE district_regulations ADD COLUMN IF NOT EXISTS effective_date VARCHAR(20);"))
+        db.commit()
+    except Exception:
+        pass
+
     for idx, (clause_num, body) in enumerate(raw_chunks):
         if not body.strip():
             continue
@@ -358,8 +365,8 @@ def chunk_and_embed_pdf(file_path: str, filename: str, db: Session, district_id:
             embedding = response.data[0].embedding
             
             query = text("""
-                INSERT INTO district_regulations (district_id, regulation_title, clause_number, content, embedding, category)
-                VALUES (:district_id, :regulation_title, :clause_number, :content, :embedding, :category)
+                INSERT INTO district_regulations (district_id, regulation_title, clause_number, content, embedding, category, version_tag)
+                VALUES (:district_id, :regulation_title, :clause_number, :content, :embedding, :category, :version_tag)
             """)
             db.execute(query, {
                 "district_id": district_id,
@@ -367,7 +374,8 @@ def chunk_and_embed_pdf(file_path: str, filename: str, db: Session, district_id:
                 "clause_number": clause_num,
                 "content": enriched_content,
                 "embedding": embedding,
-                "category": "health_sanitation"
+                "category": "health_sanitation",
+                "version_tag": version_tag
             })
         except Exception as e:
             print(f"[Error] Failed to embed chunk {idx} of {filename}: {e}")
@@ -478,8 +486,14 @@ class HITLCommitRequest(BaseModel):
 # PM 개발 철칙 2조 준수: 반드시 비동기 API(async def) 적용
 # 조례/시행규칙 규정 문서 등록 API
 @router.post("/upload/regulation")
-async def upload_regulation_files(files: List[UploadFile] = File(...), db: Session = Depends(get_db), current_admin: dict = Depends(get_current_admin)):
+async def upload_regulation_files(
+    files: List[UploadFile] = File(...),
+    version_tag: Optional[str] = Form("v1.0"),
+    db: Session = Depends(get_db),
+    current_admin: dict = Depends(get_current_admin)
+):
     uploaded_info = []
+    v_tag = version_tag or "v1.0"
 
     for file in files:
         filename = file.filename
@@ -512,7 +526,7 @@ async def upload_regulation_files(files: List[UploadFile] = File(...), db: Sessi
         # PDF일 경우 텍스트를 추출하여 pgvector DB에 적재
         if ext == "pdf":
             try:
-                chunk_and_embed_pdf(saved_path, filename, db)
+                chunk_and_embed_pdf(saved_path, filename, db, version_tag=v_tag)
             except Exception as e:
                 print(f"[PDF RAG Error] {e}")
 
@@ -523,11 +537,12 @@ async def upload_regulation_files(files: List[UploadFile] = File(...), db: Sessi
             "content_type": content_type,
             "extension": ext,
             "category": category,
+            "version_tag": v_tag,
             "saved_path": saved_path
         })
 
     return {
-        "message": f"성공적으로 {len(files)}개 조례/시행규칙 파일을 등록 및 텍스트 캐싱 완료했습니다.",
+        "message": f"성공적으로 {len(files)}개 조례/시행규칙 파일({v_tag})을 등록 및 텍스트 캐싱 완료했습니다.",
         "files": uploaded_info
     }
 
@@ -547,10 +562,21 @@ async def list_regulations():
                     })
         return {"regulations": files_list}
     except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"조례 목록 조회 중 오류가 발생했습니다: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=str(e))
+
+# 등록된 조례 버전 태그 목록 조회 API
+@router.get("/upload/regulations/versions")
+async def list_regulation_versions(db: Session = Depends(get_db)):
+    try:
+        db.execute(text("ALTER TABLE district_regulations ADD COLUMN IF NOT EXISTS version_tag VARCHAR(30) DEFAULT 'v1.0';"))
+        db.commit()
+        rows = db.execute(text("SELECT DISTINCT version_tag FROM district_regulations ORDER BY version_tag")).fetchall()
+        versions = [r[0] for r in rows if r[0]]
+        if not versions:
+            versions = ["v1.0"]
+        return {"versions": versions}
+    except Exception as e:
+        return {"versions": ["v1.0"]}
 
 # 등록된 조례/시행규칙 규정 삭제 API
 @router.delete("/upload/regulations/{filename}")

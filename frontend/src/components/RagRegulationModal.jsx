@@ -13,6 +13,12 @@ export default function RagRegulationModal({
   const [isRegulationUploading, setIsRegulationUploading] = useState(false);
   const [ragUploadSuccess, setRagUploadSuccess] = useState(false);
 
+  const [versionTag, setVersionTag] = useState('v1.0');
+  const [versionA, setVersionA] = useState('v1.0');
+  const [versionB, setVersionB] = useState('v2.0');
+  const [diffResult, setDiffResult] = useState(null);
+  const [isDiffLoading, setIsDiffLoading] = useState(false);
+
   // RAG 조례 PDF 파일 업로드 핸들러
   const handleRegulationFileChange = async (e) => {
     const files = Array.from(e.target.files);
@@ -25,17 +31,18 @@ export default function RagRegulationModal({
     files.forEach(file => {
       formData.append('files', file);
     });
+    formData.append('version_tag', versionTag || 'v1.0');
     
     try {
-      const res = await apiFetch('/api/v1/upload/regulations', {
+      const res = await apiFetch('/api/v1/upload/regulation', {
         method: 'POST',
         body: formData
       });
       if (res.ok) {
         setRagUploadSuccess(true);
-        showToast('✓ RAG 법규 조례 PDF가 성공적으로 적재 및 임베딩 처리되었습니다.', 'success');
+        showToast(`✓ RAG 법규 조례 PDF(${versionTag})가 성공적으로 적재 및 임베딩 처리되었습니다.`, 'success');
         if (fetchRegulations) {
-          fetchRegulations(); // 업로드 성공 시 목록 갱신
+          fetchRegulations();
         }
       } else {
         const err = await res.json();
@@ -48,6 +55,30 @@ export default function RagRegulationModal({
     }
   };
 
+  // 조례 개정 Diff 비교 핸들러
+  const handleCompareDiff = async () => {
+    setIsDiffLoading(true);
+    setDiffResult(null);
+    try {
+      const res = await apiFetch('/api/v1/spatial/regulations/diff', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ version_a: versionA, version_b: versionB })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setDiffResult(data);
+      } else {
+        const err = await res.json();
+        showToast(err.detail || 'Diff 비교 실패', 'error');
+      }
+    } catch (err) {
+      showToast('Diff 비교 연산 오류: ' + err.message, 'error');
+    } finally {
+      setIsDiffLoading(false);
+    }
+  };
+
   // 조례 파일 삭제
   const handleDeleteRegulation = async (filename) => {
     if (!confirm(`⚠️ 조례 파일 '${filename}'을 RAG 지식베이스에서 삭제하시겠습니까?\n삭제 시 해당 규정의 공간 지리 감리가 즉각 해제됩니다.`)) {
@@ -55,7 +86,7 @@ export default function RagRegulationModal({
     }
     
     try {
-      const res = await apiFetch(`/api/v1/spatial/regulations/${encodeURIComponent(filename)}`, {
+      const res = await apiFetch(`/api/v1/upload/regulations/${encodeURIComponent(filename)}`, {
         method: 'DELETE'
       });
       if (res.ok) {
@@ -92,9 +123,20 @@ export default function RagRegulationModal({
           </div>
 
           <div className="bg-blue-950/30 border border-blue-500/30 p-2.5 rounded-xl text-[10px] text-blue-300 leading-relaxed flex flex-col gap-1">
-            <span className="font-bold text-blue-200">💡 조례 PDF 업로드 규격 가이드</span>
-            <span>- <strong>조(條) 단위 자동 분할</strong>: [조례명 &gt; 제N조] 단위로 백엔드가 파싱되어 pgvector 1,536 차원으로 자동 임베딩 적재됩니다.</span>
-            <span>- <strong>다중 PDF 선택 지원</strong>: 지자체별 금연구역 조례, 킥보드 준수사항 등 여러 문서를 다중 드래그앤드롭 업로드하십시오.</span>
+            <span className="font-bold text-blue-200">💡 조례 PDF 업로드 & 버전 지정</span>
+            <span>- <strong>조례 버전 태그(version_tag)</strong>: 개정 전/후 정책 영향 비교 분석(Option 2)을 위해 버전 식별자를 지정하십시오.</span>
+          </div>
+
+          {/* 버전 태그 입력 필드 */}
+          <div className="flex flex-col gap-1">
+            <label className="text-[11px] font-semibold text-slate-300">조례 버전 태그 (Version Tag)</label>
+            <input
+              type="text"
+              value={versionTag}
+              onChange={(e) => setVersionTag(e.target.value)}
+              placeholder="예: v1.0, v2.0 (2026년 개정안)"
+              className="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-blue-500"
+            />
           </div>
           
           <div className="border border-slate-800 rounded-lg p-4 bg-slate-900/40 flex flex-col gap-3">
@@ -103,14 +145,14 @@ export default function RagRegulationModal({
               className="border-2 border-dashed border-slate-700 hover:border-blue-500 rounded-xl p-6 text-center cursor-pointer transition-all bg-slate-950/40 hover:bg-slate-900/30 flex flex-col items-center justify-center gap-1.5"
             >
               <span className="text-xl">⚖️</span>
-              <p className="text-xs text-slate-300 font-semibold">조례 및 법규 PDF 파일 등록</p>
+              <p className="text-xs text-slate-300 font-semibold">조례 및 법규 PDF 파일 등록 ({versionTag})</p>
               <p className="text-[10px] text-slate-500">클릭하여 PDF 파일을 선택해 주세요.</p>
               {isRegulationUploading && <p className="text-[10px] text-amber-400 mt-1 animate-pulse">RAG 적재 및 텍스트 벡터 캐싱 중...</p>}
             </div>
             
             {ragUploadSuccess && (
               <div className="bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[11px] p-2.5 rounded-lg text-center font-medium animate-pulse">
-                ✓ 법규 문서의 RAG DB 적재가 성공적으로 완료되었습니다!
+                ✓ 법규 문서({versionTag})의 RAG DB 적재가 성공적으로 완료되었습니다!
               </div>
             )}
             
@@ -138,11 +180,11 @@ export default function RagRegulationModal({
     );
   }
 
-  // 2) 목록 관리 모달 렌더링
+  // 2) 목록 관리 & 조례 개정 Diff 비교 모달 렌더링
   if (showList) {
     return (
       <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-        <div className="glass-panel w-full max-w-md p-6 flex flex-col gap-4 relative animate-fade-in text-slate-100">
+        <div className="glass-panel w-full max-w-lg p-6 flex flex-col gap-4 relative animate-fade-in text-slate-100 max-h-[85vh] overflow-y-auto">
           <button 
             onClick={onCloseList}
             className="absolute top-4 right-4 text-slate-400 hover:text-white font-bold cursor-pointer"
@@ -150,14 +192,63 @@ export default function RagRegulationModal({
             ✕
           </button>
           <div>
-            <h3 className="text-sm font-bold text-white mb-1">📋 등록된 조례/법규 목록</h3>
-            <p className="text-[11px] text-slate-400">RAG 지식베이스에 적재되어 공간 감리에 반영되고 있는 조례 문서들입니다.</p>
+            <h3 className="text-sm font-bold text-white mb-1">📋 등록된 조례/법규 목록 & 개정 Diff 비교</h3>
+            <p className="text-[11px] text-slate-400">RAG 지식베이스 조례 적재 현황 및 조례 개정 전후 변동 비교 분석(Option 2)</p>
+          </div>
+
+          {/* 조례 개정 Diff 비교 섹션 */}
+          <div className="bg-indigo-950/40 border border-indigo-500/30 p-3 rounded-xl flex flex-col gap-2.5">
+            <h4 className="text-xs font-bold text-indigo-300 flex items-center gap-1.5">
+              <span>⚖️ 조례 개정 전후 Diff 비교 (Option 2)</span>
+            </h4>
+            <div className="grid grid-cols-2 gap-2">
+              <input
+                type="text"
+                value={versionA}
+                onChange={(e) => setVersionA(e.target.value)}
+                placeholder="기준 버전 (예: v1.0)"
+                className="bg-slate-900 border border-slate-800 rounded px-2.5 py-1 text-[11px] text-slate-200"
+              />
+              <input
+                type="text"
+                value={versionB}
+                onChange={(e) => setVersionB(e.target.value)}
+                placeholder="비교 버전 (예: v2.0)"
+                className="bg-slate-900 border border-slate-800 rounded px-2.5 py-1 text-[11px] text-slate-200"
+              />
+            </div>
+            <button
+              onClick={handleCompareDiff}
+              disabled={isDiffLoading}
+              className="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold py-1.5 rounded-lg transition-all cursor-pointer"
+            >
+              {isDiffLoading ? "Diff 연산 분석 중..." : "🔍 버전 간 개정 변동(Diff) 비교 연산"}
+            </button>
+
+            {diffResult && (
+              <div className="bg-slate-900/90 border border-slate-800 p-2.5 rounded-lg text-[11px] flex flex-col gap-1.5">
+                <div className="flex justify-between text-indigo-300 font-bold border-b border-slate-800 pb-1">
+                  <span>비교 결과 ({diffResult.version_a} ➔ {diffResult.version_b})</span>
+                  <span>신규 {diffResult.summary?.added_count} / 삭제 {diffResult.summary?.deleted_count} / 수정 {diffResult.summary?.modified_count}</span>
+                </div>
+                {diffResult.modified?.map((mod, idx) => (
+                  <div key={idx} className="bg-slate-950 p-2 rounded border border-amber-500/30 text-[10px]">
+                    <span className="text-amber-400 font-bold">[수정조항] {mod.title}</span>
+                    <p className="text-slate-400 mt-0.5 line-clamp-2">이전: {mod.content_a}</p>
+                    <p className="text-emerald-300 mt-0.5 line-clamp-2">개정: {mod.content_b}</p>
+                  </div>
+                ))}
+                {diffResult.summary?.modified_count === 0 && diffResult.summary?.added_count === 0 && (
+                  <p className="text-slate-400 text-center py-2">두 버전 간 조항 변경 내용이 동일하거나 조항 데이터가 동일합니다.</p>
+                )}
+              </div>
+            )}
           </div>
           
           <div className="border border-slate-800 rounded-lg p-3 bg-slate-900/40 flex flex-col gap-2">
-            <div className="max-h-60 overflow-y-auto pr-1 flex flex-col gap-2">
+            <div className="max-h-48 overflow-y-auto pr-1 flex flex-col gap-2">
               {regulationList.length === 0 ? (
-                <p className="text-center py-8 text-xs text-slate-500 font-medium">등록된 조례/시행규칙이 없습니다.</p>
+                <p className="text-center py-6 text-xs text-slate-500 font-medium">등록된 조례/시행규칙이 없습니다.</p>
               ) : (
                 regulationList.map((reg) => (
                   <div key={reg.filename} className="flex justify-between items-center bg-slate-950/50 border border-slate-800/80 p-2.5 rounded-lg">

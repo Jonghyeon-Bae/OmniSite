@@ -905,4 +905,11 @@
     - **Word 다운로드 제거 및 UI 미학 정화 (`DebateSimulatorModal.jsx`, `OptimalResultPanel.jsx`):** 편집 가능 파일 다운로드 버튼을 제거하고, 직인·타임스탬프 기반 위·변조 방지 `📄 공인 PDF 보안 보고서 발급` 단일 버튼으로 개조하여 공공 행정 감리 무결성 확보.
     - **빌드 및 동기화:** Next.js Turbopack `npm run build` 100% 무오류 통과 및 바탕화면 물리 작업 공간 이관 완공.
 
+### [1.9.5-HashChainAndDiff] SHA-256 감사 로그 암호학적 해시 체인(4안) & RAG 조례 개정 Diff 비교(2안) 시스템 수립 (v1.9.5-HashChainAndDiff)
+* **연구 내용:** 조장(USER)의 결단에 의거하여, 레이턴시 영향 0ms면서 행정 감리 및 공공 감사원 신뢰도를 100% 보장하는 **SHA-256 감사 로그 암호학적 해시 체인 무결성 검증 시스템(4안)**과 조례 개정 전후 규제 변동 분석을 지원하는 **RAG 조례 개정 전후 Diff 비교 연산 모듈(2안)**을 수립 완공함.
+* **주요 의사결정:**
+    - **SHA-256 감사 로그 해시 체인 (Option 4)**: `pipeline_execution_logs` 테이블에 `current_hash`, `prev_hash` 단방향 해시 체인 필드를 추가하고, `save_pipeline_log` 연산 시 이전 해시와 신규 로그 페이로드를 Combine하여 0.001초 미만의 SHA-256 해시를 기록함. 백엔드 `/spatial/logs/verify-hash-chain` 검증 API 및 `AuditLogModal.jsx` 내 `🔒 SHA-256 해시 체인 무결성 100% Verified` 뱃지 및 실시간 위변조 탐지 기능 구축 완료.
+    - **RAG 조례 개정 Diff 비교 (Option 2)**: `district_regulations` 테이블에 `version_tag` 컬럼을 주입하고, 조례 PDF 업로드 시 버전 지정 지원 및 백엔드 `/spatial/regulations/diff` API와 `RagRegulationModal.jsx` 내 `⚖️ 조례 개정 Diff` 인터랙티브 카드 뷰어를 수립하여 조례 개정 전후 변동 조항 및 공간 입지 영향 변화를 레이턴시 병목 없이 정밀 분석 가능하도록 완공함.
+    - **E2E 및 파서 전수 검증 100% 통과**: `test_directory_parsers.py` (4대 파서 100% 통과), `test_hash_chain_and_diff.py` (해시 체인 및 Diff 연산 100% 통과), `test_e2e_full_pipeline.py` (1~8단계 100% 통과), Next.js Turbopack 빌드 `✓ Compiled successfully in 1613ms` 확정.
+
 

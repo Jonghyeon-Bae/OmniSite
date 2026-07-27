@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 
 export default function DebateSimulatorModal({
   showSimModal,
@@ -17,6 +17,14 @@ export default function DebateSimulatorModal({
   apiFetch,
   districtId
 }) {
+  const chatContainerRef = useRef(null);
+
+  useEffect(() => {
+    if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+    }
+  }, [simLogs, simStep]);
+
   if (!showSimModal) return null;
 
   const currentParcel = selectedParcel?.[activeTab] || selectedParcel || {};
@@ -123,7 +131,7 @@ export default function DebateSimulatorModal({
         </div>
 
         {/* 터미널 대화 스크롤 */}
-        <div className="flex-1 my-5 bg-slate-950/80 rounded-xl p-5 overflow-y-auto font-mono text-xs flex flex-col gap-3.5 border border-slate-800/80 shadow-inner">
+        <div ref={chatContainerRef} className="flex-1 my-5 bg-slate-950/80 rounded-xl p-5 overflow-y-auto font-mono text-xs flex flex-col gap-3.5 border border-slate-800/80 shadow-inner scroll-smooth">
           {simLogs.map((log, index) => {
             const sender = log.sender || '';
             let badgeStyle = 'bg-slate-800 text-slate-300 border-slate-700';

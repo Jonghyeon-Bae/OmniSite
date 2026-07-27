@@ -13,6 +13,7 @@ import PasswordChangeModal from '../../components/PasswordChangeModal';
 import RagRegulationModal from '../../components/RagRegulationModal';
 import StepGuideModal from '../../components/StepGuideModal';
 import AuditLogModal from '../../components/AuditLogModal';
+import LoginModal from '../../components/LoginModal';
 import { OMNISITE_DISPLAY_VERSION } from '../../config/version';
 
 const apiFetch = (url, options = {}) => {
@@ -1897,71 +1898,34 @@ export default function Home() {
         apiFetch={apiFetch}
       />
 
-      {/* 🔒 인페이지 세션 로그인 모달 */}
-      {showLoginModal && (
-        <div className="fixed inset-0 bg-black/75 backdrop-blur-md z-50 flex items-center justify-center p-6 animate-fade-in">
-          <div className="glass-panel w-full max-w-md p-8 rounded-2xl border border-slate-800 bg-slate-900/90 shadow-2xl flex flex-col gap-6 relative">
-            <button 
-              onClick={() => setShowLoginModal(false)}
-              className="absolute top-4 right-4 text-slate-400 hover:text-white text-xl font-bold cursor-pointer"
-            >
-              &times;
-            </button>
-            <div className="text-center">
-              <span className="text-[10px] bg-blue-500/15 border border-blue-500/30 text-blue-400 px-3 py-1 rounded-full font-bold uppercase tracking-wider">
-                OmniSite Executive Login
-              </span>
-              <h3 className="text-lg font-bold text-white mt-3">행정망 세션 재인증</h3>
-              <p className="text-xs text-slate-400 mt-1">
-                도시행정 인프라 심의권한 확인을 위해 실무자 계정으로 로그인하십시오.
-              </p>
-            </div>
-
-            <form onSubmit={handleInlineLogin} className="flex flex-col gap-4">
-              <div>
-                <label className="text-xs font-semibold text-slate-300 mb-1 block">실무관 아이디 (Username)</label>
-                <input 
-                  type="text"
-                  value={loginUsername}
-                  onChange={(e) => setLoginUsername(e.target.value)}
-                  placeholder="예: admin, yongsan_user"
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-blue-500 transition-all"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="text-xs font-semibold text-slate-300 mb-1 block">인증 비밀번호 (Password)</label>
-                <input 
-                  type="password"
-                  value={loginPassword}
-                  onChange={(e) => setLoginPassword(e.target.value)}
-                  placeholder="••••••••"
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-blue-500 transition-all"
-                  required
-                />
-              </div>
-
-              <div className="flex justify-end gap-3 mt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowLoginModal(false)}
-                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold rounded-xl transition-all cursor-pointer"
-                >
-                  취소
-                </button>
-                <button
-                  type="submit"
-                  disabled={loginLoading}
-                  className="px-5 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-xl transition-all shadow-md active:scale-95 disabled:opacity-50 cursor-pointer"
-                >
-                  {loginLoading ? '인증 확인 중...' : '🔒 로그인 승인'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      {/* 🔒 세션 로그인 모달 */}
+      <LoginModal
+        show={showLoginModal}
+        onClose={() => setShowLoginModal(false)}
+        onLoginSuccess={async (u, p) => {
+          setLoginLoading(true);
+          try {
+            const formData = new URLSearchParams();
+            formData.append('username', u);
+            formData.append('password', p);
+            const res = await apiFetch('/api/v1/auth/login', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+              body: formData
+            });
+            if (!res.ok) throw new Error('로그인 인증 실패');
+            const data = await res.json();
+            sessionStorage.setItem('token', data.access_token);
+            setShowLoginModal(false);
+            showToast('로그인이 완료되었습니다.', 'success');
+          } catch (err) {
+            showToast('로그인 실패: ' + err.message, 'error');
+          } finally {
+            setLoginLoading(false);
+          }
+        }}
+        showToast={showToast}
+      />
     </div>
   );
 }

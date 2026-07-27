@@ -273,6 +273,17 @@ async def reset_user_password(user_id: int, req: PasswordResetRequest, db: Sessi
     try:
         db.execute(update_query, {"new_hash": new_hash, "id": user_id})
         db.commit()
+
+        # [Audit Log Save]
+        try:
+            from app.routers.spatial import save_pipeline_log
+            save_pipeline_log(db, 'SYSTEM', '[ADMIN_PASSWORD_RESET]', {
+                'target_username': user[0],
+                'target_user_id': user_id,
+                'reset_by': current_admin.get('username', 'admin')
+            }, session_id=current_admin.get('username', 'admin'))
+        except Exception as log_err:
+            print(f"[Reset Password Audit Log Error] {log_err}")
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"비밀번호 재설정 중 오류가 발생했습니다: {str(e)}")
@@ -281,7 +292,7 @@ async def reset_user_password(user_id: int, req: PasswordResetRequest, db: Sessi
 
 # --- 9. 행정 세션 1시간(60분) 연장 API ---
 @router.post("/refresh")
-async def refresh_session_token(current_user: dict = Depends(get_current_user)):
+async def refresh_session_token(db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
     """
     현재 로그인된 실무관의 세션을 1시간(60분) 추가 연장하여 신규 JWT 토큰을 발급합니다.
     """
@@ -295,6 +306,17 @@ async def refresh_session_token(current_user: dict = Depends(get_current_user)):
         },
         expires_delta=expires_delta
     )
+
+    # [Audit Log Save]
+    try:
+        from app.routers.spatial import save_pipeline_log
+        save_pipeline_log(db, 'SYSTEM', '[AUTH_REFRESH]', {
+            'username': current_user["username"],
+            'extended_minutes': 60
+        }, session_id=current_user["username"])
+    except Exception as log_err:
+        print(f"[Auth Refresh Audit Log Error] {log_err}")
+
     return {
         "access_token": new_token,
         "token_type": "bearer",

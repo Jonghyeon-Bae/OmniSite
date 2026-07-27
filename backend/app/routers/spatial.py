@@ -2691,6 +2691,16 @@ async def update_decision_history_status(history_id: int, req: HistoryStatusUpda
         if res.rowcount == 0:
             raise HTTPException(status_code=404, detail="해당 심의 이력을 찾을 수 없습니다.")
         db.commit()
+
+        # [Audit Log Save]
+        try:
+            save_pipeline_log(db, 'STEP_5', '[DEBATE_HISTORY_STATUS_CHANGE]', {
+                'target_history_id': history_id,
+                'new_status': req.status
+            })
+        except Exception as log_err:
+            print(f"[History Status Change Audit Log Error] {log_err}")
+
         return {"status": "success", "message": f"의사결정 이력 #{history_id}의 상태가 '{req.status}'(으)로 수정되었습니다."}
     except Exception as e:
         db.rollback()
@@ -3016,6 +3026,16 @@ async def delete_decision_history(history_id: int, db: Session = Depends(get_db)
     try:
         db.execute(text("DELETE FROM decision_histories WHERE id = :id"), {"id": history_id})
         db.commit()
+
+        # [Audit Log Save]
+        try:
+            save_pipeline_log(db, 'SYSTEM', '[DEBATE_HISTORY_DELETE]', {
+                'action': 'delete_history',
+                'target_history_id': history_id
+            })
+        except Exception as log_err:
+            print(f"[Delete History Audit Log Error] {log_err}")
+
         return {"status": "success", "message": f"모의 심의 이력 #{history_id} 가 삭제되었습니다."}
     except Exception as e:
         db.rollback()
@@ -3026,6 +3046,16 @@ async def delete_verified_precedent(precedent_id: int, db: Session = Depends(get
     try:
         db.execute(text("DELETE FROM verified_precedents WHERE id = :id"), {"id": precedent_id})
         db.commit()
+
+        # [Audit Log Save]
+        try:
+            save_pipeline_log(db, 'SYSTEM', '[RAG_PRECEDENT_DELETE]', {
+                'action': 'delete_precedent',
+                'target_precedent_id': precedent_id
+            })
+        except Exception as log_err:
+            print(f"[Delete Precedent Audit Log Error] {log_err}")
+
         return {"status": "success", "message": f"실증 준공 사례 #{precedent_id} 가 삭제되었습니다."}
     except Exception as e:
         db.rollback()

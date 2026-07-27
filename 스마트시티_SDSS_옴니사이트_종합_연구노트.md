@@ -860,6 +860,19 @@
     - **E2E 빌드 및 동기화:** `npm run build` 컴파일 무오류 통과 및 바탕화면 물리 작업 공간 이관 완료.
 
 
+### [1.4.0-ClosedLoop] AHP 선형대수학 & XGBoost 머신러닝 피드백 Closed-Loop 연동 알고리즘 완공 (v1.4.0-ClosedLoop)
+* **연구 내용:** AHP 가중치 수식($C.R. \le 0.1$)과 XGBoost 주민 갈등 페널티 점수($CSS$)를 정량 결합한 Closed-Loop 최적 입지 점수($ISI$) 알고리즘 수식을 완성하고, 선형대수학 및 머신러닝 피드백 루프 작동 기전을 명세화함.
+* **주요 의사결정:**
+    - **Closed-Loop 입지 적합성 점수 수식 표준화:** $ISI_i = S_i^{AHP} \times (1 - \frac{CSS_i}{100}) \times (1 - P_{zone\_violation})$
+    - **AHP 정합성 비율 수식 보존:** $C.R. = \frac{C.I.}{R.I.} \le 0.1$, $C.I. = \frac{\lambda_{max} - n}{n - 1}$
+    - **AHP 가중치 락 및 XGBoost 비동기 동적 재학습 연동 완공:** Step 3 가중치 잠금 시 DB `ahp_weight_profiles` 테이블에 프로파일을 보존하고, Step 5 모의 심의 완료 시 이연 의결 데이터를 기반으로 비동기 XGBoost 재학습(`/model/retrain`)을 기동하여 Closed-Loop 자가학습 체계를 완성함.
+
+### [1.5.0-Whitepaper] 옴니사이트 전체 시스템 정밀 기술해설서 편찬 (v1.5.0-Whitepaper)
+* **연구 내용:** 조장(USER)의 지시에 따라 옴니사이트 전체 5단계 프로세스 및 AI/GIS/ML/RAG 엔진의 작동 원리, 정밀 수식, 입출력 결과를 집대성한 공식 기술 백서(`OmniSite_전체시스템_정밀_기술해설서.md`)를 편찬함.
+
+### [1.6.0-StateProtection] 파이프라인 라우팅 단선 보호 가드 & 리셋 파이프라인 구축 (v1.6.0-StateProtection)
+* **연구 내용:** 사용자가 선행 단계를 완료하지 않고 상위 단계(Step 2~5)로 무단 이탈하지 못하도록 `canNavigateToStep()` 라우팅 가드를 구축하고, 프론트엔드 React 상태 12종과 백엔드 임시 캐시를 원스톱으로 초기화하는 `🔄 리셋` 파이프라인을 완공함.
+
 ### [1.7.2-AuditLogFull] 옴니사이트 UI/시스템 전 기능 감사 로그(Audit Log) 전수 수거 완공 (v1.7.2-AuditLogFull)
 * **연구 내용:** 조장(USER)의 명시적 지시에 따라 옴니사이트 UI 및 백엔드 상에 존재하는 **모든 시스템/행정 기능(RAG 조례 업로드/삭제, 파이프라인 리셋, 가상 금지구역 생성/삭제, DOCX/PDF 보고서 인출, 계정/보안 변경)에 대해 100% 감사 로그 전수 적재 시스템**을 완공함.
 * **전수 수거 감사 로그 액션 분류:**
@@ -873,5 +886,23 @@
     - **`[ISI_RECOMMEND]` (Step 4)**: Closed-Loop ISI 적격 입지 추천 연산 실행 이력 적재.
     - **`[DEBATE_COMPLETE]` / `[DEBATE_HISTORY_SAVE]` (Step 5)**: 3자 AI 모의 심의 토론 완공 및 이력 보존 적재.
     - **`[REPORT_DOWNLOAD]` / `[REPORT_DOWNLOAD_DOCX]` (Step 5)**: PDF / DOCX 전자정부 공문서 발급 다운로드 이력 적재.
-* **빌드 및 시스템 무결성 결과:**
-    - Next.js Turbopack `npm run build` 결과 `✓ Compiled successfully in 1668ms (0 Error, 0 Warning)` 검증 및 Uvicorn hot-reload 완공.
+
+### [1.7.5-DocxFix] DOCX 전자정부 타당성 보고서 바이너리 인출 파이프라인 수리 (v1.7.5-DocxFix)
+* **연구 내용:** Step 5/6 토론 완료 후 DOCX 다운로드 시 발생하던 `500 Internal Server Error` 및 바이너리 인출 실패 결함을 `doc.save(buffer)` 포인터 초기화(`buffer.seek(0)`) 및 `headers` 변수 순서 보정으로 36.5 KB 바이너리 정상 인출로 완공 수리함.
+
+### [1.7.6-PasswordAlert] 비밀번호 변경 자가 알림 & 어드민 계정 삭제 감사 로그 보강 (v1.7.6-PasswordAlert)
+* **연구 내용:** 비밀번호 자가 변경 후 사용자에게 `alert()` 팝업 안내창 및 세션 초기화 리다이렉트 흐름을 적용하고, 400 에러 보안 규격 미달(영문+숫자+특수문자 8자 이상) 안내를 보강함. 어드민 유저 삭제 시 `[ADMIN_USER_MGMT]` 감사 로그가 무결 적재되도록 수리함.
+
+### [1.7.7-DatabaseReset] DB 시딩 & 사용자 계정 표준화 복구 파이프라인 (v1.7.7-DatabaseReset)
+* **연구 내용:** `seed_db.py` 파이프라인을 재가동하여 6,524 필지, 6,509 상가, 268 제한구역 데이터셋을 복구하고, 최상위 `admin` 계정을 표준 보안 비밀번호(`Admin1234!`)로 깨끗이 원복 완료함.
+
+### [1.7.8-KSTTimezone] 백엔드 & 프론트엔드 전 시스템 한국 표준시 (KST: Asia/Seoul) 통일 (v1.7.8-KSTTimezone)
+* **연구 내용:** 백엔드 `get_kst_now()` 헬퍼 함수 및 DB `(CURRENT_TIMESTAMP AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Seoul')` 수식을 주입하여 시스템 내부 그리니치 표준시(UTC) 표현을 한국 표준시(KST: UTC+9)로 100% 통일 표출 완공함.
+
+### [1.8.2-PdfSecurityOnly] 공공 문서 위·변조 방지 공인 PDF 보안 보고서 단일화 완공 (v1.8.2-PdfSecurityOnly)
+* **연구 내용:** 조장(USER)의 명시적 결단에 따라 문서 무단 임의 편집 및 위·변조 가능성이 존재하는 Word(.docx) 다운로드 기능을 전면 제거 소탕하고, 공공 의사결정 결재용 수정 불가능 픽스형 **`📄 공인 PDF 보안 보고서` 단일 인출 체계로 100% 일원화**함.
+* **주요 의사결정:**
+    - **Word 다운로드 제거 및 UI 미학 정화 (`DebateSimulatorModal.jsx`, `OptimalResultPanel.jsx`):** 편집 가능 파일 다운로드 버튼을 제거하고, 직인·타임스탬프 기반 위·변조 방지 `📄 공인 PDF 보안 보고서 발급` 단일 버튼으로 개조하여 공공 행정 감리 무결성 확보.
+    - **빌드 및 동기화:** Next.js Turbopack `npm run build` 100% 무오류 통과 및 바탕화면 물리 작업 공간 이관 완공.
+
+

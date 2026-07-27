@@ -380,11 +380,11 @@ export default function OptimalResultPanel({
                   3자 페르소나 심의 토론 진행 중...
                 </>
               ) : (
-                `🏛️ ${activeTab.toUpperCase()} Step 6 모의 심의 및 워드/PDF 보고서 발급`
+                `🏛️ ${activeTab.toUpperCase()} Step 6 모의 심의 및 PDF 보안 보고서 발급`
               )}
             </button>
-            <p className="text-[10px] text-center text-sky-400 font-medium mt-1">
-              ※ 토론 완료 시 📄 워드(.docx) 및 📝 PDF 공문서 보고서 자동 생성/발급
+            <p className="text-[10px] text-center text-emerald-400 font-medium mt-1">
+              ※ 토론 완료 시 위·변조 방지 📄 PDF 공인 행정 타당성 보고서 발급
             </p>
           </div>
         </div>

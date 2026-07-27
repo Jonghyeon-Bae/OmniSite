@@ -19,7 +19,7 @@ export default function DebateSimulatorModal({
 }) {
   if (!showSimModal) return null;
 
-  const currentParcel = selectedParcel[activeTab] || {};
+  const currentParcel = selectedParcel?.[activeTab] || selectedParcel || {};
 
   const handlePdfDownload = async () => {
     try {
@@ -101,51 +101,7 @@ export default function DebateSimulatorModal({
     }
   };
 
-  const handleDocxDownload = async () => {
-    try {
-      const payload = {
-        district_id: 1,
-        facility_type: currentParcel.facility_type || "공공 시설",
-        inferred_purpose: inferredPurpose || inferredDomainTag || "지능형 스마트시티 시설물",
-        candidate_pnu: currentParcel.pnu || currentParcel.PNU || "",
-        candidate_jibun: currentParcel.jibun || "용산구 미지정 부지",
-        candidate_css: currentParcel.css || 50,
-        candidate_lat: currentParcel.lat || 37.53,
-        candidate_lng: currentParcel.lng || 126.97,
-        candidate_reason: currentParcel.reason || "",
-        ahp_weights: ahpWeights || {},
-        debate_logs: simLogs.map(log => ({ sender: log.sender, text: log.text }))
-      };
 
-      const res = await apiFetch('/api/v1/spatial/report/download-docx', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-      if (!res.ok) throw new Error('DOCX 다운로드 실패');
-      
-      let filename = `OmniSite_Report_${(payload.candidate_jibun || '용산구').replace(/ /g, '_')}.docx`;
-      const cd = res.headers.get('Content-Disposition');
-      if (cd) {
-        const match = cd.match(/filename\*=UTF-8''(.+)$/i) || cd.match(/filename="?([^";]+)"?/i);
-        if (match && match[1]) {
-          filename = decodeURIComponent(match[1]);
-        }
-      }
-
-      const blob = await res.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      window.URL.revokeObjectURL(url);
-    } catch (err) {
-      alert('⚠️ 워드 보고서 발급 중 오류가 발생했습니다: ' + err.message);
-    }
-  };
 
   return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-6 animate-fade-in">
@@ -215,16 +171,9 @@ export default function DebateSimulatorModal({
             <button
               onClick={handlePdfDownload}
               disabled={simStep < 6}
-              className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 text-white font-semibold text-xs px-3.5 py-2.5 rounded-lg transition-all cursor-pointer"
+              className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 text-white font-bold text-xs px-4 py-2.5 rounded-lg transition-all cursor-pointer shadow-lg shadow-emerald-900/30 flex items-center gap-1.5"
             >
-              📝 PDF 보고서
-            </button>
-            <button
-              onClick={handleDocxDownload}
-              disabled={simStep < 6}
-              className="bg-sky-600 hover:bg-sky-700 disabled:opacity-40 text-white font-semibold text-xs px-3.5 py-2.5 rounded-lg transition-all cursor-pointer"
-            >
-              📄 워드(.docx) 보고서
+              📄 모의토론 보고서 발급 (PDF)
             </button>
             <button
               onClick={() => setShowSimModal(false)}

@@ -92,14 +92,18 @@ def save_pipeline_log(db, step_number: str, action_type: str, detail_dict: dict,
         db.execute(text("ALTER TABLE pipeline_execution_logs ADD COLUMN IF NOT EXISTS prev_hash VARCHAR(64);"))
         db.commit()
 
-        # [SHA-256 Hash Chain] 이전 해시값 인출
+        # [SHA-256 Hash Chain] 이전 해시값 인출 및 통일된 연산 수행
         last_row = db.execute(text("SELECT current_hash FROM pipeline_execution_logs ORDER BY id DESC LIMIT 1")).fetchone()
-        prev_hash = last_row[0] if (last_row and last_row[0]) else "0" * 64
+        prev_hash = last_row[0] if (last_row and last_row[0]) else ("0" * 64)
 
-        kst_now_str = get_kst_now().strftime('%Y-%m-%d %H:%M:%S')
-        detail_str = json.dumps(detail_dict, ensure_ascii=False)
-        payload_str = f"{prev_hash}|{session_id}|{step_number}|{action_type}|{detail_str}|{kst_now_str}"
-        current_hash = hashlib.sha256(payload_str.encode('utf-8')).hexdigest()
+        from app.services.audit_service import compute_sha256_hash
+        payload_to_hash = {
+            "session_id": session_id,
+            "step_number": step_number,
+            "action_type": action_type,
+            "detail_json": detail_dict
+        }
+        current_hash = compute_sha256_hash(prev_hash, payload_to_hash)
 
         db.execute(text("""
             INSERT INTO pipeline_execution_logs (session_id, step_number, action_type, detail_json, created_at, current_hash, prev_hash)
@@ -108,8 +112,8 @@ def save_pipeline_log(db, step_number: str, action_type: str, detail_dict: dict,
             "session_id": session_id,
             "step_number": step_number,
             "action_type": action_type,
-            "detail_json": detail_str,
-            "created_at": kst_now_str,
+            "detail_json": json.dumps(detail_dict, ensure_ascii=False),
+            "created_at": get_kst_now(),
             "current_hash": current_hash,
             "prev_hash": prev_hash
         })
@@ -171,14 +175,15 @@ def get_pipeline_execution_logs(limit: int = 50, db: Session = Depends(get_db)):
 
 @router.get("/spatial/logs/verify-hash-chain")
 def verify_hash_chain(db: Session = Depends(get_db)):
-    """[Option 4] 감사 로그 SHA-256 해시 체인 실시간 암호학적 무결성 검증 API"""
+    """[Option 4] 감사 로그 SHA-256 해시 체인 실시간 암호학적 무결성 검증 API (v3.4.0)"""
+    from app.services.audit_service import verify_log_chain
     try:
         db.execute(text("ALTER TABLE pipeline_execution_logs ADD COLUMN IF NOT EXISTS current_hash VARCHAR(64);"))
         db.execute(text("ALTER TABLE pipeline_execution_logs ADD COLUMN IF NOT EXISTS prev_hash VARCHAR(64);"))
         db.commit()
 
         rows = db.execute(text("""
-            SELECT id, session_id, step_number, action_type, detail_json, created_at, current_hash, prev_hash
+            SELECT id, session_id, step_number, action_type, detail_json, prev_hash, current_hash, created_at
             FROM pipeline_execution_logs
             ORDER BY id ASC
         """)).fetchall()
@@ -186,53 +191,29 @@ def verify_hash_chain(db: Session = Depends(get_db)):
         if not rows:
             return {"status": "100% VERIFIED", "tampered": False, "total_logs": 0, "message": "기록된 감사 로그가 없습니다."}
 
-        expected_prev = "0" * 64
-        is_tampered = False
-        broken_id = None
-        verified_count = 0
+        logs = [dict(r._mapping) for r in rows]
+        is_valid, corrupted_idx, detail_msg = verify_log_chain(logs)
 
-        for r in rows:
-            log_id, session_id, step_number, action_type, detail_json, created_at, curr_hash, prev_hash = r
-            if not prev_hash:
-                prev_hash = expected_prev
-
-            detail_str = detail_json if isinstance(detail_json, str) else json.dumps(detail_json or {}, ensure_ascii=False)
-            created_str = created_at.strftime('%Y-%m-%d %H:%M:%S') if hasattr(created_at, 'strftime') else str(created_at)[:19]
-            payload_str = f"{prev_hash}|{session_id}|{step_number}|{action_type}|{detail_str}|{created_str}"
-            calc_hash = hashlib.sha256(payload_str.encode('utf-8')).hexdigest()
-
-            # 레거시 로그에 current_hash가 없었던 경우 계산된 해시를 기준으로 체인 연결
-            if curr_hash and curr_hash != calc_hash:
-                is_tampered = True
-                broken_id = log_id
-                break
-
-            expected_prev = curr_hash or calc_hash
-            verified_count += 1
-
-        if is_tampered:
+        if not is_valid:
+            broken_id = logs[corrupted_idx]["id"] if (corrupted_idx >= 0 and corrupted_idx < len(logs)) else None
             return {
                 "status": "TAMPER_DETECTED",
                 "tampered": True,
+                "corrupted_index": corrupted_idx,
                 "broken_log_id": broken_id,
-                "total_logs": len(rows),
-                "verified_logs": verified_count,
-                "message": f"⚠️ 경고: 감사 로그 #{broken_id}번 항목에서 데이터 위·변조가 탐지되었습니다!"
+                "total_logs": len(logs),
+                "message": f"⚠️ 경고: 감사 로그 #{broken_id}번 항목 지점에서 데이터 위·변조 또는 단절이 탐지되었습니다!"
             }
 
         return {
             "status": "100% VERIFIED",
             "tampered": False,
-            "total_logs": len(rows),
-            "verified_logs": verified_count,
-            "message": f"✓ 총 {len(rows)}건의 행정 감사 로그가 SHA-256 암호학적 해시 체인 검증을 100% 통과했습니다."
+            "total_logs": len(logs),
+            "verified_logs": len(logs),
+            "message": "✓ SHA-256 감사 로그 체인의 암호학적 무결성이 100% 검증되었습니다."
         }
     except Exception as e:
-        return {"status": "ERROR", "tampered": True, "message": f"해시 체인 검증 오류: {str(e)}"}
-
-class RegulationDiffRequest(BaseModel):
-    version_a: str = "v1.0"
-    version_b: str = "v2.0"
+        return {"status": "ERROR", "tampered": True, "message": f"검증 중 오류 발생: {str(e)}"}
 
 @router.post("/spatial/regulations/diff")
 async def compare_regulation_versions(req: RegulationDiffRequest, db: Session = Depends(get_db)):
@@ -3208,9 +3189,15 @@ async def delete_verified_precedent(precedent_id: int, db: Session = Depends(get
         raise HTTPException(status_code=500, detail=f"실증사례 삭제 실패: {str(e)}")
 
 
-# [v3.1.0] 해시 체인 멸실/위변조 자동 복구 및 STEP_SECURITY_INCIDENT 적재 API
+# [v3.5.0] 해시 체인 멸실/위변조 마스터 승인 복구 API
+class RehealRequest(BaseModel):
+    master_key: str
+
 @router.post("/spatial/logs/reheal-hash-chain")
-async def reheal_hash_chain_endpoint(db: Session = Depends(get_db), current_admin: dict = Depends(get_current_admin)):
+async def reheal_hash_chain_endpoint(req: RehealRequest, db: Session = Depends(get_db), current_admin: dict = Depends(get_current_admin)):
     from app.services.audit_service import reheal_log_chain
-    res = reheal_log_chain(db)
+    admin_user = current_admin.get("username", "ADMIN_USER")
+    res = reheal_log_chain(db, master_key=req.master_key, admin_user=admin_user)
+    if not res.get("rehealed", False):
+        raise HTTPException(status_code=403, detail=res.get("message", "마스터 보안 승인 실패"))
     return res

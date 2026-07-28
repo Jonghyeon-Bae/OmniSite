@@ -323,3 +323,32 @@ async def refresh_session_token(db: Session = Depends(get_db), current_user: dic
         "expires_in_minutes": 60,
         "message": "인증 세션이 성공적으로 1시간 연장되었습니다."
     }
+
+
+# === [v3.6.0 MASTER SECURITY KEY MANAGEMENT ENDPOINTS] ===
+class MasterKeyUpdateRequest(BaseModel):
+    new_master_key: str
+
+@router.get("/auth/master-key")
+async def get_master_key_endpoint(db: Session = Depends(get_db), current_admin: dict = Depends(get_current_admin)):
+    from app.database import get_system_setting
+    active_key = get_system_setting(db, 'MASTER_SECURITY_KEY', 'OMNISITE-MASTER-2026')
+    return {"master_key": active_key}
+
+@router.post("/auth/master-key")
+async def update_master_key_endpoint(req: MasterKeyUpdateRequest, db: Session = Depends(get_db), current_admin: dict = Depends(get_current_admin)):
+    from app.database import set_system_setting
+    new_key = (req.new_master_key or "").strip()
+    if len(new_key) < 8:
+        raise HTTPException(status_code=400, detail="마스터 보안 코드는 최소 8자 이상이어야 합니다.")
+        
+    success = set_system_setting(db, 'MASTER_SECURITY_KEY', new_key)
+    if not success:
+        raise HTTPException(status_code=500, detail="마스터 보안 코드 변경에 실패했습니다.")
+        
+    save_pipeline_log(db, 'SYSTEM', '[MASTER_KEY_UPDATE]', {
+        'action': 'update_master_key',
+        'updated_by': current_admin.get("username", "ADMIN")
+    })
+    
+    return {"status": "success", "message": "✓ 마스터 보안 코드가 성공적으로 변경 및 DB 저장되었습니다.", "new_master_key": new_key}

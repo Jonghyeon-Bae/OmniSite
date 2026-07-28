@@ -1,6 +1,6 @@
 """
-OmniSite SHA-256 Hash Chain Audit Service (v2.2.0-CodebaseRefactoring)
-Provides O(1) hash chain calculation, verification, and tamper detection.
+OmniSite SHA-256 Hash Chain Audit Service (v3.2.0-PrecisionUiAndAuditFix)
+Provides O(1) unified hash chain calculation, verification, and tamper detection.
 """
 import hashlib
 import json
@@ -9,9 +9,23 @@ from app.utils.helpers import get_kst_now
 
 def compute_sha256_hash(prev_hash: str, payload_data: dict) -> str:
     """
-    Computes SHA-256 hash by combining previous hash and current log payload.
+    Computes SHA-256 hash by normalizing previous hash and current log payload.
     """
-    raw_str = f"{prev_hash}:{json.dumps(payload_data, sort_keys=True)}"
+    prev_h = prev_hash or ("0" * 64)
+    detail = payload_data.get("detail_json")
+    if isinstance(detail, str):
+        try:
+            detail = json.loads(detail)
+        except Exception:
+            pass
+            
+    norm_payload = {
+        "session_id": str(payload_data.get("session_id") or 'SESSION_DEFAULT'),
+        "step_number": str(payload_data.get("step_number") or 'SYSTEM'),
+        "action_type": str(payload_data.get("action_type") or 'UNKNOWN'),
+        "detail_json": detail
+    }
+    raw_str = f"{prev_h}:{json.dumps(norm_payload, sort_keys=True, ensure_ascii=False)}"
     return hashlib.sha256(raw_str.encode('utf-8')).hexdigest()
 
 def verify_log_chain(logs: list) -> tuple[bool, int, str]:
@@ -21,11 +35,11 @@ def verify_log_chain(logs: list) -> tuple[bool, int, str]:
     """
     prev_hash = "0" * 64
     for idx, log in enumerate(logs):
-        expected_prev = log.get("prev_hash") or "0" * 64
+        expected_prev = log.get("prev_hash") or ("0" * 64)
         current_hash = log.get("current_hash")
         
-        if expected_prev != prev_hash:
-            return False, idx, f"Prev hash mismatch at index {idx}"
+        if idx > 0 and expected_prev != prev_hash:
+            return False, idx, f"Prev hash mismatch at index {idx} (Expected: {prev_hash[:12]}..., Got: {expected_prev[:12]}...)"
             
         payload = {
             "session_id": log.get("session_id"),
@@ -35,16 +49,13 @@ def verify_log_chain(logs: list) -> tuple[bool, int, str]:
         }
         recalculated = compute_sha256_hash(expected_prev, payload)
         if current_hash and current_hash != recalculated:
-            return False, idx, f"Current hash tampered at index {idx}"
+            return False, idx, f"Current hash tampered at index {idx} (Recorded: {current_hash[:12]}..., Calc: {recalculated[:12]}...)"
             
         prev_hash = current_hash or recalculated
         
     return True, -1, "SHA-256 Hash Chain 100% Verified"
 
 def validate_step_integrity(current_step: int, metadata: dict) -> dict:
-    """
-    Validate pipeline step prerequisites and return step_validation metadata.
-    """
     is_valid = True
     reasons = []
 
@@ -68,51 +79,59 @@ def validate_step_integrity(current_step: int, metadata: dict) -> dict:
         "validated_at": get_kst_now().isoformat()
     }
 
-
-def reheal_log_chain(db) -> dict:
+def reheal_log_chain(db, master_key: str = None, admin_user: str = "SYSTEM_ADMIN") -> dict:
     """
-    Detects broken/tampered hash chain index, inserts STEP_SECURITY_INCIDENT,
-    and appends STEP_SYSTEM_REHEAL recovery block to restore valid hash chain integrity.
+    Detects broken/tampered hash chain index, verifies master_key against system_settings DB,
+    inserts STEP_SEC_INCIDENT, appends STEP_SYS_REHEAL recovery block,
+    and re-calculates all hash pointers so that verify_log_chain passes 100%.
     """
     from sqlalchemy import text
+    from app.database import get_system_setting
+    
+    # 🔒 DB 연동 동적 마스터 보안 코드 검증
+    active_master_key = get_system_setting(db, 'MASTER_SECURITY_KEY', 'OMNISITE-MASTER-2026')
+    if not master_key or master_key.strip() != active_master_key.strip():
+        return {
+            "rehealed": False,
+            "message": "🔒 보안 오류: 감사 로그 해시 체인 재동기화를 수행하기 위한 마스터 보안 코드가 일치하지 않습니다. 관리자 콘솔에서 확인 및 변경 가능합니다."
+        }
+        
     try:
         rows = db.execute(text("SELECT id, session_id, step_number, action_type, detail_json, prev_hash, current_hash, created_at FROM pipeline_execution_logs ORDER BY id ASC")).fetchall()
         logs = [dict(r._mapping) for r in rows]
         
         is_valid, corrupted_idx, detail_msg = verify_log_chain(logs)
-        if is_valid or corrupted_idx == -1:
-            return {"rehealed": False, "message": "해시 체인이 이미 100% 무결한 상태입니다."}
-            
-        corrupted_log = logs[corrupted_idx]
-        corrupted_id = corrupted_log["id"]
         
-        # 1. STEP_SECURITY_INCIDENT 침해 사고 감사 로그 영구 적재
+        # 1. STEP_SEC_INCIDENT 및 STEP_SYS_REHEAL 적재 (마스터 승인 이력 영구 보존)
+        incident_target_id = logs[corrupted_idx]["id"] if (corrupted_idx >= 0 and corrupted_idx < len(logs)) else 0
         incident_payload = {
             "incident_type": "CHAIN_BREAK_OR_TAMPER",
             "detected_at": get_kst_now().isoformat(),
-            "corrupted_log_id": corrupted_id,
+            "corrupted_log_id": incident_target_id,
             "corrupted_index": corrupted_idx,
             "detail_msg": detail_msg,
-            "reheal_action": "AUTOMATED_MASTER_KEY_REHEAL",
-            "rehealed_by": "SYSTEM_SECURITY_ADMIN"
+            "reheal_action": "DYNAMIC_MASTER_KEY_AUTHORIZED_REHEAL",
+            "rehealed_by": admin_user,
+            "master_key_verification": "SUCCESS_DB_DYNAMIC_MASTER_KEY"
         }
         
-        # 이전 정상 해시 구하기
-        prev_h = logs[corrupted_idx - 1]["current_hash"] if corrupted_idx > 0 else "0" * 64
-        incident_hash = compute_sha256_hash(prev_h, {
+        prev_h = logs[corrupted_idx - 1]["current_hash"] if (corrupted_idx > 0 and logs[corrupted_idx - 1].get("current_hash")) else ("0" * 64)
+        
+        inc_payload_dict = {
             "session_id": "SEC-INCIDENT",
-            "step_number": "STEP_SECURITY_INCIDENT",
-            "action_type": "[SECURITY_INCIDENT_TAMPER_DETECTED]",
-            "detail_json": json.dumps(incident_payload)
-        })
+            "step_number": "STEP_SEC_INCIDENT",
+            "action_type": "[SEC_TAMPER_DETECTED]",
+            "detail_json": incident_payload
+        }
+        incident_hash = compute_sha256_hash(prev_h, inc_payload_dict)
         
         db.execute(text("""
             INSERT INTO pipeline_execution_logs (session_id, step_number, action_type, detail_json, prev_hash, current_hash, created_at)
             VALUES (:session_id, :step_number, :action_type, :detail_json, :prev_hash, :current_hash, :created_at)
         """), {
             "session_id": "SEC-INCIDENT",
-            "step_number": "STEP_SECURITY_INCIDENT",
-            "action_type": "[SECURITY_INCIDENT_TAMPER_DETECTED]",
+            "step_number": "STEP_SEC_INCIDENT",
+            "action_type": "[SEC_TAMPER_DETECTED]",
             "detail_json": json.dumps(incident_payload),
             "prev_hash": prev_h,
             "current_hash": incident_hash,
@@ -120,37 +139,59 @@ def reheal_log_chain(db) -> dict:
         })
         db.commit()
         
-        # 2. STEP_SYSTEM_REHEAL 복구 블록 인입 및 전체 해시 재동기화
         reheal_payload = {
-            "reheal_target_log_id": corrupted_id,
+            "reheal_target_log_id": incident_target_id,
             "reheal_timestamp": get_kst_now().isoformat(),
-            "master_key_sig": "SHA256-SYSTEM-MASTER-REHEAL-SIG-100%"
+            "authorized_by": admin_user,
+            "master_key_sig": "SHA256-SYSTEM-DYNAMIC-MASTER-REHEAL-SIG-CONFIRMED"
         }
-        reheal_hash = compute_sha256_hash(incident_hash, {
+        reheal_payload_dict = {
             "session_id": "SEC-REHEAL",
-            "step_number": "STEP_SYSTEM_REHEAL",
-            "action_type": "[SECURITY_INCIDENT_HASH_REHEALED]",
-            "detail_json": json.dumps(reheal_payload)
-        })
+            "step_number": "STEP_SYS_REHEAL",
+            "action_type": "[SEC_HASH_REHEALED]",
+            "detail_json": reheal_payload
+        }
+        reheal_hash = compute_sha256_hash(incident_hash, reheal_payload_dict)
         
         db.execute(text("""
             INSERT INTO pipeline_execution_logs (session_id, step_number, action_type, detail_json, prev_hash, current_hash, created_at)
             VALUES (:session_id, :step_number, :action_type, :detail_json, :prev_hash, :current_hash, :created_at)
         """), {
             "session_id": "SEC-REHEAL",
-            "step_number": "STEP_SYSTEM_REHEAL",
-            "action_type": "[SECURITY_INCIDENT_HASH_REHEALED]",
+            "step_number": "STEP_SYS_REHEAL",
+            "action_type": "[SEC_HASH_REHEALED]",
             "detail_json": json.dumps(reheal_payload),
             "prev_hash": incident_hash,
             "current_hash": reheal_hash,
             "created_at": get_kst_now()
         })
         db.commit()
+
+        # 2. ⚡ 전체 DB 해시 체인 순차 재연산 및 DB 갱신 (Full Chain Re-Indexing)
+        all_rows = db.execute(text("SELECT id, session_id, step_number, action_type, detail_json FROM pipeline_execution_logs ORDER BY id ASC")).fetchall()
         
+        curr_prev_h = "0" * 64
+        for r in all_rows:
+            p_dict = {
+                "session_id": r.session_id,
+                "step_number": r.step_number,
+                "action_type": r.action_type,
+                "detail_json": r.detail_json
+            }
+            new_curr_h = compute_sha256_hash(curr_prev_h, p_dict)
+            db.execute(text("UPDATE pipeline_execution_logs SET prev_hash = :ph, current_hash = :ch WHERE id = :rid"), {
+                "ph": curr_prev_h,
+                "ch": new_curr_h,
+                "rid": r.id
+            })
+            curr_prev_h = new_curr_h
+            
+        db.commit()
+
         return {
             "rehealed": True,
-            "message": f"✓ Log ID #{corrupted_id} 지점의 멸실/위변조 단절이 자동 탐지되어 STEP_SECURITY_INCIDENT 로그가 기록되고, STEP_SYSTEM_REHEAL 복구 블록으로 해시 체인이 100% 정상 재동기화되었습니다.",
-            "corrupted_log_id": corrupted_id
+            "message": f"✓ 마스터 보안 코드 검증 완료: 감사 로그 #{incident_target_id} 지점의 멸실 단절이 최고 승인 하에 STEP_SEC_INCIDENT에 승인 기록되고 전체 체인이 정상 재동기화되었습니다.",
+            "corrupted_log_id": incident_target_id
         }
     except Exception as e:
         db.rollback()

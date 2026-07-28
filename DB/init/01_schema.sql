@@ -212,3 +212,32 @@ CREATE TABLE city_spatial_features (
 CREATE INDEX idx_city_features_geom ON city_spatial_features USING GIST(geom);
 CREATE INDEX idx_city_features_type ON city_spatial_features (feature_type);
 
+-- 19. 사용자 계정 관리 테이블
+CREATE TABLE IF NOT EXISTS users (
+    id SERIAL PRIMARY KEY,
+    username VARCHAR(100) UNIQUE NOT NULL,
+    hashed_password VARCHAR(255) NOT NULL,
+    role VARCHAR(50) DEFAULT 'user',
+    department VARCHAR(100) DEFAULT '스마트도시과',
+    district_id INT REFERENCES districts(id) ON DELETE CASCADE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 20. 행정 감사 로그 (Audit Ledger) 테이블
+CREATE TABLE IF NOT EXISTS pipeline_execution_logs (
+    id SERIAL PRIMARY KEY,
+    step_name VARCHAR(100) NOT NULL,
+    status VARCHAR(50) NOT NULL,
+    details JSONB,
+    hash_pointer VARCHAR(64),
+    previous_hash VARCHAR(64),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 21. 시스템 마스터 설정 저장소 테이블
+CREATE TABLE IF NOT EXISTS system_settings (
+    setting_key VARCHAR(100) PRIMARY KEY,
+    setting_value TEXT NOT NULL,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+

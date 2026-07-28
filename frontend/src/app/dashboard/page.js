@@ -7,6 +7,7 @@ import PasswordChangeModal from '@/components/PasswordChangeModal';
 import RagRegulationModal from '@/components/RagRegulationModal';
 import StepGuideModal from '@/components/StepGuideModal';
 import AdminConsoleModal from '@/components/AdminConsoleModal';
+import AuditLogModal from '@/components/AuditLogModal';
 import { OMNISITE_DISPLAY_VERSION } from '@/config/version';
 
 // Next.js API Fetch 래퍼 (JWT 세션 자동 바인딩)
@@ -45,6 +46,7 @@ export default function Dashboard() {
   const [showRagModal, setShowRagModal] = useState(false);
   const [showGuideModal, setShowGuideModal] = useState(false);
   const [showAdminConsoleModal, setShowAdminConsoleModal] = useState(false);
+  const [showAuditLogModal, setShowAuditLogModal] = useState(false);
   const [toastMessage, setToastMessage] = useState(null);
   const [mlStatus, setMlStatus] = useState({ is_training: false });
   
@@ -528,6 +530,12 @@ export default function Dashboard() {
             className="text-slate-400 hover:text-slate-200 transition-all cursor-pointer flex items-center gap-1"
           >
             🔑 암호 변경
+          </button>
+          <button 
+            onClick={() => setShowAuditLogModal(true)} 
+            className="text-slate-400 hover:text-slate-200 transition-all cursor-pointer flex items-center gap-1"
+          >
+            📜 행정 감사 로그
           </button>
           <button 
             onClick={() => setShowAdminConsoleModal(true)} 
@@ -1211,6 +1219,13 @@ export default function Dashboard() {
         showToast={showToast}
         mlStatus={mlStatus}
         setMlStatus={setMlStatus}
+      />
+
+      {/* 📜 행정 감사 로그 (Audit Logs) 모달 [v3.8.0] */}
+      <AuditLogModal
+        showModal={showAuditLogModal}
+        setShowModal={setShowAuditLogModal}
+        apiFetch={apiFetch}
       />
 
       {/* 토스트 메시지 렌더러 */}

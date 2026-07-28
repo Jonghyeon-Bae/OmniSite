@@ -42,25 +42,34 @@ export default function AuditLogModal({ showModal, setShowModal, apiFetch }) {
     }
   };
 
-  // 1클릭 멸실/위변조 자동 복구 및 재동기화
+  // 마스터 보안 코드 검증 기반 해시 체인 멸실 복구
   const handleRehealHashChain = async () => {
-    if (!window.confirm("손상/멸실된 해시 지점에 복구 블록(STEP_SYSTEM_REHEAL) 및 보안 침해 로그(STEP_SECURITY_INCIDENT)를 인입하여 체인을 재동기화하시겠습니까?")) return;
+    const masterKeyInput = window.prompt(
+      "🔒 최고 보안 승인 (Master Key Required):\n\n감사 로그 해시 체인 재동기화를 수행하려면 마스터 보안 코드를 입력하십시오.\n(기본 마스터 코드: OMNISITE-MASTER-2026)",
+      "OMNISITE-MASTER-2026"
+    );
+
+    if (!masterKeyInput) return;
+
     setRehealing(true);
     try {
       const res = await apiFetch('/api/v1/spatial/logs/reheal-hash-chain', {
-        method: 'POST'
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ master_key: masterKeyInput })
       });
       if (res.ok) {
         const data = await res.json();
-        alert(data.message || "✓ 해시 체인이 성공적으로 복구 및 재동기화되었습니다.");
+        alert(data.message || "✓ 마스터 승인 완료: 해시 체인이 성공적으로 복구 및 재동기화되었습니다.");
         fetchLogs();
         handleVerifyHashChain();
       } else {
         const err = await res.json();
-        alert(`❌ 복구 실패: ${err.detail || '오류 발생'}`);
+        const msg = typeof err.detail === 'string' ? err.detail : (err.message || '승인 실패');
+        alert(`🔒 승인 거절 / 복구 실패: ${msg}`);
       }
-    } catch (err) {
-      alert("복구 집행 중 오류: " + err.message);
+    } catch (e) {
+      alert(`❌ 서버 통신 오류: ${e.message}`);
     } finally {
       setRehealing(false);
     }

@@ -356,6 +356,9 @@ export default function OptimalResultPanel({
                     badgeStyle = "bg-emerald-500/20 text-emerald-300 border-emerald-500/40";
                   }
 
+                  // 동적 AHP 실측 가중치 바인딩
+                  const dynamicWeight = currentParcel.ahp_weights?.[k] || currentParcel.criteria_weights?.[k] || matchedCriteria?.weight || matchedCriteria?.initial_weight || 5.0;
+
                   return (
                     <div key={k} className="flex flex-col gap-1 bg-slate-900/50 p-2 rounded-lg border border-slate-800/50 font-sans">
                       <div className="flex justify-between items-center text-[11px]">
@@ -368,9 +371,9 @@ export default function OptimalResultPanel({
                         </span>
                       </div>
                       <div className="flex justify-between items-center text-[10px] text-slate-500">
-                        <span>AHP 가중치: <strong className="text-slate-400 font-mono">{weightVal.toFixed(1)}</strong></span>
+                        <span>AHP 가중치: <strong className="text-blue-400 font-mono font-bold">{dynamicWeight.toFixed(1)}</strong></span>
                         <div className="w-24 h-1 bg-slate-950 rounded-full overflow-hidden">
-                          <div className="h-full bg-blue-400 rounded-full" style={{ width: `${Math.min(100, weightVal * 10)}%` }} />
+                          <div className="h-full bg-blue-400 rounded-full" style={{ width: `${Math.min(100, dynamicWeight * 10)}%` }} />
                         </div>
                       </div>
                     </div>

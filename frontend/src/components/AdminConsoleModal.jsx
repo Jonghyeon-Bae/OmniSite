@@ -18,7 +18,7 @@ export default function AdminConsoleModal({
   const [isRegulationUploading, setIsRegulationUploading] = useState(false);
   const [ragUploadSuccess, setRagUploadSuccess] = useState(false);
   const [adminUsers, setAdminUsers] = useState([]);
-  
+  const [masterKeyTabInput, setMasterKeyTabInput] = useState('');
   // 실무자 계정 등록 폼 상태
   const [regUsername, setRegUsername] = useState('');
   const [regPassword, setRegPassword] = useState('');
@@ -79,6 +79,9 @@ export default function AdminConsoleModal({
     if (show && adminTab === 'users') {
       fetchAdminUsers();
     }
+    if (show && adminTab === 'master_key') {
+      fetchCurrentMasterKey();
+          }
   }, [show, adminTab]);
 
   // 안전한 ML 상태 조회 헬퍼 (fetchMlStatus prop 유무에 관계없이 100% 안전 구동)
@@ -644,7 +647,60 @@ export default function AdminConsoleModal({
           >
             🤖 ML 모델 레지스트리 감사
           </button>
+          <button 
+            onClick={() => setAdminTab('master_key')}
+            className={`flex-1 pb-2 text-[11px] font-bold text-center border-b-2 transition-all cursor-pointer ${adminTab === 'master_key' ? 'border-amber-500 text-amber-400' : 'border-transparent text-slate-400 hover:text-slate-200'}`}
+          >
+            🔑 마스터 보안 코드
+          </button>
         </div>
+
+        {adminTab === 'master_key' && (
+          <div className="border border-slate-800 rounded-lg p-6 bg-slate-900/40 flex flex-col gap-4 font-sans">
+            <div className="flex items-center gap-2 text-amber-400 font-bold text-sm">
+              <span>🔑</span>
+              <span>감사 로그 해시 복구 전용 마스터 보안 코드 설정</span>
+            </div>
+            <p className="text-xs text-slate-300 leading-relaxed">
+              해시 체인 멸실/위변조 발생 시 <strong className="text-amber-300">[🔧 해시 체인 멸실 복구]</strong> 작업 승인에 사용하는 최고 책임자 전용 보안 마스터 코드를 관리합니다. 
+              DB 영구 설정 저장소(<code className="text-blue-400 font-mono">system_settings</code>)에 안전하게 저장되며 변경 즉시 적용됩니다.
+            </p>
+
+            <form onSubmit={handleUpdateMasterKeySubmit} className="mt-2 flex flex-col gap-4">
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-semibold text-slate-300">현재 활성화된 마스터 보안 코드</label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={masterKeyTabInput}
+                    onChange={(e) => setMasterKeyTabInput(e.target.value)}
+                    placeholder="예: OMNISITE-MASTER-2026"
+                    className="flex-1 px-3.5 py-2.5 text-xs font-mono bg-slate-950 border border-slate-700 rounded-lg text-amber-400 focus:outline-none focus:border-amber-500"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={fetchCurrentMasterKey}
+                    className="px-4 py-2.5 text-xs font-bold bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 rounded-lg cursor-pointer transition-all active:scale-95"
+                  >
+                    🔄 새로고침
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2 mt-2">
+                <button
+                  type="submit"
+                  disabled={isUpdatingMasterKey}
+                  className="px-5 py-2.5 text-xs font-bold bg-amber-600 hover:bg-amber-500 text-white rounded-lg cursor-pointer transition-all shadow-md active:scale-95 disabled:opacity-50"
+                >
+                  {isUpdatingMasterKey ? '저장 중...' : '💾 마스터 보안 코드 변경 저장'}
+                </button>
+              </div>
+            </form>
+
+            </div>
+        )}
 
         {adminTab === 'bulk' && (
           <div className="border border-slate-800 rounded-lg p-4 bg-slate-900/40 flex flex-col gap-4">
@@ -1403,6 +1459,93 @@ export default function AdminConsoleModal({
               </div>
             </form>
           </div>
+
+            {/* AI 프로바이더 & 로컬 LLM 핫 스와핑 컨트롤 카드 [v3.9.0] */}
+            <div className="p-4 rounded-xl bg-slate-900/80 border border-blue-500/30 flex flex-col gap-3 font-sans mt-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-blue-400 font-bold text-sm">
+                  <span>🤖</span>
+                  <span>AI 엔진 프로바이더 & 로컬 LLM 핫 스와핑 (Air-Gap Provider)</span>
+                </div>
+                <span className="text-[10px] bg-blue-500/20 text-blue-300 px-2 py-0.5 rounded border border-blue-500/30 font-bold">
+                  OmniSite Provider Engine
+                </span>
+              </div>
+              <p className="text-xs text-slate-300 leading-relaxed">
+                개발 환경(<code className="text-emerald-400 font-mono">Cloud OpenAI</code>)과 공공 폐쇄망 실증 환경(<code className="text-amber-400 font-mono">Ollama / vLLM - EXAONE 3.0 / Llama3</code>) 간 AI 모델을 OmniSite 재시작 없이 1초 만에 실시간 핫 스와핑합니다.
+              </p>
+
+              <form onSubmit={handleUpdateAiProviderSubmit} className="mt-2 flex flex-col gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[11px] font-semibold text-slate-300">프로바이더 모드 선택</label>
+                    <select
+                      value={aiProviderType}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setAiProviderType(val);
+                        if (val === 'ollama') {
+                          setAiModelName('exaone3:7.8b');
+                          setAiBaseUrl('http://localhost:11434/v1');
+                        } else if (val === 'vllm') {
+                          setAiModelName('Llama-3.1-Korean-8B');
+                          setAiBaseUrl('http://localhost:8000/v1');
+                        } else if (val === 'fallback') {
+                          setAiModelName('local-rule-engine');
+                          setAiBaseUrl('offline');
+                        } else {
+                          setAiModelName('gpt-4o-mini');
+                          setAiBaseUrl('https://api.openai.com/v1');
+                        }
+                      }}
+                      className="bg-slate-950 border border-slate-700 rounded-lg p-2 text-xs text-amber-400 font-bold outline-none cursor-pointer"
+                    >
+                      <option value="openai">🌐 Cloud API Mode (OpenAI)</option>
+                      <option value="ollama">🔒 온프레미스 로컬 LLM (Ollama - EXAONE)</option>
+                      <option value="vllm">⚡ 고성능 GPU 클러스터 (vLLM)</option>
+                      <option value="fallback">🛡️ 오프라인 룰 엔진 (Rule Fallback)</option>
+                    </select>
+                  </div>
+
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[11px] font-semibold text-slate-300">모델명 (Model Name)</label>
+                    <input
+                      type="text"
+                      value={aiModelName}
+                      onChange={(e) => setAiModelName(e.target.value)}
+                      placeholder="예: exaone3:7.8b"
+                      className="bg-slate-950 border border-slate-700 rounded-lg p-2 text-xs font-mono text-white outline-none"
+                      required
+                    />
+                  </div>
+
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[11px] font-semibold text-slate-300">엔드포인트 URL (Base URL)</label>
+                    <input
+                      type="text"
+                      value={aiBaseUrl}
+                      onChange={(e) => setAiBaseUrl(e.target.value)}
+                      placeholder="http://localhost:11434/v1"
+                      className="bg-slate-950 border border-slate-700 rounded-lg p-2 text-xs font-mono text-white outline-none"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="flex justify-between items-center mt-1">
+                  <span className="text-[10px] text-slate-400">
+                    * 로컬 LLM 선택 시 FastAPI 백엔드 메모리 부하 <strong className="text-emerald-400">0 MB (Zero Bloat)</strong>로 동작합니다.
+                  </span>
+                  <button
+                    type="submit"
+                    disabled={isUpdatingAiProvider}
+                    className="px-4 py-2 text-xs font-bold bg-blue-600 hover:bg-blue-500 text-white rounded-lg cursor-pointer transition-all shadow-md active:scale-95 disabled:opacity-50"
+                  >
+                    {isUpdatingAiProvider ? '스와핑 중...' : '⚡ AI 프로바이더 핫 스와핑 저장'}
+                  </button>
+                </div>
+              </form>
+            </div>
         </div>
       )}
     </div>

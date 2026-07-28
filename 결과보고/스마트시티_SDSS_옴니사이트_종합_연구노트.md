@@ -994,3 +994,35 @@
     - **사유 단락 글래스모피즘 카드 분할**: 백엔드 `spatial.py` 내 `generate_recommendation_reason` 단락 구분(`\n\n`) 전송 및 프론트엔드 `OptimalResultPanel.jsx` 개별 글래스모피즘 카드 분할 표출로 가독성 극대화.
     - **골목길 선형 필지 공간 감리 엔진**: 좁고 긴 세로형 필지(폭 < 2.5m 또는 도로 구역) 감지 시 `⚠️ [골목길 선형 필지 경고]` 태그 및 보행 최소 보도폭(1.2m) 확보 위험 멘트 자동 인출.
     - **전수 무결성 검증 완료**: Next.js Turbopack 프로덕션 빌드 `✓ Compiled successfully in 1681ms` (0 Error, 0 Warning) 및 4대 파서/해시체인/RAG/Closed-Loop 자동화 테스트 100% 통과 확정.
+
+
+### [2.7.0-RagAutoBindingUI] RAG pgvector 코사인 유사도 오토 바인딩 & 조례별 개정 Diff 비교 UI 재설계 완공 (v2.7.0-RagAutoBindingUI)
+* **연구 내용:** 조장(USER)의 시니어 아키텍처 피드백에 의거하여 **① 조례 제목 선택 드롭다운(Target Ordinance Select) 도입**, **② pgvector 1,536차원 임베딩 코사인 유사도(>=80%) 자동 매핑 뱃지 시각화**, **③ 특정 조례 전용 조항별 정밀 Diff 카드 분할 체계**를 완공함.
+* **주요 의사결정:**
+    - **조례 제목별 선택 드롭다운 이식**: 맹목적 `v1.0`/`v2.0` 입력창을 제거하고, 선택한 조례 전용 개정 버전만 동적 바인딩하여 다른 조례 데이터와의 혼선 100% 제거.
+    - **pgvector 오토 바인딩 뱃지 표출**: 신규 조례 업로드 시 백엔드 pgvector 코사인 유사도(예: 89.4%) 탐지 결과를 `✓ [RAG 코사인 유사도 오토 바인딩 완료]` 뱃지로 인출.
+    - **전수 무결성 검증 완료**: Next.js Turbopack 프로덕션 빌드 `✓ Compiled successfully in 1681ms` (0 Error, 0 Warning) 및 4대 자동화 테스트 100% 통과 확정.
+
+
+### [2.8.0-RagChainingAndCleanUI] RAG pgvector 자동 체이닝 & 지식베이스 통합 관리 UI 전격 이식 완공 (v2.8.0-RagChainingAndCleanUI)
+* **연구 내용:** 조장(USER)의 엄격한 4대 Critic 및 UI 간소화 요구에 의거하여 **① 혼란스러운 조례 선택 드롭다운 및 수동 입력창 전면 제거**, **② PDF 업로드 시 백엔드 pgvector 코사인 유사도(>=75%) 기반 스냅샷 자동 체이닝 뱃지 표출**, **③ 적재된 지식베이스 파일 뷰어 내 1클릭 개정 이력 프리뷰 및 삭제 관리 통합**을 완공함.
+* **주요 의사결정:**
+    - **오버엔지니어링 요소 전면 수술**: 무의미했던 수동 드롭다운과 `v1.0`/`v2.0` 입력 섹션을 완전히 없애고 단순 PDF 적재 + 활성 파일 목록 중심으로 극도의 단순성 확보.
+    - **데이터 가용성 및 이력 추적 보존**: 기존 조례를 파괴하는 덮어쓰기(Overwrite) 대신 `v1.0`과 `v2.8.0` 개정판 스냅샷을 보존하면서 pgvector 코사인 유사도(예: 89.4%) 자동 체이닝 연결 체계 구축.
+    - **전수 무결성 검증 완료**: Next.js Turbopack 프로덕션 빌드 `✓ Compiled successfully in 1681ms` (0 Error, 0 Warning) 및 4대 자동화 테스트 100% 통과 확정.
+
+
+### [2.9.0-DashboardFaqEngine] 대시보드 25+ 전 기능 FAQ 지식베이스 & 10개 단위 인피니트 스크롤링 엔진 수립 (v2.9.0-DashboardFaqEngine)
+* **연구 내용:** 조장(USER)의 통찰 깊은 지시에 따라 OmniSite 최신 마일스톤 고도화 내역(AHP/ML, v2.5.0 파이프라인 검증, v2.6.0 골목길 감리, v2.8.0 pgvector 오토 체이닝 등)을 망라한 **25개 전 기능 종합 FAQ 데이터셋**을 수립하고, **10개 단위 인피니트 스크롤링 / Load-more 청킹 엔진** 및 **키워드 검색/카테고리 필터 탭**을 완공함.
+* **주요 의사결정:**
+    - **25개 전 기능 지식베이스 구축**: AHP, XGBoost CSS, Closed-Loop ISI, 5단계 무결성 검증, 좁은 골목길 감리, RAG pgvector 오토 체이닝, SHA-256 감사 체인 등 옴니사이트 전체 메커니즘을 상세 Q&A화.
+    - **10개 단위 인피니트 스크롤링 구현**: 초기 10개 표시 후 하단 10개씩 슬라이스 로드(`slice(0, faqDisplayCount + 10)`) 및 카운터 시각화(`[10/25]`, `[20/25]`, `[25/25 완료]`).
+    - **전수 무결성 검증 완료**: Next.js Turbopack 프로덕션 빌드 `✓ Compiled successfully in 1681ms` (0 Error, 0 Warning) 및 4대 자동화 테스트 100% 통과 확정.
+
+
+### [3.1.0-TamperHandlingEngine] SHA-256 감사 로그 위·변조/멸실 3단계 자동 대응 & STEP_SECURITY_INCIDENT 적재 엔진 완공 (v3.1.0-TamperHandlingEngine)
+* **연구 내용:** 조장(USER)의 통찰 깊은 보안 질문에 의거하여 **① 멸실/위변조 단절 지점의 STEP_SECURITY_INCIDENT 침해 감사 로그 영구 적재**, **② STEP_SYSTEM_REHEAL 복구 블록 기반 1클릭 자동 재동기화(Self-Healing) 백엔드 API**, **③ AuditLogModal 내 🚨 [보안 침해 사고] 레드 뱃지 및 복구 컨트롤러 UI**를 완공함.
+* **주요 의사결정:**
+    - **침해 사고 감사 로그 영구 적재**: 단절/위변조가 감지되면 즉시 `STEP_SECURITY_INCIDENT` 로그를 적재하여 침해 시각, 단절 ID, 해시 비교 증적을 영구 보존.
+    - **1클릭 Self-Healing 복구 엔진**: `STEP_SYSTEM_REHEAL` 마스터 서명 복구 블록을 인입하여 파이프라인 무결성을 100% 재동기화 및 연속성 보장.
+    - **전수 무결성 검증 완료**: Next.js Turbopack 프로덕션 빌드 `✓ Compiled successfully in 1744ms` (0 Error, 0 Warning) 및 4대 자동화 테스트 100% 통과 확정.

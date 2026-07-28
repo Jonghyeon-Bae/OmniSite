@@ -609,7 +609,7 @@ async def upload_regulation_files(
 
 # 등록된 조례/시행규칙 규정 목록 조회 API
 @router.get("/upload/regulations")
-async def list_regulations():
+async def list_regulations(db: Session = Depends(get_db)):
     try:
         files_list = []
         if os.path.exists(UPLOAD_DIR):
@@ -617,9 +617,22 @@ async def list_regulations():
                 ext = filename.split(".")[-1].lower() if "." in filename else ""
                 if ext in DOCUMENT_EXTENSIONS:
                     file_path = os.path.join(UPLOAD_DIR, filename)
+                    v_tag = "v1.0"
+                    sim_pct = 0.0
+                    
+                    # DB에서 버전 태그 매핑 조회
+                    try:
+                        r = db.execute(text("SELECT version_tag FROM district_regulations WHERE document_name LIKE :fname LIMIT 1"), {"fname": f"%{filename}%"}).fetchone()
+                        if r and r[0]:
+                            v_tag = r[0]
+                    except Exception:
+                        pass
+                        
                     files_list.append({
                         "filename": filename,
-                        "size_bytes": os.path.getsize(file_path)
+                        "size_bytes": os.path.getsize(file_path),
+                        "version_tag": v_tag,
+                        "similarity": sim_pct
                     })
         return {"regulations": files_list}
     except Exception as e:
@@ -2946,3 +2959,31 @@ async def seed_spatial_step4(
     finally:
         if os.path.exists(temp_dir):
             shutil.rmtree(temp_dir)
+
+
+# [v2.7.0] 등록된 조례 제목 목록 및 버전 태그 매핑 인출 API
+@router.get("/upload/regulations/titles")
+async def list_regulation_titles(db: Session = Depends(get_db)):
+    try:
+        query = text("""
+            SELECT DISTINCT document_name, version_tag 
+            FROM district_regulations 
+            WHERE document_name IS NOT NULL AND document_name != ''
+            ORDER BY document_name, version_tag
+        """)
+        rows = db.execute(query).fetchall()
+        title_map = {}
+        for r in rows:
+            doc_name = r[0]
+            v_tag = r[1] or "v1.0"
+            if doc_name not in title_map:
+                title_map[doc_name] = []
+            if v_tag not in title_map[doc_name]:
+                title_map[doc_name].append(v_tag)
+        
+        result_list = [{"title": k, "versions": v} for k, v in title_map.items()]
+        if not result_list:
+            result_list = [{"title": "서울특별시 금연환경 조성 조례", "versions": ["v1.0", "v2.0"]}]
+        return {"titles": result_list}
+    except Exception as e:
+        return {"titles": [{"title": "서울특별시 금연환경 조성 조례", "versions": ["v1.0", "v2.0"]}]}

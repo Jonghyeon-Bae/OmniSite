@@ -26,6 +26,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from fastapi import UploadFile, File
+from app.utils.auth import get_current_admin, get_current_user
 
 try:
     import docx
@@ -3205,3 +3206,11 @@ async def delete_verified_precedent(precedent_id: int, db: Session = Depends(get
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"실증사례 삭제 실패: {str(e)}")
+
+
+# [v3.1.0] 해시 체인 멸실/위변조 자동 복구 및 STEP_SECURITY_INCIDENT 적재 API
+@router.post("/spatial/logs/reheal-hash-chain")
+async def reheal_hash_chain_endpoint(db: Session = Depends(get_db), current_admin: dict = Depends(get_current_admin)):
+    from app.services.audit_service import reheal_log_chain
+    res = reheal_log_chain(db)
+    return res

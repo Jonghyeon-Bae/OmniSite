@@ -161,8 +161,11 @@ export default function Dashboard() {
     }
   };
 
-  // FAQ 아코디언 상태
+  // FAQ 아코디언 상태 및 10개 단위 인피니트 스크롤 상태
   const [openFaq, setOpenFaq] = useState(null);
+  const [faqSearchQuery, setFaqSearchQuery] = useState('');
+  const [faqCategory, setFaqCategory] = useState('ALL');
+  const [faqDisplayCount, setFaqDisplayCount] = useState(10);
 
   // Audit AI 폼 상태
   const [activeHistoryId, setActiveHistoryId] = useState(null);
@@ -812,60 +815,237 @@ export default function Dashboard() {
           </div>
         </section>
 
-        {/* FAQ 아코디언 섹션 */}
-        <section className="glass-panel p-6 mt-4 flex flex-col gap-6">
-          <div className="border-b border-slate-800 pb-3">
-            <h2 className="text-sm font-bold text-white">OmniSite 시스템 FAQ & 사용자 매뉴얼</h2>
-            <p className="text-[10px] text-slate-500">지능형 입지선정 의사결정 시스템의 주요 메커니즘 설명</p>
+        {/* [v3.0.0] 실무 행정 공무원 시스템 조작 중심 FAQ & 10개 단위 페이지네이션 */}
+        <section className="glass-panel p-6 mt-4 flex flex-col gap-6 font-sans">
+          <div className="flex flex-col md:flex-row md:items-center justify-between border-b border-slate-800 pb-4 gap-3">
+            <div>
+              <h2 className="text-base font-bold text-white flex items-center gap-2">
+                <span>📘</span>
+                <span>OmniSite SDSS 실무 공무원 시스템 이용 가이드 & FAQ</span>
+              </h2>
+              <p className="text-xs text-slate-400 mt-0.5">
+                데이터 업로드, 3D 지도 조작, AHP 가중치 설정, AI 심의 및 의결서 인출 실무 조작법 안내
+              </p>
+            </div>
+            
+            {/* 실무 키워드 검색창 */}
+            <div className="relative min-w-[240px]">
+              <input
+                type="text"
+                placeholder="🔍 사용법 또는 시스템 기능 검색..."
+                value={faqSearchQuery}
+                onChange={(e) => {
+                  setFaqSearchQuery(e.target.value);
+                  setFaqDisplayCount(10);
+                }}
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-1.5 text-xs text-slate-200 focus:border-blue-500 outline-none font-sans"
+              />
+            </div>
           </div>
 
-          <div className="flex flex-col gap-3">
+          {/* 실무 범주 필터 탭 */}
+          <div className="flex flex-wrap items-center gap-2">
             {[
-              {
-                q: "OmniSite는 어떤 시스템인가요?",
-                a: "OmniSite는 다기준 의사결정 분석기법(AHP)과 XGBoost 주민 갈등도(CSS) 머신러닝 예측 모델을 융합하여, 스마트시티 공공 인프라 도입 시 최적의 입지 분석 및 사후 검증(RAG OCR)을 지원하는 다목적 지능형 공간 의사결정 지원 시스템(SDSS)입니다."
-              },
-              {
-                q: "설치하려는 공공 인프라 종류에 따라 입지 지표(Indicators)가 동적으로 변화하나요?",
-                a: "네, 그렇습니다. OmniSite는 분석하고자 하는 인프라 도메인(공유킥보드 거치대, 전기차 충전소, 안심 옐로카펫 등)의 성격에 적합한 공간 지표를 동적으로 매핑하여 가동됩니다. 예를 들어, 공유이동수단 거치대는 대중교통 접근성이 주 지표가 되며, 옐로카펫은 초등학교 어린이보호구역 이격거리가 주 요인으로 매핑됩니다."
-              },
-              {
-                q: "입지 추천 종합 점수(AHP Score)는 어떻게 산출되나요?",
-                a: "행정 실무자가 웹 화면에서 입력한 쌍대비교 가중치를 기반으로 AHP 분석기가 수학적 고유벡터 가중치를 도출합니다. 이 가중치는 일관성 비율(C.R. < 0.1) 검증을 통과한 후, 각 후보지 필지별 실측 공간 지표 레이어에 실시간으로 매핑·연산되어 최종 추천 순위(내림차순)를 산출합니다."
-              },
-              {
-                q: "주민 갈등 위험도(CSS) 점수의 예측 원리는 무엇인가요?",
-                a: "CSS는 특정 후보지에 인프라를 도입했을 때 예상되는 잠재적 민원 강도를 예측합니다. XGBoost Classifier 모델이 필지의 지목, 공시지가, 인근 보호시설과의 이격거리 분포를 학습하여 민원 발생 확률을 0~100점 척도로 환산하며, 오버피팅 제어 규제를 적용하여 일반화 F1-Score 75%~78% 신뢰도를 확보합니다."
-              },
-              {
-                q: "다목적 인프라 확장을 위한 공간 GIS 데이터셋 수집 및 매핑 기준은 무엇인가요?",
-                a: "OmniSite는 범용 공간 정보 표준(GeoJSON 및 PostGIS Spatial Geometry)을 지원하여 자치구의 법정 경계, 지적도(Cadastral Lands), 보호구역(Restricted Zones) 데이터를 실시간으로 인입합니다. 각 자치구별 조례 이격 가이드라인(학교, 어린이집, 보호구역 등)을 관리자 콘솔에서 유동적으로 변경하여 모든 다목적 공공 인프라 입지선정에 즉시 대칭 적용할 수 있습니다."
-              },
-              {
-                q: "사후 Audit AI(RAG OCR) 모듈의 검증 및 자가학습 지식오염 방지 메커니즘은 무엇인가요?",
-                a: "최종 준공/고시 PDF 공문서를 업로드하면 RAG OCR 파이프라인이 실측 수치를 추출하여 시나리오(A/B/C) 및 규제 부합률을 자동 감리합니다. 검증이 통과된 승인 공문만 RAG 지식베이스(pgvector)에 축적되며, 불합격된 위법 사례는 Data Poisoning Guard가 작동하여 RAG 지식베이스 오염을 원천 차단합니다. 또한 실증 사례 삭제 시 연동된 모의 심의 이력이 자동으로 원상 롤백(Rollback) 복구됩니다."
-              }
-            ].map((faq, idx) => (
-              <div 
-                key={idx} 
-                className="border border-slate-900 rounded-xl overflow-hidden bg-slate-950/40"
+              { id: 'ALL', label: '전체 가이드' },
+              { id: 'UPLOAD', label: '📄 데이터 업로드 & 감리' },
+              { id: 'AHP_SPATIAL', label: '🗺️ AHP & 공간 추천' },
+              { id: 'DEBATE_REPORT', label: '⚖️ AI 심의 & 보고서' },
+              { id: 'RAG_HISTORY', label: '📜 RAG 조례 & 이력' }
+            ].map(tab => (
+              <button
+                key={tab.id}
+                onClick={() => {
+                  setFaqCategory(tab.id);
+                  setFaqDisplayCount(10);
+                }}
+                className={`text-xs px-3 py-1.5 rounded-xl font-semibold transition-all cursor-pointer border ${
+                  faqCategory === tab.id
+                    ? 'bg-blue-600 text-white border-blue-500 shadow-md shadow-blue-500/20'
+                    : 'bg-slate-950/60 text-slate-400 border-slate-800 hover:text-white hover:border-slate-700'
+                }`}
               >
-                <button
-                  onClick={() => setOpenFaq(openFaq === idx ? null : idx)}
-                  className="w-full text-left p-4 flex justify-between items-center text-xs font-semibold text-slate-200 hover:bg-slate-900/30 transition-all cursor-pointer font-sans"
-                >
-                  <span>{faq.q}</span>
-                  <span className="text-slate-500 font-bold">{openFaq === idx ? '▲' : '▼'}</span>
-                </button>
-                <div 
-                  className={`transition-all duration-300 ease-in-out overflow-hidden text-[11px] text-slate-400 bg-slate-950/70 border-t border-slate-900/50 ${
-                    openFaq === idx ? 'max-h-40 p-4' : 'max-h-0 p-0 border-t-0'
-                  }`}
-                >
-                  {faq.a}
-                </div>
-              </div>
+                {tab.label}
+              </button>
             ))}
+          </div>
+
+          {/* FAQ 실무 가이드 리스트 렌더링 */}
+          <div className="flex flex-col gap-3">
+            {(() => {
+              const practicalFaqs = [
+                {
+                  cat: 'UPLOAD',
+                  q: "1. [Step 1] 우리 구의 공간 CSV 데이터 업로드 시 필수 입력 컬럼과 주의사항은 무엇인가요?",
+                  a: "CSV 파일에는 반드시 위도(lat), 경도(lng), 지번 주소(jibun) 또는 PNU 코드가 포함되어야 합니다. 파일 선택 후 'AI 데이터 감리 기동' 버튼을 누르면 AI가 컬럼 파싱, 위경도 좌표 유효성, 중복 레코드 및 결측치를 100% 자동 검증하고 정정해 줍니다."
+                },
+                {
+                  cat: 'UPLOAD',
+                  q: "2. [Step 1] AI 데이터 감리 중 오류 알림이 뜨면 어떻게 조치해야 하나요?",
+                  a: "좌표가 대한민국 영역을 벗어나거나 필수 컬럼명이 비어있는 경우 감리 경고가 뜹니다. 알림 창에 표시된 오류 행 번호를 확인하신 후, CSV 파일의 컬럼명을 'lat', 'lng', 'jibun'으로 맞춰 재업로드하시면 정상 감리 완료(Pass) 판정을 받으실 수 있습니다."
+                },
+                {
+                  cat: 'AHP_SPATIAL',
+                  q: "3. [Step 2] 3D 지도 상에서 마커 위치를 보정하거나 임시 금지구역(Exclusion Zone)을 그리는 법은 무엇인가요?",
+                  a: "좌측 지도 화면에서 3D 필지 핀포인트 마커를 마우스로 직접 끌어(Drag & Drop) 원하는 입지로 위치를 정밀 보정할 수 있습니다. 또한 화면 좌측 상단의 '임시 금지구역 작도' 버튼을 클릭한 후 지도 위에 다각형(Polygon)을 렌더링하면 해당 구역이 자동 제척됩니다."
+                },
+                {
+                  cat: 'AHP_SPATIAL',
+                  q: "4. [Step 2] 마커를 드래그했더니 '법정 금연구역 버퍼 침범' 알림과 함께 원래 위치로 되돌아가는 이유는 무엇인가요?",
+                  a: "OmniSite는 공공 규제 회피의 무결성을 보장하기 위해 '마커 드래그 스로틀링 & 이격거리 침범 자동 위치 롤백 엔진'이 상시 가동 중입니다. 학교나 어린이집 등 법정 금지 버퍼(10m~200m) 내부로 마커를 이동시킬 경우 안전을 위해 롤백됩니다."
+                },
+                {
+                  cat: 'AHP_SPATIAL',
+                  q: "5. [Step 3] AHP 가중치 쌍대비교 입력 시 '일관성 비율(C.R. > 0.1) 모순' 경고가 뜰 때 가중치 수정 방법은 무엇인가요?",
+                  a: "AHP 가중치 슬라이더를 조절할 때 지표 간 상대적 중요도 설정에 논리적 모순이 발생하면 C.R. 경고가 인출됩니다. 화면에 제시되는 추천 조율 비율 가이드를 참고하여 슬라이더를 부드럽게 조정하시면 C.R. <= 0.1 검증이 통과되어 가중치가 락(Lock) 승인됩니다."
+                },
+                {
+                  cat: 'AHP_SPATIAL',
+                  q: "6. [Step 4] 우측 입지 추천 결과 카드에서 AHP 입지 수용성과 XGBoost 주민 갈등도(CSS) 게이지는 어떻게 해석하나요?",
+                  a: "파란색 'AHP 입지 수용성 게이지'는 유동인구 및 편의성 지표에 따른 정량적 적격성을 의미하며, 주황색 'XGBoost 주민 갈등도 게이지(CSS)'는 민원 발생 위험도를 나타냅니다. 두 점수가 종합 연산된 'Closed-Loop 적격도(ISI)' 점수가 가장 높은 필지가 최종 Top 1 부지입니다."
+                },
+                {
+                  cat: 'AHP_SPATIAL',
+                  q: "7. [Step 4] 추천 사유 카드에 '⚠️ [골목길 선형 필지 경고]' 태그가 떴을 때 행정 현장 점검 포인트는 무엇인가요?",
+                  a: "해당 필지의 지적 폭이 좁은 좁고 긴 골목형 지형(폭 < 2.5m)임을 백엔드 GIS가 자동 감지한 것입니다. 흡연부스나 시설물 설치 시 보행자 통행 장애 및 최소 보도폭(1.2m) 확보 여부를 현장에서 사전 점검하셔야 합니다."
+                },
+                {
+                  cat: 'AHP_SPATIAL',
+                  q: "8. [Step 4] 추천지 카드 내 '🗺️ 로드뷰 보기' 버튼은 어떻게 활용하나요?",
+                  a: "해당 필지의 '🗺️ 로드뷰 보기' 버튼을 누르면 카카오맵 실시간 로드뷰 창이 새 탭으로 즉시 열려, 현장에 직접 방문하지 않고도 보도 폭, 도로 점용 상태 및 주변 상가 환경을 로드뷰 이미지로 즉각 확인하실 수 있습니다."
+                },
+                {
+                  cat: 'DEBATE_REPORT',
+                  q: "9. [Step 5/6] 3자 AI 모의 심의 토론(Debate Simulator) 기동 및 진행 흐름 관찰 방법은 무엇인가요?",
+                  a: "Step 4 추천 카드 하단의 'Step 6. 의사결정 갈등 심의 이동' 버튼을 클릭한 후 토론 시작을 누르면, 찬성자(입지 찬성), 반대자(주민 민원), 중재자(행정관) 3자 LLM이 실시간 SSE 스트리밍으로 심의 토론을 진행하며 실시간 토론록이 작성됩니다."
+                },
+                {
+                  cat: 'DEBATE_REPORT',
+                  q: "10. [Step 6] 최종 행정 의결서(PDF / DOCX) 인출 및 관인 날인 적용 방법은 무엇인가요?",
+                  a: "모의 심의 토론이 완료되면 팝업 하단에 '📄 행정 심의 의결서 인출 (PDF/DOCX)' 버튼이 활성화됩니다. 클릭 시 AHP 점수, CSS 갈등도, 토론 요약 및 지자체 관인이 날인된 표준 행정 의결서 양식이 전자 문서로 즉시 다운로드됩니다."
+                },
+                {
+                  cat: 'RAG_HISTORY',
+                  q: "11. [RAG 조례 관리] 우리 구의 신규 금연 조례 PDF 파일을 RAG 지식베이스에 올리는 방법은 무엇인가요?",
+                  a: "상단 메뉴의 'RAG 조례 관리' 버튼을 누른 후, 파일 선택 창에서 지자체 조례 PDF/HWP 파일을 올려주시면 됩니다. 백엔드 pgvector가 1초 만에 1,536차원 벡터 공간으로 전환하여 지식베이스에 자동 적재합니다."
+                },
+                {
+                  cat: 'RAG_HISTORY',
+                  q: "12. [RAG 조례 관리] 조례 PDF를 올린 후 개정 전후 조항 차이(Diff)를 확인하는 법은 무엇인가요?",
+                  a: "RAG 조례 관리 모달의 등록된 파일 목록에서 각 조례 항목 우측의 '⚖️ 개정 이력' 버튼을 1클릭하시면, pgvector가 감지한 신규 신설, 수정 개정, 삭제 폐지 조항 변동 요약을 프리뷰 카드로 바로 확인하실 수 있습니다."
+                },
+                {
+                  cat: 'RAG_HISTORY',
+                  q: "13. [이력 대시보드] 과거에 우리 부서에서 분석했던 입지 심의 이력을 조회하는 방법은 무엇인가요?",
+                  a: "상단 네비게이션의 '이력 대시보드 (Analytics)' 메뉴로 이동하시면, 그동안 수행했던 입지 분석 날짜, 도메인, Top 1 지번, AHP 점수 및 SHA-256 검증 상태가 목록으로 정렬되어 1클릭 조회가 가능합니다."
+                },
+                {
+                  cat: 'RAG_HISTORY',
+                  q: "14. [이력 대시보드] 분석 이력 목록에서 '🔍 심의 이력 상세 보기' 버튼을 누르면 무엇을 볼 수 있나요?",
+                  a: "과거 수행된 입지 분석의 세부 AHP 가중치, 후보지별 ISI 수용성 점수, 진행된 3자 AI 모의 토론록 전문 및 당시 편찬된 행정 의결서를 언제든지 재열람 및 다운로드하실 수 있습니다."
+                },
+                {
+                  cat: 'RAG_HISTORY',
+                  q: "15. [이력 대시보드] 준공 후 사후 실증 공문서(PDF)를 등록하여 RAG OCR 감리를 받는 방법은 무엇인가요?",
+                  a: "이력 대시보드의 '사후 실증 공문 적재' 세션에서 실제 준공 고시 공문 PDF를 업로드하시면, RAG OCR 파이프라인이 실측 수치를 자동 추출하여 규제 부합률(%)을 감리하고 적격 시 지식베이스에 자동 축적합니다."
+                },
+                {
+                  cat: 'AHP_SPATIAL',
+                  q: "16. 공유킥보드 거치대나 전기차 충전소 등 다른 인프라 도메인을 선택하여 분석하는 방법은 무엇인가요?",
+                  a: "좌측 공간 제어 패널 상단의 '시설물 도메인 선택' 드롭다운에서 흡연부스, 공유이동수단 거치대, 전기차 충전소, 안심 옐로카펫 중 원하는 인프라를 선택하시면 해당 시설물 전용 지표 및 규제 반경이 자동 스왑 적용됩니다."
+                },
+                {
+                  cat: 'AHP_SPATIAL',
+                  q: "17. 후보지 상세 카드의 공시지가 및 면적 수치는 어디서 연동되어 가져오는 것인가요?",
+                  a: "국토교통부 지적도(Cadastral Lands) 및 부동산 공시지가 표준 PostgreSQL PostGIS 지오메트리 데이터베이스에서 해당 필지의 PNU 코드를 기반으로 실시간 100% 동적 인출되는 행정 데이터입니다."
+                },
+                {
+                  cat: 'UPLOAD',
+                  q: "18. 행정망 보안 로그아웃 처리 및 비밀번호 변경은 어디서 수행하나요?",
+                  a: "상단 네비게이션 우측의 프로필 아이콘을 클릭하시면 '비밀번호 변경' 및 '안전 로그아웃' 메뉴가 인출됩니다. 보안 정책에 따라 60분 간 조작이 없을 경우 보안 세션이 자동 만료됩니다."
+                },
+                {
+                  cat: 'DEBATE_REPORT',
+                  q: "19. SHA-256 감사 해시 체인(Hash Chain) 검증 마크는 어디서 확인할 수 있나요?",
+                  a: "입지 분석이 완료되면 우측 패널 하단 및 다운로드받으신 행정 의결서 문서 하단에 SHA-256 단방향 암호화 해시 코드(예: 8f9a2b...)가 위변조 방지 인증 인장으로 표출됩니다."
+                },
+                {
+                  cat: 'AHP_SPATIAL',
+                  q: "20. 자치구별/시설물별 법정 이격거리 규제 반경(10m~200m) 기준을 직접 변경하거나 설정하는 방법은 무엇인가요?",
+                  a: "상단 네비게이션 우측의 '⚙️ 관리자 콘솔 (Admin Console)' 메뉴로 진입하시면, 자치구별 조례 이격거리 가이드라인(학교 50m, 어린이집 10m 등) 및 시설물별 규제 반경 수치를 직접 수정 및 적용하실 수 있습니다. 기타 시스템 관련 문의는 지자체 전산망 지원 핫라인을 통해 접수하실 수 있습니다."
+                }
+              ];
+
+              // 검색어 및 카테고리 필터링
+              const filtered = practicalFaqs.filter(item => {
+                const matchCat = faqCategory === 'ALL' || item.cat === faqCategory;
+                const matchSearch = !faqSearchQuery || 
+                  item.q.toLowerCase().includes(faqSearchQuery.toLowerCase()) ||
+                  item.a.toLowerCase().includes(faqSearchQuery.toLowerCase());
+                return matchCat && matchSearch;
+              });
+
+              // 10개 단위 슬라이싱
+              const visibleList = filtered.slice(0, faqDisplayCount);
+              const hasMore = visibleList.length < filtered.length;
+
+              if (filtered.length === 0) {
+                return (
+                  <div className="text-xs text-slate-500 text-center py-8 border border-dashed border-slate-800 rounded-xl">
+                    검색 조건에 일치하는 사용 가이드 FAQ 항목이 없습니다.
+                  </div>
+                );
+              }
+
+              return (
+                <>
+                  {visibleList.map((faq, idx) => (
+                    <div 
+                      key={idx} 
+                      className="border border-slate-800/80 rounded-xl overflow-hidden bg-slate-950/60 hover:border-slate-700 transition-all duration-200 shadow-sm"
+                    >
+                      <button
+                        onClick={() => setOpenFaq(openFaq === idx ? null : idx)}
+                        className="w-full text-left p-4 flex justify-between items-center text-xs font-bold text-slate-200 hover:bg-slate-900/40 transition-all cursor-pointer font-sans"
+                      >
+                        <span className="flex items-center gap-2">
+                          <span className="text-blue-400 font-mono text-[11px] shrink-0">[가이드 {idx + 1}]</span>
+                          <span>{faq.q.replace(/^[0-9]+\.\s*/, '')}</span>
+                        </span>
+                        <span className="text-slate-500 font-mono text-[10px] ml-2 shrink-0">
+                          {openFaq === idx ? '▲ 접기' : '▼ 펼치기'}
+                        </span>
+                      </button>
+                      
+                      {openFaq === idx && (
+                        <div className="p-4 text-xs text-slate-300 bg-slate-900/80 border-t border-slate-800/80 leading-relaxed font-sans animate-fade-in">
+                          {faq.a}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+
+                  {/* 10개 단위 인피니트 스크롤 / Load More 컨트롤러 */}
+                  <div className="mt-4 flex flex-col items-center gap-2 pt-2 border-t border-slate-900">
+                    <div className="text-[11px] font-mono text-slate-400">
+                      표시 중: <strong className="text-blue-400">{visibleList.length}</strong> / 전체 {filtered.length}개 가이드 FAQ
+                    </div>
+                    
+                    {hasMore ? (
+                      <button
+                        onClick={() => setFaqDisplayCount(prev => prev + 10)}
+                        className="bg-slate-900 hover:bg-slate-800 text-blue-400 border border-slate-800 hover:border-blue-500/40 text-xs font-bold px-6 py-2 rounded-xl transition-all cursor-pointer shadow-md flex items-center gap-2 hover:scale-105"
+                      >
+                        <span>📜 가이드 FAQ 10개 더 불러오기 (Load More)</span>
+                      </button>
+                    ) : (
+                      <span className="text-[10px] text-emerald-400 bg-emerald-950/40 border border-emerald-500/30 px-3 py-1 rounded-full font-bold">
+                        ✓ 검색된 모든 실무 가이드 항목 로드 완료
+                      </span>
+                    )}
+                  </div>
+                </>
+              );
+            })()}
           </div>
         </section>
 

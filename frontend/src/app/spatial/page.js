@@ -1818,6 +1818,7 @@ export default function Home() {
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         criteriaList={criteriaList}
+        ahpWeights={ahpWeights}
         intensityLevel={intensityLevel}
         setIntensityLevel={setIntensityLevel}
         runSimulation={runSimulation}

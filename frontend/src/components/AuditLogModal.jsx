@@ -5,10 +5,6 @@ export default function AuditLogModal({ showModal, setShowModal, apiFetch }) {
   const [loading, setLoading] = useState(false);
   const [selectedLog, setSelectedLog] = useState(null);
 
-  const [verifying, setVerifying] = useState(false);
-  const [rehealing, setRehealing] = useState(false);
-  const [hashStatus, setHashStatus] = useState(null);
-
   const fetchLogs = async () => {
     setLoading(true);
     try {
@@ -27,58 +23,9 @@ export default function AuditLogModal({ showModal, setShowModal, apiFetch }) {
     }
   };
 
-  const handleVerifyHashChain = async () => {
-    setVerifying(true);
-    try {
-      const res = await apiFetch('/api/v1/spatial/logs/verify-hash-chain');
-      if (res.ok) {
-        const data = await res.json();
-        setHashStatus(data);
-      }
-    } catch (err) {
-      alert("해시 체인 검증 중 오류: " + err.message);
-    } finally {
-      setVerifying(false);
-    }
-  };
-
-  // 마스터 보안 코드 검증 기반 해시 체인 멸실 복구
-  const handleRehealHashChain = async () => {
-    const masterKeyInput = window.prompt(
-      "🔒 최고 보안 승인 (Master Key Required):\n\n감사 로그 해시 체인 재동기화를 수행하려면 마스터 보안 코드를 입력하십시오.\n(기본 마스터 코드: OMNISITE-MASTER-2026)",
-      "OMNISITE-MASTER-2026"
-    );
-
-    if (!masterKeyInput) return;
-
-    setRehealing(true);
-    try {
-      const res = await apiFetch('/api/v1/spatial/logs/reheal-hash-chain', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ master_key: masterKeyInput })
-      });
-      if (res.ok) {
-        const data = await res.json();
-        alert(data.message || "✓ 마스터 승인 완료: 해시 체인이 성공적으로 복구 및 재동기화되었습니다.");
-        fetchLogs();
-        handleVerifyHashChain();
-      } else {
-        const err = await res.json();
-        const msg = typeof err.detail === 'string' ? err.detail : (err.message || '승인 실패');
-        alert(`🔒 승인 거절 / 복구 실패: ${msg}`);
-      }
-    } catch (e) {
-      alert(`❌ 서버 통신 오류: ${e.message}`);
-    } finally {
-      setRehealing(false);
-    }
-  };
-
   useEffect(() => {
     if (showModal) {
       fetchLogs();
-      handleVerifyHashChain();
     }
   }, [showModal]);
 
@@ -96,10 +43,6 @@ export default function AuditLogModal({ showModal, setShowModal, apiFetch }) {
         return <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">Step 4. ISI 추천</span>;
       case 'STEP_5':
         return <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">Step 5. AI 심의</span>;
-      case 'STEP_SECURITY_INCIDENT':
-        return <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-rose-500/30 text-rose-200 border border-rose-500/60 animate-pulse">🚨 보안 침해 사고 기록</span>;
-      case 'STEP_SYSTEM_REHEAL':
-        return <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-sky-500/30 text-sky-200 border border-sky-500/60">🔧 해시 복구 재동기화</span>;
       case 'SYSTEM':
         return <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30">보안/계정 액션</span>;
       default:
@@ -116,158 +59,141 @@ export default function AuditLogModal({ showModal, setShowModal, apiFetch }) {
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-3 flex-wrap">
               <h3 className="text-lg font-bold text-slate-100 whitespace-nowrap">📜 옴니사이트 5단계 행정 감사 로그 (Audit Trail Logs)</h3>
-              {hashStatus?.tampered ? (
-                <span className="px-3 py-1 rounded-full text-xs font-bold bg-rose-500/20 text-rose-300 border border-rose-500/50 whitespace-nowrap animate-pulse flex items-center gap-1">
-                  <span>⚠️</span>
-                  <span>위·변조/멸실 단절 탐지됨</span>
-                </span>
-              ) : (
-                <span className="px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 whitespace-nowrap shadow-[0_0_10px_rgba(16,185,129,0.2)]">
-                  🔒 SHA-256 해시 체인 무결성 100% Verified
-                </span>
-              )}
+              <span className="px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 whitespace-nowrap shadow-[0_0_10px_rgba(16,185,129,0.2)]">
+                🔒 행정 감사 로그 전용 이력 저장소 (Append-Only Ledger)
+              </span>
             </div>
             <p className="text-xs text-slate-400 mt-1">
-              공공 행정 의사결정 프로세스 단계별 적재 내역 및 암호학적 위·변조/멸실 탐지 대응 시스템
+              공공 행정 의사결정 프로세스 단계별 적재 내역 및 사용자 행동 이력 종합 관리 시스템
             </p>
           </div>
           
           <div className="flex items-center gap-2.5 shrink-0">
-            {hashStatus?.tampered && (
-              <button
-                onClick={handleRehealHashChain}
-                disabled={rehealing}
-                className="text-xs bg-rose-600 hover:bg-rose-500 text-white px-4 py-2 rounded-xl border border-rose-400 font-bold transition-all cursor-pointer flex items-center gap-1.5 shrink-0 shadow-lg shadow-rose-600/30 animate-bounce"
-              >
-                <span>🔧</span>
-                <span>{rehealing ? "복구 중..." : "해시 체인 멸실 복구 & 재동기화"}</span>
-              </button>
-            )}
-            <button
-              onClick={handleVerifyHashChain}
-              disabled={verifying}
-              className="text-xs bg-emerald-950/70 hover:bg-emerald-900/90 text-emerald-300 px-4 py-2 rounded-xl border border-emerald-700/70 font-bold transition-all cursor-pointer flex items-center gap-1.5 shrink-0 shadow-md hover:scale-105"
-            >
-              <span>{verifying ? "⏳" : "🔍"}</span>
-              <span>{verifying ? "검증 중..." : "실시간 위변조 검증"}</span>
-            </button>
             <button
               onClick={fetchLogs}
-              className="text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 px-3.5 py-2 rounded-xl border border-slate-700 font-bold transition-all cursor-pointer shrink-0 flex items-center gap-1 hover:scale-105"
+              disabled={loading}
+              className="text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 px-4 py-2 rounded-xl border border-slate-700 font-bold transition-all cursor-pointer flex items-center gap-1.5 shrink-0 shadow-md hover:scale-105"
             >
               <span>🔄</span>
-              <span>새로고침</span>
+              <span>{loading ? "조회 중..." : "새로고침"}</span>
             </button>
             <button
               onClick={() => setShowModal(false)}
-              className="text-slate-400 hover:text-white text-xl font-bold cursor-pointer transition-all p-1.5 hover:bg-slate-800/60 rounded-xl shrink-0"
-              title="닫기"
+              className="w-9 h-9 flex items-center justify-center rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition-all text-sm font-bold cursor-pointer border border-slate-700"
             >
-              &times;
+              ✕
             </button>
           </div>
         </div>
 
-        {/* 위변조 탐지 레드 알림 바 */}
-        {hashStatus?.tampered && (
-          <div className="my-2 p-3 bg-rose-950/60 border border-rose-500/50 rounded-xl flex items-center justify-between shadow-lg text-xs text-rose-200 animate-pulse">
-            <div className="flex items-center gap-2">
-              <span className="text-base">🚨</span>
-              <span>
-                <strong>보안 경고:</strong> 감사 로그 단절 또는 멸실(Corrupted Index: #{hashStatus.corrupted_index})이 감지되었습니다. 
-                오른쪽 <strong>[🔧 해시 체인 멸실 복구]</strong> 버튼으로 체인을 안전하게 1초 만에 재동기화하십시오.
+        {/* 바디 레이아웃 (2열 구도: 이력 목록 + 상세 내역) */}
+        <div className="grid grid-cols-12 gap-6 my-4 flex-1 min-h-0 overflow-hidden">
+          
+          {/* 좌측: 로그 타임라인 목록 (5컬럼) */}
+          <div className="col-span-5 border border-slate-800/80 rounded-xl bg-slate-950/50 p-4 flex flex-col min-h-0 overflow-hidden">
+            <div className="flex justify-between items-center mb-3 pb-2 border-b border-slate-800">
+              <span className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+                <span>📑</span>
+                <span>최신 실행 감사 이력 ({logs.length}건)</span>
               </span>
+              <span className="text-[10px] text-slate-500 font-mono">최신순 정렬</span>
             </div>
-          </div>
-        )}
 
-        {/* 본문 2컬럼 레이아웃 */}
-        <div className="flex-1 my-3 grid grid-cols-12 gap-4 min-h-0">
-          {/* 좌측: 감사 로그 타임라인 리스트 */}
-          <div className="col-span-5 bg-slate-950/80 rounded-xl p-3.5 border border-slate-800/80 overflow-y-auto flex flex-col gap-2">
             {loading ? (
-              <div className="text-center py-10 text-xs text-slate-400 animate-pulse">감사 로그 로딩 중...</div>
+              <div className="flex-1 flex items-center justify-center text-xs text-slate-400">
+                <span className="animate-pulse">⏳ 감사 로그 데이터를 동기화하는 중...</span>
+              </div>
             ) : logs.length === 0 ? (
-              <div className="text-center py-10 text-xs text-slate-500">기록된 행정 감사 로그가 없습니다.</div>
+              <div className="flex-1 flex items-center justify-center text-xs text-slate-500">
+                적재된 감사 이력이 없습니다.
+              </div>
             ) : (
-              logs.map((log) => {
-                const isSelected = selectedLog?.id === log.id;
-                const isSecurityIncident = log.step_number === 'STEP_SECURITY_INCIDENT';
-                const isReheal = log.step_number === 'STEP_SYSTEM_REHEAL';
+              <div className="flex-1 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
+                {logs.map((log) => {
+                  const isSelected = selectedLog?.id === log.id;
+                  const stepLabel = log.step_name || log.step_number || log.action_type || 'SYSTEM';
+                  const detailsObj = log.details || log.detail_json || {};
+                  return (
+                    <div
+                      key={log.id}
+                      onClick={() => setSelectedLog({ ...log, step_name: stepLabel, details: detailsObj })}
+                      className={`p-3 rounded-xl border transition-all cursor-pointer flex flex-col gap-1.5 ${
+                        isSelected 
+                          ? 'bg-blue-600/15 border-blue-500/60 shadow-lg text-white' 
+                          : 'bg-slate-900/40 hover:bg-slate-800/50 border-slate-800/80 text-slate-300'
+                      }`}
+                    >
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs font-bold font-mono text-slate-200">Log #{log.id}</span>
+                        {getStepBadge(stepLabel)}
+                      </div>
 
-                let cardStyle = "bg-slate-900/40 border-slate-800/60 hover:bg-slate-800/50";
-                if (isSelected) cardStyle = "bg-indigo-950/50 border-indigo-500/80 shadow-md";
-                if (isSecurityIncident) cardStyle = "bg-rose-950/60 border-rose-500/60 shadow-rose-950/30";
-                if (isReheal) cardStyle = "bg-sky-950/60 border-sky-500/60 shadow-sky-950/30";
-
-                return (
-                  <div
-                    key={log.id}
-                    onClick={() => setSelectedLog(log)}
-                    className={`p-3 rounded-xl border transition-all cursor-pointer text-xs flex flex-col gap-1.5 ${cardStyle}`}
-                  >
-                    <div className="flex justify-between items-center">
-                      {getStepBadge(log.step_number)}
-                      <span className="text-[10px] text-slate-400 font-mono">
-                        {log.created_at ? new Date(log.created_at).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' }) : ''}
-                      </span>
+                      <div className="flex justify-between items-center text-[11px] text-slate-400">
+                        <span className="font-mono">{log.created_at ? new Date(log.created_at).toLocaleString('ko-KR') : '-'}</span>
+                      </div>
                     </div>
-                    <div className="font-semibold text-slate-200 mt-0.5 flex items-center justify-between">
-                      <span>{log.action_type}</span>
-                      <span className="text-[10px] font-mono text-slate-500">#{log.id}</span>
-                    </div>
-                  </div>
-                );
-              })
+                  );
+                })}
+              </div>
             )}
           </div>
 
-          {/* 우측: 선택된 감사 로그 세부 정보 (JSON Viewer) */}
-          <div className="col-span-7 bg-slate-950/90 rounded-xl p-4 border border-slate-800 flex flex-col justify-between overflow-hidden">
+          {/* 우측: 선택된 로그 상세 데이터 및 JSON 패널 (7컬럼) */}
+          <div className="col-span-7 border border-slate-800/80 rounded-xl bg-slate-950/60 p-5 flex flex-col min-h-0 overflow-hidden">
             {selectedLog ? (
-              <div className="flex flex-col h-full gap-2">
-                <div className="border-b border-slate-800/80 pb-2 flex justify-between items-center shrink-0">
-                  <div>
-                    <span className="text-xs font-bold text-indigo-400">Log ID #{selectedLog.id}</span>
-                    <h4 className="text-sm font-bold text-slate-100 mt-0.5">{selectedLog.action_type} 상세 내역</h4>
+              <div className="flex flex-col h-full overflow-hidden gap-4">
+                {/* 상단 썸네일 정보 */}
+                <div className="flex justify-between items-center border-b border-slate-800/80 pb-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/30 flex items-center justify-center text-blue-400 font-mono font-bold text-sm">
+                      #{selectedLog.id}
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-bold text-slate-100 flex items-center gap-2">
+                        <span>단계 구분:</span>
+                        {getStepBadge(selectedLog.step_name)}
+                      </h4>
+                      <p className="text-[11px] text-slate-400 font-mono mt-0.5">
+                        기록 일시: {selectedLog.created_at ? new Date(selectedLog.created_at).toLocaleString('ko-KR') : '-'}
+                      </p>
+                    </div>
                   </div>
-                  <span className="text-xs text-slate-400 font-mono bg-slate-900 px-2.5 py-1 rounded border border-slate-800">
-                    Session: {selectedLog.session_id}
+
+
+                </div>
+
+                {/* JSON 세부 데이터 패널 */}
+                <div className="flex-1 flex flex-col min-h-0">
+                  <span className="text-xs font-bold text-slate-300 mb-2 flex items-center gap-1.5">
+                    <span>🔍</span>
+                    <span>상세 실행 매개변수 & JSON 메타데이터</span>
                   </span>
-                </div>
-
-                {/* SHA-256 해시 체인 정보 */}
-                <div className="bg-slate-900/90 p-2.5 rounded-lg border border-slate-800/90 flex flex-col gap-1 shrink-0 font-mono text-[10px]">
-                  <div className="flex gap-2">
-                    <span className="text-slate-500 w-20 shrink-0">Current Hash:</span>
-                    <span className="text-emerald-400 truncate">{selectedLog.current_hash || 'SHA256 Genesis Hash'}</span>
+                  <div className="flex-1 bg-slate-950 p-4 rounded-xl border border-slate-800 overflow-y-auto font-mono text-xs text-blue-300 leading-relaxed custom-scrollbar">
+                    <pre className="whitespace-pre-wrap break-all">
+                      {JSON.stringify(selectedLog.details || selectedLog.detail_json || {}, null, 2)}
+                    </pre>
                   </div>
-                  <div className="flex gap-2">
-                    <span className="text-slate-500 w-20 shrink-0">Prev Hash:</span>
-                    <span className="text-sky-400 truncate">{selectedLog.prev_hash || '0'.repeat(64)}</span>
-                  </div>
-                </div>
-
-                <div className="flex-1 overflow-y-auto bg-slate-900/80 p-3 rounded-lg border border-slate-800 font-mono text-xs text-slate-300 leading-relaxed whitespace-pre-wrap">
-                  {typeof selectedLog.detail_json === 'string' 
-                    ? selectedLog.detail_json 
-                    : JSON.stringify(selectedLog.detail_json, null, 2)}
                 </div>
               </div>
             ) : (
-              <div className="text-center py-20 text-xs text-slate-500">
-                좌측 타임라인에서 로그 항목을 선택해 상세 내역을 조회하십시오.
+              <div className="flex-1 flex flex-col items-center justify-center text-slate-500 text-xs gap-2">
+                <span className="text-2xl">📜</span>
+                <span>좌측에서 조회할 감사 로그 항목을 선택해 주십시오.</span>
               </div>
             )}
           </div>
+
         </div>
 
-        {/* 하단 푸터 */}
-        <div className="flex justify-between items-center border-t border-slate-800 pt-3 text-[11px] text-slate-500 font-sans">
-          <span>✓ PostgreSQL `pipeline_execution_logs` SHA-256 단방향 무결성 & 멸실 자동 복구 시스템 가동 중</span>
+        {/* 푸터 하단 상태 바 */}
+        <div className="flex justify-between items-center pt-3 border-t border-slate-800/80 text-[11px] text-slate-400">
+          <span className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            <span>행정 감사 로그 수집 시스템 정상 가동 중 (Append-Only Ledger)</span>
+          </span>
           <button
             onClick={() => setShowModal(false)}
-            className="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold px-5 py-2 rounded-xl transition-all cursor-pointer"
+            className="px-5 py-2 text-xs font-bold bg-slate-800 hover:bg-slate-700 text-white rounded-xl transition-all cursor-pointer border border-slate-700"
           >
             닫기
           </button>

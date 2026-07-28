@@ -1450,10 +1450,8 @@ def get_domain_regulation_rules(db: Session, facility_type: str) -> dict:
 async def get_restriction_points(facility_type: str = "smoking_zone", district_id: int = 1, db: Session = Depends(get_db)):
     try:
         # 도메인별 적용되는 기본 법정 규제 유형 분류
-        allowed_types = []
-        if facility_type == "smoking_zone":
-            allowed_types = ["school", "childcare_center", "nosmoking_zone"]
-        elif facility_type == "ev_charging":
+        allowed_types = ["school", "childcare_center", "nosmoking_zone"]
+        if facility_type == "ev_charging":
             allowed_types = ["school", "childcare_center"]
             
         points = []

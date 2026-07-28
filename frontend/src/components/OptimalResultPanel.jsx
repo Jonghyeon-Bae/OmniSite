@@ -24,7 +24,8 @@ export default function OptimalResultPanel({
   simStep,
   addressAnalysis,
   isAnalyzingAddress,
-  onOpenGuideModal
+  onOpenGuideModal,
+  ahpWeights
 }) {
   const currentParcel = selectedParcel[activeTab] || {};
 
@@ -274,11 +275,12 @@ export default function OptimalResultPanel({
                     {(() => {
                       const fullText = currentParcel.reason || "";
                       // 태그 패턴 [공간 분석...], [보도 확인], ⚡ [AHP-ML...], ⚠️ [골목길...] 등으로 정밀 단락 분할
-                      const blocks = fullText.split(/(?=\n\n|(?=\[[^\]]+\])|(?=⚡)|(?=⚠️)|(?=✅))/g)
+                      const rawBlocks = fullText.split(/(?=\n\n|(?=\[[^\]]+\])|(?=⚡)|(?=⚠️)|(?=✅))/g)
                         .map(b => b.trim())
-                        .filter(b => b.length > 0);
+                        .filter(b => b.length >= 10);
+                      const uniqueBlocks = Array.from(new Set(rawBlocks));
 
-                      return blocks.map((block, pIdx) => {
+                      return uniqueBlocks.map((block, pIdx) => {
                         let badgeStyle = "bg-slate-900/80 border-slate-800 text-slate-200";
                         let tagLabel = "행정 분석 조언";
                         let icon = "📌";
@@ -340,45 +342,104 @@ export default function OptimalResultPanel({
                 <span className="text-[10px] text-slate-500 font-mono">Spatial Matrix</span>
               </div>
               <div className="bg-slate-950/60 rounded-xl p-3 flex flex-col gap-2.5 border border-slate-800/80 shadow-inner">
-                {Object.entries(currentParcel.criteria_scores).map(([k, val]) => {
-                  const matchedCriteria = (criteriaList || []).find(c => c.key === k);
-                  const label = matchedCriteria ? matchedCriteria.label : k;
-                  const weightVal = matchedCriteria?.initial_weight || 5.0;
-                  const numVal = typeof val === 'number' ? val : 0;
-                  
-                  let badge = "보통";
-                  let badgeStyle = "bg-slate-800 text-slate-400 border-slate-700";
-                  if (weightVal >= 7.0) {
-                    badge = "주요 지표";
-                    badgeStyle = "bg-blue-500/20 text-blue-300 border-blue-500/40 font-bold";
-                  } else if (weightVal >= 5.0) {
-                    badge = "일반 반영";
-                    badgeStyle = "bg-emerald-500/20 text-emerald-300 border-emerald-500/40";
-                  }
+                {(() => {
+                  // 한글 공간 지표 라벨 사전
+                  const DICT_LABELS = {
+                    land_area: "토지/부지 면적 수용성",
+                    passenger_flow: "대중교통 승하차 유동인구",
+                    trash_bin_density: "쓰레기통/무단투기 밀집도",
+                    childcare_proximity: "어린이집/학교 이격 안전성",
+                    youth_ratio: "청소년 인구 비율",
+                    youth: "청소년 인구 비율",
+                    traffic: "대중교통 유동성",
+                    complaint: "불법흡연 민원빈도",
+                    dumping: "상습 무단투기",
+                    population: "배후 생활인구",
+                    childcare_dist: "아동/청소년 보호구역 안전거리",
+                    transit_flow: "대중교통 유동인구 밀집도",
+                    litter_freq: "담배꽁초 무단투기 민원 발생 빈도",
+                    existing_booth: "기존 흡연구역 분포 이격도",
+                    complaint_freq: "악취/소음 불법 민원 강도",
+                    commercial_density: "상점/영업소 밀집도",
+                    cctv_count: "스마트 CCTV 감시망"
+                  };
 
-                  // 동적 AHP 실측 가중치 바인딩
-                  const dynamicWeight = currentParcel.ahp_weights?.[k] || currentParcel.criteria_weights?.[k] || matchedCriteria?.weight || matchedCriteria?.initial_weight || 5.0;
+                  // 지표 키 별칭 동기화 맵
+                  const ALIAS_MAP = {
+                    land_area: ["land_area", "area", "population"],
+                    passenger_flow: ["passenger_flow", "traffic", "transit_flow"],
+                    trash_bin_density: ["trash_bin_density", "dumping", "litter_freq"],
+                    childcare_proximity: ["childcare_proximity", "youth", "childcare_dist"],
+                    traffic: ["traffic", "passenger_flow", "transit_flow"],
+                    complaint: ["complaint", "complaint_freq"],
+                    dumping: ["dumping", "trash_bin_density", "litter_freq"],
+                    population: ["population", "land_area"],
+                    youth: ["youth", "childcare_proximity"]
+                  };
 
-                  return (
-                    <div key={k} className="flex flex-col gap-1 bg-slate-900/50 p-2 rounded-lg border border-slate-800/50 font-sans">
-                      <div className="flex justify-between items-center text-[11px]">
-                        <span className="font-semibold text-slate-300 flex items-center gap-1.5">
-                          <span>{label}</span>
-                          <span className={`text-[9px] px-1.5 py-0.2 rounded border ${badgeStyle}`}>{badge}</span>
-                        </span>
-                        <span className="font-mono text-emerald-400 font-bold">
-                          {typeof val === 'number' ? val.toLocaleString(undefined, {maximumFractionDigits: 1}) : val}
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center text-[10px] text-slate-500">
-                        <span>AHP 가중치: <strong className="text-blue-400 font-mono font-bold">{dynamicWeight.toFixed(1)}</strong></span>
-                        <div className="w-24 h-1 bg-slate-950 rounded-full overflow-hidden">
-                          <div className="h-full bg-blue-400 rounded-full" style={{ width: `${Math.min(100, dynamicWeight * 10)}%` }} />
+                  const scoresObj = currentParcel.criteria_scores || {};
+
+                  return Object.entries(scoresObj).map(([k, val]) => {
+                    // 1. 라벨 결정 (기준 목록에서 탐색 후 라벨 사전 및 디폴트 파싱)
+                    const matchedCriterion = (criteriaList || []).find(c => c.key === k || c.label === k);
+                    const label = matchedCriterion?.label || DICT_LABELS[k] || k;
+
+                    // 2. AHP 가중치 결정 (ahpWeights ➔ criteriaList ➔ currentParcel ➔ 디폴트 6.5)
+                    const aliases = ALIAS_MAP[k] || [k];
+                    let dynamicWeight = null;
+
+                    if (ahpWeights) {
+                      for (const alias of aliases) {
+                        if (ahpWeights[alias] !== undefined) {
+                          dynamicWeight = ahpWeights[alias];
+                          break;
+                        }
+                      }
+                    }
+
+                    if (dynamicWeight === null && matchedCriterion?.weight !== undefined) {
+                      dynamicWeight = matchedCriterion.weight;
+                    }
+
+                    if (dynamicWeight === null) {
+                      dynamicWeight = currentParcel.ahp_weights?.[k] || currentParcel.criteria_weights?.[k] || 6.5;
+                    }
+
+                    // 3. 지표 등급 뱃지 판단
+                    let badge = "일반 참고";
+                    let badgeStyle = "bg-slate-800/60 text-slate-400 border-slate-700/60";
+                    if (dynamicWeight >= 7.0) {
+                      badge = "⭐ 최우선 핵심 지표";
+                      badgeStyle = "bg-blue-500/20 text-blue-300 border-blue-500/50 font-bold shadow-blue-950/40";
+                    } else if (dynamicWeight >= 5.0) {
+                      badge = "🟢 중요 반영 지표";
+                      badgeStyle = "bg-emerald-500/20 text-emerald-300 border-emerald-500/40 font-semibold";
+                    }
+
+                    return (
+                      <div key={k} className="flex flex-col gap-1.5 bg-slate-900/60 p-3 rounded-xl border border-slate-800/80 font-sans shadow-sm hover:border-slate-700 transition-all">
+                        <div className="flex justify-between items-center text-[11px]">
+                          <span className="font-semibold text-slate-200 flex items-center gap-2">
+                            <span>{label}</span>
+                            <span className={`text-[9px] px-2 py-0.5 rounded-md border ${badgeStyle}`}>{badge}</span>
+                          </span>
+                          <span className="font-mono text-emerald-400 font-bold text-xs bg-emerald-950/40 px-2 py-0.5 rounded border border-emerald-500/30">
+                            {typeof val === 'number' ? val.toLocaleString(undefined, {maximumFractionDigits: 1}) : val}
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center text-[10px] text-slate-400 mt-1">
+                          <span className="flex items-center gap-1">
+                            <span>AHP 중요도 가중치:</span>
+                            <strong className="text-blue-400 font-mono font-bold text-xs">{typeof dynamicWeight === 'number' ? dynamicWeight.toFixed(1) : dynamicWeight}</strong>
+                          </span>
+                          <div className="w-28 h-1.5 bg-slate-950 rounded-full overflow-hidden border border-slate-800">
+                            <div className="h-full bg-gradient-to-r from-blue-500 to-emerald-400 rounded-full transition-all duration-500" style={{ width: `${Math.min(100, dynamicWeight * 10)}%` }} />
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  );
-                })}
+                    );
+                  });
+                })()}
               </div>
             </div>
           )}

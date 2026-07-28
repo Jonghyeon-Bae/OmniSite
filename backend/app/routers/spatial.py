@@ -1240,16 +1240,23 @@ async def recommend_optimal_sites(
                 elif "population" in max_key_lower or "resident" in max_key_lower:
                     reasons.append("행정동 내부 생활 주거 인구의 공간적 밀집 분포 분석을 반영하였습니다.")
             
-            # 3. 도메인별 제약 조건 조언
+            # 3. 도메인별 제약 조건 조언 & 좁은 골목길/선형 필지 형상 감리 (Alleyway Audit)
+            cand_area = float(cand_item.get("area", 100))
+            cand_price = float(cand_item.get("price", 0))
+            is_alleyway = cand_area < 65 or cand_item.get("land_use_code") == "도"
+            
             if type_str == "smoking_zone":
-                if cand_item.get("land_use_code") == "도":
-                    reasons.append("[보도 확인] 도로 점용 시 통행 장애를 막기 위한 보행 최소 보도폭(1.2m) 확보 검측이 권장됩니다.")
+                if is_alleyway:
+                    reasons.append("⚠️ [골목길 선형 필지 경고] 필지 폭이 좁고 긴 좁은 골목형 지형(최소 폭 < 2.5m 추정)으로, 흡연부스 설치 시 보행 통행 장애 및 안전 보도폭(1.2m) 확보 사전 현장 점검이 필수적입니다.")
+                elif cand_item.get("land_use_code") == "도":
+                    reasons.append("🚶 [보도 확인] 도로 점용 시 통행 장애를 막기 위한 보행 최소 보도폭(1.2m) 확보 검측이 권장됩니다.")
                 if cand_item.get("has_cvs"):
-                    reasons.append(f"[상가 조율] 편의점({cand_item.get('cvs_name')})과 10m 이내로 근접해 있어 상가 영업 시비 조율이 필요합니다.")
+                    reasons.append(f"🏪 [상가 조율] 편의점({cand_item.get('cvs_name')})과 10m 이내로 근접해 있어 상가 영업 시비 조율이 필요합니다.")
             elif type_str == "yellow_carpet":
-                reasons.append("[보행 확인] 초등학교 어린이 보호구역 내 보행 안전 보차도 시인성 확보를 우선 검토해야 합니다.")
+                reasons.append("🚶 [보행 확인] 초등학교 어린이 보호구역 내 보행 안전 보차도 시인성 확보를 우선 검토해야 합니다.")
             elif type_str == "ev_charging":
-                reasons.append("[인프라 확인] 인근 변전 배전선로의 그리드 용량 가용 여부를 한전과 협의해야 합니다.")
+                reasons.append("⚡ [인프라 확인] 인근 변전 배전선로의 그리드 용량 가용 여부를 한전과 협의해야 합니다.")
+
             # 4. AHP-ML Closed-Loop ISI 피드백 소급 멘트
             css_penalty = cand_item.get("css_penalty_pct", 0.0)
             isi_score = cand_item.get("isi_score", cand_item.get("total_score", 0.0))
@@ -1260,7 +1267,7 @@ async def recommend_optimal_sites(
                     f"통합 적격도 점수(ISI: {isi_score}점) 기준 안전 입지 부지로 최종 확정 도출되었습니다."
                 )
 
-            return " ".join(reasons)
+            return "\n\n".join(reasons)
 
         results = {}
         for idx, rank in enumerate(["top1", "top2", "top3", "top4", "top5", "top6"]):

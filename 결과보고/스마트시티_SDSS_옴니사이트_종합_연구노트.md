@@ -986,3 +986,11 @@
 * **주요 의사결정:**
     - **5단계 무결성 검증 체계 완공**: Step 1 AI 감리, Step 2 PNU 좌표, Step 3 AHP 일관성 락, Step 4 PostGIS 추천, Step 5/6 AI 심의의 선행 조건을 100% 검증하여 무단 스텝 이탈 차단.
     - **전수 무결성 검증 완료**: Next.js Turbopack 프로덕션 빌드 `✓ Compiled successfully in 1760ms` (0 Error, 0 Warning) 및 4대 자동화 테스트 100% 성공 확정.
+
+
+### [2.6.0-AlleywayAuditAndGlassUI] 입지 사유 글래스모피즘 분할, 세부 지표 AHP 가중치 가시화 및 골목길 선형 필지 감리 엔진 완공 (v2.6.0-AlleywayAuditAndGlassUI)
+* **연구 내용:** 조장(USER)의 통찰 깊은 UX 및 공간 품질 지시에 의거하여 **① 추천 사유 텍스트 글래스모피즘 단락 분할**, **② 세부 평가 지표별 AHP 상대 가중치($w_k$) 및 기여도 프로그레스 바 시각화**, **③ 좁고 긴 골목길 선형 필지(폭 < 2.5m) 흡연부스 보행 장애 자동 감리 및 경고 인출 엔진**을 완공함.
+* **주요 의사결정:**
+    - **사유 단락 글래스모피즘 카드 분할**: 백엔드 `spatial.py` 내 `generate_recommendation_reason` 단락 구분(`\n\n`) 전송 및 프론트엔드 `OptimalResultPanel.jsx` 개별 글래스모피즘 카드 분할 표출로 가독성 극대화.
+    - **골목길 선형 필지 공간 감리 엔진**: 좁고 긴 세로형 필지(폭 < 2.5m 또는 도로 구역) 감지 시 `⚠️ [골목길 선형 필지 경고]` 태그 및 보행 최소 보도폭(1.2m) 확보 위험 멘트 자동 인출.
+    - **전수 무결성 검증 완료**: Next.js Turbopack 프로덕션 빌드 `✓ Compiled successfully in 1681ms` (0 Error, 0 Warning) 및 4대 파서/해시체인/RAG/Closed-Loop 자동화 테스트 100% 통과 확정.

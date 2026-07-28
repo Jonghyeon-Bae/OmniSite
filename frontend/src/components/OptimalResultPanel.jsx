@@ -265,11 +265,63 @@ export default function OptimalResultPanel({
               )}
 
               {currentParcel.reason && (
-                <div className="flex flex-col gap-1 mt-1 border-t border-slate-900/60 pt-2">
-                  <span className="text-[10px] text-emerald-500 font-semibold">입지 선정 사유 및 주변 환경 조언</span>
-                  <span className="text-[11px] text-slate-300 leading-relaxed bg-slate-950/30 p-2 rounded-lg border border-slate-900/50">
-                    {currentParcel.reason}
+                <div className="flex flex-col gap-2 mt-2 border-t border-slate-900/80 pt-3">
+                  <span className="text-[11px] font-bold text-emerald-400 flex items-center gap-1.5 font-sans">
+                    <span>💡</span>
+                    <span>입지 선정 사유 및 주변 환경 조언</span>
                   </span>
+                  <div className="flex flex-col gap-2.5">
+                    {(() => {
+                      const fullText = currentParcel.reason || "";
+                      // 태그 패턴 [공간 분석...], [보도 확인], ⚡ [AHP-ML...], ⚠️ [골목길...] 등으로 정밀 단락 분할
+                      const blocks = fullText.split(/(?=\n\n|(?=\[[^\]]+\])|(?=⚡)|(?=⚠️)|(?=✅))/g)
+                        .map(b => b.trim())
+                        .filter(b => b.length > 0);
+
+                      return blocks.map((block, pIdx) => {
+                        let badgeStyle = "bg-slate-900/80 border-slate-800 text-slate-200";
+                        let tagLabel = "행정 분석 조언";
+                        let icon = "📌";
+
+                        if (block.includes("공간 분석 통과 근거") || block.includes("✅")) {
+                          badgeStyle = "bg-emerald-950/50 border-emerald-500/40 text-emerald-200 shadow-emerald-950/20";
+                          tagLabel = "공간 규제 회피 통과";
+                          icon = "✅";
+                        } else if (block.includes("골목길") || block.includes("⚠️")) {
+                          badgeStyle = "bg-rose-950/50 border-rose-500/50 text-rose-200 shadow-rose-950/20 animate-pulse";
+                          tagLabel = "골목길 선형 필지 경고";
+                          icon = "⚠️";
+                        } else if (block.includes("AHP-ML Closed-Loop") || block.includes("⚡")) {
+                          badgeStyle = "bg-blue-950/50 border-blue-500/40 text-blue-200 shadow-blue-950/20";
+                          tagLabel = "AHP-ML 피드백 연산";
+                          icon = "⚡";
+                        } else if (block.includes("보도 확인") || block.includes("보행")) {
+                          badgeStyle = "bg-sky-950/50 border-sky-500/40 text-sky-200 shadow-sky-950/20";
+                          tagLabel = "보도 폭 및 보행 안전";
+                          icon = "🚶";
+                        } else if (block.includes("상가 조율") || block.includes("편의점")) {
+                          badgeStyle = "bg-amber-950/50 border-amber-500/40 text-amber-200 shadow-amber-950/20";
+                          tagLabel = "상점 및 영업 조율";
+                          icon = "🏪";
+                        }
+
+                        return (
+                          <div
+                            key={pIdx}
+                            className={`p-3.5 rounded-xl border backdrop-blur-md text-[11px] leading-relaxed font-sans shadow-md flex flex-col gap-1.5 transition-all hover:border-slate-600 ${badgeStyle}`}
+                          >
+                            <div className="flex items-center gap-1.5 text-[10px] font-bold tracking-wide border-b border-white/10 pb-1">
+                              <span>{icon}</span>
+                              <span className="uppercase">{tagLabel}</span>
+                            </div>
+                            <div className="font-sans text-[11px] whitespace-pre-line leading-relaxed opacity-95">
+                              {block}
+                            </div>
+                          </div>
+                        );
+                      });
+                    })()}
+                  </div>
                 </div>
               )}
             </div>
@@ -277,22 +329,50 @@ export default function OptimalResultPanel({
 
 
 
-          {/* 세부 평가 지표 수치 리스트 */}
+          {/* 세부 평가 지표 수치 및 AHP 가중치 영향력 매트릭스 */}
           {currentParcel.criteria_scores && (
-            <div className="flex flex-col gap-2 border-t border-slate-900/60 pt-3">
-              <span className="text-[11px] font-semibold text-slate-400">세부 평가 지표 수치 (Spatial Detail)</span>
-              <div className="bg-slate-950/20 rounded-lg p-2.5 flex flex-col gap-1.5 border border-slate-800/30">
+            <div className="flex flex-col gap-2 border-t border-slate-900/80 pt-3.5">
+              <div className="flex justify-between items-center">
+                <span className="text-[11px] font-bold text-slate-300 font-sans flex items-center gap-1.5">
+                  <span>📊</span>
+                  <span>세부 평가 지표 및 AHP 기여도 매트릭스</span>
+                </span>
+                <span className="text-[10px] text-slate-500 font-mono">Spatial Matrix</span>
+              </div>
+              <div className="bg-slate-950/60 rounded-xl p-3 flex flex-col gap-2.5 border border-slate-800/80 shadow-inner">
                 {Object.entries(currentParcel.criteria_scores).map(([k, val]) => {
-                  const matchedCriteria = criteriaList.find(c => c.key === k);
+                  const matchedCriteria = (criteriaList || []).find(c => c.key === k);
                   const label = matchedCriteria ? matchedCriteria.label : k;
+                  const weightVal = matchedCriteria?.initial_weight || 5.0;
+                  const numVal = typeof val === 'number' ? val : 0;
+                  
+                  let badge = "보통";
+                  let badgeStyle = "bg-slate-800 text-slate-400 border-slate-700";
+                  if (weightVal >= 7.0) {
+                    badge = "주요 지표";
+                    badgeStyle = "bg-blue-500/20 text-blue-300 border-blue-500/40 font-bold";
+                  } else if (weightVal >= 5.0) {
+                    badge = "일반 반영";
+                    badgeStyle = "bg-emerald-500/20 text-emerald-300 border-emerald-500/40";
+                  }
+
                   return (
-                    <div key={k} className="flex justify-between text-[11px]">
-                      <span className="text-slate-500">{label}</span>
-                      <span className="font-mono text-slate-300 font-semibold">
-                        {typeof val === 'number' 
-                          ? val.toLocaleString(undefined, {maximumFractionDigits: 1}) 
-                          : val}
-                      </span>
+                    <div key={k} className="flex flex-col gap-1 bg-slate-900/50 p-2 rounded-lg border border-slate-800/50 font-sans">
+                      <div className="flex justify-between items-center text-[11px]">
+                        <span className="font-semibold text-slate-300 flex items-center gap-1.5">
+                          <span>{label}</span>
+                          <span className={`text-[9px] px-1.5 py-0.2 rounded border ${badgeStyle}`}>{badge}</span>
+                        </span>
+                        <span className="font-mono text-emerald-400 font-bold">
+                          {typeof val === 'number' ? val.toLocaleString(undefined, {maximumFractionDigits: 1}) : val}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center text-[10px] text-slate-500">
+                        <span>AHP 가중치: <strong className="text-slate-400 font-mono">{weightVal.toFixed(1)}</strong></span>
+                        <div className="w-24 h-1 bg-slate-950 rounded-full overflow-hidden">
+                          <div className="h-full bg-blue-400 rounded-full" style={{ width: `${Math.min(100, weightVal * 10)}%` }} />
+                        </div>
+                      </div>
                     </div>
                   );
                 })}

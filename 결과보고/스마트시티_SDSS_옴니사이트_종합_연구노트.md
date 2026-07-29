@@ -1135,3 +1135,10 @@
   2. upload.py 로컬 폴백 엔진 내 고정된 spatial_restrictions 주입 제거. 
   3. spatial.py 공간 연산에서 대중교통(transit_stations) 배제 조건을 'smoking_zone' 하드코딩에서 분리하여 RAG 규칙 딕셔너리(ctive_rules) 연동형 순수 동적 SQL 구문으로 교체. 
 - **결과**: AI가 새로운 유형의 도메인이나 조례를 만나더라도, 과거의 편향 없이 완전히 독립적이고 동적인 배제 구역 지표를 추출/적용 가능한 100% Omni Architecture 무결성 확보.
+
+
+## [v4.6.1] 프론트엔드 렌더링 무결성 패치 (Zero-Bias 시각화 완성) 
+- **일자**: 2026-07-29 
+- **문제점**: 백엔드에서 AI를 통해 순수 동적 룰셋(pt.radius)을 전송함에도 불구, 프론트엔드(spatial/page.js) 내 getZoomAdjustedRadius 함수가 \school\이면 무조건 200m, \childcare_center\면 무조건 50m로 반경을 강제 하드코딩하여 거대한 오류성 빨간 원(Red Circle)을 렌더링함. 
+- **조치 사항**: 프론트엔드의 school 및 childcare_center 등 특정 도메인에 대한 하드코딩 반경 고정 로직을 전면 삭제하고, 백엔드가 반환한 동적 인자(pt.radius)를 100% 신뢰하여 그대로 지도에 시각화하도록 변경함. (단, 사용자가 업로드한 주황색 user_exclusion_zones 폴리곤 렌더링은 유지됨) 
+- **결과**: AI가 판독한 실제 조례 반경(예: 30m, 50m)이 지도에 물리적으로 정확히 플로팅되며, 사용자에게 시각적 인지 부조화를 일으키던 편향 렌더링 문제가 완벽히 해소됨.

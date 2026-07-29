@@ -479,10 +479,7 @@ export default function Home() {
 
   // [v4.9.21] 실제 법정 조례 규제에 완전히 동조하는 물리 미터 반경(m) 시각화 환원
   const getZoomAdjustedRadius = (pt, zoom) => {
-    // 백엔드 PostGIS AHP 연산 규제 반경과 100% 동일하게 맵에 미터로 플롯
-    if (pt.type === 'school' || pt.zone_type === 'school') return 200; // 학교정화구역 200m
-    if (pt.type === 'childcare_center' || pt.zone_type === 'childcare_center') return 50; // 어린이집/유치원 50m
-    if (pt.type === 'nosmoking_zone' || pt.zone_type === 'nosmoking_zone') return 10; // 금연구역 10m
+    // 백엔드 AI가 동적으로 할당하여 전달한 순수 반경(pt.radius)만을 사용 (하드코딩 배제)
     return pt.radius || 30;
   };
 

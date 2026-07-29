@@ -27,7 +27,7 @@ CREATE TABLE restricted_zones (
     dong_id INT REFERENCES dong_boundaries(id) ON DELETE SET NULL,
     zone_name VARCHAR(150),
     address VARCHAR(250),
-    geom GEOMETRY(Point, 4326) NOT NULL,
+    geom GEOMETRY(Geometry, 4326) NOT NULL,
     zone_type VARCHAR(50) NOT NULL DEFAULT 'nosmoking_zone',
     area NUMERIC,
     registered_at DATE

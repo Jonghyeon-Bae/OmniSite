@@ -424,9 +424,9 @@ def get_criteria_score(db: Session, key: str, dong_id: int, centroid_lng: float,
         res = db.execute(query, {"lng": centroid_lng, "lat": centroid_lat}).scalar()
         return float(res)
         
-    # 2-2. 민원 관련 (흡연구역 도메인인 경우에만 기존 불법흡연 민원 통계 참조)
+    # 2-2. 민원 관련 (동적 도메인 대응)
     elif any(w in key_clean for w in ["complaint", "civil_complaint"]):
-        if facility_type == "smoking_zone" and dong_id:
+        if dong_id:
             query = text("""
                 SELECT COALESCE(SUM(complaint_count), 0)
                 FROM civil_complaints
@@ -436,16 +436,15 @@ def get_criteria_score(db: Session, key: str, dong_id: int, centroid_lng: float,
             return float(res)
         return 0.0
         
-    # 2-3. 무단투기 및 쓰레기 관련 (흡연구역 도메인인 경우에만 꽁초 무단투기 구역 참조)
+    # 2-3. 무단투기 및 쓰레기 관련 (동적 도메인 대응)
     elif any(w in key_clean for w in ["dumping", "trash", "garbage"]):
-        if facility_type == "smoking_zone":
-            query = text("""
-                SELECT COUNT(*)
-                FROM illegal_dumping_zones
-                WHERE ST_DWithin(geom, ST_SetSRID(ST_MakePoint(:lng, :lat), 4326), 0.002)
-            """)
-            res = db.execute(query, {"lng": centroid_lng, "lat": centroid_lat}).scalar()
-            return float(res)
+        query = text("""
+            SELECT COUNT(*)
+            FROM illegal_dumping_zones
+            WHERE ST_DWithin(geom, ST_SetSRID(ST_MakePoint(:lng, :lat), 4326), 0.002)
+        """)
+        res = db.execute(query, {"lng": centroid_lng, "lat": centroid_lat}).scalar()
+        return float(res)
         return 0.0
         
     # 2-4. 배후 생활인구 관련
@@ -569,9 +568,9 @@ async def recommend_optimal_sites(
             print(f"[AHP Model Query Fail/Fallback] {ahp_ex}")
             
         if not ahp_row:
-            # 기본 흡연구역 가중치 세트 강제 매핑 (Fallback)
+            # 기본 가중치 세트 강제 매핑 (Fallback)
             criteria_weights = {"traffic": 5.0, "complaint": 5.0, "dumping": 5.0, "population": 5.0, "youth": 5.0}
-            facility_type = "smoking_zone"
+            facility_type = facility_type or "city_feature"
             criteria_list = []
         else:
             criteria_weights = json.loads(ahp_row[0]) if isinstance(ahp_row[0], str) else ahp_row[0]
@@ -859,11 +858,7 @@ async def recommend_optimal_sites(
                                 props = item.get("properties", {})
                                 item_domain = props.get("domain")
                                 
-                                # [v4.3.1 Domain-Scoped Exclusion Filter]
-                                # 금연구역(nosmoking_zone) 버퍼는 오직 facility_type == 'smoking_zone' 일때만 적용! (스마트쉼터/EV충전소는 금연구역 배제 무효화)
-                                is_nosmoking = ("금연" in file or "nosmoking" in file or item_domain == "nosmoking_zone")
-                                if is_nosmoking and facility_type != "smoking_zone":
-                                    continue # facility_type이 흡연부스가 아니면 금연구역 배제 무시!
+                                # Zero-Bias: facility_type 검열 삭제. 규칙 딕셔너리에 존재하는지만 판단함.
 
                                 if props.get("is_exclusion") is True or is_exclusion_file or item_domain in ["school", "childcare_center", "nosmoking_zone"]:
                                     dist_limit = 10.0 # 기본 10m (금연구역)
@@ -1527,13 +1522,8 @@ def get_domain_regulation_rules(db: Session, facility_type: str) -> dict:
     except Exception as ex:
         print(f"[get_domain_regulation_rules Error] {ex}")
     
-    # DB에 적재된 규칙이 없을 시 기본 디폴트 규칙값 적용 (시행규칙/조례 최소치 디폴트 매핑)
-    # school: 절대보호구역 50m, childcare: 30m, nosmoking: 10m
-    if facility_type == "smoking_zone":
-        return {"school": 50.0, "childcare_center": 30.0, "nosmoking_zone": 10.0}
-    elif facility_type == "ev_charging":
-        return {"school": 100.0, "childcare_center": 30.0}
-    return {"school": 50.0, "childcare_center": 30.0, "nosmoking_zone": 10.0}
+    # DB에 적재된 규칙이 없을 시 빈 딕셔너리를 반환하여 AI RAG에 전적으로 의존하게 함
+    return {}
 
 
 # 3. 규제 시설물 좌표 조회 API (Step 2 규제 버퍼 가시화용 - restricted_zones 및 업로드된 dynamic exclusion 연동)
@@ -1597,14 +1587,7 @@ async def get_restriction_points(facility_type: str = "smoking_zone", district_i
                     except Exception as ex:
                         print(f"[Dynamic Restriction Load Error] {file}: {ex}")
                         
-        if not points and facility_type == "smoking_zone":
-            # 실 DB 레코드가 비어있을 시 용산구 기준 대표 Fallback 데이터 주입
-            points = [
-                {"id": 901, "name": "용산역광장 제한지구", "lng": 126.9680, "lat": 37.5290, "type": "restricted_zone", "radius": 30.0},
-                {"id": 902, "name": "용산초등학교 정화구역", "lng": 126.9740, "lat": 37.5315, "type": "restricted_zone", "radius": 200.0},
-                {"id": 903, "name": "국방부 주변 통제구역", "lng": 126.9650, "lat": 37.5240, "type": "restricted_zone", "radius": 400.0}
-            ]
-            
+        # 더미 데이터 주입 로직 전면 삭제 (Zero-Bias)
         return {"points": points}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"규제 시설물 좌표 조회 오류: {str(e)}")

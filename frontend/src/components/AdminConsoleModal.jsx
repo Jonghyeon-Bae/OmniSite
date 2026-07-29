@@ -12,7 +12,7 @@ export default function AdminConsoleModal({
 }) {
   const [adminTab, setAdminTab] = useState('bulk');
   const [seedTable, setSeedTable] = useState('cadastral_lands');
-  const [modelDomain, setModelDomain] = useState('smoking_zone');
+  const [modelDomain, setModelDomain] = useState('city_feature');
   const [isSeeding, setIsSeeding] = useState(false);
   const [isModelUploading, setIsModelUploading] = useState(false);
   const [isRegulationUploading, setIsRegulationUploading] = useState(false);

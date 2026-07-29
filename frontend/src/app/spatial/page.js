@@ -627,7 +627,7 @@ export default function Home() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           district_id: finalDistrictId,
-          facility_type: inferredDomainTag || 'smoking_zone',
+          facility_type: inferredDomainTag || 'city_feature',
           criteria_weights: ahpWeights,
           criteria_list: criteriaList,
           uploaded_files: uploadedFilenames
@@ -1238,7 +1238,7 @@ export default function Home() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             district_id: finalDistrictId,
-            facility_type: inferredDomainTag || 'smoking_zone',
+            facility_type: inferredDomainTag || 'city_feature',
             criteria_weights: updatedWeights
           })
         });

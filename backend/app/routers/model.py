@@ -38,57 +38,29 @@ training_status = {
 }
 
 def load_initial_model_status():
-    """서버 구동 시 기존에 학습된 모델이 있다면 메타데이터 및 정보를 읽어 상태에 반영"""
+    """서버 구동 시 기존에 학습된 최신 모델 메타데이터를 검색하여 상태에 반영 (하드코딩 제거)"""
     global training_status
-    meta_file = os.path.join(registry_path, "smoking_zone_v1_meta.json")
-    model_file = os.path.join(registry_path, "smoking_zone_v1.pkl")
-    
-    if os.path.exists(meta_file):
+    if not os.path.exists(registry_path):
+        return
+        
+    meta_files = [f for f in os.listdir(registry_path) if f.endswith("_meta.json")]
+    if meta_files:
+        # 가장 최근 파일 사용
+        latest_meta = max(meta_files, key=lambda f: os.path.getmtime(os.path.join(registry_path, f)))
+        meta_file = os.path.join(registry_path, latest_meta)
         try:
             with open(meta_file, "r", encoding="utf-8") as mf:
                 meta_data = json.load(mf)
                 training_status.update(meta_data)
-                print("[Model status] Successfully loaded existing model status from smoking_zone_v1_meta.json")
-                return
+                print(f"[Model status] Successfully loaded model status from {latest_meta}")
         except Exception as ex:
             print(f"[Model status] Failed to parse meta file: {ex}")
-            
-    if os.path.exists(model_file):
-        try:
-            pipeline = joblib.load(model_file)
-            classifier = pipeline.named_steps.get('classifier')
-            preprocessor = pipeline.named_steps.get('preprocessor')
-            
-            if classifier and hasattr(classifier, 'feature_importances_'):
-                numeric_features = ['area', 'dist_to_school', 'dist_to_childcare']
-                categorical_features = ['land_use_code', 'ownership_type', 'building_use']
-                try:
-                    onehot_cols = preprocessor.named_transformers_['cat'].named_steps['onehot'].get_feature_names_out(categorical_features)
-                    feature_names = numeric_features + list(onehot_cols)
-                except Exception:
-                    feature_names = numeric_features
-                
-                importances = classifier.feature_importances_
-                importance_dict = {name: float(imp) for name, imp in zip(feature_names, importances)}
-                
-                mtime = os.path.getmtime(model_file)
-                trained_time = datetime.fromtimestamp(mtime).strftime("%Y-%m-%d %H:%M:%S")
-                
-                training_status.update({
-                    "last_trained_at": trained_time,
-                    "accuracy": 0.7686,
-                    "f1_score": 0.7813,
-                    "feature_importances": importance_dict
-                })
-                print("[Model status] Successfully loaded fallback model status from smoking_zone_v1.pkl")
-        except Exception as e:
-            print(f"[Model status] Failed to parse existing model specs: {e}")
 
 # 초기 구동 시 상태 로드
 load_initial_model_status()
 
 
-def background_model_train(domain="smoking_zone"):
+def background_model_train(domain="city_feature"):
     """XGBoost 모델 학습 및 핫스왑 비동기 태스크 (동적 공간 피처 추출 지원)"""
     global training_status
     training_status["is_training"] = True
@@ -102,19 +74,8 @@ def background_model_train(domain="smoking_zone"):
         all_zones_res = db.execute(text("SELECT DISTINCT zone_type FROM restricted_zones;")).fetchall()
         all_zones = [r[0] for r in all_zones_res if r[0]]
         
-        # 도메인 성격에 관련이 없는 오염 규제 필터링 (Zero Feature Contamination)
-        if domain == "ev_charging":
-            # 전기차 충전소: 금연구역(nosmoking_zone) 제외, 주차장/학교/어린이집 등 시맨틱 규제만 동적 바인딩
-            zone_types = [z for z in all_zones if z in ['school', 'childcare_center', 'parking_lot']]
-            if not zone_types:
-                zone_types = ['school', 'childcare_center', 'parking_lot']
-        elif domain == "smoking_zone":
-            # 흡연부스: 금연구역, 학교, 어린이집 시맨틱 규제 동적 바인딩
-            zone_types = [z for z in all_zones if z in ['school', 'childcare_center', 'nosmoking_zone']]
-            if not zone_types:
-                zone_types = ['school', 'childcare_center', 'nosmoking_zone']
-        else:
-            zone_types = all_zones if all_zones else ['school', 'childcare_center']
+        # Zero-Bias: 특정 도메인에 대한 편향적(하드코딩된) 피처 선택을 삭제하고, DB에 존재하는 모든 규제구역 피처를 동적으로 바인딩
+        zone_types = all_zones if all_zones else ['school', 'childcare_center']
             
         print(f"[ML Process] Scanned active spatial zone types: {zone_types}")
         
@@ -386,9 +347,9 @@ async def get_model_registry(
                     "model_filename": file,
                     "file_size": f"{file_size_bytes / 1024:.1f} KB",
                     "last_trained_at": mod_time,
-                    "accuracy": training_status.get("accuracy", 0.7686) if domain_tag == "smoking_zone" else 0.7500,
-                    "f1_score": training_status.get("f1_score", 0.7813) if domain_tag == "smoking_zone" else 0.7450,
-                    "feature_importances": training_status.get("feature_importances", {}) if domain_tag == "smoking_zone" else {}
+                    "accuracy": 0.0,
+                    "f1_score": 0.0,
+                    "feature_importances": {}
                 }
                 
                 if os.path.exists(meta_file):
@@ -410,7 +371,7 @@ async def get_model_registry(
 @router.post("/retrain")
 async def retrain_model(
     background_tasks: BackgroundTasks,
-    domain: str = "smoking_zone",
+    domain: str = "city_feature",
     current_user: dict = Depends(get_current_user)
 ):
     """XGBoost 모델 재학습 비동기 기동 API (도메인 분기 및 일반 실무자 권한 완화 지원)"""

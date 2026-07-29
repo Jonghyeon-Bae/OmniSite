@@ -1420,16 +1420,8 @@ async def commit_hitl_data(request: HITLCommitRequest, db: Session = Depends(get
                 
         # [v4.4.3] AI RAG/HITL로부터 도출된 이격거리 규격이 존재하는 경우 DB domain_regulation_rules 에 upsert
         spatial_rules = request.spatial_restrictions
-        if not spatial_rules:
-            # 넘어온 게 없으면 디폴트 규칙값 구성 (school=50m, childcare=30m, nosmoking=10m)
-            if request.confirmed_domain == "smoking_zone":
-                spatial_rules = {"school": 50.0, "childcare_center": 30.0, "nosmoking_zone": 10.0}
-            elif request.confirmed_domain == "ev_charging":
-                spatial_rules = {"school": 100.0, "childcare_center": 30.0}
-            else:
-                spatial_rules = {"school": 50.0, "childcare_center": 30.0, "nosmoking_zone": 10.0}
 
-        if request.confirmed_domain and spatial_rules:
+        if request.confirmed_domain and spatial_rules is not None:
             try:
                 upsert_query = text("""
                     INSERT INTO domain_regulation_rules (facility_type, rules_json, rules_metadata, updated_at)

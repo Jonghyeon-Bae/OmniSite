@@ -585,6 +585,34 @@ def seed():
             except Exception as e:
                 print(f"    [Skipped] restricted_zones seeding skipped: {e}")
 
+            # [10.2] Seed Bridges and Tunnels (SHP)
+            print("[10.2] Seeding bridges and tunnels (SHP)...")
+            base_dir_path = os.path.dirname(os.path.abspath(__file__))
+            bridge_shp = os.path.join(base_dir_path, "Datasets", "교량,터널공간정보", "교량", "N3A_A0070000.shp")
+            tunnel_shp = os.path.join(base_dir_path, "Datasets", "교량,터널공간정보", "터널", "N3A_A0110020.shp")
+            
+            def seed_shp(shp_path, z_type):
+                if not os.path.exists(shp_path): return 0
+                try:
+                    sf = shapefile.Reader(shp_path, encoding="cp949")
+                    cnt = 0
+                    for shp_geom in sf.shapes():
+                        if shp_geom.shapeType == shapefile.NULL: continue
+                        g = shape(shp_geom)
+                        conn.execute(text("""
+                            INSERT INTO restricted_zones (district_id, zone_name, geom, zone_type, area)
+                            VALUES (:did, :zname, ST_Transform(ST_SetSRID(ST_GeomFromText(:wkt), 5179), 4326), :ztype, 10.0)
+                        """), {"did": district_id, "zname": f"{z_type}_{cnt}", "wkt": g.wkt, "ztype": z_type})
+                        cnt += 1
+                    return cnt
+                except Exception as e:
+                    print(f"      [Error] {z_type} seeding skipped: {e}")
+                    return 0
+                    
+            bc = seed_shp(bridge_shp, "overpass")
+            tc = seed_shp(tunnel_shp, "tunnel")
+            print(f"    Seeded {bc} bridges and {tc} tunnels.")
+
             # [10.5] Seed commercial_shops (소상공인시장진흥공단 상가 데이터 6,509건)
             print("[10.5] Seeding commercial_shops...")
             try:

@@ -1,7 +1,7 @@
 {
   "domain": "smart_shelter",
   "model_filename": "smart_shelter_v1.pkl",
-  "last_trained_at": "2026-07-29 15:18:23",
+  "last_trained_at": "2026-07-29 15:53:22",
   "accuracy": 0.8,
   "f1_score": 0.798,
   "sample_count": 6021,

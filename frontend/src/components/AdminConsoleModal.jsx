@@ -391,7 +391,7 @@ export default function AdminConsoleModal({
     });
     
     try {
-      const res = await apiFetch('/api/v1/upload/regulations', {
+      const res = await apiFetch('/api/v1/upload/regulation', {
         method: 'POST',
         body: formData
       });

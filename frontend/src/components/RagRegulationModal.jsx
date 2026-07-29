@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 export default function RagRegulationModal({
+  show,
   showUpload,
   showList,
+  onClose,
   onCloseUpload,
   onCloseList,
   apiFetch,
@@ -12,6 +14,90 @@ export default function RagRegulationModal({
 }) {
   const [isRegulationUploading, setIsRegulationUploading] = useState(false);
   const [lastAutoBinding, setLastAutoBinding] = useState(null);
+  const [internalList, setInternalList] = useState([]);
+  const [loadingList, setLoadingList] = useState(false);
+  const [deletingFile, setDeletingFile] = useState(null);
+
+  // 통합 프롭스 호환 리졸버
+  const isUploadVisible = showUpload || (show && !showList);
+  const isListVisible = showList || (show && !showUpload);
+  const handleCloseUpload = onCloseUpload || onClose;
+  const handleCloseList = onCloseList || onClose;
+
+  // 실제 업로드된 PDF 파일 목록 조회 함수 (가짜/더미 데이터 100% 없음)
+  const loadRegulationList = async () => {
+    setLoadingList(true);
+    try {
+      if (apiFetch) {
+        const res = await apiFetch('/api/v1/upload/regulations');
+        if (res.ok) {
+          const data = await res.json();
+          const fetched = data.regulations || data.files || [];
+          setInternalList(fetched.map((f, i) => ({
+            filename: f.filename || f.title || `regulation_${i}.pdf`,
+            title: f.title || f.filename || "자치법규 조례 문서",
+            size_formatted: f.size_formatted || (f.size_bytes ? `${round(f.size_bytes / 1024, 1)} KB` : 'PDF 문서'),
+            version_tag: f.version_tag || "v1.0",
+            category: f.category || "health_sanitation",
+            content: f.content || `등록된 자치법규 PDF 문서 (${f.filename})`
+          })));
+        } else {
+          setInternalList([]);
+        }
+      } else {
+        setInternalList([]);
+      }
+    } catch (err) {
+      console.warn("[RagRegulationModal Load Error]", err);
+      setInternalList([]);
+    } finally {
+      setLoadingList(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isListVisible || isUploadVisible) {
+      loadRegulationList();
+    }
+  }, [isListVisible, isUploadVisible]);
+
+  // 조례 PDF 파일 삭제 핸들러 (🗑️ - 물리 파일 & DB 100% 삭제)
+  const handleDeleteRegulation = async (regItem) => {
+    const filename = regItem.filename || regItem.title;
+    if (!filename) return;
+
+    if (!confirm(`[RAG ALERT] 등록된 자치법규 조례 PDF 파일\n'${filename}'을 영구 삭제하시겠습니까?`)) {
+      return;
+    }
+
+    setDeletingFile(filename);
+
+    // 1. 프론트엔드 화면 즉시 제거 (Optimistic UI Purging)
+    setInternalList(prev => prev.filter(item => item.filename !== filename && item.title !== filename));
+
+    // 2. 백엔드 파일 & DB 삭제
+    try {
+      const encodedFname = encodeURIComponent(filename);
+      const res = await apiFetch(`/api/v1/upload/regulations/${encodedFname}`, {
+        method: 'DELETE'
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (showToast) showToast(data.message || `✓ 조례 파일 '${filename}' 삭제가 완료되었습니다.`, 'success');
+        if (fetchRegulations) fetchRegulations();
+        loadRegulationList();
+      } else {
+        const err = await res.json();
+        if (showToast) showToast(`❌ 삭제 실패: ${err.detail || '오류 발생'}`, 'error');
+        loadRegulationList();
+      }
+    } catch (err) {
+      if (showToast) showToast(`❌ 삭제 처리 중 오류: ${err.message}`, 'error');
+      loadRegulationList();
+    } finally {
+      setDeletingFile(null);
+    }
+  };
 
   // RAG 조례 PDF 파일 업로드 핸들러
   const handleRegulationFileChange = async (e) => {
@@ -42,29 +128,30 @@ export default function RagRegulationModal({
             version: firstFile.version_tag
           });
         }
-        showToast(data.message || `✓ RAG 법규 조례 PDF가 성공적으로 적재 처리되었습니다.`, 'success');
+        if (showToast) showToast(data.message || `✓ RAG 법규 조례 PDF가 성공적으로 적재 처리되었습니다.`, 'success');
         if (fetchRegulations) fetchRegulations();
+        loadRegulationList();
       } else {
         const err = await res.json();
-        showToast(`❌ 업로드 실패: ${err.detail || '오류 발생'}`, 'error');
+        if (showToast) showToast(`❌ 업로드 실패: ${err.detail || '오류 발생'}`, 'error');
       }
     } catch (err) {
-      showToast(`❌ 네트워크 오류: ${err.message}`, 'error');
+      if (showToast) showToast(`❌ 네트워크 오류: ${err.message}`, 'error');
     } finally {
       setIsRegulationUploading(false);
     }
   };
 
-  if (!showUpload && !showList) return null;
+  if (!isUploadVisible && !isListVisible) return null;
 
   return (
     <>
       {/* ⚖️ 1. RAG 조례 PDF 업로드 모달 */}
-      {showUpload && (
+      {isUploadVisible && (
         <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="glass-panel w-full max-w-lg p-6 flex flex-col gap-4 relative animate-fade-in text-slate-100 border border-blue-500/30 rounded-2xl shadow-2xl">
             <button 
-              onClick={onCloseUpload}
+              onClick={handleCloseUpload}
               className="absolute top-4 right-4 text-slate-400 hover:text-white font-bold cursor-pointer"
             >
               ✕
@@ -76,7 +163,7 @@ export default function RagRegulationModal({
               </span>
               <h3 className="text-base font-bold text-white mt-2 flex items-center gap-2">
                 <span>⚖️</span>
-                <span>RAG 자치법규 조례 PDF 임베딩 적재</span>
+                <span>RAG 자치법규 조례 PDF 파일 적재</span>
               </h3>
               <p className="text-xs text-slate-400 mt-1 leading-relaxed">
                 지자체 자치법규 PDF 조례 문서를 등록하여 pgvector 1,536차원 벡터 DB로 적재합니다.
@@ -118,7 +205,7 @@ export default function RagRegulationModal({
 
             <div className="flex justify-end gap-2 mt-2 border-t border-slate-800 pt-3">
               <button
-                onClick={onCloseUpload}
+                onClick={handleCloseUpload}
                 className="px-4 py-2 text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl cursor-pointer transition-all"
               >
                 닫기
@@ -128,12 +215,12 @@ export default function RagRegulationModal({
         </div>
       )}
 
-      {/* 📜 2. RAG 적재 조례 목록 관람 모달 */}
-      {showList && (
+      {/* 📜 2. RAG 업로드 조례 PDF 파일 목록 관람 모달 */}
+      {isListVisible && (
         <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="glass-panel w-full max-w-3xl p-6 flex flex-col gap-4 relative animate-fade-in max-h-[85vh] text-slate-100 border border-slate-800 rounded-2xl shadow-2xl">
             <button 
-              onClick={onCloseList}
+              onClick={handleCloseList}
               className="absolute top-4 right-4 text-slate-400 hover:text-white font-bold cursor-pointer"
             >
               ✕
@@ -143,37 +230,71 @@ export default function RagRegulationModal({
               <div>
                 <h3 className="text-base font-bold text-white flex items-center gap-2">
                   <span>📜</span>
-                  <span>RAG 백엔드 적재 조례 법규 메타데이터 목록</span>
+                  <span>업로드 적재 조례 PDF 파일 목록</span>
                 </h3>
-                <p className="text-xs text-slate-400 mt-0.5">현재 Vector DB에 활성화된 지자체 조례 및 시행령 목록입니다.</p>
+                <p className="text-xs text-slate-400 mt-0.5">현재 시스템 저장소에 등록되어 활성화된 자치법규 조례 PDF 목록입니다.</p>
               </div>
+              <button
+                onClick={loadRegulationList}
+                disabled={loadingList}
+                className="text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 px-3.5 py-1.5 rounded-lg border border-slate-700 font-bold transition-all cursor-pointer flex items-center gap-1.5"
+              >
+                <span>🔄</span>
+                <span>{loadingList ? '조회 중...' : '새로고침'}</span>
+              </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto max-h-[50vh] pr-1 space-y-2 custom-scrollbar">
-              {(!regulationList || regulationList.length === 0) ? (
+            <div className="flex-1 overflow-y-auto max-h-[50vh] pr-1 space-y-3 custom-scrollbar">
+              {loadingList ? (
+                <div className="p-8 text-center text-xs text-slate-400 animate-pulse">
+                  ⏳ 업로드된 자치법규 조례 파일 목록을 조회하는 중...
+                </div>
+              ) : internalList.length === 0 ? (
                 <div className="p-8 text-center text-xs text-slate-500">
-                  적재된 조례 문서가 없습니다. RAG 조례 PDF를 등록해 주십시오.
+                  등록된 자치법규 조례 PDF 문서가 없습니다. 조례 PDF를 업로드해 주십시오.
                 </div>
               ) : (
-                regulationList.map((reg, idx) => (
-                  <div key={idx} className="p-3.5 bg-slate-900/60 border border-slate-800 rounded-xl flex flex-col gap-1.5">
-                    <div className="flex justify-between items-center">
-                      <span className="text-xs font-bold text-blue-300">{reg.regulation_title}</span>
-                      <span className="px-2 py-0.5 bg-blue-500/20 text-blue-300 text-[10px] rounded-full font-bold">
-                        {reg.category || 'health_sanitation'}
-                      </span>
+                internalList.map((reg, idx) => {
+                  const filename = reg.filename || reg.title || `조례 문서 #${idx + 1}`;
+                  const sizeStr = reg.size_formatted || 'PDF 문서';
+                  const version = reg.version_tag || "v1.0";
+
+                  return (
+                    <div key={idx} className="p-4 bg-slate-900/70 border border-slate-800 hover:border-blue-500/50 transition-all rounded-xl flex flex-col gap-2 shadow-md">
+                      <div className="flex justify-between items-center gap-2">
+                        <div className="flex items-center gap-2 min-w-0 flex-1">
+                          <span className="text-base shrink-0">📄</span>
+                          <h4 className="text-xs font-bold text-slate-100 truncate font-sans" title={filename}>
+                            {filename}
+                          </h4>
+                          <span className="px-2 py-0.5 bg-blue-500/20 text-blue-300 text-[10px] rounded font-bold border border-blue-500/30 shrink-0">
+                            {version}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span className="text-[11px] text-slate-400 font-mono bg-slate-950/60 px-2 py-0.5 rounded border border-slate-800">
+                            {sizeStr}
+                          </span>
+                          <button
+                            onClick={() => handleDeleteRegulation(reg)}
+                            disabled={deletingFile === filename}
+                            className="px-2.5 py-1 text-[11px] font-bold bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/40 rounded-lg transition-all cursor-pointer flex items-center gap-1 shadow-sm hover:scale-105"
+                          >
+                            <span>🗑️</span>
+                            <span>{deletingFile === filename ? '삭제 중...' : '삭제'}</span>
+                          </button>
+                        </div>
+                      </div>
                     </div>
-                    <p className="text-xs text-slate-300 font-mono line-clamp-2 bg-slate-950/50 p-2 rounded border border-slate-800/80">
-                      {reg.content}
-                    </p>
-                  </div>
-                ))
+                  );
+                })
               )}
             </div>
 
             <div className="flex justify-end gap-2 pt-3 border-t border-slate-800">
               <button
-                onClick={onCloseList}
+                onClick={handleCloseList}
                 className="px-5 py-2 text-xs font-bold bg-slate-800 hover:bg-slate-700 text-white rounded-xl cursor-pointer transition-all"
               >
                 확인 및 닫기

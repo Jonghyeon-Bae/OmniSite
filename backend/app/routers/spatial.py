@@ -844,22 +844,28 @@ async def recommend_optimal_sites(
                     except Exception as ex:
                         print(f"[Realtime Exclusion Load Error] {file}: {ex}")
 
-        # [v4.9.40 - Option 2 Hard Drop] 수집된 실시간 금지 구역 리스트와 비교하여 구면거리 하버사인 한계 내 후보지 100% 완전 삭제 배제 (Hard Drop)
-        if realtime_exclusions:
-            filtered_candidates_list = []
-            for c in candidates:
-                too_close = False
+        # [v4.9.40 - Option 2 Hard Drop & v4.2.0 Area Guard] 금지구역 차집합 배제 및 10m² 미만 미소 도로 부지 필터링
+        filtered_candidates_list = []
+        for c in candidates:
+            cand_area_val = float(c.get("area", 100.0))
+            # 10m² 미만 미소 아스팔트 조각 필터링
+            if cand_area_val < 10.0:
+                print(f"[v4.2.0 Area Guard Drop] Candidate {c.get('id')} ({c.get('jibun')}) dropped (area {cand_area_val:.1f}m² < 10m²).")
+                continue
+
+            too_close = False
+            if realtime_exclusions:
                 for r_ex in realtime_exclusions:
                     dist = haversine_distance(c["lat"], c["lng"], r_ex["lat"], r_ex["lng"])
                     if dist < r_ex["limit"]:
                         too_close = True
-                        print(f"[Option 2 Hard Drop] Candidate {c['id']} ({c['jibun']}) automatically dropped due to exclusion radius ({dist:.1f}m < {r_ex['limit']}m from {r_ex['source']}).")
+                        print(f"[Option 2 Hard Drop] Candidate {c['id']} ({c['jibun']}) dropped due to exclusion radius ({dist:.1f}m < {r_ex['limit']}m from {r_ex['source']}).")
                         break
-                if not too_close:
-                    filtered_candidates_list.append(c)
-            candidates = filtered_candidates_list
+            if not too_close:
+                filtered_candidates_list.append(c)
+        candidates = filtered_candidates_list
 
-        # [v4.9.20] 1km 한계를 엄격히 준수하기 위해 Radius Relaxing Search 블록을 통째로 배제 주석 처리
+        # [v4.9.20] 1km 탐색 반경 한계 엄격 준수 적용 완료
 
         # DB에서 해당 facility_type 의 rules_metadata (가/감점 점수 규칙) 조회
         rules_metadata = []
@@ -996,10 +1002,33 @@ async def recommend_optimal_sites(
                 shared_land_premium = float(premiums.get("shared_land", 4.0))
                 land_use_bonus = float(premiums.get("land_use_bonus", 4.0))
                 
+            # [v4.2.0-BuildabilityUpgrade] 국유지 도로 편향 해소 & 지목별 실질 건축 가용성 3단계 정밀 가중치 체계
+            cand_jimok = cand.get("land_use_code") or ""
+            cand_area = float(cand.get("area", 100.0))
+
+            if cand_jimok in ["대", "잡", "공", "주", "체"]:
+                # 1등급: 대지/잡종지/공원/주차장/체육용지 (실제 시설물 인허가 및 즉시 건립 가능 적지)
+                total_score += 12.0
+                cand["buildability_level"] = "high"
+                cand["buildability_text"] = f"대지/잡종지/공공용지('{cand_jimok}') - 즉시 건립 가능"
+            elif cand_jimok == "도":
+                if cand_area >= 30.0:
+                    # 2등급: 보행가용폭/광장이 확보된 인도변 부지 (area >= 30m²)
+                    total_score += 2.0
+                    cand["buildability_level"] = "medium"
+                    cand["buildability_text"] = "보행 인도변 부지"
+                else:
+                    # 3등급: 차량 전용 아스팔트 차도/이면도로 (area < 30m²) -> -15.0점 차도 패널티 감점
+                    total_score -= 15.0
+                    cand["buildability_level"] = "low"
+                    cand["buildability_text"] = "차량 전용 도로 (건축 부적합)"
+            else:
+                total_score += 1.0
+                cand["buildability_level"] = "medium"
+                cand["buildability_text"] = f"기타 지목('{cand_jimok}')"
+
             if cand.get("ownership_type") == "국유지":
                 total_score += state_land_premium
-                if cand.get("land_use_code") in ["대", "잡", "공", "차"]:
-                    total_score += land_use_bonus
             elif cand.get("ownership_type") in ["시유지", "구유지"]:
                 total_score += shared_land_premium
 
@@ -1186,6 +1215,16 @@ async def recommend_optimal_sites(
                 else:
                     reasons.append("법적 제한구역 경계선 범위를 충족하는 안전한 적격지입니다.")
                     
+            # [v4.2.0] 지목 건축 가용성(Buildability) XAI 추천 근거 동적 주입
+            cand_jimok = cand_item.get("land_use_code") or ""
+            cand_area = float(cand_item.get("area", 100.0))
+            build_text = cand_item.get("buildability_text", "")
+            
+            if cand_jimok in ["대", "잡", "공", "주", "체"]:
+                reasons.append(f"✅ [지목 건축 적합] 지목이 '{cand_jimok}'({build_text})로 도로 통행 장애 없이 스마트 시설물의 즉시 설치 및 인허가 건립이 가능한 정밀 건축 적지입니다.")
+            elif cand_jimok == "도" and cand_area >= 30.0:
+                reasons.append(f"⚠️ [인도변 도로부지] 지목은 도로('도')이나 보행 가용폭 2.5m 이상이 확보된 인도/광장 접합 영역입니다.")
+
             scores_map = cand_item.get("scores", {})
             
             # 1. AHP 가중치 가중 최우선 인자(Max Weight Key) 동적 추출

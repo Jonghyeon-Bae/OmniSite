@@ -30,6 +30,19 @@ export default function SidebarControl({
   showToast,
   onOpenGuideModal
 }) {
+  const [registeredTags, setRegisteredTags] = React.useState([]);
+
+  React.useEffect(() => {
+    fetch('/api/v1/upload/domain-tags')
+      .then(res => res.json())
+      .then(data => {
+        if (data.status === 'success' && data.tags) {
+          setRegisteredTags(data.tags);
+        }
+      })
+      .catch(err => console.error("Domain tags fetch error:", err));
+  }, []);
+
   return (
     <div className="floating-overlay left-6 top-20 w-96 glass-panel p-6 flex flex-col gap-6 max-h-[82vh] overflow-y-auto">
       {/* ========================================================================= */}
@@ -125,12 +138,26 @@ export default function SidebarControl({
                 <select
                   value={inferredDomainTag}
                   onChange={(e) => setInferredDomainTag(e.target.value)}
-                  className="bg-slate-900 border border-slate-700 rounded px-2 py-1 text-white text-[11px] outline-none focus:border-blue-500"
+                  className="bg-slate-900 border border-slate-700 rounded px-2 py-1 text-white text-[11px] outline-none focus:border-blue-500 font-semibold"
                 >
-                  <option value="smoking_zone">실외 흡연구역 입지 (smoking_zone)</option>
-                  <option value="ev_charging">전기차 충전소 입지 (ev_charging)</option>
-                  <option value="yellow_carpet">어린이 보호구역 옐로카펫 (yellow_carpet)</option>
-                  <option value="city_feature">일반 스마트시티 시설물 (city_feature)</option>
+                  {registeredTags.length > 0 ? (
+                    registeredTags.map(tag => (
+                      <option key={tag.tag_name} value={tag.tag_name}>
+                        {tag.tag_description} ({tag.tag_name})
+                      </option>
+                    ))
+                  ) : (
+                    <>
+                      <option value="smart_shelter">지능형 스마트 쉼터 (smart_shelter)</option>
+                      <option value="smoking_zone">실외 흡연구역 입지 (smoking_zone)</option>
+                      <option value="ev_charging">전기차 충전소 입지 (ev_charging)</option>
+                      <option value="yellow_carpet">어린이 보호구역 옐로카펫 (yellow_carpet)</option>
+                      <option value="city_feature">일반 스마트시티 시설물 (city_feature)</option>
+                    </>
+                  )}
+                  {inferredDomainTag && !registeredTags.some(t => t.tag_name === inferredDomainTag) && (
+                    <option value={inferredDomainTag}>{inferredDomainTag} (신규 AI 등재 태그)</option>
+                  )}
                 </select>
               </div>
             </div>

@@ -586,11 +586,31 @@ async def recommend_optimal_sites(
         nosmoking_dist = 10.0 * 0.00001
         school_dist_ev = 100.0 * 0.00001
         
-        # [v4.9.29] geography 연산 전용 미터 기본값 스코프 선언 완치
+        # [v4.9.29] geography 연산 전용 미터 기본값 및 동적 SQL 스코프 선언 완치
         school_m = 200.0
         childcare_m = 50.0
         nosmoking_m = 10.0
         school_ev_m = 100.0
+        
+        # 기본 하드코딩 폴백(DB가 비어있을 경우 대비)
+        dynamic_exclusion_sql = """(rz.zone_type = 'school' AND (
+                            ST_Intersects(c.geom, rz.geom) OR 
+                            ST_Intersects(ST_Centroid(c.geom), rz.geom) OR
+                            ST_DWithin(ST_SetSRID(c.geom, 4326)::geography, ST_SetSRID(rz.geom, 4326)::geography, 200.0) OR 
+                            ST_DWithin(ST_SetSRID(ST_Centroid(c.geom), 4326)::geography, ST_SetSRID(rz.geom, 4326)::geography, 200.0)
+                        )) OR
+                        (rz.zone_type = 'childcare_center' AND (
+                            ST_Intersects(c.geom, rz.geom) OR 
+                            ST_Intersects(ST_Centroid(c.geom), rz.geom) OR
+                            ST_DWithin(ST_SetSRID(c.geom, 4326)::geography, ST_SetSRID(rz.geom, 4326)::geography, 50.0) OR 
+                            ST_DWithin(ST_SetSRID(ST_Centroid(c.geom), 4326)::geography, ST_SetSRID(rz.geom, 4326)::geography, 50.0)
+                        )) OR
+                        (:facility_type = 'smoking_zone' AND rz.zone_type = 'nosmoking_zone' AND (
+                            ST_Intersects(c.geom, rz.geom) OR 
+                            ST_Intersects(ST_Centroid(c.geom), rz.geom) OR
+                            ST_DWithin(ST_SetSRID(c.geom, 4326)::geography, ST_SetSRID(rz.geom, 4326)::geography, 10.0) OR 
+                            ST_DWithin(ST_SetSRID(ST_Centroid(c.geom), 4326)::geography, ST_SetSRID(rz.geom, 4326)::geography, 10.0)
+                        ))"""
         
         try:
             rules_query = text("SELECT rules_json, rules_metadata FROM domain_regulation_rules WHERE facility_type = :facility_type")
@@ -598,7 +618,7 @@ async def recommend_optimal_sites(
             if rules_row:
                 rules_payload = json.loads(rules_row[0]) if isinstance(rules_row[0], str) else rules_row[0]
                 if isinstance(rules_payload, dict):
-                    # [v4.9.25] 플랫 및 중첩 딕셔너리 구조를 유연하게 해독하고 기본학교 이격 규정을 법정 200m로 안전 폴백 설정
+                    # [v4.9.25] 플랫 및 중첩 딕셔너리 구조를 유연하게 해독
                     def extract_dist(payload, key, default):
                         val = payload.get(key)
                         if isinstance(val, dict):
@@ -612,27 +632,70 @@ async def recommend_optimal_sites(
                             return float(nested)
                         return default
 
-                    # [Strict Floor Limit Guard] DB 설정값이나 요청 파라미터와 무관하게 학교 200m, 어린이집 50m 법정 절대보호구역 거리 미만으로 떨어지지 않도록 강제 하한선 고정
-                    raw_school = extract_dist(rules_payload, "school", 200.0)
-                    school_m = max(raw_school, 200.0)
-                    
-                    raw_childcare = extract_dist(rules_payload, "childcare_center", 50.0)
-                    childcare_m = max(raw_childcare, 50.0)
-                    
-                    raw_nosmoking = extract_dist(rules_payload, "nosmoking_zone", 10.0)
-                    nosmoking_m = max(raw_nosmoking, 10.0)
-                    
-                    school_ev_m = max(extract_dist(rules_payload, "school_ev", 100.0), 100.0)
+                    # [v4.5.0 Pure Dynamic SQL Builder] 하한선(max) 강제 고정 완전 철폐. RAG 규제값 100% 신뢰.
+                    school_m = float(extract_dist(rules_payload, "school", 200.0))
+                    childcare_m = float(extract_dist(rules_payload, "childcare_center", 50.0))
+                    nosmoking_m = float(extract_dist(rules_payload, "nosmoking_zone", 10.0))
+                    school_ev_m = float(extract_dist(rules_payload, "school_ev", 100.0))
                     
                     school_dist = school_m * 0.00001
                     childcare_dist = childcare_m * 0.00001
                     nosmoking_dist = nosmoking_m * 0.00001
                     school_dist_ev = school_ev_m * 0.00001
+                    
+                    exclusion_conditions = []
+                    active_rules = rules_payload.get("exclusion_rules", rules_payload)
+                    for z_type, dist_m in active_rules.items():
+                        if isinstance(dist_m, dict):
+                            d_val = dist_m.get("distance_meters")
+                            if d_val is None: continue
+                            parsed_dist = float(d_val)
+                        elif isinstance(dist_m, (int, float, str)):
+                            try:
+                                parsed_dist = float(dist_m)
+                            except:
+                                continue
+                        else:
+                            continue
+                            
+                        cond = f"""(rz.zone_type = '{z_type}' AND (
+                            ST_Intersects(c.geom, rz.geom) OR 
+                            ST_Intersects(ST_Centroid(c.geom), rz.geom) OR
+                            ST_DWithin(ST_SetSRID(c.geom, 4326)::geography, ST_SetSRID(rz.geom, 4326)::geography, {parsed_dist}) OR 
+                            ST_DWithin(ST_SetSRID(ST_Centroid(c.geom), 4326)::geography, ST_SetSRID(rz.geom, 4326)::geography, {parsed_dist})
+                        ))"""
+                        exclusion_conditions.append(cond)
+                        
+                    if exclusion_conditions:
+                        dynamic_exclusion_sql = " OR \n                        ".join(exclusion_conditions)
+                    else:
+                        dynamic_exclusion_sql = "FALSE"
+                        
+                    # [v4.5.0] 대중교통 배제구역 동적 주입 (하드코딩 파괴)
+                    transit_sql = ""
+                    if "transit_station" in active_rules:
+                        t_dist = active_rules["transit_station"]
+                        if isinstance(t_dist, dict):
+                            t_dist = t_dist.get("distance_meters", 10.0)
+                        try:
+                            t_dist = float(t_dist)
+                        except:
+                            t_dist = 10.0
+                        transit_sql = f"""
+              AND NOT EXISTS (
+                  SELECT 1 FROM transit_stations ts
+                  WHERE ts.transit_type IN ('BUS', 'SUBWAY')
+                    AND (
+                        ST_DWithin(ST_SetSRID(c.geom, 4326)::geography, ST_SetSRID(ts.geom, 4326)::geography, {t_dist}) OR
+                        ST_DWithin(ST_SetSRID(ST_Centroid(c.geom), 4326)::geography, ST_SetSRID(ts.geom, 4326)::geography, {t_dist})
+                    )
+              )
+                        """
         except Exception as rules_ex:
             print(f"[RAG Rules Load Fail in recommend] {rules_ex}")
 
         # 2. PostGIS 다기준 배제 구역 인덱스 탐색 및 HITL 기준점 인근 국공유지 필지 조회 (ST_Union 제거 및 Geometry 인덱스 활용으로 레이턴시 250배 고속화)
-        spatial_query = text("""
+        spatial_query_str = f"""
             SELECT c.id, c.pnu, c.jibun, c.land_use_code, c.ownership_type, 
                    ST_Area(c.geom::geography) AS area, 
                    ST_X(ST_Centroid(c.geom)) AS lng, 
@@ -660,54 +723,23 @@ async def recommend_optimal_sites(
               AND (:allow_private = TRUE OR c.ownership_type IN ('국유지', '시유지', '구유지'))
               AND ST_IsValid(c.geom)
               AND ST_DWithin(ST_SetSRID(c.geom, 4326), ST_SetSRID(ST_MakePoint(:ref_lng, :ref_lat), 4326), :search_radius)
-              -- [Strict Complete Drop] 금지구역/보호구역 버퍼 다각형과 1mm라도 겹치거나 포함/접하는 필지는 100% 무조건 완전 제거 탈락 (Complete Drop)
+              -- [v4.5.0 Domain Ordinance Buffer Isolation] 도메인별 규제 조례 이격거리 및 배제 레이어 100% 동적 독립 분리 연산
               AND NOT EXISTS (
                   SELECT 1 FROM restricted_zones rz 
                   WHERE (
-                        -- 1. 공간 상 붉은 버퍼 원 다각형 내부 교차/내포/접함 100% 무조건 배제
-                        ST_Intersects(c.geom, rz.geom) OR 
-                        ST_Intersects(ST_Centroid(c.geom), rz.geom) OR
-                        ST_Within(c.geom, rz.geom) OR
-                        ST_Within(ST_Centroid(c.geom), rz.geom) OR
-                        ST_Contains(rz.geom, c.geom) OR
-                        ST_Touches(c.geom, rz.geom) OR
-                        
-                        -- 2. 법적 한계 이격거리(학교 200m, 어린이집 50m, 금연구역 10m) 구면 침범 100% 무조건 배제
-                        (rz.zone_type = 'school' AND (
-                            ST_DWithin(ST_SetSRID(c.geom, 4326)::geography, ST_SetSRID(rz.geom, 4326)::geography, :school_m) OR 
-                            ST_DWithin(ST_SetSRID(ST_Centroid(c.geom), 4326)::geography, ST_SetSRID(rz.geom, 4326)::geography, :school_m)
-                        )) OR
-                        (rz.zone_type = 'childcare_center' AND (
-                            ST_DWithin(ST_SetSRID(c.geom, 4326)::geography, ST_SetSRID(rz.geom, 4326)::geography, :childcare_m) OR 
-                            ST_DWithin(ST_SetSRID(ST_Centroid(c.geom), 4326)::geography, ST_SetSRID(rz.geom, 4326)::geography, :childcare_m)
-                        )) OR
-                        (:facility_type = 'smoking_zone' AND rz.zone_type = 'nosmoking_zone' AND (
-                            ST_DWithin(ST_SetSRID(c.geom, 4326)::geography, ST_SetSRID(rz.geom, 4326)::geography, :nosmoking_m) OR 
-                            ST_DWithin(ST_SetSRID(ST_Centroid(c.geom), 4326)::geography, ST_SetSRID(rz.geom, 4326)::geography, :nosmoking_m)
-                        ))
+                        {dynamic_exclusion_sql}
                     )
               )
-              -- 흡연구역 도메인인 경우에만 버스정류장/지하철역 이격거리 규제 적용 (지구 타원체 기준 10m 구면 geography 정확 매핑)
-              AND (
-                  :facility_type != 'smoking_zone' OR
-                  NOT EXISTS (
-                      SELECT 1 FROM transit_stations ts
-                      WHERE ts.transit_type IN ('BUS', 'SUBWAY')
-                        AND (
-                            ST_DWithin(ST_SetSRID(c.geom, 4326)::geography, ST_SetSRID(ts.geom, 4326)::geography, 10.0) OR
-                            ST_DWithin(ST_SetSRID(ST_Centroid(c.geom), 4326)::geography, ST_SetSRID(ts.geom, 4326)::geography, 10.0)
-                        )
-                  )
-              )
+              {transit_sql}
               -- [v4.9.16] 지하차도, 고가도로, 터널 등 물리 구축 불가 구역 배제
               AND c.jibun NOT LIKE '%지하%'
               AND c.jibun NOT LIKE '%고가%'
               AND c.jibun NOT LIKE '%터널%'
               -- [v4.9.26] 한강로3가 2-14 지하차도 진입구역 통필지 블랙리스트 강제 제압 (DB PNU 오염 대응으로 오직 지번 매칭만 사용)
               AND c.jibun NOT LIKE '%한강로3가 2-14%'
-              -- [v4.9.22] 전기차 충전소 도메인의 도로 지목 제외 룰만 유지하고, 비합리적인 도로 면적 제한(800㎡)은 전면 철회
+              -- [v4.2.3 EV Public Parking Pool Restriction] 전기차 충전소(ev_charging) 선택 시 공영주차장('주' 지목 및 '공영주차장' 지번) 부지만 100% 탐색
               AND (
-                  (:facility_type != 'ev_charging' OR c.land_use_code != '도')
+                  (:facility_type != 'ev_charging' OR (c.land_use_code = '주' OR c.jibun LIKE '%공영주차장%'))
               )
               -- [v4.9.24] 상권 연계 고가/지하차도 오추천 배제 가드 (상가 데이터가 적재되어 있을 때만 기동하여 보도 몰살 방지)
               AND NOT (
@@ -755,7 +787,8 @@ async def recommend_optimal_sites(
               )
             ORDER BY dist_from_ref ASC
             LIMIT 150
-        """)
+        """
+        spatial_query = text(spatial_query_str)
         
         # 도로명 주소 매핑 및 도로 꼬리표 결합 헬퍼
         def to_road_address(jibun: str, land_use_code: Optional[str] = None) -> str:
@@ -826,9 +859,13 @@ async def recommend_optimal_sites(
                                 props = item.get("properties", {})
                                 item_domain = props.get("domain")
                                 
-                                # 제외 구역(is_exclusion)이거나 규제 파일에 속한 경우
+                                # [v4.3.1 Domain-Scoped Exclusion Filter]
+                                # 금연구역(nosmoking_zone) 버퍼는 오직 facility_type == 'smoking_zone' 일때만 적용! (스마트쉼터/EV충전소는 금연구역 배제 무효화)
+                                is_nosmoking = ("금연" in file or "nosmoking" in file or item_domain == "nosmoking_zone")
+                                if is_nosmoking and facility_type != "smoking_zone":
+                                    continue # facility_type이 흡연부스가 아니면 금연구역 배제 무시!
+
                                 if props.get("is_exclusion") is True or is_exclusion_file or item_domain in ["school", "childcare_center", "nosmoking_zone"]:
-                                    # 해당 항목의 정확한 규제 배제 거리 판정
                                     dist_limit = 10.0 # 기본 10m (금연구역)
                                     if "school" in file or item_domain == "school":
                                         dist_limit = school_m
@@ -844,11 +881,26 @@ async def recommend_optimal_sites(
                     except Exception as ex:
                         print(f"[Realtime Exclusion Load Error] {file}: {ex}")
 
-        # [v4.9.40 - Option 2 Hard Drop & v4.2.0 Area Guard] 금지구역 차집합 배제 및 10m² 미만 미소 도로 부지 필터링
+        # [v4.2.2 EV Area (>=100m²) & Strict Land-Use ('주','공','체') Guard]
         filtered_candidates_list = []
         for c in candidates:
             cand_area_val = float(c.get("area", 100.0))
-            # 10m² 미만 미소 아스팔트 조각 필터링
+            cand_jimok_code = c.get("land_use_code") or ""
+            cand_jibun_str = str(c.get("jibun", ""))
+            is_parking = ("공영주차장" in cand_jibun_str) or (cand_jimok_code == "주")
+
+            # [v4.2.2 EV Strict Guard] 전기차 충전소 선택 시 100m² 미만 소형 부지 & 불리한 지목('도','대','잡') 100% 강제 하드 드롭
+            if facility_type == "ev_charging":
+                # 1. 면적 100m² 미만 부지 100% 하드 드롭 (전기차 충전 및 주차면 확보 불가)
+                if cand_area_val < 100.0:
+                    print(f"[EV Area Guard Drop] Candidate {c.get('id')} ({c.get('jibun')}) dropped (area {cand_area_val:.1f}m² < 100m² for EV).")
+                    continue
+                # 2. 주차장('주'), 공원('공'), 체육/광장('체') 이외의 지목 100% 하드 드롭
+                if cand_jimok_code not in ["주", "공", "체"] and not is_parking:
+                    print(f"[EV Land-Use Guard Drop] Candidate {c.get('id')} ({c.get('jibun')}) dropped (land_use '{cand_jimok_code}' unsuitable for EV).")
+                    continue
+
+            # 기본 10m² 미만 미소 아스팔트 조각 필터링 (흡연부스/스마트쉼터 공통)
             if cand_area_val < 10.0:
                 print(f"[v4.2.0 Area Guard Drop] Candidate {c.get('id')} ({c.get('jibun')}) dropped (area {cand_area_val:.1f}m² < 10m²).")
                 continue
@@ -1488,10 +1540,10 @@ def get_domain_regulation_rules(db: Session, facility_type: str) -> dict:
 @router.get("/spatial/restrictions/points")
 async def get_restriction_points(facility_type: str = "smoking_zone", district_id: int = 1, db: Session = Depends(get_db)):
     try:
-        # 도메인별 적용되는 기본 법정 규제 유형 분류
-        allowed_types = ["school", "childcare_center", "nosmoking_zone"]
-        if facility_type == "ev_charging":
-            allowed_types = ["school", "childcare_center"]
+        # [v4.4.0 Pure Dynamic DB-driven RAG Rule Engine]
+        # 소스코드 정적 하드코딩 0% — DB(domain_regulation_rules)에 저장된 AI RAG 규제 규칙을 100% 동적 로드
+        rules = get_domain_regulation_rules(db, facility_type)
+        allowed_types = list(rules.keys())
             
         points = []
         

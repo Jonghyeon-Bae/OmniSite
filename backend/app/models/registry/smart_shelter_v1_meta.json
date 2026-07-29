@@ -1,0 +1,21 @@
+{
+  "domain": "smart_shelter",
+  "model_filename": "smart_shelter_v1.pkl",
+  "last_trained_at": "2026-07-29 14:19:26",
+  "accuracy": 0.8,
+  "f1_score": 0.798,
+  "sample_count": 6021,
+  "feature_importances": {
+    "area": 0.07477634400129318,
+    "dist_to_nosmoking_zone": 0.17918595671653748,
+    "dist_to_childcare_center": 0.11871600896120071,
+    "dist_to_parking_lot": 0.1397780478000641,
+    "dist_to_school": 0.3130875825881958,
+    "land_use_code_도": 0.08460135012865067,
+    "land_use_code_잡": 0.08985470235347748,
+    "land_use_code_주": 0.0,
+    "ownership_type_구유지": 0.0,
+    "ownership_type_국유지": 0.0,
+    "building_use_미지정": 0.0
+  }
+}

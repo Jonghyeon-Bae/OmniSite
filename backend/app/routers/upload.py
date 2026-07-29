@@ -488,9 +488,10 @@ def fallback_pdf_matching(upload_dir: str, csv_keywords: set, pdf_texts: list):
             
             is_matched = False
             domain_mappings = {
-                "smoking_zone": ["금연", "흡연", "담배", "smoking", "tobacco"],
-                "ev_charging": ["전기차", "충전", "ev", "battery", "소방", "용수", "소방시설", "소방용수"],
+                "smart_shelter": ["쉼터", "스마트", "그늘막", "와이파이", "한파", "무더위", "shelter", "쉘터", "버스정류소"],
+                "ev_charging": ["전기차", "충전", "ev", "battery", "주차장"],
                 "yellow_carpet": ["어린이", "보호구역", "초등학교", "안전", "옐로우", "카펫", "스쿨존"],
+                "smoking_zone": ["금연", "흡연", "담배", "smoking", "tobacco"],
             }
             clean_pdf = pdf_text.lower()
             clean_pdf_filename = pdf_filename.lower()
@@ -874,14 +875,14 @@ async def audit_upload_files(request: AuditRequest, db: Session = Depends(get_db
 {csv_context if csv_context else "없음"}
 
 위 파일들의 파일명, 컬럼 구성, 그리고 조례 텍스트 내용을 종합 분석하여 다음 정보들을 도출하십시오:
-1. inferred_purpose: 이번 입지 분석의 시맨틱 목적 추론 (예: "실외 흡연구역 입지 선정 및 간접흡연 규제 배제 분석", "전기차 충전소 최적 입지 매핑 및 규제구역 제외 분석")
-2. inferred_domain_tag: 도메인 분류 영문 태그 (예: smoking_zone, smart_shelter, yellow_carpet, ev_charging)
-3. hitl_question: 사용자(공무원)에게 의사결정 목적이 맞는지 최종 확정하기 위한 확인 질문 (예: "업로드하신 데이터들은 [실외 흡연구역/흡연구역 지정]을 위한 입지 분석이 맞습니까?")
+1. inferred_purpose: 이번 입지 분석의 시맨틱 목적 추론 (예: "지능형 스마트 쉼터 최적 입지 매핑 및 규제구역 제외 분석", "전기차 충전소 최적 입지 매핑 및 규제구역 제외 분석")
+2. inferred_domain_tag: 도메인 분류 영문 태그 (예: smart_shelter, yellow_carpet, ev_charging)
+3. hitl_question: 사용자(공무원)에게 의사결정 목적이 맞는지 최종 확정하기 위한 확인 질문 (예: "업로드하신 데이터들은 [특정 도메인 지정]을 위한 입지 분석이 맞습니까?")
 4. reasoning: 어떤 조례 문서의 조항 구절과 어떤 CSV 파일명의 키워드 및 컬럼 헤더들을 대조하여 위 inferred_purpose와 inferred_domain_tag를 판독했는지 상세히 서술하십시오
 5. opinion: 전체 조례 및 공간 데이터를 교차 검토하여 특정 시설물 제한 구역에 대한 감리 평가 의견
 6. rules_matched: 조례 상에서 식별해 낸 구체적인 입지 제약 조항 목록
 7. criteria: 이번 입지 분석 목적에 매칭되는 가장 연관성 높고 중요한 핵심 의사결정 평가 인자(AHP용 지표) 목록 (수량은 3~8개 사이로 유동적으로 도출하며, 각 인자마다 key, 한글 label, 그리고 이번에 업로드된 CSV 파일 목록 중 해당 인자와 가장 연관성이 높은 파일명을 'associated_file' 필드로 반드시 매칭하십시오. 만약 업로드된 파일 중에 매칭되는 데이터가 없다면 null로 비워두십시오.)
-8. spatial_restrictions: 조례 규정에서 발견된 이격거리 규제 사양 (예: 지하철역 주변 10m 혹은 어린이집 경계 30m 등). 특히 학교(school), 어린이집(childcare_center), 금연구역(nosmoking_zone)이 있다면 조례 텍스트의 규정이나 시행령/조례 최소치를 판독해 미터 숫자값 딕셔너리로 반환하십시오. 단, 학교의 경우 법령상 절대 금지되는 최소치(절대보호구역)인 50미터(school: 50.0)를 우선 추출하십시오.
+8. spatial_restrictions: 조례 규정에서 발견된 특정 시설별 배제 이격거리 규제 사양 (예: 지하철역 주변 10m 혹은 어린이집 경계 30m 등). 조례 텍스트의 규정이나 시행령을 판독해 미터 숫자값 딕셔너리로 반환하십시오. 절대 고정된 키워드가 없으며, 해당 도메인에 적용되는 배제 구역 명칭을 영문 키워드로 자유롭게 스스로 작명하여 동적으로 반환하십시오 (예: "subway_station": 10.0, "park_zone": 200.0). 단, 학교나 어린이집의 경우 절대 금지되는 최소치(예: 50미터)를 최우선 추출하십시오.
 9. file_behaviors: 업로드된 각 CSV 파일이 이번 도메인 분석 목적(inferred_domain_tag) 하에서 법적/행정적 설치 금지 구역에 해당하는지("exclusion"), 아니면 단순 설치 허용/가용/권장 주차장이나 교통 노드 정보 등에 해당하는지("inclusion") 조례(RAG)를 바탕으로 판정하십시오. 파일명을 키로 하고 "exclusion" 또는 "inclusion"을 값으로 하는 객체로 반환하십시오.
 10. score_modifiers: 분석용 데이터셋의 컬럼값 또는 조례 규정에서 발견된 입지 선정 시의 특정 토지 지목이나 위치적 이점에 따른 점수 가/감점 사양을 추출하십시오. (예: 지목이 도로 '도' 이면 한전 협의 리스크로 -4.0 감점, 지목이 주차장 '차' 이거나 공원 '공' 이면 연계 편의성으로 +6.0 가점, 또는 편의점 인접 시 +5.0 가점 등). 이 가/감점 룰 리스트를 'score_modifiers' 객체 배열로 반환하십시오.
 
@@ -907,9 +908,8 @@ async def audit_upload_files(request: AuditRequest, db: Session = Depends(get_db
     }}
   ],
   "spatial_restrictions": {{
-    "school": 50.0,
-    "childcare_center": 30.0,
-    "nosmoking_zone": 10.0
+    "Domain_Keyword_A": 50.0,
+    "Domain_Keyword_B": 30.0
   }},
   "file_behaviors": {{
     "파일명1.csv": "exclusion",
@@ -961,84 +961,66 @@ async def audit_upload_files(request: AuditRequest, db: Session = Depends(get_db
         except Exception as e:
             opinion_global = f"AI 교차 감리 도중 예외가 발생하여 로컬 룰 엔진으로 대체합니다. (에러: {str(e)})"
 
-    # 로컬 Fallback 규칙 기반 자동 추정 및 reasoning 생성
+    # 로컬 Fallback 규칙 기반 자동 추정 및 reasoning 생성 (스마트 쉼터 -> 전기차 -> 스쿨존 -> 자전거 -> 흡연 -> 일반 스마트시티)
     if not ai_success:
         combined_text = " ".join(pdf_texts) + " " + " ".join(request.filenames)
-        if any(keyword in combined_text for keyword in ["금연", "흡연", "smoking", "tobacco"]):
-            inferred_purpose = "실외 흡연구역 입지 선정 및 간접흡연 규제 배제 분석"
-            inferred_domain_tag = "smoking_zone"
-            hitl_question = "업로드하신 데이터들은 [실외 흡연구역/흡연구역 지정]을 위한 입지 분석이 맞습니까?"
-            reasoning_global = "공간 데이터 파일명 및 컬럼 구조에서 금연/흡연(smoking) 관련 키워드가 감지되었으며, 서버에 보관된 금연 규제 시행규칙 조항과 교차 매핑하여 실외 흡연구역 선정을 위한 입지분석 목적으로 자동 추론했습니다. (로컬 Fallback 판독)"
+        combined_lower = combined_text.lower()
+
+        if any(keyword in combined_lower for keyword in ["쉼터", "스마트", "그늘막", "와이파이", "한파", "무더위", "shelter", "쉘터"]):
+            inferred_purpose = "지능형 스마트 쉼터 최적 입지 매핑 및 규제 분석"
+            inferred_domain_tag = "smart_shelter"
+            hitl_question = "업로드하신 데이터들은 [지능형 스마트 쉼터/스마트 쉘터]를 위한 입지 분석이 맞습니까?"
+            reasoning_global = "공간 데이터 파일명 및 조례 텍스트에서 스마트 쉼터/그늘막/와이파이 관련 키워드가 감지되어 지능형 스마트 쉼터 목적으로 시맨틱 추론했습니다."
             rules_matched_global = [{
-                "clause": "용산구 금연구역 지정 조례(추정)",
-                "description": "금연구역 경계선으로부터 10미터 이내 지정 (로컬 Fallback 추정)",
+                "clause": "용산구 스마트도시 조성 및 운영 조례",
+                "description": "스마트 버스정류장 및 공원 쉼터 도로점용 안전거리 20m 확보",
                 "status": "matched"
             }]
             criteria_global = [
-                {"key": "traffic", "label": "대중교통 유동성", "associated_file": find_fallback_file(["버스", "정류소", "지하철", "교통", "station", "bus", "subway", "transit"])},
-                {"key": "complaint", "label": "불법흡연 민원빈도", "associated_file": find_fallback_file(["민원", "complaint"])},
-                {"key": "dumping", "label": "상습 무단투기", "associated_file": find_fallback_file(["무단투기", "dumping", "쓰레기", "trash", "garbage"])},
-                {"key": "population", "label": "배후 생활인구", "associated_file": find_fallback_file(["생활인구", "인구", "people", "population"])},
-                {"key": "youth", "label": "청소년 비율", "associated_file": find_fallback_file(["연령", "청소년", "연령대", "demographics", "age", "youth"])}
+                {"key": "traffic", "label": "대중교통 유동성", "associated_file": find_fallback_file(["버스", "정류소", "지하철", "station", "bus"])},
+                {"key": "shade", "label": "폭염 그늘막 밀도", "associated_file": find_fallback_file(["그늘막", "쉼터"])},
+                {"key": "wifi", "label": "공공 와이파이 연결성", "associated_file": find_fallback_file(["와이파이", "wifi"])}
             ]
-            spatial_restrictions_global = {
-                "transit_station": 10.0,
-                "childcare_center": 30.0
-            }
-            score_modifiers_global = [
-                {"target": "land_use_code", "operator": "IN", "values": ["도"], "points": -4.0, "reason": "도로 부지 사용 시 한전 배전 용량 협의 리스크 감점"},
-        
-                {"target": "land_use_code", "operator": "IN", "values": ["차", "공"], "points": 6.0, "reason": "공영주차장 및 공원 부지 연계 편의성 가점"}
-            ]
-            # 도메인 태그 유사도 기반 중복 방지 및 병합 엔진 적용 (Fallback)
             inferred_domain_tag = get_or_create_merged_tag(inferred_domain_tag, reasoning_global, db)
-            
-        elif any(keyword in combined_text for keyword in ["충전", "전기차", "ev", "battery"]):
+
+        elif any(keyword in combined_lower for keyword in ["충전", "전기차", "ev", "battery", "주차장"]):
             inferred_purpose = "전기차 충전소 최적 입지 매핑 및 규제구역 제외 분석"
             inferred_domain_tag = "ev_charging"
             hitl_question = "업로드하신 데이터들은 [전기차 충전 인프라 설치]를 위한 입지 분석이 맞습니까?"
-            reasoning_global = "공간 데이터 파일명에서 전기차/충전(ev) 관련 키워드가 감지되어, 친환경 충전 인프라 부지 선정을 위한 분석 목적으로 자동 추론했습니다. (로컬 Fallback 판독)"
+            reasoning_global = "공간 데이터 파일명에서 전기차/충전(ev) 관련 키워드가 감지되어 친환경 충전 인프라 부지 선정을 위한 분석 목적으로 시맨틱 추론했습니다."
             criteria_global = [
                 {"key": "ev_density", "label": "전기차 등록 밀도", "associated_file": find_fallback_file(["충전", "전기차", "ev", "battery"])},
-                {"key": "grid_capacity", "label": "배후 전력 인프라", "associated_file": find_fallback_file(["전력", "그리드", "변전소", "grid", "capacity"])},
-                {"key": "park_distance", "label": "공영주차장 거리", "associated_file": find_fallback_file(["주차장", "park"])},
-                {"key": "residence_density", "label": "배후 주거 밀집도", "associated_file": find_fallback_file(["주거", "residence", "아파트", "apartment"])}
+                {"key": "park_distance", "label": "공영주차장 거리", "associated_file": find_fallback_file(["주차장", "park"])}
             ]
-            score_modifiers_global = [
-                {"target": "land_use_code", "operator": "IN", "values": ["도"], "points": -6.0, "reason": "도로 부지 사용 시 통행 장애 리스크 감점"},
-                {"target": "land_use_code", "operator": "IN", "values": ["차"], "points": 8.0, "reason": "공영주차장 연계 고속 충전 효율성 가점"}
-            ]
-            # 도메인 태그 유사도 기반 중복 방지 및 병합 엔진 적용 (Fallback)
             inferred_domain_tag = get_or_create_merged_tag(inferred_domain_tag, reasoning_global, db)
-            
-        elif any(keyword in combined_text for keyword in ["어린이", "보행", "안전", "스쿨", "school"]):
+
+        elif any(keyword in combined_lower for keyword in ["어린이", "보행", "안전", "스쿨", "school"]):
             inferred_purpose = "어린이 보호구역 옐로카펫 및 안심 횡단보도 설치 분석"
             inferred_domain_tag = "yellow_carpet"
             hitl_question = "업로드하신 데이터들은 [어린이 교통 안전 및 옐로카펫 설치]를 위한 입지 분석이 맞습니까?"
-            reasoning_global = "공간 데이터 파일명에서 어린이/스쿨구역 관련 키워드가 감지되어, 어린이 교통 보호 및 옐로카펫 설치를 위한 분석 목적으로 자동 추론했습니다. (로컬 Fallback 판독)"
-            criteria_global = [
-                {"key": "school_zone", "label": "스쿨존 사고율", "associated_file": find_fallback_file(["사고", "school", "보호구역", "스쿨존"])},
-                {"key": "traffic_volume", "label": "보행 유동인구", "associated_file": find_fallback_file(["보행", "유동", "유동인구", "traffic", "volume"])},
-                {"key": "speed_violations", "label": "속도위반 빈도", "associated_file": find_fallback_file(["위반", "속도", "speed", "violation"])},
-                {"key": "youth_ratio", "label": "아동 생활밀도", "associated_file": find_fallback_file(["아동", "청소년", "어린이", "youth", "child"])}
-            ]
-            score_modifiers_global = []
-            # 도메인 태그 유사도 기반 중복 방지 및 병합 엔진 적용 (Fallback)
+            reasoning_global = "공간 데이터 파일명에서 어린이/스쿨구역 관련 키워드가 감지되어 어린이 교통 보호를 위한 분석 목적으로 시맨틱 추론했습니다."
             inferred_domain_tag = get_or_create_merged_tag(inferred_domain_tag, reasoning_global, db)
 
-        elif any(keyword in combined_text for keyword in ["자전거", "따릉이", "대여소", "bicycle", "bike"]):
+        elif any(keyword in combined_lower for keyword in ["자전거", "따릉이", "대여소", "bicycle", "bike"]):
             inferred_purpose = "공용자전거 대여소(따릉이) 설치 및 라스트마일 연계 분석"
             inferred_domain_tag = "public_bicycle"
             hitl_question = "업로드하신 데이터들은 [공용자전거 대여소 설치]를 위한 입지 분석이 맞습니까?"
-            reasoning_global = "공간 데이터 파일명에서 자전거/대여소(bicycle) 관련 키워드가 감지되어, 공공 대여 자전거 스테이션 부지 선정을 위한 분석 목적으로 자동 추론했습니다. (로컬 Fallback 판독)"
-            criteria_global = [
-                {"key": "bike_demand", "label": "자전거 대여 수요", "associated_file": find_fallback_file(["수요", "대여", "자전거", "따릉이", "demand", "bike"])},
-                {"key": "transit_connection", "label": "대중교통 환승 유동성", "associated_file": find_fallback_file(["지하철", "버스", "정류소", "교통", "transit", "connection", "transfer"])},
-                {"key": "bike_path_distance", "label": "기성 자전거도로 인접성", "associated_file": find_fallback_file(["도로", "자전거도로", "path", "route"])},
-                {"key": "slope_index", "label": "지형 경사도 평탄화", "associated_file": find_fallback_file(["경사", "평탄", "slope", "elevation"])}
-            ]
-            score_modifiers_global = []
-            # 도메인 태그 유사도 기반 중복 방지 및 병합 엔진 적용 (Fallback)
+            reasoning_global = "공간 데이터 파일명에서 자전거/대여소 관련 키워드가 감지되어 자전거 대여소 선정을 위한 분석 목적으로 시맨틱 추론했습니다."
+            inferred_domain_tag = get_or_create_merged_tag(inferred_domain_tag, reasoning_global, db)
+
+        elif any(keyword in combined_lower for keyword in ["금연", "흡연", "smoking", "tobacco"]):
+            inferred_purpose = "실외 흡연구역 입지 선정 및 간접흡연 규제 배제 분석"
+            inferred_domain_tag = "smoking_zone"
+            hitl_question = "업로드하신 데이터들은 [실외 흡연구역/흡연구역 지정]을 위한 입지 분석이 맞습니까?"
+            reasoning_global = "공간 데이터 파일명 및 조례 텍스트에서 금연/흡연(smoking) 관련 키워드가 감지되어 실외 흡연구역 선정을 위한 입지분석 목적으로 시맨틱 추론했습니다."
+            inferred_domain_tag = get_or_create_merged_tag(inferred_domain_tag, reasoning_global, db)
+
+        else:
+            # 매칭되는 특화 도메인이 없는 경우 일반 스마트시티(city_feature)로 안전 Fallback [v4.2.8]
+            inferred_purpose = "일반 스마트시티 공간의사결정 입지 분석"
+            inferred_domain_tag = "city_feature"
+            hitl_question = "업로드하신 데이터를 토대로 다목적 스마트시티 공간 입지 분석을 진행하시겠습니까?"
+            reasoning_global = "특화 도메인 키워드가 무매칭되어 일반 스마트시티(city_feature) 표준 시맨틱 태그로 자동 할당했습니다."
             inferred_domain_tag = get_or_create_merged_tag(inferred_domain_tag, reasoning_global, db)
 
     # AI가 누락했거나 Fallback인 경우 파일별 기본 성격 분류 (금지/불가능 단어 감지 시 exclusion)
@@ -2999,3 +2981,33 @@ async def list_regulation_titles(db: Session = Depends(get_db)):
         return {"titles": result_list}
     except Exception as e:
         return {"titles": [{"title": "서울특별시 금연환경 조성 조례", "versions": ["v1.0", "v2.0"]}]}
+
+
+@router.get("/upload/domain-tags")
+def get_registered_domain_tags(db: Session = Depends(get_db)):
+    """[v4.3.1] DB(registered_domain_tags)에 등록된 전체 시맨틱 도메인 태그 목록 조회 API"""
+    try:
+        rows = db.execute(text("SELECT tag_name, tag_description FROM registered_domain_tags ORDER BY id ASC")).fetchall()
+        tags = []
+        for r in rows:
+            tags.append({
+                "tag_name": r[0],
+                "tag_description": r[1] or r[0]
+            })
+        if not tags:
+            tags = [
+                {"tag_name": "smart_shelter", "tag_description": "지능형 스마트 쉼터"},
+                {"tag_name": "smoking_zone", "tag_description": "실외 흡연구역 입지"},
+                {"tag_name": "ev_charging", "tag_description": "전기차 충전소 입지"},
+                {"tag_name": "yellow_carpet", "tag_description": "어린이 보호구역 옐로카펫"},
+                {"tag_name": "city_feature", "tag_description": "일반 스마트시티 시설물"}
+            ]
+        return {"status": "success", "tags": tags}
+    except Exception as e:
+        return {"status": "error", "tags": [
+            {"tag_name": "smart_shelter", "tag_description": "지능형 스마트 쉼터"},
+            {"tag_name": "smoking_zone", "tag_description": "실외 흡연구역 입지"},
+            {"tag_name": "ev_charging", "tag_description": "전기차 충전소 입지"},
+            {"tag_name": "yellow_carpet", "tag_description": "어린이 보호구역 옐로카펫"},
+            {"tag_name": "city_feature", "tag_description": "일반 스마트시티 시설물"}
+        ], "detail": str(e)}

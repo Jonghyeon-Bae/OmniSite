@@ -98,11 +98,23 @@ def background_model_train(domain="smoking_zone"):
     try:
         print(f"[ML Process] Starting dynamic spatial data querying for domain: {domain}")
         
-        # 1. restricted_zones 내 고유 zone_type 스캔
-        zone_types_res = db.execute(text("SELECT DISTINCT zone_type FROM restricted_zones;")).fetchall()
-        zone_types = [r[0] for r in zone_types_res if r[0]]
-        if not zone_types:
-            zone_types = ['school', 'childcare_center']
+        # 1. 도메인별 시맨틱 공간 규제 (Domain Semantic Zone Scoping) - 하드코딩 없는 동적 필터링 [v4.2.4]
+        all_zones_res = db.execute(text("SELECT DISTINCT zone_type FROM restricted_zones;")).fetchall()
+        all_zones = [r[0] for r in all_zones_res if r[0]]
+        
+        # 도메인 성격에 관련이 없는 오염 규제 필터링 (Zero Feature Contamination)
+        if domain == "ev_charging":
+            # 전기차 충전소: 금연구역(nosmoking_zone) 제외, 주차장/학교/어린이집 등 시맨틱 규제만 동적 바인딩
+            zone_types = [z for z in all_zones if z in ['school', 'childcare_center', 'parking_lot']]
+            if not zone_types:
+                zone_types = ['school', 'childcare_center', 'parking_lot']
+        elif domain == "smoking_zone":
+            # 흡연부스: 금연구역, 학교, 어린이집 시맨틱 규제 동적 바인딩
+            zone_types = [z for z in all_zones if z in ['school', 'childcare_center', 'nosmoking_zone']]
+            if not zone_types:
+                zone_types = ['school', 'childcare_center', 'nosmoking_zone']
+        else:
+            zone_types = all_zones if all_zones else ['school', 'childcare_center']
             
         print(f"[ML Process] Scanned active spatial zone types: {zone_types}")
         

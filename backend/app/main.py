@@ -62,3 +62,11 @@ async def health_check(db: Session = Depends(get_db)):
 # trigger reload for v4.2.0 buildability upgrade
 
 # trigger reload after codebase cleanup
+
+# trigger reload for ev hard drop & parking lot seeding
+
+# trigger reload for ev area >= 100m² & strict land use guard
+
+# trigger reload for ev ml feature cleaning & parking lot candidate pool restriction
+
+# trigger reload for ev ml feature cleaning & parking lot candidate pool restriction

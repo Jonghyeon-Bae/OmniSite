@@ -4,7 +4,10 @@ import re
 import math
 import zipfile
 import shapefile
+import json
+import ast
 import bcrypt
+from backend.app.scripts.optimize_spatial_relations import optimize_spatial_relations
 from collections import defaultdict
 from sqlalchemy import create_engine, text
 from shapely.geometry import Polygon, MultiPolygon, shape
@@ -19,13 +22,13 @@ def resolve_path(key, default_fallback):
     datasets_mapping = {
         "dong_mapping": os.path.join(datasets_base, "1_boundaries", "용산구_법정동_행정동_연계매핑.csv"),
         "parcels": os.path.join(datasets_base, "2_cadastral", "05.용산구_부지면적_좌표(흡연부스 후보).csv"),
-        "bus_stations": os.path.join(datasets_base, "4_indicators", "서울시 버스정류소 위치정보.csv"),
-        "subway_stations": os.path.join(datasets_base, "4_indicators", "서울시 역사마스터 정보.csv"),
-        "bus_passengers": os.path.join(datasets_base, "4_indicators", "BUS_STATION_BOARDING_MONTH_202605.csv"),
-        "subway_passengers": os.path.join(datasets_base, "4_indicators", "CARD_SUBWAY_MONTH_202605.csv"),
-        "illegal_dumping": os.path.join(datasets_base, "3_restrictions", "07. 담배꽁초_상습_무단투기.csv"),
-        "local_population": os.path.join(datasets_base, "4_indicators", "LOCAL_PEOPLE_DONG_202605_YONGSAN.csv"),
-        "restricted_zones": os.path.join(datasets_base, "3_restrictions", "06. 06-07 금연구역 통합본.csv"),
+        "bus_stations": os.path.join(datasets_base, "5_indicators", "서울시 버스정류소 위치정보.csv"),
+        "subway_stations": os.path.join(datasets_base, "5_indicators", "서울시 역사마스터 정보.csv"),
+        "bus_passengers": os.path.join(datasets_base, "5_indicators", "BUS_STATION_BOARDING_MONTH_202605.csv"),
+        "subway_passengers": os.path.join(datasets_base, "5_indicators", "CARD_SUBWAY_MONTH_202605.csv"),
+        "illegal_dumping": os.path.join(datasets_base, "4_restrictions", "07. 담배꽁초_상습_무단투기.csv"),
+        "local_population": os.path.join(datasets_base, "5_indicators", "LOCAL_PEOPLE_DONG_202605_YONGSAN.csv"),
+        "restricted_zones": os.path.join(datasets_base, "4_restrictions", "06. 06-07 금연구역 통합본.csv"),
     }
     if key in datasets_mapping and os.path.exists(datasets_mapping[key]):
         return datasets_mapping[key]
@@ -57,14 +60,14 @@ sources = {
     "dong_mapping": resolve_path("dong_mapping", os.path.join(datasets_base_dir, "1_boundaries", "용산구_법정동_행정동_연계매핑.csv")),
     "parcels": resolve_path("parcels", os.path.join(datasets_base_dir, "2_cadastral", "05.용산구_부지면적_좌표(흡연부스 후보).csv")),
     "national_property": resolve_path("national_property", os.path.join(datasets_base_dir, "2_cadastral", "11. 국유부동산정보.csv")),
-    "restricted_zones": resolve_path("restricted_zones", os.path.join(datasets_base_dir, "3_restrictions", "06. 06-07 금연구역 통합본.csv")),
-    "bus_stations": resolve_path("bus_stations", os.path.join(datasets_base_dir, "4_indicators", "서울시 버스정류소 위치정보_YONGSAN.csv")),
-    "subway_stations": resolve_path("subway_stations", os.path.join(datasets_base_dir, "4_indicators", "02. 지하철역 위치.csv")),
-    "bus_passengers": resolve_path("bus_passengers", os.path.join(datasets_base_dir, "4_indicators", "BUS_STATION_BOARDING_MONTH_202605_YONGSAN.csv")),
-    "subway_passengers": resolve_path("subway_passengers", os.path.join(datasets_base_dir, "4_indicators", "CARD_SUBWAY_MONTH_202605_YONGSAN.csv")),
-    "illegal_dumping": resolve_path("illegal_dumping", os.path.join(datasets_base_dir, "4_indicators", "07. 담배꽁초_상습_무단투기.csv")),
-    "local_population": resolve_path("local_population", os.path.join(datasets_base_dir, "4_indicators", "LOCAL_PEOPLE_DONG_202605_YONGSAN_PEAK.csv")),
-    "commercial_shops": resolve_path("commercial_shops", os.path.join(datasets_base_dir, "4_indicators", "10. 소상공인시장진흥공단_상가.csv"))
+    "restricted_zones": resolve_path("restricted_zones", os.path.join(datasets_base_dir, "4_restrictions", "06. 06-07 금연구역 통합본.csv")),
+    "bus_stations": resolve_path("bus_stations", os.path.join(datasets_base_dir, "5_indicators", "서울시 버스정류소 위치정보_YONGSAN.csv")),
+    "subway_stations": resolve_path("subway_stations", os.path.join(datasets_base_dir, "5_indicators", "02. 지하철역 위치.csv")),
+    "bus_passengers": resolve_path("bus_passengers", os.path.join(datasets_base_dir, "5_indicators", "BUS_STATION_BOARDING_MONTH_202605_YONGSAN.csv")),
+    "subway_passengers": resolve_path("subway_passengers", os.path.join(datasets_base_dir, "5_indicators", "CARD_SUBWAY_MONTH_202605_YONGSAN.csv")),
+    "illegal_dumping": resolve_path("illegal_dumping", os.path.join(datasets_base_dir, "5_indicators", "07. 담배꽁초_상습_무단투기.csv")),
+    "local_population": resolve_path("local_population", os.path.join(datasets_base_dir, "5_indicators", "LOCAL_PEOPLE_DONG_202605_YONGSAN_PEAK.csv")),
+    "commercial_shops": resolve_path("commercial_shops", os.path.join(datasets_base_dir, "5_indicators", "10. 소상공인시장진흥공단_상가.csv"))
 }
 
 def load_csv_data(path, encodings=None):
@@ -588,8 +591,8 @@ def seed():
             # [10.2] Seed Bridges and Tunnels (SHP)
             print("[10.2] Seeding bridges and tunnels (SHP)...")
             base_dir_path = os.path.dirname(os.path.abspath(__file__))
-            bridge_shp = os.path.join(base_dir_path, "Datasets", "교량,터널공간정보", "교량", "N3A_A0070000.shp")
-            tunnel_shp = os.path.join(base_dir_path, "Datasets", "교량,터널공간정보", "터널", "N3A_A0110020.shp")
+            bridge_shp = os.path.join(base_dir_path, "Datasets", "3_infrastructure", "교량", "N3A_A0070000.shp")
+            tunnel_shp = os.path.join(base_dir_path, "Datasets", "3_infrastructure", "터널", "N3A_A0110020.shp")
             
             def seed_shp(shp_path, z_type):
                 if not os.path.exists(shp_path): return 0
@@ -663,7 +666,10 @@ def seed():
             """), {"pwd_hash": hashed})
             print("    Default admin account (admin/admin1234) upserted successfully.")
 
-            print("[+] Seeding completed successfully!")
+            print("[+] Database Seeding Phase Complete. Launching Spatial Denormalization Hook...")
+            optimize_spatial_relations()
+
+            print("[+] All Coldstart Procedures (Seeding + Caching) completed successfully!")
         except Exception as e:
             print(f"[-] Error during seeding: {str(e)}")
             raise e

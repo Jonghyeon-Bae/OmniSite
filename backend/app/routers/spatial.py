@@ -325,7 +325,7 @@ def get_cached_file_data(filename: str) -> Optional[List[Dict[str, Any]]]:
     return None
 
 # 3단계 의사결정 인자별 동적 공간 데이터 밀도/통계 집계 엔진
-def get_criteria_score(db: Session, key: str, dong_id: int, centroid_lng: float, centroid_lat: float, associated_file: Optional[str] = None, facility_type: Optional[str] = "smoking_zone") -> float:
+def get_criteria_score(db: Session, key: str, dong_id: int, centroid_lng: float, centroid_lat: float, associated_file: Optional[str] = None, facility_type: Optional[str] = None) -> float:
     key_clean = key.lower().strip()
     
     # 1. 만약 이번 실행에서 업로드된 전용 CSV/JSON 파일(associated_file)이 존재한다면,
@@ -657,18 +657,16 @@ async def recommend_optimal_sites(
                         else:
                             continue
                             
-                        cond = f"""(rz.zone_type = '{z_type}' AND (
-                            ST_Intersects(c.geom, rz.geom) OR 
-                            ST_Intersects(ST_Centroid(c.geom), rz.geom) OR
-                            ST_DWithin(ST_SetSRID(c.geom, 4326)::geography, ST_SetSRID(rz.geom, 4326)::geography, {parsed_dist}) OR 
-                            ST_DWithin(ST_SetSRID(ST_Centroid(c.geom), 4326)::geography, ST_SetSRID(rz.geom, 4326)::geography, {parsed_dist})
-                        ))"""
-                        exclusion_conditions.append(cond)
+                        # [v5.5.0 O(1) Denormalization] Use pre-calculated columns instead of ST_DWithin
+                        if z_type == 'school' or z_type == 'school_ev':
+                            exclusion_conditions.append(f"c.dist_to_school_m <= {parsed_dist}")
+                        elif z_type == 'childcare_center':
+                            exclusion_conditions.append(f"c.dist_to_childcare_m <= {parsed_dist}")
                         
                     if exclusion_conditions:
-                        dynamic_exclusion_sql = " OR \n                        ".join(exclusion_conditions)
+                        dynamic_exclusion_sql = " AND NOT (" + " OR ".join(exclusion_conditions) + ")"
                     else:
-                        dynamic_exclusion_sql = "FALSE"
+                        dynamic_exclusion_sql = ""
                         
                     # [v4.5.0] 대중교통 배제구역 동적 주입 (하드코딩 파괴)
                     transit_sql = ""
@@ -701,34 +699,15 @@ async def recommend_optimal_sites(
                    ST_Y(ST_Centroid(c.geom)) AS lat, 
                    c.dong_id,
                    ST_Distance(ST_Centroid(c.geom)::geography, ST_SetSRID(ST_MakePoint(:ref_lng, :ref_lat), 4326)::geography) AS dist_from_ref,
-                   COALESCE(ns.dist_to_school, 9999.0) AS dist_to_school,
-                   COALESCE(nc.dist_to_childcare, 9999.0) AS dist_to_childcare
+                   COALESCE(c.dist_to_school_m, 9999.0) AS dist_to_school,
+                   COALESCE(c.dist_to_childcare_m, 9999.0) AS dist_to_childcare
             FROM cadastral_lands c
-            LEFT JOIN LATERAL (
-                SELECT ST_Distance(ST_Centroid(c.geom)::geography, rz.geom::geography) AS dist_to_school
-                FROM restricted_zones rz 
-                WHERE rz.zone_type = 'school' 
-                ORDER BY ST_Centroid(c.geom) <-> rz.geom 
-                LIMIT 1
-            ) ns ON TRUE
-            LEFT JOIN LATERAL (
-                SELECT ST_Distance(ST_Centroid(c.geom)::geography, rz.geom::geography) AS dist_to_childcare
-                FROM restricted_zones rz 
-                WHERE rz.zone_type = 'childcare_center' 
-                ORDER BY ST_Centroid(c.geom) <-> rz.geom 
-                LIMIT 1
-            ) nc ON TRUE
             WHERE c.district_id = :district_id
               AND (:allow_private = TRUE OR c.ownership_type IN ('국유지', '시유지', '구유지'))
               AND ST_IsValid(c.geom)
               AND ST_DWithin(ST_SetSRID(c.geom, 4326), ST_SetSRID(ST_MakePoint(:ref_lng, :ref_lat), 4326), :search_radius)
-              -- [v4.5.0 Domain Ordinance Buffer Isolation] 도메인별 규제 조례 이격거리 및 배제 레이어 100% 동적 독립 분리 연산
-              AND NOT EXISTS (
-                  SELECT 1 FROM restricted_zones rz 
-                  WHERE (
-                        {dynamic_exclusion_sql}
-                    )
-              )
+              AND c.is_restricted = FALSE
+              {dynamic_exclusion_sql}
               {transit_sql}
               -- [v4.9.16] 지하차도, 고가도로, 터널 등 물리 구축 불가 구역 배제
               AND c.jibun NOT LIKE '%지하%'
@@ -736,6 +715,15 @@ async def recommend_optimal_sites(
               AND c.jibun NOT LIKE '%터널%'
               -- [v4.9.26] 한강로3가 2-14 지하차도 진입구역 통필지 블랙리스트 강제 제압 (DB PNU 오염 대응으로 오직 지번 매칭만 사용)
               AND c.jibun NOT LIKE '%한강로3가 2-14%'
+              -- [v5.0.1 Geometry Appropriateness] 최소 면적 컷오프 (10제곱미터 미만 기형적 필지 배제)
+              AND ST_Area(c.geom::geography) >= 10.0
+              -- [v5.0.2 Blind Land Rejection] 맹지 차단: 도로(도) 지목과 공간적으로 맞닿아 있는(ST_Touches) 필지만 통과
+              AND EXISTS (
+                  SELECT 1 FROM cadastral_lands r
+                  WHERE r.land_use_code = '도' 
+                    AND r.district_id = c.district_id
+                    AND (ST_Touches(c.geom, r.geom) OR ST_Intersects(c.geom, r.geom))
+              )
               -- [v4.2.3 EV Public Parking Pool Restriction] 전기차 충전소(ev_charging) 선택 시 공영주차장('주' 지목 및 '공영주차장' 지번) 부지만 100% 탐색
               AND (
                   (:facility_type != 'ev_charging' OR (c.land_use_code = '주' OR c.jibun LIKE '%공영주차장%'))
@@ -1528,7 +1516,7 @@ def get_domain_regulation_rules(db: Session, facility_type: str) -> dict:
 
 # 3. 규제 시설물 좌표 조회 API (Step 2 규제 버퍼 가시화용 - restricted_zones 및 업로드된 dynamic exclusion 연동)
 @router.get("/spatial/restrictions/points")
-async def get_restriction_points(facility_type: str = "smoking_zone", district_id: int = 1, db: Session = Depends(get_db)):
+async def get_restriction_points(facility_type: Optional[str] = None, district_id: int = 1, db: Session = Depends(get_db)):
     try:
         # [v4.4.0 Pure Dynamic DB-driven RAG Rule Engine]
         # 소스코드 정적 하드코딩 0% — DB(domain_regulation_rules)에 저장된 AI RAG 규제 규칙을 100% 동적 로드

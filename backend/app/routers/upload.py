@@ -1010,7 +1010,7 @@ async def audit_upload_files(request: AuditRequest, db: Session = Depends(get_db
 
         elif any(keyword in combined_lower for keyword in ["금연", "흡연", "smoking", "tobacco"]):
             inferred_purpose = "실외 흡연구역 입지 선정 및 간접흡연 규제 배제 분석"
-            inferred_domain_tag = "smoking_zone"
+            inferred_domain_tag = "unknown_facility"
             hitl_question = "업로드하신 데이터들은 [실외 흡연구역/흡연구역 지정]을 위한 입지 분석이 맞습니까?"
             reasoning_global = "공간 데이터 파일명 및 조례 텍스트에서 금연/흡연(smoking) 관련 키워드가 감지되어 실외 흡연구역 선정을 위한 입지분석 목적으로 시맨틱 추론했습니다."
             inferred_domain_tag = get_or_create_merged_tag(inferred_domain_tag, reasoning_global, db)
@@ -1453,7 +1453,7 @@ async def commit_hitl_data(request: HITLCommitRequest, db: Session = Depends(get
                                 item_domain = props.get("domain")
                                 
                                 # 제외(is_exclusion) 속성이거나 타겟 도메인 규격에 해당하는 레코드일 때 restricted_zones 에 1:1 실시간 인서트
-                                if props.get("is_exclusion") is True or request.confirmed_domain in ["school", "childcare_center", "nosmoking_zone"] or item_domain in ["school", "childcare_center", "nosmoking_zone"]:
+                                if props.get("is_exclusion") is True or request.confirmed_domain is not None or item_domain is not None:
                                     # domain_type 확정
                                     dtype = item_domain if item_domain else request.confirmed_domain
                                     db.execute(text("""
@@ -2708,7 +2708,7 @@ async def seed_spatial_step3(
                 addr_idx = headers.index(addr_col) if addr_col else -1
                 name_idx = headers.index(name_col) if name_col else -1
                 
-                zone_type = "smoking_zone" if "흡연" in filename or "smoking" in filename.lower() else "nosmoking_zone"
+                zone_type = request.confirmed_domain if request.confirmed_domain else "nosmoking_zone"
                 
                 for r in rows:
                     if len(r) <= max(lat_idx, lng_idx):

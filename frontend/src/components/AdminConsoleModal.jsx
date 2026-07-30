@@ -19,6 +19,63 @@ export default function AdminConsoleModal({
   const [ragUploadSuccess, setRagUploadSuccess] = useState(false);
   const [adminUsers, setAdminUsers] = useState([]);
   const [masterKeyTabInput, setMasterKeyTabInput] = useState('');
+  const [domainTagsList, setDomainTagsList] = useState([]);
+
+  const fetchDomainTags = async () => {
+    try {
+      const res = await apiFetch('/api/v1/upload/domain-tags');
+      if (res.ok) {
+        const data = await res.json();
+        if (data.status === 'success' && data.tags) {
+          setDomainTagsList(data.tags);
+        }
+      }
+    } catch (err) {
+      console.error('도메인 태그 목록 로드 실패:', err);
+    }
+  };
+
+  const handleTagDelete = async (tagName) => {
+    if (!confirm(`[ADMIN CONFIRM] 시맨틱 도메인 태그 '${tagName}' 및 관련 공간 규제 DB를 삭제하시겠습니까?`)) {
+      return;
+    }
+    try {
+      const res = await apiFetch(`/api/v1/upload/domain-tags/${tagName}`, {
+        method: 'DELETE'
+      });
+      if (res.ok) {
+        showToast(`🏷️ 시맨틱 태그 '${tagName}' 삭제가 완료되었습니다.`, 'success');
+        fetchDomainTags();
+      } else {
+        const err = await res.json();
+        showToast(err.detail || '태그 삭제 실패', 'error');
+      }
+    } catch (err) {
+      showToast('태그 삭제 중 오류가 발생했습니다.', 'error');
+    }
+  };
+
+  const handleModelDelete = async (domain) => {
+    if (!confirm(`[ADMIN CONFIRM] 레지스트리에 저장된 '${domain}' 도메인 ML 모델 및 학습 데이터셋을 삭제하시겠습니까?`)) {
+      return;
+    }
+    try {
+      const res = await apiFetch(`/api/v1/model/registry/${domain}`, {
+        method: 'DELETE'
+      });
+      if (res.ok) {
+        showToast(`🤖 ML 모델 '${domain}' 삭제가 완료되었습니다.`, 'success');
+        fetchModelRegistry();
+        setSelectedDomainTag('');
+      } else {
+        const err = await res.json();
+        showToast(err.detail || '모델 삭제 실패', 'error');
+      }
+    } catch (err) {
+      showToast('모델 삭제 중 오류가 발생했습니다.', 'error');
+    }
+  };
+
   // 실무자 계정 등록 폼 상태
   const [regUsername, setRegUsername] = useState('');
   const [regPassword, setRegPassword] = useState('');
@@ -76,6 +133,9 @@ export default function AdminConsoleModal({
 
   // 계정 관리 탭 클릭 시 사용자 목록 로드
   useEffect(() => {
+        if (show && adminTab === 'tags') {
+      fetchDomainTags();
+    }
     if (show && adminTab === 'users') {
       fetchAdminUsers();
     }
@@ -630,6 +690,12 @@ export default function AdminConsoleModal({
             📊 데이터 벌크
           </button>
           <button 
+            onClick={() => setAdminTab('tags')}
+            className={`flex-1 pb-2 text-[11px] font-bold text-center border-b-2 transition-all cursor-pointer ${adminTab === 'tags' ? 'border-amber-500 text-amber-400' : 'border-transparent text-slate-400 hover:text-slate-200'}`}
+          >
+            🏷️ 시맨틱 태그 관리
+          </button>
+          <button
             onClick={() => setAdminTab('users')}
             className={`flex-1 pb-2 text-[11px] font-bold text-center border-b-2 transition-all cursor-pointer ${adminTab === 'users' ? 'border-amber-500 text-amber-400' : 'border-transparent text-slate-400 hover:text-slate-200'}`}
           >
@@ -720,6 +786,51 @@ export default function AdminConsoleModal({
               />
             </div>
 
+          </div>
+        )}
+
+        {adminTab === 'tags' && (
+          <div className="border border-slate-800 rounded-lg p-4 bg-slate-900/40 flex flex-col gap-4">
+            <div className="flex justify-between items-center border-b border-slate-800 pb-2.5">
+              <div>
+                <h4 className="text-xs font-bold text-white mb-0.5">🏷️ 등록된 시맨틱 도메인 태그 관리</h4>
+                <p className="text-[10px] text-slate-400">
+                  DB(`registered_domain_tags`)에 등록된 시맨틱 태그 및 공간 규제 룰셋을 관리 및 삭제합니다.
+                </p>
+              </div>
+              <button 
+                onClick={fetchDomainTags}
+                className="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-[10px] font-bold px-2.5 py-1 rounded transition-all cursor-pointer flex items-center gap-1"
+              >
+                🔄 목록 새로고침
+              </button>
+            </div>
+
+            <div className="flex flex-col gap-2">
+              {domainTagsList.length > 0 ? (
+                domainTagsList.map((tag) => (
+                  <div key={tag.tag_name} className="flex justify-between items-center bg-slate-950/60 p-3 rounded-lg border border-slate-800/80">
+                    <div className="flex flex-col gap-0.5">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-amber-400">{tag.tag_description || tag.tag_name}</span>
+                        <span className="text-[10px] font-mono text-slate-400">({tag.tag_name})</span>
+                      </div>
+                      <span className="text-[9px] text-slate-500">등록 완료된 시맨틱 규제 파라미터 보존 중</span>
+                    </div>
+                    <button
+                      onClick={() => handleTagDelete(tag.tag_name)}
+                      className="bg-red-900/30 hover:bg-red-800/50 text-red-400 border border-red-700/50 text-[10px] font-bold px-3 py-1 rounded transition-all cursor-pointer"
+                    >
+                      🗑️ 태그 삭제
+                    </button>
+                  </div>
+                ))
+              ) : (
+                <div className="text-[10px] text-slate-500 italic p-4 text-center bg-slate-950 rounded-lg">
+                  등록된 시맨틱 도메인 태그가 없습니다.
+                </div>
+              )}
+            </div>
           </div>
         )}
 
@@ -840,12 +951,22 @@ export default function AdminConsoleModal({
                   서버 레지스트리(`backend/app/models/registry/`)에 실존하는 도메인별 XGBoost 모델의 성능 통계 및 피처 기여도를 감사 점검합니다.
                 </p>
               </div>
-              <button 
-                onClick={fetchModelRegistry}
-                className="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-[10px] font-bold px-2.5 py-1 rounded transition-all cursor-pointer flex items-center gap-1"
-              >
-                🔄 목록 새로고침
-              </button>
+              <div className="flex items-center gap-2">
+                {selectedDomainTag && (
+                  <button
+                    onClick={() => handleModelDelete(selectedDomainTag || (registryModels[0] && registryModels[0].domain))}
+                    className="bg-red-900/40 hover:bg-red-800 text-red-300 border border-red-700/50 text-[10px] font-bold px-2.5 py-1 rounded transition-all cursor-pointer flex items-center gap-1"
+                  >
+                    🗑️ 모델 삭제
+                  </button>
+                )}
+                <button
+                  onClick={fetchModelRegistry}
+                  className="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-[10px] font-bold px-2.5 py-1 rounded transition-all cursor-pointer flex items-center gap-1"
+                >
+                  🔄 목록 새로고침
+                </button>
+              </div>
             </div>
 
             {/* 도메인 선택 칩 목록 */}

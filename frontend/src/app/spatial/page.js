@@ -259,7 +259,7 @@ export default function Home() {
 
   // 신규 AI 감리 & HITL 목적/도메인 바인딩 상태
   const [inferredPurpose, setInferredPurpose] = useState('');
-  const [inferredDomainTag, setInferredDomainTag] = useState('city_feature');
+  const [inferredDomainTag, setInferredDomainTag] = useState('smart_city_siting');
   const [hitlQuestion, setHitlQuestion] = useState('');
   const [inferredReasoning, setInferredReasoning] = useState('');
   const [showRagModal, setShowRagModal] = useState(false);
@@ -580,7 +580,7 @@ export default function Home() {
         setIsAuditComplete(false);
         setAuditMetadata(null);
         setInferredPurpose('');
-        setInferredDomainTag('city_feature');
+        setInferredDomainTag('smart_city_siting');
         setHitlQuestion('');
         setInferredReasoning('');
         setUserPurpose('');
@@ -649,8 +649,8 @@ export default function Home() {
       }
       const lockData = await lockRes.json();
       
-      const targetLat = isNaN(hitlLat) ? 37.5302 : hitlLat;
-      const targetLng = isNaN(hitlLng) ? 126.9724 : hitlLng;
+      const targetLat = (hitlLat !== null && hitlLat !== undefined && !isNaN(hitlLat)) ? hitlLat : 37.5302;
+      const targetLng = (hitlLng !== null && hitlLng !== undefined && !isNaN(hitlLng)) ? hitlLng : 126.9724;
       
       // 추천 입지 연산 기동 (HITL 마커 좌표 기준 인근 탐색, 동적 자치구 ID 및 가변 limit 6개 매핑)
       const recommendRes = await apiFetch(`/api/v1/spatial/recommend?model_id=${lockData.model_id}&ref_lat=${targetLat}&ref_lng=${targetLng}&district_id=${finalDistrictId}&limit=6`);

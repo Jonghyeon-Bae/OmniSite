@@ -1420,8 +1420,24 @@ async def commit_hitl_data(request: HITLCommitRequest, db: Session = Depends(get
                 
         # [v4.4.3] AI RAG/HITL로부터 도출된 이격거리 규격이 존재하는 경우 DB domain_regulation_rules 에 upsert
         spatial_rules = request.spatial_restrictions
+        if not spatial_rules or not isinstance(spatial_rules, dict):
+            spatial_rules = {"school": 200.0, "childcare_center": 50.0, "nosmoking_zone": 10.0}
 
-        if request.confirmed_domain and spatial_rules is not None:
+        if request.confirmed_domain:
+            try:
+                # 1. Register domain tag
+                db.execute(text("""
+                    INSERT INTO registered_domain_tags (tag_name, tag_description)
+                    VALUES (:tag_name, :tag_description)
+                    ON CONFLICT (tag_name) DO NOTHING
+                """), {
+                    "tag_name": request.confirmed_domain,
+                    "tag_description": getattr(request, 'inferred_purpose', None) or request.confirmed_domain
+                })
+                db.commit()
+            except Exception as tag_err:
+                print(f"[Tag Register Error] {tag_err}")
+
             try:
                 upsert_query = text("""
                     INSERT INTO domain_regulation_rules (facility_type, rules_json, rules_metadata, updated_at)
@@ -1546,12 +1562,7 @@ async def clear_uploaded_caches(db: Session = Depends(get_db), current_user: dic
         _file_cache.clear()
 
         # v4.4.1 사용자 정의 금지구역 테이블 및 v4.4.3 규제 라이브러리 초기화 연동 (Mock 데이터 소거)
-        try:
-            db.execute(text("TRUNCATE TABLE domain_regulation_rules RESTART IDENTITY CASCADE"))
-            db.commit()
-        except Exception as db_ex:
-            db.rollback()
-            print(f"[DB Clear Error] domain_regulation_rules: {db_ex}")
+        # [Fix] TRUNCATE domain_regulation_rules disabled on pipeline reset
         
         # [Audit Log Save]
         try:
@@ -2980,11 +2991,26 @@ def get_registered_domain_tags(db: Session = Depends(get_db)):
     """[v4.3.1] DB(registered_domain_tags)에 등록된 전체 시맨틱 도메인 태그 목록 조회 API"""
     try:
         rows = db.execute(text("SELECT tag_name, tag_description FROM registered_domain_tags ORDER BY id ASC")).fetchall()
+        TAG_DESC_MAP = {
+            "smart_city_siting": "스마트시티 입지선정",
+            "smoking_booth": "실외 흡연구역 입지",
+            "smoking_area": "실외 흡연구역 입지",
+            "smoking_booth_siting": "실외 흡연구역 입지",
+            "smoke_booth_location": "실외 흡연구역 입지",
+            "smoke_zone_placement": "실외 흡연구역 입지",
+            "smart_shelter": "지능형 스마트쉼터",
+            "ev_charging": "전기차 충전소 입지",
+            "yellow_carpet": "어린이보호구역 옐로카펫",
+            "city_feature": "일반 스마트시티 시설물"
+        }
         tags = []
         for r in rows:
+            desc = r[1]
+            if not desc or desc == r[0]:
+                desc = TAG_DESC_MAP.get(r[0], r[0])
             tags.append({
                 "tag_name": r[0],
-                "tag_description": r[1] or r[0]
+                "tag_description": desc
             })
         if not tags:
             tags = [
@@ -3003,3 +3029,16 @@ def get_registered_domain_tags(db: Session = Depends(get_db)):
             {"tag_name": "yellow_carpet", "tag_description": "어린이 보호구역 옐로카펫"},
             {"tag_name": "city_feature", "tag_description": "일반 스마트시티 시설물"}
         ], "detail": str(e)}
+
+
+@router.delete("/upload/domain-tags/{tag_name}")
+def delete_domain_tag(tag_name: str, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
+    """[v5.5.0] DB(registered_domain_tags & domain_regulation_rules) 시맨틱 도메인 태그 삭제 API"""
+    try:
+        db.execute(text("DELETE FROM registered_domain_tags WHERE tag_name = :tag_name"), {"tag_name": tag_name})
+        db.execute(text("DELETE FROM domain_regulation_rules WHERE facility_type = :tag_name"), {"tag_name": tag_name})
+        db.commit()
+        return {"status": "success", "message": f"시맨틱 태그 '{tag_name}' 및 관련 공간 규제가 삭제되었습니다."}
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"태그 삭제 실패: {str(e)}")

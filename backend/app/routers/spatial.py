@@ -592,24 +592,7 @@ async def recommend_optimal_sites(
         school_ev_m = 100.0
         
         # 기본 하드코딩 폴백(DB가 비어있을 경우 대비)
-        dynamic_exclusion_sql = """(rz.zone_type = 'school' AND (
-                            ST_Intersects(c.geom, rz.geom) OR 
-                            ST_Intersects(ST_Centroid(c.geom), rz.geom) OR
-                            ST_DWithin(ST_SetSRID(c.geom, 4326)::geography, ST_SetSRID(rz.geom, 4326)::geography, 200.0) OR 
-                            ST_DWithin(ST_SetSRID(ST_Centroid(c.geom), 4326)::geography, ST_SetSRID(rz.geom, 4326)::geography, 200.0)
-                        )) OR
-                        (rz.zone_type = 'childcare_center' AND (
-                            ST_Intersects(c.geom, rz.geom) OR 
-                            ST_Intersects(ST_Centroid(c.geom), rz.geom) OR
-                            ST_DWithin(ST_SetSRID(c.geom, 4326)::geography, ST_SetSRID(rz.geom, 4326)::geography, 50.0) OR 
-                            ST_DWithin(ST_SetSRID(ST_Centroid(c.geom), 4326)::geography, ST_SetSRID(rz.geom, 4326)::geography, 50.0)
-                        )) OR
-                        (:facility_type = 'smoking_zone' AND rz.zone_type = 'nosmoking_zone' AND (
-                            ST_Intersects(c.geom, rz.geom) OR 
-                            ST_Intersects(ST_Centroid(c.geom), rz.geom) OR
-                            ST_DWithin(ST_SetSRID(c.geom, 4326)::geography, ST_SetSRID(rz.geom, 4326)::geography, 10.0) OR 
-                            ST_DWithin(ST_SetSRID(ST_Centroid(c.geom), 4326)::geography, ST_SetSRID(rz.geom, 4326)::geography, 10.0)
-                        ))"""
+        dynamic_exclusion_sql = ""
         
         try:
             rules_query = text("SELECT rules_json, rules_metadata FROM domain_regulation_rules WHERE facility_type = :facility_type")
@@ -1497,8 +1480,10 @@ async def check_boundary_containment(req: BoundaryCheckRequest, db: Session = De
         raise HTTPException(status_code=500, detail=f"경계 검증 처리 오류: {str(e)}")
 
 # [v4.4.3] AI RAG 해독 규제거리 규칙 조회 헬퍼 (데이터베이스 영구 적재 및 규칙 라이브러리 연동)
-def get_domain_regulation_rules(db: Session, facility_type: str) -> dict:
+def get_domain_regulation_rules(db: Session, facility_type: Optional[str] = None) -> dict:
     try:
+        facility_type = facility_type or "smart_city_siting"
+        # 1. Exact match
         query = text("""
             SELECT rules_json 
             FROM domain_regulation_rules 
@@ -1507,14 +1492,23 @@ def get_domain_regulation_rules(db: Session, facility_type: str) -> dict:
         row = db.execute(query, {"facility_type": facility_type}).fetchone()
         if row and row[0]:
             return dict(row[0])
+
+        # 2. Fuzzy match
+        prefix = facility_type.split('_')[0] if '_' in facility_type else facility_type
+        fuzzy_query = text("""
+            SELECT rules_json 
+            FROM domain_regulation_rules 
+            WHERE facility_type LIKE :like_type OR :facility_type LIKE '%' || facility_type || '%'
+            ORDER BY id ASC LIMIT 1
+        """)
+        row_fuzzy = db.execute(fuzzy_query, {"like_type": f"%{prefix}%", "facility_type": facility_type}).fetchone()
+        if row_fuzzy and row_fuzzy[0]:
+            return dict(row_fuzzy[0])
     except Exception as ex:
         print(f"[get_domain_regulation_rules Error] {ex}")
-    
-    # DB에 적재된 규칙이 없을 시 빈 딕셔너리를 반환하여 AI RAG에 전적으로 의존하게 함
-    return {}
+    # 3. Default RAG rules fallback
+    return {"school": 200.0, "childcare_center": 50.0, "nosmoking_zone": 10.0}
 
-
-# 3. 규제 시설물 좌표 조회 API (Step 2 규제 버퍼 가시화용 - restricted_zones 및 업로드된 dynamic exclusion 연동)
 @router.get("/spatial/restrictions/points")
 async def get_restriction_points(facility_type: Optional[str] = None, district_id: int = 1, db: Session = Depends(get_db)):
     try:
@@ -1526,26 +1520,31 @@ async def get_restriction_points(facility_type: Optional[str] = None, district_i
         points = []
         
         # 1. 기본 법정 규제 데이터 조회
+        allowed_types = list(rules.keys()) if rules else []
         if allowed_types:
             types_str = ", ".join(f"'{t}'" for t in allowed_types)
             zone_query = text(f"""
-                SELECT id, zone_name, ST_X(geom), ST_Y(geom), COALESCE(area, 10.0), zone_type 
+                SELECT id, zone_name, ST_X(ST_Centroid(geom)), ST_Y(ST_Centroid(geom)), COALESCE(area, 10.0), zone_type 
                 FROM restricted_zones 
-                WHERE district_id = :district_id AND zone_type IN ({types_str})
+                WHERE district_id = :district_id AND zone_type IN ({types_str}) AND ST_IsValid(geom)
             """)
-            zone_rows = db.execute(zone_query, {"district_id": district_id}).fetchall()
+        else:
+            zone_query = text("""
+                SELECT id, zone_name, ST_X(ST_Centroid(geom)), ST_Y(ST_Centroid(geom)), COALESCE(area, 10.0), zone_type 
+                FROM restricted_zones 
+                WHERE district_id = :district_id AND ST_IsValid(geom)
+            """)
             
-            # DB/캐시에서 도메인에 해당 규칙 불러오기
-            rules = get_domain_regulation_rules(db, facility_type)
-            
-            for r in zone_rows:
-                z_type = r[5]
-                # 캐시된 법정 반경값 획득, 없을 시 DB area 컬럼값 또는 디폴트 10m 매핑
-                real_radius = rules.get(z_type, float(r[4]) if r[4] else 10.0)
+        zone_rows = db.execute(zone_query, {"district_id": district_id}).fetchall()
 
+        for r in zone_rows:
+            z_type = r[5]
+            real_radius = float(rules.get(z_type, r[4] if r[4] else 10.0))
+
+            if real_radius > 0:
                 points.append({
                     "id": int(r[0]),
-                    "name": r[1] if r[1] else "기본 규제구역",
+                    "name": r[1] if r[1] else f"{z_type} 규제구역",
                     "lng": float(r[2]),
                     "lat": float(r[3]),
                     "type": z_type if z_type else "restricted_zone",

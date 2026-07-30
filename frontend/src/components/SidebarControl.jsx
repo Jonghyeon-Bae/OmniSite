@@ -148,11 +148,7 @@ export default function SidebarControl({
                     ))
                   ) : (
                     <>
-                      <option value="smart_shelter">지능형 스마트 쉼터 (smart_shelter)</option>
-                      <option value="smoking_zone">실외 흡연구역 입지 (smoking_zone)</option>
-                      <option value="ev_charging">전기차 충전소 입지 (ev_charging)</option>
-                      <option value="yellow_carpet">어린이 보호구역 옐로카펫 (yellow_carpet)</option>
-                      <option value="city_feature">일반 스마트시티 시설물 (city_feature)</option>
+                      <option value="smart_city_siting">스마트시티 입지선정 (smart_city_siting)</option>
                     </>
                   )}
                   {inferredDomainTag && !registeredTags.some(t => t.tag_name === inferredDomainTag) && (

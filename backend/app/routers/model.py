@@ -122,11 +122,7 @@ def background_model_train(domain="city_feature"):
                 {select_sql},
                 COALESCE(cc.complaint_count, 0) AS complaint_count,
                 COALESCE(b.main_use_name, '미지정') AS building_use,
-                CASE 
-                    WHEN COALESCE(cc.complaint_count, 0) >= 120 THEN 1
-                    WHEN COALESCE(cc.complaint_count, 0) <= 95 THEN 0
-                    ELSE -1
-                END AS target_label
+                0 AS target_label
             FROM cadastral_lands c
             {join_sql}
             LEFT JOIN civil_complaints cc ON c.dong_id = cc.dong_id
@@ -144,7 +140,27 @@ def background_model_train(domain="city_feature"):
         
         headers = list(result.keys())
         rows = [dict(zip(headers, r)) for r in result]
-        
+
+        # [v6.0.0 Zero-Bias Pure Dynamic RAG Rule Ground Truth Labeling & F1 Balance]
+        rules_map = get_domain_regulation_rules(db, domain)
+        if not rules_map:
+            rules_map = {"school": 200.0, "childcare_center": 50.0, "nosmoking_zone": 10.0}
+
+        for r in rows:
+            is_violation = False
+            for z_type, buf_dist in rules_map.items():
+                z_clean = z_type.replace('-', '_').replace(' ', '_')
+                d_val = r.get(f"dist_to_{z_clean}", 9999.0)
+                if d_val < buf_dist:
+                    is_violation = True
+                    break
+
+            complaint = r.get("complaint_count", 0)
+            if is_violation or complaint >= 110:
+                r["target_label"] = 1
+            else:
+                r["target_label"] = 0
+
         labeled_rows = [r for r in rows if r["target_label"] != -1]
         
         # [RAG-ML 실증 피드백 결합]: decision_histories에서 실증 성공/실패 처리된 이력을 긁어옴
@@ -393,3 +409,32 @@ async def get_model_status(
 ):
     """현재 XGBoost 모델의 성능 통계 및 훈련 상태 조회 API (일반 실무자 권한 완화 지원)"""
     return training_status
+
+
+@router.delete("/registry/{domain}")
+async def delete_model_from_registry(
+    domain: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """[v5.5.0] 레지스트리에 저장된 ML 모델(.pkl, _meta.json) 및 학습 데이터셋 삭제 API"""
+    try:
+        pkl_path = os.path.join(registry_path, f"{domain}_v1.pkl")
+        meta_path = os.path.join(registry_path, f"{domain}_v1_meta.json")
+        csv_path = os.path.join(base_dir, "data", "processed", f"css_train_dataset_{domain}.csv")
+        
+        deleted_files = []
+        for p in [pkl_path, meta_path, csv_path]:
+            if os.path.exists(p):
+                os.remove(p)
+                deleted_files.append(os.path.basename(p))
+                
+        # reload registry
+        model_registry.load_models()
+        
+        return {
+            "status": "success",
+            "message": f"도메인 '{domain}' ML 모델 및 관련 파일이 삭제되었습니다.",
+            "deleted_files": deleted_files
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"모델 삭제 실패: {str(e)}")

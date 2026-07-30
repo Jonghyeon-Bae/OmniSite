@@ -133,7 +133,7 @@ export default function AdminConsoleModal({
 
   // 계정 관리 탭 클릭 시 사용자 목록 로드
   useEffect(() => {
-        if (show && adminTab === 'tags') {
+    if (show && adminTab === 'tags') {
       fetchDomainTags();
     }
     if (show && adminTab === 'users') {
@@ -141,7 +141,10 @@ export default function AdminConsoleModal({
     }
     if (show && adminTab === 'master_key') {
       fetchCurrentMasterKey();
-          }
+    }
+    if (show && adminTab === 'models') {
+      fetchModelRegistry();
+    }
   }, [show, adminTab]);
 
   // 안전한 ML 상태 조회 헬퍼 (fetchMlStatus prop 유무에 관계없이 100% 안전 구동)

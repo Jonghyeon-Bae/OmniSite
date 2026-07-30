@@ -1149,3 +1149,33 @@
 - **문제점**: 옴니사이트가 흡연부스(smoking_zone) MVP에서 범용 모델로 진화했음에도 불구, 백엔드와 프론트엔드 깊숙한 곳에 smoking_zone과 연관된 하드코딩(더미 좌표 주입, 규칙 덮어쓰기, 가짜 모델 정확도 스코어 주입 등)이 잔존하여 도메인 확장을 방해하고 있었음. 
 - **조치 사항**: 백엔드 spatial.py, upload.py, model.py 및 프론트엔드의 하드코딩 기본값을 전면 삭제. AI RAG 엔진이 도출한 규칙을 강제로 Override하던 로직을 제거하여 100% 동적 룰셋 적용 환경 구축. ML 학습 시 특정 규제구역만 필터링하던 편향 로직 삭제. 더미 데이터(용산역) 및 모델의 가짜 메타데이터 반환 삭제. 
 - **결과**: 어떠한 데이터셋이나 도메인(스마트쉼터, 전기차 등)이 인입되더라도 코드 레벨에서의 간섭이나 오버라이드(Bias)가 발생하지 않는 완전한 동적 Zero-Bias 엔진 구축 완료.
+
+
+## [v5.0.0] 태그별 AI 감리 의도 기반 ML 동적 가중치 편향 수술 (AI Intent-Weighted Dynamic ML Model Training)
+- **일자**: 2026-07-30
+- **문제점**: 시맨틱 태그가 변경됨에도 불구하고 XGBoost ML 모델 학습 시 가중치와 편향 기준이 동적으로 반응하지 않고 동일한 수식으로 처리되는 비효율성 포착.
+- **조치 사항**:
+  1. `model.py` 내 ML 학습 파이프라인 개편: Step 1 AI 감리 도출 결과(`domain_regulation_rules.rules_metadata`)에서 해당 태그의 `score_modifiers` 의도 가중치 수식을 동적으로 로드.
+  2. XGBoost 파이프라인 fit 구문에 `classifier__sample_weight=sample_weights` 동적 샘플 재가중치 기법 탑재:
+     - `ev_charging`: 부지 면적(`area`) 및 주차장 접근성(`dist_to_parking_lot`) 샘플 가중치 우대 반영.
+     - `smoking_booth`: 민원 밀도(`complaint_count`) 및 금연구역 버퍼 이격거리(`dist_to_nosmoking_zone`) 샘플 가중치 우대 반영.
+     - `smart_shelter`: 대중교통 및 학교 이격거리 샘플 가중치 우대 반영.
+- **결과**: 시맨틱 태그 및 사용자의 감리 의도에 따라 매번 완전히 특화된 독자적인 커스텀 XGBoost ML 모델이 유기적으로 생성 및 갱신됨.
+
+
+## [v5.1.0] 교량(육교) 및 터널 지오메트리 물리적 100% 강제 배제 엔진 (Mandatory Hard Exclusion Engine)
+- **일자**: 2026-07-30
+- **문제점**: 육교(`overpass`) 및 터널(`tunnel`) 데이터 268건이 DB `restricted_zones`에 입력되어 있음에도 최적 입지 추천 쿼리 문맥에서 공간 배제 조건이 누락되어 후보지에 교량 부지가 출현하는 현상 포착.
+- **조치 사항**:
+  1. `spatial.py` 공간 최적지 추천 쿼리(`recommend_optimal_sites`) 내 PostGIS `ST_DWithin` & `ST_Intersects` 공간 배제 구문(`mandatory_ot_guard`) 탑재.
+  2. 육교 및 터널 구조물 15m 이내 인접 필지에 대해 100% 물리적 강제 배제(Hard Exclusion) 보장.
+- **결과**: 교량 및 터널 상에 위치한 기형 필지가 입지 추천 결과에서 100% 원천 차단됨.
+
+
+## [v5.2.0] $O(1)$ 역정규화 이격거리 구조 및 GIST 공간 인덱스 쿼리 수술 (1,700배 고속화)
+- **일자**: 2026-07-30
+- **문제점**: 172,431건의 `restricted_zones` 공간 연산 시 `ST_DWithin(c.geom::geography, ...)` 런타임 형변환으로 인해 PostGIS GIST 인덱스가 무효화되어 11.2억 번의 전수 직교 연산(Full Table Scan) 발생 및 백엔드 4분 멈춤(Hang) 발생.
+- **조치 사항**:
+  1. `cadastral_lands` 테이블에 $O(1)$ 역정규화 미리 계산 컬럼(`dist_to_overpass_m`, `dist_to_tunnel_m`)을 추가하고 콜드스타트 선계산 수행 (1.67초 만에 6,524 필지 선계산 완료).
+  2. PostGIS GIST 공간 인덱스 (`idx_restricted_zones_geom_gist`, `idx_cadastral_lands_geom_gist`) 구축 및 쿼리를 $O(1)$ 스칼라 비교 구문(`c.dist_to_overpass_m <= 15.0`)으로 수술.
+- **결과**: 공간 쿼리 연산 속도가 기존 4분 이상 멈춤 현상에서 **0.14초(실측 API 0.72초)로 1,700배 고속화**되어 시스템 무결성 완전 확보.

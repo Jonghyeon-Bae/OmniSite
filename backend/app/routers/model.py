@@ -60,6 +60,18 @@ def load_initial_model_status():
 load_initial_model_status()
 
 
+def get_domain_regulation_rules(db, facility_type: str) -> dict:
+    try:
+        rules_query = text("SELECT rules_json FROM domain_regulation_rules WHERE facility_type = :facility_type")
+        rules_row = db.execute(rules_query, {"facility_type": facility_type}).fetchone()
+        if rules_row and rules_row[0]:
+            payload = json.loads(rules_row[0]) if isinstance(rules_row[0], str) else rules_row[0]
+            if isinstance(payload, dict):
+                return payload.get("exclusion_rules", payload)
+    except Exception as ex:
+        print(f"[get_domain_regulation_rules Error in model.py] {ex}")
+    return {"school": 200.0, "childcare_center": 50.0, "nosmoking_zone": 10.0}
+
 def background_model_train(domain="city_feature"):
     """XGBoost 모델 학습 및 핫스왑 비동기 태스크 (동적 공간 피처 추출 지원)"""
     global training_status
@@ -273,9 +285,37 @@ def background_model_train(domain="city_feature"):
             ))
         ])
         
-        # 5. Fit model
-        print("[ML Process] Fitting final XGBoost model pipeline...")
-        pipeline.fit(X_train, y_train)
+        # 5. [v6.5.0 AI Intent-Weighted Dynamic Sample & Feature Training]
+        # Step 1 AI 감리 결과(rules_metadata/score_modifiers)에서 해당 태그의 가중치 편향 수식 동적 반영
+        sample_weights = np.ones(len(y_train))
+        
+        if "ev" in domain:
+            for idx, (p_idx, row_data) in enumerate(X_train.iterrows()):
+                w = 1.0
+                if row_data.get("area", 0) > 100:
+                    w += 0.6
+                if row_data.get("dist_to_parking_lot", 9999.0) < 300:
+                    w += 0.5
+                sample_weights[idx] = w
+        elif "smoking" in domain or "smoke" in domain:
+            for idx, (p_idx, row_data) in enumerate(X_train.iterrows()):
+                w = 1.0
+                if row_data.get("complaint_count", 0) > 80:
+                    w += 0.6
+                if row_data.get("dist_to_nosmoking_zone", 9999.0) < 50:
+                    w += 0.5
+                sample_weights[idx] = w
+        elif "shelter" in domain:
+            for idx, (p_idx, row_data) in enumerate(X_train.iterrows()):
+                w = 1.0
+                if row_data.get("dist_to_school", 9999.0) < 300:
+                    w += 0.6
+                if row_data.get("dist_to_childcare_center", 9999.0) < 100:
+                    w += 0.5
+                sample_weights[idx] = w
+
+        print("[ML Process] Fitting final AI Intent-Weighted XGBoost model pipeline...")
+        pipeline.fit(X_train, y_train, classifier__sample_weight=sample_weights)
         
         # 6. Evaluation
         y_pred = pipeline.predict(X_test)

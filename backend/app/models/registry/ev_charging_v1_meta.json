@@ -1,0 +1,20 @@
+{
+  "domain": "ev_charging",
+  "model_filename": "ev_charging_v1.pkl",
+  "last_trained_at": "2026-07-30 18:14:27",
+  "accuracy": 0.818,
+  "f1_score": 0.8115,
+  "sample_count": 7389,
+  "feature_importances": {
+    "area": 0.033737216144800186,
+    "dist_to_childcare_center": 0.1375238001346588,
+    "dist_to_nosmoking_zone": 0.13746020197868347,
+    "dist_to_overpass": 0.14228621125221252,
+    "dist_to_school": 0.20018845796585083,
+    "dist_to_tunnel": 0.22043393552303314,
+    "land_use_code_도": 0.1283702254295349,
+    "land_use_code_잡": 0.0,
+    "ownership_type_국유지": 0.0,
+    "building_use_미지정": 0.0
+  }
+}

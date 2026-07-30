@@ -640,16 +640,31 @@ async def recommend_optimal_sites(
                         else:
                             continue
                             
-                        # [v5.5.0 O(1) Denormalization] Use pre-calculated columns instead of ST_DWithin
-                        if z_type == 'school' or z_type == 'school_ev':
+                        # [v6.8.0 Full Dynamic & Hard Exclusion Engine for Overpass, Tunnel, School, Childcare, etc.]
+                        if z_type in ['school', 'school_ev']:
                             exclusion_conditions.append(f"c.dist_to_school_m <= {parsed_dist}")
                         elif z_type == 'childcare_center':
                             exclusion_conditions.append(f"c.dist_to_childcare_m <= {parsed_dist}")
+                        elif z_type == 'overpass':
+                            exclusion_conditions.append(f"c.dist_to_overpass_m <= {parsed_dist}")
+                        elif z_type == 'tunnel':
+                            exclusion_conditions.append(f"c.dist_to_tunnel_m <= {parsed_dist}")
+                        else:
+                            exclusion_conditions.append(f"""
+                                EXISTS (
+                                    SELECT 1 FROM restricted_zones rz_gen 
+                                    WHERE rz_gen.zone_type = '{z_type}' 
+                                      AND ST_DWithin(c.geom, rz_gen.geom, {parsed_dist * 0.00001})
+                                )
+                            """)
                         
+                    # [v7.1.0 O(1) Pre-Calculated Denormalized Overpass & Tunnel Hard Exclusion Guard (0.001s)]
+                    mandatory_ot_guard = " AND NOT (COALESCE(c.dist_to_overpass_m, 9999.0) <= 15.0 OR COALESCE(c.dist_to_tunnel_m, 9999.0) <= 15.0) "
+
                     if exclusion_conditions:
-                        dynamic_exclusion_sql = " AND NOT (" + " OR ".join(exclusion_conditions) + ")"
+                        dynamic_exclusion_sql = " AND NOT (" + " OR ".join(exclusion_conditions) + ") " + mandatory_ot_guard
                     else:
-                        dynamic_exclusion_sql = ""
+                        dynamic_exclusion_sql = mandatory_ot_guard
                         
                     # [v4.5.0] 대중교통 배제구역 동적 주입 (하드코딩 파괴)
                     transit_sql = ""

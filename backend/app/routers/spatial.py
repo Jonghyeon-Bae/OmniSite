@@ -2256,13 +2256,21 @@ async def download_report_pdf(req: ReportDownloadRequest, db: Session = Depends(
         dist_name_row = db.execute(dist_name_query, {"dist_id": dist_id}).fetchone()
         district_name = dist_name_row[0] if dist_name_row else "용산구"
 
-        # 1. 맑은 고딕 한글 폰트 등록
-        font_path = "C:\\Windows\\Fonts\\malgun.ttf"
-        font_name = "MalgunGothic"
-        if os.path.exists(font_path):
-            pdfmetrics.registerFont(TTFont(font_name, font_path))
-        else:
-            font_name = "Helvetica" # 한글 미지원 fallback
+        # 1. 크로스플랫폼 (Windows / Linux Docker) 한글/영문 폰트 등록
+        font_candidates = [
+            "C:\\Windows\\Fonts\\malgun.ttf",
+            "/usr/share/fonts/truetype/nanum/NanumGothic.ttf",
+            "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
+        ]
+        font_path = None
+        font_name = "Helvetica"
+        for fpath in font_candidates:
+            if os.path.exists(fpath):
+                font_path = fpath
+                font_name = "CustomFont"
+                pdfmetrics.registerFont(TTFont(font_name, font_path))
+                break
             
         # 2. 문서 템플릿 준비 (마진 조정)
         buffer = BytesIO()

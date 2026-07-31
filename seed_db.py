@@ -12,7 +12,7 @@ from collections import defaultdict
 from sqlalchemy import create_engine, text
 from shapely.geometry import Polygon, MultiPolygon, shape
 
-DATABASE_URL = "postgresql+psycopg://Admin:admin1234@localhost:5432/postgres"
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql+psycopg://Admin:admin1234@localhost:5432/postgres")
 engine = create_engine(DATABASE_URL)
 
 def resolve_path(key, default_fallback):

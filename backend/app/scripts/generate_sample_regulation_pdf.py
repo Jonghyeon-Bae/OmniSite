@@ -6,10 +6,16 @@ from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 
 def get_font_name():
-    font_path = "C:\\Windows\\Fonts\\malgun.ttf"
-    if os.path.exists(font_path):
-        pdfmetrics.registerFont(TTFont("Malgun", font_path))
-        return "Malgun"
+    font_candidates = [
+        "C:\\Windows\\Fonts\\malgun.ttf",
+        "/usr/share/fonts/truetype/nanum/NanumGothic.ttf",
+        "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
+    ]
+    for fpath in font_candidates:
+        if os.path.exists(fpath):
+            pdfmetrics.registerFont(TTFont("CustomFont", fpath))
+            return "CustomFont"
     return "Helvetica"
 
 def build_pdf(filename, title_text, lines):

@@ -1,3 +1,4 @@
+import urllib.parse
 import os
 import csv
 import re
@@ -665,7 +666,6 @@ async def list_regulation_versions(db: Session = Depends(get_db)):
 @router.delete("/upload/regulations/{filename}")
 async def delete_regulation(filename: str, db: Session = Depends(get_db)):
     try:
-        import urllib.parse
         decoded_name = urllib.parse.unquote(filename).strip()
         clean_title = os.path.splitext(decoded_name)[0].strip()
         deleted_file = False

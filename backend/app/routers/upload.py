@@ -664,7 +664,7 @@ async def list_regulation_versions(db: Session = Depends(get_db)):
 # 등록된 조례/시행규칙 규정 삭제 API (양방향 포함관계 SQL 삭제 엔진)
 # 등록된 조례/시행규칙 규정 삭제 API (업로드 파일 물리 삭제 + DB 렌더링 100% 동기화)
 @router.delete("/upload/regulations/{filename}")
-async def delete_regulation(filename: str, db: Session = Depends(get_db)):
+async def delete_regulation(filename: str, db: Session = Depends(get_db), current_admin: dict = Depends(get_current_admin)):
     try:
         decoded_name = urllib.parse.unquote(filename).strip()
         clean_title = os.path.splitext(decoded_name)[0].strip()
@@ -3032,7 +3032,7 @@ def get_registered_domain_tags(db: Session = Depends(get_db)):
 
 
 @router.delete("/upload/domain-tags/{tag_name}")
-def delete_domain_tag(tag_name: str, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
+def delete_domain_tag(tag_name: str, db: Session = Depends(get_db), current_admin: dict = Depends(get_current_admin)):
     """[v5.5.0] DB(registered_domain_tags & domain_regulation_rules) 시맨틱 도메인 태그 삭제 API"""
     try:
         db.execute(text("DELETE FROM registered_domain_tags WHERE tag_name = :tag_name"), {"tag_name": tag_name})

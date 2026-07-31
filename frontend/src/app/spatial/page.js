@@ -14,6 +14,8 @@ import RagRegulationModal from '../../components/RagRegulationModal';
 import StepGuideModal from '../../components/StepGuideModal';
 import AuditLogModal from '../../components/AuditLogModal';
 import LoginModal from '../../components/LoginModal';
+import BoardModal from '../../components/BoardModal';
+import GlobalFooter from '../../components/GlobalFooter';
 import { OMNISITE_DISPLAY_VERSION } from '../../config/version';
 
 const apiFetch = (url, options = {}) => {
@@ -157,6 +159,7 @@ export default function Home() {
 
   // 🔒 인페이지 팝업 로그인 모달 제어 상태
   const [showLoginModal, setShowLoginModal] = useState(false);
+  const [showBoardModal, setShowBoardModal] = useState(false);
   const [loginUsername, setLoginUsername] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [loginLoading, setLoginLoading] = useState(false);
@@ -1644,7 +1647,7 @@ export default function Home() {
   };
 
   return (
-    <div className="relative min-h-screen overflow-hidden text-slate-100 font-sans">
+    <div className="relative min-h-screen flex flex-col justify-between overflow-x-hidden text-slate-100 font-sans">
       
       {/* 글로벌 분석 로딩 오버레이 [v4.5.4] */}
       <LoadingOverlay isUploading={isUploading} isRecommending={isRecommending} />
@@ -1727,6 +1730,13 @@ export default function Home() {
                 🔑 비밀번호 변경
               </button>
 
+              <button
+                onClick={() => setShowBoardModal(true)}
+                className="text-xs bg-indigo-950/45 hover:bg-indigo-900/60 border border-indigo-500/30 text-indigo-300 px-3.5 py-1.5 rounded-lg font-semibold cursor-pointer transition-all flex items-center gap-1.5"
+              >
+                📋 행정 게시판
+              </button>
+
               <button 
                 onClick={handleLogout}
                 className="text-xs bg-rose-950/45 hover:bg-rose-900/60 border border-rose-500/30 text-rose-300 px-3.5 py-1.5 rounded-lg font-semibold cursor-pointer transition-all flex items-center gap-1.5"
@@ -1735,18 +1745,26 @@ export default function Home() {
               </button>
             </div>
           ) : (
-            <button 
-              onClick={() => setShowLoginModal(true)}
-              className="text-xs bg-blue-600 hover:bg-blue-700 text-white px-4 py-1.5 rounded-lg font-bold cursor-pointer transition-all flex items-center gap-1.5 shadow-md shadow-blue-500/10"
-            >
-              🔒 행정망 로그인
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowBoardModal(true)}
+                className="text-xs bg-indigo-950/45 hover:bg-indigo-900/60 border border-indigo-500/30 text-indigo-300 px-3.5 py-1.5 rounded-lg font-semibold cursor-pointer transition-all flex items-center gap-1.5"
+              >
+                📋 행정 게시판
+              </button>
+              <button 
+                onClick={() => setShowLoginModal(true)}
+                className="text-xs bg-blue-600 hover:bg-blue-700 text-white px-4 py-1.5 rounded-lg font-bold cursor-pointer transition-all flex items-center gap-1.5 shadow-md shadow-blue-500/10"
+              >
+                🔒 행정망 로그인
+              </button>
+            </div>
           )}
         </div>
       </header>
 
       {/* 2. 인터랙티브 Leaflet GIS 3D 맵 공간 영역 (Map Container) */}
-      <div className="relative w-full h-full">
+      <div className="relative w-full flex-1 min-h-[calc(100vh-140px)]">
         <div id="interactive-map" className="map-container w-full h-full" />
         
         {/* [v4.4.1] 마우스로 끌어서 이동할 수 있는 공간 통제 영역 제어판 (Draggable Control Panel) */}
@@ -1923,7 +1941,39 @@ export default function Home() {
           }
         }}
         showToast={showToast}
+        apiFetch={apiFetch}
       />
+
+      {/* 📋 행정 통합 게시판 모달 */}
+      <BoardModal
+        show={showBoardModal}
+        onClose={() => setShowBoardModal(false)}
+        apiFetch={apiFetch}
+        showToast={showToast}
+      />
+
+      {/* 🌐 글로벌 푸터 컴포넌트 */}
+      <GlobalFooter />
+
+      {/* 🔔 글래스모피즘 토스트 알림 렌더러 */}
+      {toast.show && (
+        <div className={`fixed top-20 right-6 z-[100] px-5 py-3.5 rounded-2xl text-xs font-bold text-white shadow-2xl backdrop-blur-md border animate-fade-in flex items-center gap-3 transition-all ${
+          toast.type === 'error' ? 'bg-rose-950/95 border-rose-500/80 text-rose-200 shadow-rose-950/50' : 
+          toast.type === 'warning' ? 'bg-amber-950/95 border-amber-500/80 text-amber-200 shadow-amber-950/50' : 
+          toast.type === 'success' ? 'bg-emerald-950/95 border-emerald-500/80 text-emerald-200 shadow-emerald-950/50' :
+          'bg-indigo-950/95 border-indigo-500/80 text-indigo-200 shadow-indigo-950/50'
+        }`}>
+          <span className="text-lg shrink-0">
+            {toast.type === 'error' ? '❌' : toast.type === 'warning' ? '⚠️' : toast.type === 'success' ? '✅' : 'ℹ️'}
+          </span>
+          <div className="flex flex-col gap-0.5">
+            <span className="font-extrabold text-[10px] uppercase tracking-wider opacity-80">
+              {toast.type === 'error' ? '시스템 오류 알림' : toast.type === 'warning' ? '주의 알림' : toast.type === 'success' ? '처리 성공 알림' : '행정 정보 알림'}
+            </span>
+            <span className="text-xs font-semibold">{toast.message}</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -230,6 +230,24 @@ export default function AdminConsoleModal({
     }
   };
 
+  // 사용자 계정 승인
+  const handleUserApprove = async (userId, username) => {
+    try {
+      const res = await apiFetch(`/api/v1/auth/users/${userId}/approve`, {
+        method: 'POST'
+      });
+      if (res.ok) {
+        showToast(`✅ 계정 '${username}' 승인이 완료되었습니다!`, 'success');
+        fetchAdminUsers();
+      } else {
+        const err = await res.json();
+        showToast(err.detail || '승인 처리 실패', 'error');
+      }
+    } catch (err) {
+      showToast('계정 승인 중 오류 발생', 'error');
+    }
+  };
+
   // 사용자 비밀번호 초기화 커스텀 모달 상태
   const [resetTargetUser, setResetTargetUser] = useState(null);
   const [resetPasswordInput, setResetPasswordInput] = useState('');
@@ -838,52 +856,122 @@ export default function AdminConsoleModal({
         )}
 
         {adminTab === 'users' && (
-          <div className="border border-slate-800 rounded-lg p-4 bg-slate-900/40 flex flex-col gap-4">
-            <h4 className="text-xs font-bold text-white mb-2">👥 실무자 계정 목록 및 제어</h4>
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse text-[11px]">
-                <thead>
-                  <tr className="border-b border-slate-800 text-slate-400">
-                    <th className="py-2">ID</th>
-                    <th className="py-2">아이디</th>
-                    <th className="py-2">직위</th>
-                    <th className="py-2">부서</th>
-                    <th className="py-2">자치구 ID</th>
-                    <th className="py-2 text-center">보안 리셋 / 탈퇴</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {adminUsers.map(u => (
-                    <tr key={u.id} className="border-b border-slate-800/40 text-slate-200 hover:bg-slate-950/20">
-                      <td className="py-2 font-mono text-slate-400">{u.id}</td>
-                      <td className="py-2 font-bold">{u.username}</td>
-                      <td className="py-2">
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${u.role === 'admin' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' : 'bg-blue-500/10 text-blue-400 border border-blue-500/20'}`}>
-                          {u.role === 'admin' ? '최고관리자' : '실무관'}
-                        </span>
-                      </td>
-                      <td className="py-2">{u.department || '스마트도시과'}</td>
-                      <td className="py-2 font-mono text-slate-400">{u.district_id || 1}</td>
-                      <td className="py-2 text-center flex items-center justify-center gap-2">
-                        <button 
-                          onClick={() => openPasswordResetModal(u)}
-                          className="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-[10px] px-2 py-1 rounded transition-all cursor-pointer font-bold"
-                        >
-                          비밀번호 초기화
-                        </button>
-                        {u.username !== 'admin' && (
-                          <button 
-                            onClick={() => handleUserDelete(u.id, u.username)}
-                            className="bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-400 text-[10px] px-2 py-1 rounded transition-all cursor-pointer font-bold"
-                          >
-                            강제 탈퇴
-                          </button>
-                        )}
-                      </td>
+          <div className="border border-slate-800 rounded-lg p-4 bg-slate-900/40 flex flex-col gap-5">
+            
+            {/* 1. 승인 대기 계정 신청 목록 */}
+            <div className="flex flex-col gap-2">
+              <div className="flex justify-between items-center bg-slate-950/60 p-3 rounded-lg border border-amber-500/30">
+                <div className="flex items-center gap-2">
+                  <span className="text-amber-400 font-bold text-xs">📝 승인 대기 계정 신청 목록</span>
+                  <span className="bg-amber-950 text-amber-300 text-[10px] font-bold px-2 py-0.5 rounded border border-amber-700/50">
+                    {adminUsers.filter(u => u.is_approved === false).length}건 대기 중
+                  </span>
+                </div>
+                <button
+                  onClick={fetchAdminUsers}
+                  className="bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 text-[10px] font-bold px-2.5 py-1 rounded transition-all cursor-pointer"
+                >
+                  🔄 목록 새로고침
+                </button>
+              </div>
+
+              {adminUsers.filter(u => u.is_approved === false).length > 0 ? (
+                <div className="overflow-x-auto border border-slate-800 rounded-lg">
+                  <table className="w-full text-left border-collapse text-[11px]">
+                    <thead>
+                      <tr className="border-b border-slate-800 text-slate-400 bg-slate-950/80">
+                        <th className="py-2.5 px-3">신청 ID</th>
+                        <th className="py-2.5 px-3">신청 아이디</th>
+                        <th className="py-2.5 px-3">소속 부서</th>
+                        <th className="py-2.5 px-3">신청 직위</th>
+                        <th className="py-2.5 px-3 text-center">승인 / 거절</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {adminUsers.filter(u => u.is_approved === false).map(u => (
+                        <tr key={u.id} className="border-b border-slate-800/40 text-slate-200 bg-amber-950/10 hover:bg-amber-900/20">
+                          <td className="py-2 px-3 font-mono text-slate-400">#{u.id}</td>
+                          <td className="py-2 px-3 font-bold text-amber-200">{u.username}</td>
+                          <td className="py-2 px-3">{u.department || '스마트도시과'}</td>
+                          <td className="py-2 px-3">
+                            <span className="bg-blue-500/10 text-blue-400 border border-blue-500/20 px-2 py-0.5 rounded text-[10px] font-bold">
+                              {u.role === 'admin' ? '최고관리자' : '실무관'}
+                            </span>
+                          </td>
+                          <td className="py-2 px-3 text-center flex items-center justify-center gap-2">
+                            <button
+                              onClick={() => handleUserApprove(u.id, u.username)}
+                              className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[10px] px-3 py-1 rounded transition-all cursor-pointer shadow"
+                            >
+                              ✅ 승인
+                            </button>
+                            <button
+                              onClick={() => handleUserDelete(u.id, u.username)}
+                              className="bg-rose-950/60 hover:bg-rose-900/80 text-rose-400 border border-rose-800/50 text-[10px] px-2.5 py-1 rounded transition-all cursor-pointer font-bold"
+                            >
+                              ❌ 거절/삭제
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="text-[10px] text-slate-500 italic p-3 text-center bg-slate-950/40 rounded-lg border border-slate-800/50">
+                  승인 대기 중인 계정 신청 건이 없습니다.
+                </div>
+              )}
+            </div>
+
+            {/* 2. 활성/승인 완료 계정 목록 */}
+            <div className="flex flex-col gap-2">
+              <h4 className="text-xs font-bold text-slate-200">✅ 활성 및 승인 완료 계정 목록</h4>
+              <div className="overflow-x-auto border border-slate-800 rounded-lg">
+                <table className="w-full text-left border-collapse text-[11px]">
+                  <thead>
+                    <tr className="border-b border-slate-800 text-slate-400 bg-slate-950/80">
+                      <th className="py-2.5 px-3">ID</th>
+                      <th className="py-2.5 px-3">아이디</th>
+                      <th className="py-2.5 px-3">직위</th>
+                      <th className="py-2.5 px-3">소속 부서</th>
+                      <th className="py-2.5 px-3">구역 ID</th>
+                      <th className="py-2.5 px-3 text-center">비밀번호 초기화 / 탈퇴</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {adminUsers.filter(u => u.is_approved !== false).map(u => (
+                      <tr key={u.id} className="border-b border-slate-800/40 text-slate-200 hover:bg-slate-950/40">
+                        <td className="py-2 px-3 font-mono text-slate-400">#{u.id}</td>
+                        <td className="py-2 px-3 font-bold">{u.username}</td>
+                        <td className="py-2 px-3">
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${u.role === 'admin' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' : 'bg-blue-500/10 text-blue-400 border border-blue-500/20'}`}>
+                            {u.role === 'admin' ? '최고관리자' : '실무관'}
+                          </span>
+                        </td>
+                        <td className="py-2 px-3">{u.department || '스마트도시과'}</td>
+                        <td className="py-2 px-3 font-mono text-slate-400">{u.district_id || 1}</td>
+                        <td className="py-2 px-3 text-center flex items-center justify-center gap-2">
+                          <button 
+                            onClick={() => openPasswordResetModal(u)}
+                            className="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-[10px] px-2.5 py-1 rounded transition-all cursor-pointer font-bold"
+                          >
+                            🔑 비밀번호 초기화
+                          </button>
+                          {u.username !== 'admin' && (
+                            <button 
+                              onClick={() => handleUserDelete(u.id, u.username)}
+                              className="bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-400 text-[10px] px-2.5 py-1 rounded transition-all cursor-pointer font-bold"
+                            >
+                              강제 탈퇴
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
 
             {/* 신규 실무자 계정 등록 폼 */}
@@ -1213,93 +1301,6 @@ export default function AdminConsoleModal({
               </div>
             </form>
           </div>
-
-            {/* AI 프로바이더 & 로컬 LLM 핫 스와핑 컨트롤 카드 [v3.9.0] */}
-            <div className="p-4 rounded-xl bg-slate-900/80 border border-blue-500/30 flex flex-col gap-3 font-sans mt-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-blue-400 font-bold text-sm">
-                  <span>🤖</span>
-                  <span>AI 엔진 프로바이더 & 로컬 LLM 핫 스와핑 (Air-Gap Provider)</span>
-                </div>
-                <span className="text-[10px] bg-blue-500/20 text-blue-300 px-2 py-0.5 rounded border border-blue-500/30 font-bold">
-                  OmniSite Provider Engine
-                </span>
-              </div>
-              <p className="text-xs text-slate-300 leading-relaxed">
-                개발 환경(<code className="text-emerald-400 font-mono">Cloud OpenAI</code>)과 공공 폐쇄망 실증 환경(<code className="text-amber-400 font-mono">Ollama / vLLM - EXAONE 3.0 / Llama3</code>) 간 AI 모델을 OmniSite 재시작 없이 1초 만에 실시간 핫 스와핑합니다.
-              </p>
-
-              <form onSubmit={handleUpdateAiProviderSubmit} className="mt-2 flex flex-col gap-4">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  <div className="flex flex-col gap-1">
-                    <label className="text-[11px] font-semibold text-slate-300">프로바이더 모드 선택</label>
-                    <select
-                      value={aiProviderType}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        setAiProviderType(val);
-                        if (val === 'ollama') {
-                          setAiModelName('exaone3:7.8b');
-                          setAiBaseUrl('http://localhost:11434/v1');
-                        } else if (val === 'vllm') {
-                          setAiModelName('Llama-3.1-Korean-8B');
-                          setAiBaseUrl('http://localhost:8000/v1');
-                        } else if (val === 'fallback') {
-                          setAiModelName('local-rule-engine');
-                          setAiBaseUrl('offline');
-                        } else {
-                          setAiModelName('gpt-4o-mini');
-                          setAiBaseUrl('https://api.openai.com/v1');
-                        }
-                      }}
-                      className="bg-slate-950 border border-slate-700 rounded-lg p-2 text-xs text-amber-400 font-bold outline-none cursor-pointer"
-                    >
-                      <option value="openai">🌐 Cloud API Mode (OpenAI)</option>
-                      <option value="ollama">🔒 온프레미스 로컬 LLM (Ollama - EXAONE)</option>
-                      <option value="vllm">⚡ 고성능 GPU 클러스터 (vLLM)</option>
-                      <option value="fallback">🛡️ 오프라인 룰 엔진 (Rule Fallback)</option>
-                    </select>
-                  </div>
-
-                  <div className="flex flex-col gap-1">
-                    <label className="text-[11px] font-semibold text-slate-300">모델명 (Model Name)</label>
-                    <input
-                      type="text"
-                      value={aiModelName}
-                      onChange={(e) => setAiModelName(e.target.value)}
-                      placeholder="예: exaone3:7.8b"
-                      className="bg-slate-950 border border-slate-700 rounded-lg p-2 text-xs font-mono text-white outline-none"
-                      required
-                    />
-                  </div>
-
-                  <div className="flex flex-col gap-1">
-                    <label className="text-[11px] font-semibold text-slate-300">엔드포인트 URL (Base URL)</label>
-                    <input
-                      type="text"
-                      value={aiBaseUrl}
-                      onChange={(e) => setAiBaseUrl(e.target.value)}
-                      placeholder="http://localhost:11434/v1"
-                      className="bg-slate-950 border border-slate-700 rounded-lg p-2 text-xs font-mono text-white outline-none"
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div className="flex justify-between items-center mt-1">
-                  <span className="text-[10px] text-slate-400">
-                    * 로컬 LLM 선택 시 FastAPI 백엔드 메모리 부하 <strong className="text-emerald-400">0 MB (Zero Bloat)</strong>로 동작합니다.
-                  </span>
-                  <button
-                    type="submit"
-                    disabled={isUpdatingAiProvider}
-                    className="px-4 py-2 text-xs font-bold bg-blue-600 hover:bg-blue-500 text-white rounded-lg cursor-pointer transition-all shadow-md active:scale-95 disabled:opacity-50"
-                  >
-                    {isUpdatingAiProvider ? '스와핑 중...' : '⚡ AI 프로바이더 핫 스와핑 저장'}
-                  </button>
-                </div>
-              </form>
-            </div>
         </div>
       )}
     </div>

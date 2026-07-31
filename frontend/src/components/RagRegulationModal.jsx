@@ -61,8 +61,22 @@ export default function RagRegulationModal({
     }
   }, [isListVisible, isUploadVisible]);
 
-  // 조례 PDF 파일 삭제 핸들러 (🗑️ - 물리 파일 & DB 100% 삭제)
+  const [userRole, setUserRole] = useState('user');
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const role = sessionStorage.getItem('role') || 'user';
+      setUserRole(role);
+    }
+  }, [show, showUpload, showList]);
+
+  // 조례 PDF 파일 삭제 핸들러 (🗑️ - 물리 파일 & DB 100% 삭제 / Admin 전용)
   const handleDeleteRegulation = async (regItem) => {
+    if (userRole !== 'admin') {
+      if (showToast) showToast('🔒 자치법규 조례 PDF 삭제는 최고관리자(Admin)만 수행할 수 있습니다.', 'warning');
+      return;
+    }
+
     const filename = regItem.filename || regItem.title;
     if (!filename) return;
 
@@ -276,14 +290,16 @@ export default function RagRegulationModal({
                           <span className="text-[11px] text-slate-400 font-mono bg-slate-950/60 px-2 py-0.5 rounded border border-slate-800">
                             {sizeStr}
                           </span>
-                          <button
-                            onClick={() => handleDeleteRegulation(reg)}
-                            disabled={deletingFile === filename}
-                            className="px-2.5 py-1 text-[11px] font-bold bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/40 rounded-lg transition-all cursor-pointer flex items-center gap-1 shadow-sm hover:scale-105"
-                          >
-                            <span>🗑️</span>
-                            <span>{deletingFile === filename ? '삭제 중...' : '삭제'}</span>
-                          </button>
+                          {userRole === 'admin' && (
+                            <button
+                              onClick={() => handleDeleteRegulation(reg)}
+                              disabled={deletingFile === filename}
+                              className="px-2.5 py-1 text-[11px] font-bold bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/40 rounded-lg transition-all cursor-pointer flex items-center gap-1 shadow-sm hover:scale-105"
+                            >
+                              <span>🗑️</span>
+                              <span>{deletingFile === filename ? '삭제 중...' : '삭제'}</span>
+                            </button>
+                          )}
                         </div>
                       </div>
                     </div>

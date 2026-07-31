@@ -8,6 +8,8 @@ import RagRegulationModal from '@/components/RagRegulationModal';
 import StepGuideModal from '@/components/StepGuideModal';
 import AdminConsoleModal from '@/components/AdminConsoleModal';
 import AuditLogModal from '@/components/AuditLogModal';
+import BoardModal from '@/components/BoardModal';
+import GlobalFooter from '@/components/GlobalFooter';
 import { OMNISITE_DISPLAY_VERSION } from '@/config/version';
 
 // Next.js API Fetch 래퍼 (JWT 세션 자동 바인딩)
@@ -47,12 +49,27 @@ export default function Dashboard() {
   const [showGuideModal, setShowGuideModal] = useState(false);
   const [showAdminConsoleModal, setShowAdminConsoleModal] = useState(false);
   const [showAuditLogModal, setShowAuditLogModal] = useState(false);
+  const [showBoardModal, setShowBoardModal] = useState(false);
   const [toastMessage, setToastMessage] = useState(null);
+
+  // 행정 입지 분석 아카이브 페이지네이션 및 키워드 검색 상태
+  const [pageHistory, setPageHistory] = useState(1);
+  const [pagePrecedents, setPagePrecedents] = useState(1);
+  const [archiveSearch, setArchiveSearch] = useState('');
+  const ITEMS_PER_PAGE = 5;
   const [mlStatus, setMlStatus] = useState({ is_training: false });
   
   // 🔒 JWT 실시간 토큰 남은 시간 타이머 상태
   const [tokenTimeLeft, setTokenTimeLeft] = useState('');
   const [isTokenValid, setIsTokenValid] = useState(true);
+  const [userRole, setUserRole] = useState('user');
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const role = sessionStorage.getItem('role') || 'user';
+      setUserRole(role);
+    }
+  }, []);
 
   // 🔒 커스텀 Glassmorphism Confirm 모달 상태
   const [confirmModal, setConfirmModal] = useState({
@@ -343,9 +360,13 @@ export default function Dashboard() {
     }
   };
 
-  // 모의 심의 이력 삭제 핸들러
+  // 모의 심의 이력 삭제 핸들러 (Admin 전용)
   const handleDeleteHistory = async (id, e) => {
     e.stopPropagation();
+    if (userRole !== 'admin') {
+      showToast("🔒 이력 삭제 권한이 없습니다. 최고관리자(Admin)만 수행할 수 있습니다.", "warning");
+      return;
+    }
     showConfirm(
       "🗑️ 심의 이력 삭제 확인",
       `선택한 모의 심의 이력 #${id}을 영구 삭제하시겠습니까?\n이 작업은 복구할 수 없습니다.`,
@@ -365,9 +386,13 @@ export default function Dashboard() {
     );
   };
 
-  // 실증 준공 사례 삭제 핸들러
+  // 실증 준공 사례 삭제 핸들러 (Admin 전용)
   const handleDeletePrecedent = async (id, e) => {
     e.stopPropagation();
+    if (userRole !== 'admin') {
+      showToast("🔒 실증 사례 삭제 권한이 없습니다. 최고관리자(Admin)만 수행할 수 있습니다.", "warning");
+      return;
+    }
     showConfirm(
       "🗑️ 실증 준공 사례 삭제 확인",
       `선택한 실증 준공 사례 #${id}을 RAG 지식베이스에서 영구 삭제하시겠습니까?\n삭제 시 AI 자가학습 지식 데이터셋에서 제외됩니다.`,
@@ -509,7 +534,7 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="relative min-h-screen bg-slate-950 text-slate-100 font-sans pt-20">
+    <div className="relative min-h-screen flex flex-col justify-between bg-slate-950 text-slate-100 font-sans pt-20">
       
       {/* 1. 상단 글로벌 네비게이션 헤더 (spatial 헤더 통합 일치화) */}
       <header className="fixed top-0 left-0 right-0 h-16 glass-panel rounded-none border-t-0 border-x-0 z-45 px-8 flex justify-between items-center bg-slate-950/90 backdrop-blur-md">
@@ -526,6 +551,12 @@ export default function Dashboard() {
             📊 의사결정 대시보드
           </Link>
           <button 
+            onClick={() => setShowBoardModal(true)} 
+            className="text-indigo-400 hover:text-indigo-300 transition-all cursor-pointer flex items-center gap-1 font-semibold"
+          >
+            📋 행정 게시판
+          </button>
+          <button 
             onClick={() => setShowPasswordChangeModal(true)} 
             className="text-slate-400 hover:text-slate-200 transition-all cursor-pointer flex items-center gap-1"
           >
@@ -537,12 +568,14 @@ export default function Dashboard() {
           >
             📜 행정 감사 로그
           </button>
-          <button 
-            onClick={() => setShowAdminConsoleModal(true)} 
-            className="text-slate-400 hover:text-slate-200 transition-all cursor-pointer flex items-center gap-1"
-          >
-            ⚙️ 관리자 콘솔
-          </button>
+          {userRole === 'admin' && (
+            <button 
+              onClick={() => setShowAdminConsoleModal(true)} 
+              className="text-amber-400 hover:text-amber-300 transition-all cursor-pointer flex items-center gap-1 font-semibold"
+            >
+              ⚙️ 관리자 콘솔
+            </button>
+          )}
         </nav>
         {/* JWT 실시간 남은 세션 타이머 뱃지 및 세션 연장 버튼 [v1.4.5] */}
         {isTokenValid && (
@@ -566,8 +599,8 @@ export default function Dashboard() {
         )}
       </header>
 
-      {/* 2. 대시보드 레이아웃 본문 */}
-      <main className="max-w-[85%] mx-auto p-8 flex flex-col gap-8">
+      {/* 2. 대시보드 레이아웃 본문 (flex-1 적용) */}
+      <main className="flex-1 w-full max-w-[85%] mx-auto p-8 flex flex-col gap-8">
         
         {/* 상단 3대 지표 분석 요약 카드 (실 데이터베이스 연동 연산) */}
         <section className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -603,152 +636,279 @@ export default function Dashboard() {
                 <span className="text-[10px] text-slate-500">모의 시뮬레이션 이력과 실제 준공 검증 데이터 연동 목록</span>
               </div>
               
-              {/* 프리미엄 탭 스위처 */}
-              <div className="flex gap-1 bg-slate-950 p-1 rounded-lg border border-slate-800">
-                <button
-                  onClick={() => setActiveTab('history')}
-                  className={`px-3 py-1 rounded text-[11px] font-bold transition-all cursor-pointer ${
-                    activeTab === 'history' 
-                      ? 'bg-blue-600/90 text-white shadow-lg shadow-blue-500/20' 
-                      : 'text-slate-400 hover:text-slate-200'
-                  }`}
-                >
-                  모의 심의 이력 ({historyList.length})
-                </button>
-                <button
-                  onClick={() => setActiveTab('precedents')}
-                  className={`px-3 py-1 rounded text-[11px] font-bold transition-all cursor-pointer ${
-                    activeTab === 'precedents' 
-                      ? 'bg-emerald-600/90 text-white shadow-lg shadow-emerald-500/20' 
-                      : 'text-slate-400 hover:text-slate-200'
-                  }`}
-                >
-                  실증 준공 사례 ({precedentList.length})
-                </button>
+              <div className="flex items-center gap-3">
+                {/* 실시간 아카이브 키워드 검색바 */}
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={archiveSearch}
+                    onChange={(e) => {
+                      setArchiveSearch(e.target.value);
+                      setPageHistory(1);
+                      setPagePrecedents(1);
+                    }}
+                    placeholder="🔍 키워드 검색 (ID, 지역, PNU, 인프라...)"
+                    className="bg-slate-950 border border-slate-800 rounded-lg px-3 py-1 text-xs text-slate-200 focus:outline-none focus:border-blue-500 w-56"
+                  />
+                  {archiveSearch && (
+                    <button
+                      onClick={() => setArchiveSearch('')}
+                      className="absolute right-2.5 top-1 text-slate-500 hover:text-white text-xs cursor-pointer"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+
+                {/* 프리미엄 탭 스위처 */}
+                <div className="flex gap-1 bg-slate-950 p-1 rounded-lg border border-slate-800">
+                  <button
+                    onClick={() => setActiveTab('history')}
+                    className={`px-3 py-1 rounded text-[11px] font-bold transition-all cursor-pointer ${
+                      activeTab === 'history' 
+                        ? 'bg-blue-600/90 text-white shadow-lg shadow-blue-500/20' 
+                        : 'text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    모의 심의 이력 ({historyList.filter(item => 
+                      (item.region || '').toLowerCase().includes(archiveSearch.toLowerCase()) ||
+                      (item.infra || '').toLowerCase().includes(archiveSearch.toLowerCase()) ||
+                      (item.status || '').toLowerCase().includes(archiveSearch.toLowerCase()) ||
+                      String(item.id).includes(archiveSearch)
+                    ).length})
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('precedents')}
+                    className={`px-3 py-1 rounded text-[11px] font-bold transition-all cursor-pointer ${
+                      activeTab === 'precedents' 
+                        ? 'bg-emerald-600/90 text-white shadow-lg shadow-emerald-500/20' 
+                        : 'text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    실증 준공 사례 ({precedentList.filter(item => 
+                      (item.jibun || '').toLowerCase().includes(archiveSearch.toLowerCase()) ||
+                      (item.pnu || '').toLowerCase().includes(archiveSearch.toLowerCase()) ||
+                      (item.title || '').toLowerCase().includes(archiveSearch.toLowerCase()) ||
+                      String(item.id).includes(archiveSearch)
+                    ).length})
+                  </button>
+                </div>
               </div>
             </div>
 
             <div className="overflow-x-auto">
               {activeTab === 'history' ? (
-                // 탭 A: 모의 심의 이력 테이블
-                <table className="w-full text-left text-xs border-collapse">
-                  <thead>
-                    <tr className="border-b border-slate-800 text-slate-400 font-semibold bg-slate-900/30">
-                      <th className="py-3 px-4">의사결정 ID</th>
-                      <th className="py-3 px-4">일자</th>
-                      <th className="py-3 px-4">대상 지역</th>
-                      <th className="py-3 px-4">선택 인프라</th>
-                      <th className="py-3 px-4">심의 상태</th>
-                      <th className="py-3 px-4">사후 검증</th>
-                      <th className="py-3 px-4 text-center">조회 / 삭제</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {historyList.map(item => (
-                      <tr key={item.id} className="border-b border-slate-900 hover:bg-slate-900/30 transition-all">
-                        <td className="py-3.5 px-4 font-mono text-slate-300">#{item.id}</td>
-                        <td className="py-3.5 px-4 text-slate-400">{item.date}</td>
-                        <td className="py-3.5 px-4 font-medium text-white">{item.region}</td>
-                        <td className="py-3.5 px-4 text-slate-300">{item.infra}</td>
-                        <td className="py-3.5 px-4">
-                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                            item.status === '실증 성공' ? 'bg-emerald-500/20 text-emerald-400' :
-                            item.status === '실증 실패' ? 'bg-rose-500/20 text-rose-400' : 'bg-blue-500/20 text-blue-400'
-                          }`}>
-                            {item.status}
-                          </span>
-                        </td>
-                        <td className="py-3.5 px-4">
-                          <span className={`text-[10px] font-semibold ${
-                            item.auditState === '검증 완료' ? 'text-emerald-400' :
-                            item.auditState === '대기 중' ? 'text-slate-500 animate-pulse' : 'text-rose-400'
-                          }`}>
-                            {item.auditState}
-                          </span>
-                        </td>
-                        <td className="py-3.5 px-4 text-center flex items-center justify-center gap-1.5">
-                          <button
-                            onClick={() => openHistoryDetails(item)}
-                            className="bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] font-bold px-2 py-1 rounded cursor-pointer transition-all border border-slate-700"
-                          >
-                            상세 조회
-                          </button>
-                          <button
-                            onClick={(e) => handleDeleteHistory(item.id, e)}
-                            className="bg-rose-950/40 hover:bg-rose-900/60 text-rose-400 text-[10px] font-bold px-2 py-1 rounded cursor-pointer transition-all border border-rose-800/40"
-                          >
-                            삭제
-                          </button>
-                        </td>
+                // 탭 A: 모의 심의 이력 테이블 (검색 및 페이지네이션 적용)
+                <>
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead>
+                      <tr className="border-b border-slate-800 text-slate-400 font-semibold bg-slate-900/30">
+                        <th className="py-3 px-4">의사결정 ID</th>
+                        <th className="py-3 px-4">일자</th>
+                        <th className="py-3 px-4">대상 지역</th>
+                        <th className="py-3 px-4">선택 인프라</th>
+                        <th className="py-3 px-4">심의 상태</th>
+                        <th className="py-3 px-4">사후 검증</th>
+                        <th className="py-3 px-4 text-center">조회 / 삭제</th>
                       </tr>
-                    ))}
-                    {historyList.length === 0 && (
-                      <tr>
-                        <td colSpan="7" className="py-8 text-center text-slate-500 font-mono">기동된 모의 심의 이력이 존재하지 않습니다.</td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {historyList
+                        .filter(item => 
+                          (item.region || '').toLowerCase().includes(archiveSearch.toLowerCase()) ||
+                          (item.infra || '').toLowerCase().includes(archiveSearch.toLowerCase()) ||
+                          (item.status || '').toLowerCase().includes(archiveSearch.toLowerCase()) ||
+                          (item.auditState || '').toLowerCase().includes(archiveSearch.toLowerCase()) ||
+                          String(item.id).includes(archiveSearch)
+                        )
+                        .slice((pageHistory - 1) * ITEMS_PER_PAGE, pageHistory * ITEMS_PER_PAGE)
+                        .map(item => (
+                        <tr key={item.id} className="border-b border-slate-900 hover:bg-slate-900/30 transition-all">
+                          <td className="py-3.5 px-4 font-mono text-slate-300">#{item.id}</td>
+                          <td className="py-3.5 px-4 text-slate-400">{item.date}</td>
+                          <td className="py-3.5 px-4 font-medium text-white">{item.region}</td>
+                          <td className="py-3.5 px-4 text-slate-300">{item.infra}</td>
+                          <td className="py-3.5 px-4">
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                              item.status === '실증 성공' ? 'bg-emerald-500/20 text-emerald-400' :
+                              item.status === '실증 실패' ? 'bg-rose-500/20 text-rose-400' : 'bg-blue-500/20 text-blue-400'
+                            }`}>
+                              {item.status}
+                            </span>
+                          </td>
+                          <td className="py-3.5 px-4">
+                            <span className={`text-[10px] font-semibold ${
+                              item.auditState === '검증 완료' ? 'text-emerald-400' :
+                              item.auditState === '대기 중' ? 'text-slate-500 animate-pulse' : 'text-rose-400'
+                            }`}>
+                              {item.auditState}
+                            </span>
+                          </td>
+                          <td className="py-3.5 px-4 text-center flex items-center justify-center gap-1.5">
+                            <button
+                              onClick={() => openHistoryDetails(item)}
+                              className="bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] font-bold px-2 py-1 rounded cursor-pointer transition-all border border-slate-700"
+                            >
+                              상세 조회
+                            </button>
+                            {userRole === 'admin' && (
+                              <button
+                                onClick={(e) => handleDeleteHistory(item.id, e)}
+                                className="bg-rose-950/40 hover:bg-rose-900/60 text-rose-400 text-[10px] font-bold px-2 py-1 rounded cursor-pointer transition-all border border-rose-800/40"
+                              >
+                                삭제
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                      {historyList.length === 0 && (
+                        <tr>
+                          <td colSpan="7" className="py-8 text-center text-slate-500 font-mono">기동된 모의 심의 이력이 존재하지 않습니다.</td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+
+                  {/* 이력 테이블 페이지네이션 컨트롤 */}
+                  {historyList.length > 0 && (
+                    <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-800/60 text-xs text-slate-400">
+                      <span>페이지 <strong className="text-slate-200">{pageHistory}</strong> / {Math.ceil(historyList.length / ITEMS_PER_PAGE) || 1} (전체 {historyList.length}건)</span>
+                      <div className="flex gap-1.5">
+                        <button
+                          disabled={pageHistory === 1}
+                          onClick={() => setPageHistory(p => Math.max(1, p - 1))}
+                          className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 disabled:opacity-30 text-slate-300 rounded font-semibold text-[11px] transition-all cursor-pointer"
+                        >
+                          ◀ 이전
+                        </button>
+                        <button
+                          disabled={pageHistory >= Math.ceil(historyList.length / ITEMS_PER_PAGE)}
+                          onClick={() => setPageHistory(p => Math.min(Math.ceil(historyList.length / ITEMS_PER_PAGE), p + 1))}
+                          className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 disabled:opacity-30 text-slate-300 rounded font-semibold text-[11px] transition-all cursor-pointer"
+                        >
+                          다음 ▶
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </>
               ) : (
-                // 탭 B: 실증 준공 사례 테이블
-                <table className="w-full text-left text-xs border-collapse">
-                  <thead>
-                    <tr className="border-b border-slate-800 text-slate-400 font-semibold bg-slate-900/30">
-                      <th className="py-3 px-4">사례 ID</th>
-                      <th className="py-3 px-4">등록일자</th>
-                      <th className="py-3 px-4">실증 준공 주소</th>
-                      <th className="py-3 px-4">필지 PNU</th>
-                      <th className="py-3 px-4">도달 시나리오</th>
-                      <th className="py-3 px-4">감리 문서명</th>
-                      <th className="py-3 px-4 text-center">감리 분석 / 삭제</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {precedentList.map(item => (
-                      <tr key={item.id} className="border-b border-slate-900 hover:bg-slate-900/30 transition-all">
-                        <td className="py-3.5 px-4 font-mono text-slate-300">#{item.id}</td>
-                        <td className="py-3.5 px-4 text-slate-400">{item.date}</td>
-                        <td className="py-3.5 px-4 font-medium text-white">{item.jibun}</td>
-                        <td className="py-3.5 px-4 font-mono text-slate-400">{item.pnu}</td>
-                        <td className="py-3.5 px-4">
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400">
-                            {item.scenario || '준공 부합'}
-                          </span>
-                        </td>
-                        <td className="py-3.5 px-4 text-slate-400 max-w-[120px] truncate" title={item.title}>
-                          {item.title}
-                        </td>
-                        <td className="py-3.5 px-4 text-center flex items-center justify-center gap-1.5">
-                          <button
-                            onClick={() => {
-                              setAuditFile({ name: item.title });
-                              setAuditResult({
-                                mappedScenario: item.scenario || '준공 완전 부합',
-                                matchScore: item.matchScore || 100,
-                                title: item.title,
-                                summary: item.summary
-                              });
-                            }}
-                            className="bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-bold px-2 py-1 rounded cursor-pointer transition-all border border-emerald-700"
-                          >
-                            RAG 분석
-                          </button>
-                          <button
-                            onClick={(e) => handleDeletePrecedent(item.id, e)}
-                            className="bg-rose-950/40 hover:bg-rose-900/60 text-rose-400 text-[10px] font-bold px-2 py-1 rounded cursor-pointer transition-all border border-rose-800/40"
-                          >
-                            삭제
-                          </button>
-                        </td>
+                // 탭 B: 실증 준공 사례 테이블 (페이지네이션 적용)
+                <>
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead>
+                      <tr className="border-b border-slate-800 text-slate-400 font-semibold bg-slate-900/30">
+                        <th className="py-3 px-4">사례 ID</th>
+                        <th className="py-3 px-4">등록일자</th>
+                        <th className="py-3 px-4">실증 준공 주소</th>
+                        <th className="py-3 px-4">필지 PNU</th>
+                        <th className="py-3 px-4">도달 시나리오</th>
+                        <th className="py-3 px-4">감리 문서명</th>
+                        <th className="py-3 px-4 text-center">감리 분석 / 삭제</th>
                       </tr>
-                    ))}
-                    {precedentList.length === 0 && (
-                      <tr>
-                        <td colSpan="7" className="py-8 text-center text-slate-500 font-mono">적재된 실증 준공 사례가 존재하지 않습니다.</td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {precedentList
+                        .filter(item => 
+                          (item.jibun || '').toLowerCase().includes(archiveSearch.toLowerCase()) ||
+                          (item.pnu || '').toLowerCase().includes(archiveSearch.toLowerCase()) ||
+                          (item.title || '').toLowerCase().includes(archiveSearch.toLowerCase()) ||
+                          (item.scenario || '').toLowerCase().includes(archiveSearch.toLowerCase()) ||
+                          String(item.id).includes(archiveSearch)
+                        )
+                        .slice((pagePrecedents - 1) * ITEMS_PER_PAGE, pagePrecedents * ITEMS_PER_PAGE)
+                        .map(item => (
+                        <tr key={item.id} className="border-b border-slate-900 hover:bg-slate-900/30 transition-all">
+                          <td className="py-3.5 px-4 font-mono text-slate-300">#{item.id}</td>
+                          <td className="py-3.5 px-4 text-slate-400">{item.date}</td>
+                          <td className="py-3.5 px-4 font-medium text-white">{item.jibun}</td>
+                          <td className="py-3.5 px-4 font-mono text-slate-400">{item.pnu}</td>
+                          <td className="py-3.5 px-4">
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400">
+                              {item.scenario || '준공 부합'}
+                            </span>
+                          </td>
+                          <td className="py-3.5 px-4 text-slate-400 max-w-[120px] truncate" title={item.title}>
+                            {item.title}
+                          </td>
+                          <td className="py-3.5 px-4 text-center flex items-center justify-center gap-1.5">
+                            <button
+                              onClick={() => {
+                                setAuditFile({ name: item.title });
+                                setAuditResult({
+                                  mappedScenario: item.scenario || '준공 완전 부합',
+                                  matchScore: item.matchScore || 100,
+                                  title: item.title,
+                                  summary: item.summary
+                                });
+                              }}
+                              className="bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-bold px-2 py-1 rounded cursor-pointer transition-all border border-emerald-700"
+                            >
+                              RAG 분석
+                            </button>
+                            {userRole === 'admin' && (
+                              <button
+                                onClick={(e) => handleDeletePrecedent(item.id, e)}
+                                className="bg-rose-950/40 hover:bg-rose-900/60 text-rose-400 text-[10px] font-bold px-2 py-1 rounded cursor-pointer transition-all border border-rose-800/40"
+                              >
+                                삭제
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                      {precedentList.length === 0 && (
+                        <tr>
+                          <td colSpan="7" className="py-8 text-center text-slate-500 font-mono">적재된 실증 준공 사례가 존재하지 않습니다.</td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+
+                  {/* 준공 사례 페이지네이션 컨트롤 */}
+                  {precedentList.length > 0 && (
+                    <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-800/60 text-xs text-slate-400">
+                      <span>페이지 <strong className="text-slate-200">{pagePrecedents}</strong> / {Math.ceil(precedentList.filter(item => 
+                        (item.jibun || '').toLowerCase().includes(archiveSearch.toLowerCase()) ||
+                        (item.pnu || '').toLowerCase().includes(archiveSearch.toLowerCase()) ||
+                        (item.title || '').toLowerCase().includes(archiveSearch.toLowerCase()) ||
+                        String(item.id).includes(archiveSearch)
+                      ).length / ITEMS_PER_PAGE) || 1} (검색 {precedentList.filter(item => 
+                        (item.jibun || '').toLowerCase().includes(archiveSearch.toLowerCase()) ||
+                        (item.pnu || '').toLowerCase().includes(archiveSearch.toLowerCase()) ||
+                        (item.title || '').toLowerCase().includes(archiveSearch.toLowerCase()) ||
+                        String(item.id).includes(archiveSearch)
+                      ).length}건)</span>
+                      <div className="flex gap-1.5">
+                        <button
+                          disabled={pagePrecedents === 1}
+                          onClick={() => setPagePrecedents(p => Math.max(1, p - 1))}
+                          className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 disabled:opacity-30 text-slate-300 rounded font-semibold text-[11px] transition-all cursor-pointer"
+                        >
+                          ◀ 이전
+                        </button>
+                        <button
+                          disabled={pagePrecedents >= Math.ceil(precedentList.filter(item => 
+                            (item.jibun || '').toLowerCase().includes(archiveSearch.toLowerCase()) ||
+                            (item.pnu || '').toLowerCase().includes(archiveSearch.toLowerCase()) ||
+                            (item.title || '').toLowerCase().includes(archiveSearch.toLowerCase()) ||
+                            String(item.id).includes(archiveSearch)
+                          ).length / ITEMS_PER_PAGE)}
+                          onClick={() => setPagePrecedents(p => Math.min(Math.ceil(precedentList.filter(item => 
+                            (item.jibun || '').toLowerCase().includes(archiveSearch.toLowerCase()) ||
+                            (item.pnu || '').toLowerCase().includes(archiveSearch.toLowerCase()) ||
+                            (item.title || '').toLowerCase().includes(archiveSearch.toLowerCase()) ||
+                            String(item.id).includes(archiveSearch)
+                          ).length / ITEMS_PER_PAGE), p + 1))}
+                          className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 disabled:opacity-30 text-slate-300 rounded font-semibold text-[11px] transition-all cursor-pointer"
+                        >
+                          다음 ▶
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
             </div>
           </div>
@@ -820,240 +980,6 @@ export default function Dashboard() {
                 </div>
               )}
             </div>
-          </div>
-        </section>
-
-        {/* [v3.0.0] 실무 행정 공무원 시스템 조작 중심 FAQ & 10개 단위 페이지네이션 */}
-        <section className="glass-panel p-6 mt-4 flex flex-col gap-6 font-sans">
-          <div className="flex flex-col md:flex-row md:items-center justify-between border-b border-slate-800 pb-4 gap-3">
-            <div>
-              <h2 className="text-base font-bold text-white flex items-center gap-2">
-                <span>📘</span>
-                <span>OmniSite SDSS 실무 공무원 시스템 이용 가이드 & FAQ</span>
-              </h2>
-              <p className="text-xs text-slate-400 mt-0.5">
-                데이터 업로드, 3D 지도 조작, AHP 가중치 설정, AI 심의 및 의결서 인출 실무 조작법 안내
-              </p>
-            </div>
-            
-            {/* 실무 키워드 검색창 */}
-            <div className="relative min-w-[240px]">
-              <input
-                type="text"
-                placeholder="🔍 사용법 또는 시스템 기능 검색..."
-                value={faqSearchQuery}
-                onChange={(e) => {
-                  setFaqSearchQuery(e.target.value);
-                  setFaqDisplayCount(10);
-                }}
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-1.5 text-xs text-slate-200 focus:border-blue-500 outline-none font-sans"
-              />
-            </div>
-          </div>
-
-          {/* 실무 범주 필터 탭 */}
-          <div className="flex flex-wrap items-center gap-2">
-            {[
-              { id: 'ALL', label: '전체 가이드' },
-              { id: 'UPLOAD', label: '📄 데이터 업로드 & 감리' },
-              { id: 'AHP_SPATIAL', label: '🗺️ AHP & 공간 추천' },
-              { id: 'DEBATE_REPORT', label: '⚖️ AI 심의 & 보고서' },
-              { id: 'RAG_HISTORY', label: '📜 RAG 조례 & 이력' }
-            ].map(tab => (
-              <button
-                key={tab.id}
-                onClick={() => {
-                  setFaqCategory(tab.id);
-                  setFaqDisplayCount(10);
-                }}
-                className={`text-xs px-3 py-1.5 rounded-xl font-semibold transition-all cursor-pointer border ${
-                  faqCategory === tab.id
-                    ? 'bg-blue-600 text-white border-blue-500 shadow-md shadow-blue-500/20'
-                    : 'bg-slate-950/60 text-slate-400 border-slate-800 hover:text-white hover:border-slate-700'
-                }`}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
-
-          {/* FAQ 실무 가이드 리스트 렌더링 */}
-          <div className="flex flex-col gap-3">
-            {(() => {
-              const practicalFaqs = [
-                {
-                  cat: 'UPLOAD',
-                  q: "1. [Step 1] 우리 구의 공간 CSV 데이터 업로드 시 필수 입력 컬럼과 주의사항은 무엇인가요?",
-                  a: "CSV 파일에는 반드시 위도(lat), 경도(lng), 지번 주소(jibun) 또는 PNU 코드가 포함되어야 합니다. 파일 선택 후 'AI 데이터 감리 기동' 버튼을 누르면 AI가 컬럼 파싱, 위경도 좌표 유효성, 중복 레코드 및 결측치를 100% 자동 검증하고 정정해 줍니다."
-                },
-                {
-                  cat: 'UPLOAD',
-                  q: "2. [Step 1] AI 데이터 감리 중 오류 알림이 뜨면 어떻게 조치해야 하나요?",
-                  a: "좌표가 대한민국 영역을 벗어나거나 필수 컬럼명이 비어있는 경우 감리 경고가 뜹니다. 알림 창에 표시된 오류 행 번호를 확인하신 후, CSV 파일의 컬럼명을 'lat', 'lng', 'jibun'으로 맞춰 재업로드하시면 정상 감리 완료(Pass) 판정을 받으실 수 있습니다."
-                },
-                {
-                  cat: 'AHP_SPATIAL',
-                  q: "3. [Step 2] 3D 지도 상에서 마커 위치를 보정하거나 임시 금지구역(Exclusion Zone)을 그리는 법은 무엇인가요?",
-                  a: "좌측 지도 화면에서 3D 필지 핀포인트 마커를 마우스로 직접 끌어(Drag & Drop) 원하는 입지로 위치를 정밀 보정할 수 있습니다. 또한 화면 좌측 상단의 '임시 금지구역 작도' 버튼을 클릭한 후 지도 위에 다각형(Polygon)을 렌더링하면 해당 구역이 자동 제척됩니다."
-                },
-                {
-                  cat: 'AHP_SPATIAL',
-                  q: "4. [Step 2] 마커를 드래그했더니 '법정 금연구역 버퍼 침범' 알림과 함께 원래 위치로 되돌아가는 이유는 무엇인가요?",
-                  a: "OmniSite는 공공 규제 회피의 무결성을 보장하기 위해 '마커 드래그 스로틀링 & 이격거리 침범 자동 위치 롤백 엔진'이 상시 가동 중입니다. 학교나 어린이집 등 법정 금지 버퍼(10m~200m) 내부로 마커를 이동시킬 경우 안전을 위해 롤백됩니다."
-                },
-                {
-                  cat: 'AHP_SPATIAL',
-                  q: "5. [Step 3] AHP 가중치 쌍대비교 입력 시 '일관성 비율(C.R. > 0.1) 모순' 경고가 뜰 때 가중치 수정 방법은 무엇인가요?",
-                  a: "AHP 가중치 슬라이더를 조절할 때 지표 간 상대적 중요도 설정에 논리적 모순이 발생하면 C.R. 경고가 인출됩니다. 화면에 제시되는 추천 조율 비율 가이드를 참고하여 슬라이더를 부드럽게 조정하시면 C.R. <= 0.1 검증이 통과되어 가중치가 락(Lock) 승인됩니다."
-                },
-                {
-                  cat: 'AHP_SPATIAL',
-                  q: "6. [Step 4] 우측 입지 추천 결과 카드에서 AHP 입지 수용성과 XGBoost 주민 갈등도(CSS) 게이지는 어떻게 해석하나요?",
-                  a: "파란색 'AHP 입지 수용성 게이지'는 유동인구 및 편의성 지표에 따른 정량적 적격성을 의미하며, 주황색 'XGBoost 주민 갈등도 게이지(CSS)'는 민원 발생 위험도를 나타냅니다. 두 점수가 종합 연산된 'Closed-Loop 적격도(ISI)' 점수가 가장 높은 필지가 최종 Top 1 부지입니다."
-                },
-                {
-                  cat: 'AHP_SPATIAL',
-                  q: "7. [Step 4] 추천 사유 카드에 '⚠️ [골목길 선형 필지 경고]' 태그가 떴을 때 행정 현장 점검 포인트는 무엇인가요?",
-                  a: "해당 필지의 지적 폭이 좁은 좁고 긴 골목형 지형(폭 < 2.5m)임을 백엔드 GIS가 자동 감지한 것입니다. 흡연부스나 시설물 설치 시 보행자 통행 장애 및 최소 보도폭(1.2m) 확보 여부를 현장에서 사전 점검하셔야 합니다."
-                },
-                {
-                  cat: 'AHP_SPATIAL',
-                  q: "8. [Step 4] 추천지 카드 내 '🗺️ 로드뷰 보기' 버튼은 어떻게 활용하나요?",
-                  a: "해당 필지의 '🗺️ 로드뷰 보기' 버튼을 누르면 카카오맵 실시간 로드뷰 창이 새 탭으로 즉시 열려, 현장에 직접 방문하지 않고도 보도 폭, 도로 점용 상태 및 주변 상가 환경을 로드뷰 이미지로 즉각 확인하실 수 있습니다."
-                },
-                {
-                  cat: 'DEBATE_REPORT',
-                  q: "9. [Step 5/6] 3자 AI 모의 심의 토론(Debate Simulator) 기동 및 진행 흐름 관찰 방법은 무엇인가요?",
-                  a: "Step 4 추천 카드 하단의 'Step 6. 의사결정 갈등 심의 이동' 버튼을 클릭한 후 토론 시작을 누르면, 찬성자(입지 찬성), 반대자(주민 민원), 중재자(행정관) 3자 LLM이 실시간 SSE 스트리밍으로 심의 토론을 진행하며 실시간 토론록이 작성됩니다."
-                },
-                {
-                  cat: 'DEBATE_REPORT',
-                  q: "10. [Step 6] 최종 행정 의결서(PDF / DOCX) 인출 및 관인 날인 적용 방법은 무엇인가요?",
-                  a: "모의 심의 토론이 완료되면 팝업 하단에 '📄 행정 심의 의결서 인출 (PDF/DOCX)' 버튼이 활성화됩니다. 클릭 시 AHP 점수, CSS 갈등도, 토론 요약 및 지자체 관인이 날인된 표준 행정 의결서 양식이 전자 문서로 즉시 다운로드됩니다."
-                },
-                {
-                  cat: 'RAG_HISTORY',
-                  q: "11. [RAG 조례 관리] 우리 구의 신규 금연 조례 PDF 파일을 RAG 지식베이스에 올리는 방법은 무엇인가요?",
-                  a: "상단 메뉴의 'RAG 조례 관리' 버튼을 누른 후, 파일 선택 창에서 지자체 조례 PDF/HWP 파일을 올려주시면 됩니다. 백엔드 pgvector가 1초 만에 1,536차원 벡터 공간으로 전환하여 지식베이스에 자동 적재합니다."
-                },
-                {
-                  cat: 'RAG_HISTORY',
-                  q: "12. [RAG 조례 관리] 조례 PDF를 올린 후 개정 전후 조항 차이(Diff)를 확인하는 법은 무엇인가요?",
-                  a: "RAG 조례 관리 모달의 등록된 파일 목록에서 각 조례 항목 우측의 '⚖️ 개정 이력' 버튼을 1클릭하시면, pgvector가 감지한 신규 신설, 수정 개정, 삭제 폐지 조항 변동 요약을 프리뷰 카드로 바로 확인하실 수 있습니다."
-                },
-                {
-                  cat: 'RAG_HISTORY',
-                  q: "13. [이력 대시보드] 과거에 우리 부서에서 분석했던 입지 심의 이력을 조회하는 방법은 무엇인가요?",
-                  a: "상단 네비게이션의 '이력 대시보드 (Analytics)' 메뉴로 이동하시면, 그동안 수행했던 입지 분석 날짜, 도메인, Top 1 지번, AHP 점수 및 SHA-256 검증 상태가 목록으로 정렬되어 1클릭 조회가 가능합니다."
-                },
-                {
-                  cat: 'RAG_HISTORY',
-                  q: "14. [이력 대시보드] 분석 이력 목록에서 '🔍 심의 이력 상세 보기' 버튼을 누르면 무엇을 볼 수 있나요?",
-                  a: "과거 수행된 입지 분석의 세부 AHP 가중치, 후보지별 ISI 수용성 점수, 진행된 3자 AI 모의 토론록 전문 및 당시 편찬된 행정 의결서를 언제든지 재열람 및 다운로드하실 수 있습니다."
-                },
-                {
-                  cat: 'RAG_HISTORY',
-                  q: "15. [이력 대시보드] 준공 후 사후 실증 공문서(PDF)를 등록하여 RAG OCR 감리를 받는 방법은 무엇인가요?",
-                  a: "이력 대시보드의 '사후 실증 공문 적재' 세션에서 실제 준공 고시 공문 PDF를 업로드하시면, RAG OCR 파이프라인이 실측 수치를 자동 추출하여 규제 부합률(%)을 감리하고 적격 시 지식베이스에 자동 축적합니다."
-                },
-                {
-                  cat: 'AHP_SPATIAL',
-                  q: "16. 공유킥보드 거치대나 전기차 충전소 등 다른 인프라 도메인을 선택하여 분석하는 방법은 무엇인가요?",
-                  a: "좌측 공간 제어 패널 상단의 '시설물 도메인 선택' 드롭다운에서 흡연부스, 공유이동수단 거치대, 전기차 충전소, 안심 옐로카펫 중 원하는 인프라를 선택하시면 해당 시설물 전용 지표 및 규제 반경이 자동 스왑 적용됩니다."
-                },
-                {
-                  cat: 'AHP_SPATIAL',
-                  q: "17. 후보지 상세 카드의 공시지가 및 면적 수치는 어디서 연동되어 가져오는 것인가요?",
-                  a: "국토교통부 지적도(Cadastral Lands) 및 부동산 공시지가 표준 PostgreSQL PostGIS 지오메트리 데이터베이스에서 해당 필지의 PNU 코드를 기반으로 실시간 100% 동적 인출되는 행정 데이터입니다."
-                },
-                {
-                  cat: 'UPLOAD',
-                  q: "18. 행정망 보안 로그아웃 처리 및 비밀번호 변경은 어디서 수행하나요?",
-                  a: "상단 네비게이션 우측의 프로필 아이콘을 클릭하시면 '비밀번호 변경' 및 '안전 로그아웃' 메뉴가 인출됩니다. 보안 정책에 따라 60분 간 조작이 없을 경우 보안 세션이 자동 만료됩니다."
-                },
-                {
-                  cat: 'DEBATE_REPORT',
-                  q: "19. SHA-256 감사 해시 체인(Hash Chain) 검증 마크는 어디서 확인할 수 있나요?",
-                  a: "입지 분석이 완료되면 우측 패널 하단 및 다운로드받으신 행정 의결서 문서 하단에 SHA-256 단방향 암호화 해시 코드(예: 8f9a2b...)가 위변조 방지 인증 인장으로 표출됩니다."
-                },
-                {
-                  cat: 'AHP_SPATIAL',
-                  q: "20. 자치구별/시설물별 법정 이격거리 규제 반경(10m~200m) 기준을 직접 변경하거나 설정하는 방법은 무엇인가요?",
-                  a: "상단 네비게이션 우측의 '⚙️ 관리자 콘솔 (Admin Console)' 메뉴로 진입하시면, 자치구별 조례 이격거리 가이드라인(학교 50m, 어린이집 10m 등) 및 시설물별 규제 반경 수치를 직접 수정 및 적용하실 수 있습니다. 기타 시스템 관련 문의는 지자체 전산망 지원 핫라인을 통해 접수하실 수 있습니다."
-                }
-              ];
-
-              // 검색어 및 카테고리 필터링
-              const filtered = practicalFaqs.filter(item => {
-                const matchCat = faqCategory === 'ALL' || item.cat === faqCategory;
-                const matchSearch = !faqSearchQuery || 
-                  item.q.toLowerCase().includes(faqSearchQuery.toLowerCase()) ||
-                  item.a.toLowerCase().includes(faqSearchQuery.toLowerCase());
-                return matchCat && matchSearch;
-              });
-
-              // 10개 단위 슬라이싱
-              const visibleList = filtered.slice(0, faqDisplayCount);
-              const hasMore = visibleList.length < filtered.length;
-
-              if (filtered.length === 0) {
-                return (
-                  <div className="text-xs text-slate-500 text-center py-8 border border-dashed border-slate-800 rounded-xl">
-                    검색 조건에 일치하는 사용 가이드 FAQ 항목이 없습니다.
-                  </div>
-                );
-              }
-
-              return (
-                <>
-                  {visibleList.map((faq, idx) => (
-                    <div 
-                      key={idx} 
-                      className="border border-slate-800/80 rounded-xl overflow-hidden bg-slate-950/60 hover:border-slate-700 transition-all duration-200 shadow-sm"
-                    >
-                      <button
-                        onClick={() => setOpenFaq(openFaq === idx ? null : idx)}
-                        className="w-full text-left p-4 flex justify-between items-center text-xs font-bold text-slate-200 hover:bg-slate-900/40 transition-all cursor-pointer font-sans"
-                      >
-                        <span className="flex items-center gap-2">
-                          <span className="text-blue-400 font-mono text-[11px] shrink-0">[가이드 {idx + 1}]</span>
-                          <span>{faq.q.replace(/^[0-9]+\.\s*/, '')}</span>
-                        </span>
-                        <span className="text-slate-500 font-mono text-[10px] ml-2 shrink-0">
-                          {openFaq === idx ? '▲ 접기' : '▼ 펼치기'}
-                        </span>
-                      </button>
-                      
-                      {openFaq === idx && (
-                        <div className="p-4 text-xs text-slate-300 bg-slate-900/80 border-t border-slate-800/80 leading-relaxed font-sans animate-fade-in">
-                          {faq.a}
-                        </div>
-                      )}
-                    </div>
-                  ))}
-
-                  {/* 10개 단위 인피니트 스크롤 / Load More 컨트롤러 */}
-                  <div className="mt-4 flex flex-col items-center gap-2 pt-2 border-t border-slate-900">
-                    <div className="text-[11px] font-mono text-slate-400">
-                      표시 중: <strong className="text-blue-400">{visibleList.length}</strong> / 전체 {filtered.length}개 가이드 FAQ
-                    </div>
-                    
-                    {hasMore ? (
-                      <button
-                        onClick={() => setFaqDisplayCount(prev => prev + 10)}
-                        className="bg-slate-900 hover:bg-slate-800 text-blue-400 border border-slate-800 hover:border-blue-500/40 text-xs font-bold px-6 py-2 rounded-xl transition-all cursor-pointer shadow-md flex items-center gap-2 hover:scale-105"
-                      >
-                        <span>📜 가이드 FAQ 10개 더 불러오기 (Load More)</span>
-                      </button>
-                    ) : (
-                      <span className="text-[10px] text-emerald-400 bg-emerald-950/40 border border-emerald-500/30 px-3 py-1 rounded-full font-bold">
-                        ✓ 검색된 모든 실무 가이드 항목 로드 완료
-                      </span>
-                    )}
-                  </div>
-                </>
-              );
-            })()}
           </div>
         </section>
 
@@ -1228,13 +1154,34 @@ export default function Dashboard() {
         apiFetch={apiFetch}
       />
 
-      {/* 토스트 메시지 렌더러 */}
+      {/* 📋 행정 통합 게시판 (Notices, Community, User-facing FAQ) 모달 */}
+      <BoardModal
+        show={showBoardModal}
+        onClose={() => setShowBoardModal(false)}
+        apiFetch={apiFetch}
+        showToast={showToast}
+      />
+
+      {/* 🌐 글로벌 푸터 컴포넌트 */}
+      <GlobalFooter />
+
+      {/* 🔔 글래스모피즘 토스트 알림 렌더러 */}
       {toastMessage && (
-        <div className={`fixed bottom-6 right-6 z-[100] px-4 py-3 rounded-xl text-xs font-semibold text-white shadow-2xl backdrop-blur-md border animate-bounce ${
-          toastMessage.type === 'error' ? 'bg-rose-950/90 border-rose-500/50' : 
-          toastMessage.type === 'warning' ? 'bg-amber-950/90 border-amber-500/50' : 'bg-emerald-950/90 border-emerald-500/50'
+        <div className={`fixed top-20 right-6 z-[100] px-5 py-3.5 rounded-2xl text-xs font-bold text-white shadow-2xl backdrop-blur-md border animate-fade-in flex items-center gap-3 transition-all ${
+          toastMessage.type === 'error' ? 'bg-rose-950/95 border-rose-500/80 text-rose-200 shadow-rose-950/50' : 
+          toastMessage.type === 'warning' ? 'bg-amber-950/95 border-amber-500/80 text-amber-200 shadow-amber-950/50' : 
+          toastMessage.type === 'success' ? 'bg-emerald-950/95 border-emerald-500/80 text-emerald-200 shadow-emerald-950/50' :
+          'bg-indigo-950/95 border-indigo-500/80 text-indigo-200 shadow-indigo-950/50'
         }`}>
-          {toastMessage.msg}
+          <span className="text-lg shrink-0">
+            {toastMessage.type === 'error' ? '❌' : toastMessage.type === 'warning' ? '⚠️' : toastMessage.type === 'success' ? '✅' : 'ℹ️'}
+          </span>
+          <div className="flex flex-col gap-0.5">
+            <span className="font-extrabold text-[10px] uppercase tracking-wider opacity-80">
+              {toastMessage.type === 'error' ? '시스템 오류 알림' : toastMessage.type === 'warning' ? '주의 알림' : toastMessage.type === 'success' ? '처리 성공 알림' : '행정 정보 알림'}
+            </span>
+            <span className="text-xs font-semibold">{toastMessage.msg}</span>
+          </div>
         </div>
       )}
 

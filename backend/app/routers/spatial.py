@@ -3291,7 +3291,7 @@ async def get_verified_precedents(db: Session = Depends(get_db)):
 # [Delete Endpoints for Dashboard Record Management]
 # ========================================================
 @router.delete("/spatial/history/{history_id}")
-async def delete_decision_history(history_id: int, db: Session = Depends(get_db)):
+async def delete_decision_history(history_id: int, db: Session = Depends(get_db), current_admin: dict = Depends(get_current_admin)):
     try:
         db.execute(text("DELETE FROM decision_histories WHERE id = :id"), {"id": history_id})
         db.commit()
@@ -3311,7 +3311,7 @@ async def delete_decision_history(history_id: int, db: Session = Depends(get_db)
         raise HTTPException(status_code=500, detail=f"이력 삭제 실패: {str(e)}")
 
 @router.delete("/spatial/precedents/{precedent_id}")
-async def delete_verified_precedent(precedent_id: int, db: Session = Depends(get_db)):
+async def delete_verified_precedent(precedent_id: int, db: Session = Depends(get_db), current_admin: dict = Depends(get_current_admin)):
     try:
         db.execute(text("DELETE FROM verified_precedents WHERE id = :id"), {"id": precedent_id})
         db.commit()

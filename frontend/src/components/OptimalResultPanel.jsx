@@ -265,6 +265,147 @@ export default function OptimalResultPanel({
                 </div>
               )}
 
+              {/* ========================================================================= */}
+              {/* Proposal 2: 5-Axis Radar Chart Trade-off Matrix (Step 4 -> Step 5) */}
+              {/* ========================================================================= */}
+              {currentParcel.radar_scores && (
+                <div className="bg-slate-950/70 p-4 rounded-xl border border-indigo-500/30 flex flex-col gap-3 my-3 backdrop-blur-md shadow-lg">
+                  <div className="flex items-center justify-between border-b border-slate-800/80 pb-2">
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-indigo-400">
+                      <span>📊</span>
+                      <span>5각 입지 트레이드오프 (Radar Matrix)</span>
+                    </div>
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 font-semibold">
+                      Step 4 ➔ 5
+                    </span>
+                  </div>
+
+                  <div className="relative flex justify-center items-center py-1">
+                    {(() => {
+                      const r = currentParcel.radar_scores || {
+                        accessibility: 85,
+                        land_acquisition: 100,
+                        statutory_safety: 90,
+                        complaint_stability: 80,
+                        construction_feasibility: 75
+                      };
+                      const cx = 110, cy = 95, radius = 65;
+                      const angles = [-90, -18, 54, 126, 198];
+                      
+                      const getX = (angleDeg, val) => cx + (radius * (val / 100)) * mathCos(angleDeg * Math.PI / 180);
+                      const getY = (angleDeg, val) => cy + (radius * (val / 100)) * mathSin(angleDeg * Math.PI / 180);
+
+                      function mathCos(rad) { return Math.cos(rad); }
+                      function mathSin(rad) { return Math.sin(rad); }
+
+                      const dataPoints = [
+                        [getX(angles[0], r.accessibility), getY(angles[0], r.accessibility)],
+                        [getX(angles[1], r.land_acquisition), getY(angles[1], r.land_acquisition)],
+                        [getX(angles[2], r.statutory_safety), getY(angles[2], r.statutory_safety)],
+                        [getX(angles[3], r.complaint_stability), getY(angles[3], r.complaint_stability)],
+                        [getX(angles[4], r.construction_feasibility), getY(angles[4], r.construction_feasibility)]
+                      ];
+                      const polyPoints = dataPoints.map(p => `${p[0]},${p[1]}`).join(' ');
+
+                      const outerGrid = angles.map(a => `${getX(a, 100)},${getY(a, 100)}`).join(' ');
+                      const midGrid = angles.map(a => `${getX(a, 50)},${getY(a, 50)}`).join(' ');
+
+                      return (
+                        <svg width="230" height="190" viewBox="0 0 230 190" className="overflow-visible">
+                          <defs>
+                            <radialGradient id="radarGlow" cx="50%" cy="50%" r="50%">
+                              <stop offset="0%" stopColor="#6366f1" stopOpacity="0.45" />
+                              <stop offset="100%" stopColor="#818cf8" stopOpacity="0.1" />
+                            </radialGradient>
+                          </defs>
+
+                          {/* Grid Polygons */}
+                          <polygon points={outerGrid} fill="none" stroke="#334155" strokeWidth="1" strokeDasharray="2,2" />
+                          <polygon points={midGrid} fill="none" stroke="#1e293b" strokeWidth="1" strokeDasharray="2,2" />
+
+                          {/* Axis Lines */}
+                          {angles.map((a, i) => (
+                            <line key={i} x1={cx} y1={cy} x2={getX(a, 100)} y2={getY(a, 100)} stroke="#334155" strokeWidth="1" />
+                          ))}
+
+                          {/* Data Polygon */}
+                          <polygon points={polyPoints} fill="url(#radarGlow)" stroke="#818cf8" strokeWidth="2.5" className="drop-shadow-[0_0_8px_rgba(99,102,241,0.6)]" />
+
+                          {/* Data Dots */}
+                          {dataPoints.map((p, i) => (
+                            <circle key={i} cx={p[0]} cy={p[1]} r="3.5" fill="#a5b4fc" stroke="#4338ca" strokeWidth="1.5" />
+                          ))}
+
+                          {/* Labels */}
+                          <text x={getX(angles[0], 118)} y={getY(angles[0], 118) - 2} textAnchor="middle" fill="#a5b4fc" className="text-[9px] font-bold">🚀 접근성({r.accessibility})</text>
+                          <text x={getX(angles[1], 120)} y={getY(angles[1], 120)} textAnchor="start" fill="#34d399" className="text-[9px] font-bold">🏛️ 수용성({r.land_acquisition})</text>
+                          <text x={getX(angles[2], 118)} y={getY(angles[2], 118) + 6} textAnchor="start" fill="#c084fc" className="text-[9px] font-bold">🛡️ 안전성({r.statutory_safety})</text>
+                          <text x={getX(angles[3], 118)} y={getY(angles[3], 118) + 6} textAnchor="end" fill="#fbbf24" className="text-[9px] font-bold">🕊️ 민원성({r.complaint_stability})</text>
+                          <text x={getX(angles[4], 120)} y={getY(angles[4], 120)} textAnchor="end" fill="#60a5fa" className="text-[9px] font-bold">🏗️ 공사성({r.construction_feasibility})</text>
+                        </svg>
+                      );
+                    })()}
+                  </div>
+                </div>
+              )}
+
+              {/* ========================================================================= */}
+              {/* Proposal 1: Sensitivity & Stress Testing Card (Step 4 -> Step 5) */}
+              {/* ========================================================================= */}
+              {currentParcel.stress_test && (
+                <div className="bg-slate-950/70 p-4 rounded-xl border border-emerald-500/30 flex flex-col gap-3 my-3 backdrop-blur-md shadow-lg">
+                  <div className="flex items-center justify-between border-b border-slate-800/80 pb-2">
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-400">
+                      <span>🛡️</span>
+                      <span>미래 변동 스트레스 테스트 (Stress Test)</span>
+                    </div>
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${
+                      currentParcel.stress_test.status.includes('PASS')
+                        ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                        : 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+                    }`}>
+                      {currentParcel.stress_test.status}
+                    </span>
+                  </div>
+
+                  {/* 3 Scenarios Grid */}
+                  <div className="grid grid-cols-3 gap-2 py-1 text-center">
+                    <div className="bg-slate-900/80 p-2 rounded-lg border border-slate-800 flex flex-col gap-0.5">
+                      <span className="text-[9px] text-emerald-400 font-semibold">Optimal (최상)</span>
+                      <span className="text-xs font-mono font-bold text-emerald-300">{currentParcel.stress_test.optimal_isi}점</span>
+                    </div>
+                    <div className="bg-slate-900/80 p-2 rounded-lg border border-indigo-500/30 flex flex-col gap-0.5">
+                      <span className="text-[9px] text-indigo-400 font-semibold">Normal (현행)</span>
+                      <span className="text-xs font-mono font-bold text-indigo-300">{currentParcel.stress_test.normal_isi}점</span>
+                    </div>
+                    <div className="bg-slate-900/80 p-2 rounded-lg border border-rose-500/30 flex flex-col gap-0.5">
+                      <span className="text-[9px] text-rose-400 font-semibold">Worst (악조건)</span>
+                      <span className="text-xs font-mono font-bold text-rose-300">{currentParcel.stress_test.worst_isi}점</span>
+                    </div>
+                  </div>
+
+                  {/* Robustness Index Progress Bar */}
+                  <div className="flex flex-col gap-1 mt-1">
+                    <div className="flex items-center justify-between text-[10px]">
+                      <span className="text-slate-400">안정 변동성 지수 (Robustness Index)</span>
+                      <span className="font-mono font-bold text-emerald-400">{currentParcel.stress_test.robustness_score} / 100</span>
+                    </div>
+                    <div className="w-full h-1.5 bg-slate-900 rounded-full overflow-hidden border border-slate-800">
+                      <div
+                        className="h-full bg-emerald-400 rounded-full transition-all duration-500 shadow-[0_0_8px_rgba(52,211,153,0.5)]"
+                        style={{ width: `${currentParcel.stress_test.robustness_score}%` }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Government Moderator Feeder Message */}
+                  <div className="bg-emerald-950/40 p-2.5 rounded-lg border border-emerald-500/30 text-[10.5px] leading-relaxed text-emerald-200 flex items-start gap-1.5">
+                    <span>🏛️</span>
+                    <span><strong>정부중재관 피딩:</strong> {currentParcel.stress_test.feeder_message}</span>
+                  </div>
+                </div>
+              )}
+
               {currentParcel.reason && (
                 <div className="flex flex-col gap-2 mt-2 border-t border-slate-900/80 pt-3">
                   <span className="text-[11px] font-bold text-emerald-400 flex items-center gap-1.5 font-sans">

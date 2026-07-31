@@ -1151,28 +1151,36 @@ async def recommend_optimal_sites(
                 "construction_feasibility": round(const_feas, 1)
             }
 
-            # [Proposal 1] Sensitivity & Stress Testing (Optimal / Normal / Worst Scenarios)
-            normal_isi = float(cand["isi_score"])
+            # [Proposal 1] Sensitivity & Stress Testing (100-Point Normalized Math)
+            # max_possible_score: AHP 가중치 총합
+            raw_isi = float(cand.get("isi_score", 0.0))
+            max_pos = float(sum(criteria_weights.values())) if sum(criteria_weights.values()) > 0 else 1.0
             
-            # Optimal Scenario: 유동성 15% 증가, 민원 20% 감쇄 (최상 환경)
-            opt_isi = min(100.0, round(normal_isi * 1.08, 1))
+            # 100점 만점 백분율 스케일 변환
+            normal_pct = round(min(100.0, max(0.0, (raw_isi / max_pos) * 100.0)), 1)
             
-            # Worst Scenario: 민원 30% 급증, 갈등 25% 악화 (악조건 스트레스)
-            worst_isi = max(20.0, round(normal_isi * 0.82, 1))
+            # 민원 수치(complaint_count) 및 갈등도(css_score) 반영 가변 감쇄율
+            comp_cnt = float(cand.get("complaint_count", 10.0))
+            css_val = float(cand.get("css_score", 30))
             
-            # Robustness Score (안정 변동성 지수): 100 - (Normal - Worst) * 2.5
-            var_gap = normal_isi - worst_isi
-            robust_score = max(50.0, min(100.0, round(100.0 - (var_gap * 1.5), 1)))
+            # Worst 감쇄 비율: 기본 -18% ~ -40% (민원/갈등 비례)
+            drop_ratio = 0.18 + min(0.22, (comp_cnt * 0.008) + (css_val * 0.002))
             
-            stress_status = "PASS (철벽 안정)" if robust_score >= 80.0 else ("WARN (주의 부지)" if robust_score >= 65.0 else "RISK (취약 부지)")
+            opt_pct = round(min(100.0, normal_pct * 1.08), 1)
+            worst_pct = round(max(0.0, normal_pct * (1.0 - drop_ratio)), 1)
+            
+            var_gap = round(normal_pct - worst_pct, 1)
+            robust_score = round(max(0.0, min(100.0, 100.0 - (var_gap * 1.6))), 1)
+            
+            stress_status = "PASS (철벽 안정)" if robust_score >= 75.0 else ("WARN (주의 필요)" if robust_score >= 55.0 else "RISK (취약 위험)")
             
             cand["stress_test"] = {
-                "optimal_isi": opt_isi,
-                "normal_isi": normal_isi,
-                "worst_isi": worst_isi,
+                "optimal_isi": opt_pct,
+                "normal_isi": normal_pct,
+                "worst_isi": worst_pct,
                 "robustness_score": robust_score,
                 "status": stress_status,
-                "feeder_message": f"미래 민원 30% 급증(Worst) 시에도 안전점수 {worst_isi}점 유지 ➔ 행정중재관 설득 무기 탑재"
+                "feeder_message": f"미래 민원 30% 급증(Worst) 시 {worst_pct}점 수렴 (안정성 {robust_score}점) ➔ 행정중재관 설득 무기 탑재"
             }
 
         # 6. Closed-Loop ISI (통합 적격도 점수) 내림차순 정렬 후, 공간적 중복 배제 필터링

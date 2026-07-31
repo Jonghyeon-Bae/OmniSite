@@ -34,8 +34,7 @@ echo.
 
 :: 3. 최초 콜드스타트 데이터 벌크 적재 및 조인 실행 여부 검사
 echo [3/4] 최초 콜드스타트 데이터 세트 적재 및 공간 조인 실행 중...
-python app/scripts/clean_and_organize_datasets.py
-python app/scripts/create_decision_histories_table.py
+python ../seed_db.py
 python app/scripts/train_css_model.py
 echo.
 

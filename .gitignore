@@ -35,6 +35,7 @@ Thumbs.db
 frontend.zip
 create_pdf_raw.py
 *.log
+*.sql
 backend/data/raw/*.json
 backend/temp_shp/
 *.pdf

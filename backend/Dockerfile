@@ -3,10 +3,15 @@ FROM python:3.11-slim
 
 WORKDIR /workspace
 
-# Install system dependencies needed for python libraries (like shapefile, psycopg, etc.)
+ENV PYTHONPATH=/workspace:/workspace/backend
+ENV PYTHONUNBUFFERED=1
+
+# Install system dependencies needed for python libraries (like shapefile, psycopg, gdal, etc.)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     libpq-dev \
+    git \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt /workspace/requirements.txt

@@ -433,22 +433,44 @@ def chunk_and_embed_pdf(file_path: str, filename: str, db: Session, district_id:
         "assigned_version": assigned_version
     }
 
+# 시맨틱 도메인 태그 정제 헬퍼 (설명 문장/한글/특수문자를 순수 snake_case 영문 슬러그로 정제)
+def sanitize_domain_tag(raw_tag: str) -> str:
+    if not raw_tag:
+        return "smart_city_siting"
+    cleaned_input = str(raw_tag).strip().strip("`'\"")
+    # 하이픈(-), 콜론(:), 괄호, 한글 또는 공백이 나오면 첫 영문 슬러그 토큰만 추출
+    cleaned_input = re.split(r'[-:\(\[\{\s\u3131-\u3163\uac00-\ud7a3]', cleaned_input)[0].strip()
+    slug = re.sub(r'[^a-zA-Z0-9_]', '_', cleaned_input).strip('_').lower()
+    slug = re.sub(r'_+', '_', slug)
+    return slug if len(slug) >= 2 else "smart_city_siting"
+
 # 도메인 태그 유사도 기반 중복 방지 및 병합 헬퍼
 def get_or_create_merged_tag(domain_tag: str, reasoning: str, db: Session) -> str:
+    clean_tag = sanitize_domain_tag(domain_tag)
+    
+    # 1. DB내 동일 태그(대소문자 무관) 존재 여부 우선 검증하여 하드코딩 중복 생성 100% 차단
+    try:
+        exact_match = db.execute(text("SELECT tag_name FROM registered_domain_tags WHERE LOWER(tag_name) = LOWER(:tag_name) LIMIT 1"), {"tag_name": clean_tag}).fetchone()
+        if exact_match:
+            return exact_match[0]
+    except Exception as ex:
+        print(f"[Semantic Tag Exact Match Check Error] {ex}")
+
     client = get_openai_client()
     if not client:
-        return domain_tag
+        return clean_tag
         
     try:
         embed_res = client.embeddings.create(
             model="text-embedding-3-small",
-            input=domain_tag
+            input=clean_tag
         )
         tag_embedding = embed_res.data[0].embedding
         
         query = text("""
             SELECT tag_name, 1 - (embedding <=> CAST(:tag_embedding AS vector)) AS similarity 
             FROM registered_domain_tags 
+            WHERE embedding IS NOT NULL
             ORDER BY similarity DESC 
             LIMIT 1
         """)
@@ -457,26 +479,26 @@ def get_or_create_merged_tag(domain_tag: str, reasoning: str, db: Session) -> st
         if result:
             matched_tag, similarity = result
             print(f"[Semantic Tag Merger] Matched: {matched_tag} with similarity {similarity}")
-            if similarity >= 0.85:
-                print(f"[Semantic Tag Merger] Merged domain tag '{domain_tag}' into representative tag '{matched_tag}'")
+            if similarity >= 0.80:
+                print(f"[Semantic Tag Merger] Merged domain tag '{clean_tag}' into representative tag '{matched_tag}'")
                 return matched_tag
                 
-        print(f"[Semantic Tag Merger] Creating new domain tag '{domain_tag}'")
+        print(f"[Semantic Tag Merger] Creating new domain tag '{clean_tag}'")
         insert_query = text("""
             INSERT INTO registered_domain_tags (tag_name, tag_description, embedding)
             VALUES (:tag_name, :tag_description, :embedding)
             ON CONFLICT (tag_name) DO NOTHING
         """)
         db.execute(insert_query, {
-            "tag_name": domain_tag,
-            "tag_description": reasoning[:200] if reasoning else "AI 감리가 도출한 도메인",
+            "tag_name": clean_tag,
+            "tag_description": reasoning[:150] if reasoning else "AI 감리가 도출한 도메인",
             "embedding": tag_embedding
         })
         db.commit()
-        return domain_tag
+        return clean_tag
     except Exception as e:
         print(f"[Semantic Tag Merger Error] {e}")
-        return domain_tag
+        return clean_tag
 
 
 # RAG 임베딩 매핑 실패 시 로컬 디렉터리 내 PDF 문서 시맨틱 키워드 매칭 수행용 Fallback 헬퍼
@@ -876,7 +898,7 @@ async def audit_upload_files(request: AuditRequest, db: Session = Depends(get_db
 
 위 파일들의 파일명, 컬럼 구성, 그리고 조례 텍스트 내용을 종합 분석하여 다음 정보들을 도출하십시오:
 1. inferred_purpose: 이번 입지 분석의 시맨틱 목적 추론 (예: "지능형 스마트 쉼터 최적 입지 매핑 및 규제구역 제외 분석", "전기차 충전소 최적 입지 매핑 및 규제구역 제외 분석")
-2. inferred_domain_tag: 도메인 분류 영문 태그 (예: smart_shelter, yellow_carpet, ev_charging)
+2. inferred_domain_tag: 도메인 분류 단일 영문 단어 태그 슬러그 (절대로 한글, 설명 문장, 특수문자, 괄호를 포함하지 말고 오직 소문자 뱀표기법 영문 태그 한 단어만 반환하십시오. 예: smart_shelter, yellow_carpet, ev_charging)
 3. hitl_question: 사용자(공무원)에게 의사결정 목적이 맞는지 최종 확정하기 위한 확인 질문 (예: "업로드하신 데이터들은 [특정 도메인 지정]을 위한 입지 분석이 맞습니까?")
 4. reasoning: 어떤 조례 문서의 조항 구절과 어떤 CSV 파일명의 키워드 및 컬럼 헤더들을 대조하여 위 inferred_purpose와 inferred_domain_tag를 판독했는지 상세히 서술하십시오
 5. opinion: 전체 조례 및 공간 데이터를 교차 검토하여 특정 시설물 제한 구역에 대한 감리 평가 의견
@@ -2988,13 +3010,14 @@ async def list_regulation_titles(db: Session = Depends(get_db)):
 
 @router.get("/upload/domain-tags")
 def get_registered_domain_tags(db: Session = Depends(get_db)):
-    """[v4.3.1] DB(registered_domain_tags)에 등록된 전체 시맨틱 도메인 태그 목록 조회 API"""
+    """[v4.3.1] DB(registered_domain_tags)에 등록된 전체 시맨틱 도메인 태그 목록 조회 API (중복 제거 및 슬러그 정제)"""
     try:
         rows = db.execute(text("SELECT tag_name, tag_description FROM registered_domain_tags ORDER BY id ASC")).fetchall()
         TAG_DESC_MAP = {
             "smart_city_siting": "스마트시티 입지선정",
             "smoking_booth": "실외 흡연구역 입지",
             "smoking_area": "실외 흡연구역 입지",
+            "smoking_zone": "실외 흡연구역 입지",
             "smoking_booth_siting": "실외 흡연구역 입지",
             "smoke_booth_location": "실외 흡연구역 입지",
             "smoke_zone_placement": "실외 흡연구역 입지",
@@ -3004,12 +3027,18 @@ def get_registered_domain_tags(db: Session = Depends(get_db)):
             "city_feature": "일반 스마트시티 시설물"
         }
         tags = []
+        seen_slugs = set()
         for r in rows:
+            clean_tag = sanitize_domain_tag(r[0])
+            if clean_tag in seen_slugs:
+                continue
+            seen_slugs.add(clean_tag)
+            
             desc = r[1]
-            if not desc or desc == r[0]:
-                desc = TAG_DESC_MAP.get(r[0], r[0])
+            if not desc or desc == r[0] or len(desc) > 80:
+                desc = TAG_DESC_MAP.get(clean_tag, clean_tag)
             tags.append({
-                "tag_name": r[0],
+                "tag_name": clean_tag,
                 "tag_description": desc
             })
         if not tags:

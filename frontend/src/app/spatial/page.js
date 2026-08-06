@@ -1348,8 +1348,8 @@ export default function Home() {
           selection_reason: selectedParcel[activeTab]?.reason || ""
         };
 
-        // Next.js BFF Proxy의 스트림 버퍼링 렉을 차단하기 위해, 백엔드 포트(8000)로 다이렉트 브라우저 SSE 통신 수행
-        const backendBaseUrl = process.env.NEXT_PUBLIC_BACKEND_API_URL || 'http://localhost:8000';
+        // Next.js BFF Proxy 및 상대 경로 동적 라우팅을 위한 backendBaseUrl 바인딩
+        const backendBaseUrl = process.env.NEXT_PUBLIC_BACKEND_API_URL || '';
         const res = await fetch(`${backendBaseUrl}/api/v1/spatial/debate`, {
           method: 'POST',
           headers: { 

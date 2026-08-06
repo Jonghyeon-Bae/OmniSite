@@ -30,13 +30,25 @@ export default function GatewayPage() {
   const [newPasswordConfirm, setNewPasswordConfirm] = useState('');
   const [resetLoading, setResetLoading] = useState(false);
 
+  const getApiBaseUrl = () => {
+    if (process.env.NEXT_PUBLIC_API_URL && process.env.NEXT_PUBLIC_API_URL !== 'http://localhost:8000') {
+      return process.env.NEXT_PUBLIC_API_URL;
+    }
+    if (typeof window !== 'undefined' && window.location.hostname) {
+      const protocol = window.location.protocol;
+      const hostname = window.location.hostname;
+      return `${protocol}//${hostname}:8000`;
+    }
+    return '';
+  };
+
   // 1. 이미 로그인된 상태일 경우 백엔드 실시간 토큰 검증 후 지도 페이지로 자동 리다이렉트
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const token = sessionStorage.getItem('token');
       const savedUser = sessionStorage.getItem('username');
       if (token && savedUser) {
-        fetch('/api/v1/auth/me', {
+        fetch(`${getApiBaseUrl()}/api/v1/auth/me`, {
           headers: { 'Authorization': `Bearer ${token}` }
         })
         .then(res => {
@@ -66,7 +78,8 @@ export default function GatewayPage() {
     
     setLoading(true);
     try {
-      const res = await fetch('/api/v1/auth/login', {
+      const apiBase = getApiBaseUrl();
+      const res = await fetch(`${apiBase}/api/v1/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password })
@@ -115,7 +128,8 @@ export default function GatewayPage() {
     }
     setRegLoading(true);
     try {
-      const res = await fetch('/api/v1/auth/register', {
+      const apiBase = getApiBaseUrl();
+      const res = await fetch(`${apiBase}/api/v1/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

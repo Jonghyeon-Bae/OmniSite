@@ -35,6 +35,7 @@ services:
     volumes:
       - ./Datasets:/workspace/Datasets:ro
       - ./seed_db.py:/workspace/seed_db.py:ro
+      - ./backend/seed_db.py:/workspace/backend/seed_db.py:ro
     ports:
       - "8000:8000"
     depends_on:

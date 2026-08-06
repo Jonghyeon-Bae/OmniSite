@@ -133,16 +133,17 @@ def seed():
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 );
             """))
-            conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255);"))
-            conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS is_approved BOOLEAN DEFAULT TRUE;"))
             conn.execute(text("""
                 DO $$ 
                 BEGIN 
-                    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='hashed_password') THEN
-                        UPDATE users SET password_hash = hashed_password WHERE password_hash IS NULL;
+                    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='hashed_password') 
+                       AND NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='password_hash') THEN
+                        ALTER TABLE users RENAME COLUMN hashed_password TO password_hash;
                     END IF;
                 END $$;
             """))
+            conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255);"))
+            conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS is_approved BOOLEAN DEFAULT TRUE;"))
             
             print("[2] Truncating target tables...")
             conn.execute(text("""

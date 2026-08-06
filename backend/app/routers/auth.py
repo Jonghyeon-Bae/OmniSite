@@ -255,33 +255,36 @@ async def approve_user(user_id: int, db: Session = Depends(get_db), current_admi
 
 # --- 5. 사용자 비밀번호 변경 API ---
 class PasswordChangeRequest(BaseModel):
-    old_password: str = Field(..., description="기존 비밀번호")
+    old_password: Optional[str] = Field(None, description="기존 비밀번호 (최초 변경 시 선택 사항)")
     new_password: str = Field(..., description="신규 비밀번호")
 
 @router.post("/change-password")
 async def change_password(req: PasswordChangeRequest, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
-    user_id = current_user["id"]
-    query = text("SELECT password_hash FROM users WHERE id = :id")
-    user = db.execute(query, {"id": user_id}).fetchone()
-    
-    if not user or not verify_password(req.old_password, user[0]):
-        raise HTTPException(status_code=400, detail="기존 비밀번호가 일치하지 않습니다.")
-        
-    validate_password_strength(req.new_password)
-    
-    if req.old_password == req.new_password:
-        raise HTTPException(status_code=400, detail="새 비밀번호는 기존 비밀번호와 달라야 합니다.")
-        
-    new_hash = hash_password(req.new_password)
-    update_query = text("UPDATE users SET password_hash = :new_hash WHERE id = :id")
     try:
+        user_id = current_user["id"]
+        query = text("SELECT password_hash FROM users WHERE id = :id")
+        user = db.execute(query, {"id": user_id}).fetchone()
+        
+        if req.old_password and user and user[0]:
+            if not verify_password(req.old_password, user[0]):
+                raise HTTPException(status_code=400, detail="기존 비밀번호가 일치하지 않습니다.")
+            
+        validate_password_strength(req.new_password)
+        
+        if req.old_password and req.old_password == req.new_password:
+            raise HTTPException(status_code=400, detail="새 비밀번호는 기존 비밀번호와 달라야 합니다.")
+            
+        new_hash = hash_password(req.new_password)
+        update_query = text("UPDATE users SET password_hash = :new_hash WHERE id = :id")
         db.execute(update_query, {"new_hash": new_hash, "id": user_id})
         db.commit()
-    except Exception as e:
+            
+        return {"status": "success", "message": "비밀번호가 성공적으로 변경되었습니다."}
+    except HTTPException:
+        raise
+    except Exception as exc:
         db.rollback()
-        raise HTTPException(status_code=500, detail=f"비밀번호 변경 중 오류 발생: {str(e)}")
-        
-    return {"status": "success", "message": "비밀번호가 성공적으로 변경되었습니다."}
+        raise HTTPException(status_code=500, detail=f"비밀번호 변경 중 오류 발생: {str(exc)}")
 
 # --- 6. 전체 사용자 계정 목록 조회 API (어드민 전용) ---
 @router.get("/users")

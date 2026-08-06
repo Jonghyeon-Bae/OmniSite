@@ -31,12 +31,15 @@ export default function GatewayPage() {
   const [resetLoading, setResetLoading] = useState(false);
 
   const getApiBaseUrl = () => {
-    if (process.env.NEXT_PUBLIC_API_URL && process.env.NEXT_PUBLIC_API_URL !== 'http://localhost:8000') {
+    if (process.env.NEXT_PUBLIC_API_URL) {
       return process.env.NEXT_PUBLIC_API_URL;
     }
     if (typeof window !== 'undefined' && window.location.hostname) {
-      const protocol = window.location.protocol;
       const hostname = window.location.hostname;
+      if (hostname === 'localhost' || hostname === '127.0.0.1') {
+        return 'http://localhost:8000';
+      }
+      const protocol = window.location.protocol;
       return `${protocol}//${hostname}:8000`;
     }
     return '';

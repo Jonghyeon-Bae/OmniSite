@@ -18,16 +18,33 @@ import BoardModal from '../../components/BoardModal';
 import GlobalFooter from '../../components/GlobalFooter';
 import { OMNISITE_DISPLAY_VERSION } from '../../config/version';
 
+const getApiBaseUrl = () => {
+  if (process.env.NEXT_PUBLIC_API_URL) {
+    return process.env.NEXT_PUBLIC_API_URL;
+  }
+  if (typeof window !== 'undefined' && window.location.hostname) {
+    const hostname = window.location.hostname;
+    if (hostname === 'localhost' || hostname === '127.0.0.1') {
+      return 'http://localhost:8000';
+    }
+    const protocol = window.location.protocol;
+    return `${protocol}//${hostname}:8000`;
+  }
+  return '';
+};
+
 const apiFetch = (url, options = {}) => {
   const token = typeof window !== 'undefined' 
-    ? sessionStorage.getItem('token') 
+    ? (sessionStorage.getItem('token') || sessionStorage.getItem('jwtToken')) 
     : null;
   const headers = {
     ...options.headers,
     ...(token ? { 'Authorization': `Bearer ${token}` } : {})
   };
+  const baseUrl = getApiBaseUrl();
+  const finalUrl = (url && url.startsWith('/')) ? `${baseUrl}${url}` : url;
   const nativeFetch = typeof window !== 'undefined' ? window.fetch : (typeof globalThis !== 'undefined' ? globalThis.fetch : null);
-  return nativeFetch ? nativeFetch(url, { ...options, headers }) : Promise.reject(new Error('Fetch not available'));
+  return nativeFetch ? nativeFetch(finalUrl, { ...options, headers }) : Promise.reject(new Error('Fetch not available'));
 };
 
 const parseJwt = (token) => {

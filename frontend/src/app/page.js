@@ -5,21 +5,33 @@ import { useRouter } from 'next/navigation';
 import { OMNISITE_VERSION } from '../config/version';
 import GlobalFooter from '../components/GlobalFooter';
 
-// 🔒 로컬(http://localhost:8000) & AWS 프록시(/api/v1) 이중 듀얼 통신 안전 래퍼 함수
+// 🔒 로컬(localhost:8000) & AWS (인스턴스 IP:8000) 동적 런타임 호스트 자동 매핑 래퍼 함수
+const getApiBaseUrl = () => {
+  if (typeof window === 'undefined') return '';
+  if (process.env.NEXT_PUBLIC_API_URL && process.env.NEXT_PUBLIC_API_URL !== 'http://localhost:8000') {
+    return process.env.NEXT_PUBLIC_API_URL;
+  }
+  const { protocol, hostname } = window.location;
+  if (!hostname || hostname === 'localhost' || hostname === '127.0.0.1') {
+    return 'http://localhost:8000';
+  }
+  return `${protocol}//${hostname}:8000`;
+};
+
 const safeApiFetch = async (endpoint, options = {}) => {
   const nativeFetch = typeof window !== 'undefined' ? window.fetch : (typeof globalThis !== 'undefined' ? globalThis.fetch : null);
   if (!nativeFetch) return Promise.reject(new Error('Fetch not available'));
 
+  const apiBase = getApiBaseUrl();
+  const fullUrl = (typeof endpoint === 'string' && endpoint.startsWith('/api/v1')) ? `${apiBase}${endpoint}` : endpoint;
+
   try {
-    const res = await nativeFetch(endpoint, options);
+    const res = await nativeFetch(fullUrl, options);
     if (res.status !== 404 && res.status !== 502 && res.status !== 504) {
       return res;
     }
   } catch (_) {}
 
-  if (typeof endpoint === 'string' && endpoint.startsWith('/api/v1')) {
-    return nativeFetch(`http://localhost:8000${endpoint}`, options);
-  }
   return nativeFetch(endpoint, options);
 };
 

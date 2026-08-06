@@ -1,48 +1,55 @@
-# [Walkthrough] 일반 실무관 계정 권한 제한 및 관리자 전용 삭제/제어 가드 완공 보고서
+# [Walkthrough] 행정 통합게시판 모달 공지사항 및 자유게시판 첨부파일 업로드/다운로드 시스템 완공 보고서
 
-본 보고서는 조장(USER)의 지시사항에 따라 **일반 실무관(`role === 'user'`) 계정에서 조례 PDF 파일, 입지 분석 아카이브 이력, 실증 사례 삭제 및 관리자 콘솔 접근이 불가능하도록 백엔드 API 권한 가드(`Depends(get_current_admin)`) 및 프론트엔드 조건부 UI 제어**를 전수 적용한 내역을 기록한 문서입니다.
-
----
-
-## 🛠️ 주요 수정 및 수술 내역
-
-### 1. 조례 PDF 파일 삭제 권한 제한 (`RagRegulationModal.jsx` & `upload.py`)
-- **프론트엔드 (`RagRegulationModal.jsx`)**:
-  - `userRole === 'admin'` 일 때만 `[🗑️ 삭제]` 버튼 표출.
-  - 일반 실무관 계정에서 삭제 시도 시 `🔒 자치법규 조례 PDF 삭제는 최고관리자(Admin)만 수행할 수 있습니다.` 경고 토스트 인출.
-- **백엔드 (`backend/app/routers/upload.py`)**:
-  - `DELETE /api/v1/upload/regulations/{filename}` 엔드포인트에 `current_admin: dict = Depends(get_current_admin)` 의존성 강제 적용 ➔ 비인증/일반 유저 호출 시 `403 Forbidden` 차단.
+본 보고서는 조장(USER)의 지시사항에 따라 **옴니사이트 행정 통합게시판(`BoardModal.jsx`) 모달 내 공지사항(Admin) 및 자유게시판(User/Admin) 작성 양식에 공문서, 보고서, 이미지, CSV 등 첨부파일 업로드 및 원클릭 다운로드 기능**을 백엔드 및 프론트엔드에 완벽하게 결합 완공한 내역을 기록한 문서입니다.
 
 ---
 
-### 2. 입지분석 아카이브 및 실증 사례 삭제 권한 제한 (`dashboard/page.js` & `spatial.py`)
-- **프론트엔드 (`dashboard/page.js`)**:
-  - 이력 아카이브 탭 및 실증 준공 사례 탭의 `[삭제]` 버튼을 `userRole === 'admin'` 조건부 렌더링으로 변경.
-  - 일반 계정 삭제 시도 시 `🔒 이력 삭제 권한이 없습니다. 최고관리자(Admin)만 수행할 수 있습니다.` 경고 알림 발생.
-- **백엔드 (`backend/app/routers/spatial.py`)**:
-  - `DELETE /api/v1/spatial/history/{history_id}` 엔드포인트에 `Depends(get_current_admin)` 적용.
-  - `DELETE /api/v1/spatial/precedents/{precedent_id}` 엔드포인트에 `Depends(get_current_admin)` 적용.
+## 🛠️ 주요 개발 및 데이터 아키텍처 구현 내역
+
+### 1. 백엔드 첨부파일 업로드/다운로드 API 구축 (`backend/app/routers/board.py`)
+- **저장 디렉토리 지정**: `data/raw/board_attachments/` 서버 물리 디렉토리 자동 생성.
+- **신규 API 엔드포인트 탑재**:
+  - `POST /api/v1/board/upload-attachment`: 파일(`UploadFile`) 수신 후 파일명 이스케이프 및 물리 서버 저장 ➔ `{ attachment_name, attachment_url }` 반환.
+  - `GET /api/v1/board/attachments/{filename}`: URL 인코딩된 파일명을 디코딩하여 `FileResponse` 기반 원클릭 다운로드/열람 스트림 제공.
+- **PostgreSQL / DB 스키마 마이그레이션**:
+  - `system_notices` 및 `community_posts` 테이블에 `attachment_name VARCHAR(255)`, `attachment_url TEXT` 컬럼 추가.
+  - Notice & Community CRUD (`GET`, `POST`, `PUT`) SQL 쿼리에 첨부파일 필드 전수 바인딩.
 
 ---
 
-### 3. 기타 권한 누수 탐색 및 보안 강화
-- **시맨틱 태그 삭제 API (`upload.py`)**:
-  - `DELETE /api/v1/upload/domain-tags/{tag_name}`에 `Depends(get_current_admin)` 가드 주입.
-- **상단 헤더 관리자 콘솔 버튼 (`dashboard/page.js` & `spatial/page.js`)**:
-  - `[⚙️ 관리자 콘솔]` 버튼을 `userRole === 'admin'` 조건으로 감싸 일반 실무관 계정 로그인 시 버튼 자체가 노출되지 않도록 차단.
+### 2. 프론트엔드 모달 UI/UX 및 첨부 칩(Chip) 구현 (`BoardModal.jsx`)
+- **공지사항 작성/수정 폼 (Admin 전용)**:
+  - `📎 공문서/첨부파일 등록 (선택)` 파일 선택 창 및 업로드 실시간 로딩 뱃지 탑재.
+  - 파일 선택 시 즉시 비동기 업로드 집행 후 `📄 [파일명]` 뱃지 및 `✕` 삭제 버튼 인출.
+- **자유게시판 신규 글쓰기 폼 (일반 공무원/Admin)**:
+  - 부서 소통 게시글 작성 시 공문서/이미지 파일 첨부 폼 제공.
+- **공지사항 및 자유게시판 카드 렌더링**:
+  - 첨부파일이 존재하는 게시글 하단에 프리미엄 글래스모피즘 다운로드 칩 (`📎 첨부파일: [파일명.pdf] 📥`) 렌더링 ➔ 클릭 시 새 탭에서 즉시 열람 및 원클릭 다운로드.
 
 ---
 
-## 🧪 프로덕션 빌드 검증 결과 (`npm run build`)
+## 🧪 실측 및 프로덕션 빌드 검증 결과
 
-`npm run build`를 집행하여 **0 Error, 0 Warning**으로 컴파일 완료했습니다:
+### 1. 백엔드 파일 업로드/다운로드 E2E 검증 (`test_board_attachment_flow.py`)
+```
+======================================================================
+🧪 Testing Board Attachment Upload & Download Endpoints...
+======================================================================
+1. Upload Response Status: 200
+   Upload Result: {'status': 'success', 'attachment_name': 'test_attachment_report.pdf', 'attachment_url': '/api/v1/board/attachments/test_attachment_report.pdf'}
+2. Notice Creation Status: 200
+3. Get Notices Status: 200 (Matching Notices with Attachment: 1)
+4. Attachment Download Status: 200
+   ✅ File downloaded successfully, byte size: 51
+======================================================================
+```
 
+### 2. Next.js Turbopack 프로덕션 빌드 검증 (`npm run build`)
 ```
 ▲ Next.js 16.2.10 (Turbopack)
 Creating an optimized production build ...
-✓ Compiled successfully in 1682ms
-Finished TypeScript in 76ms ...
-Generating static pages (6/6) in 530ms
+✓ Compiled successfully in 1978ms
+Generating static pages (6/6) in 884ms
 
 Route (app)
 ┌ ○ /
@@ -54,4 +61,4 @@ Route (app)
 ==> 0 ERRORS, 0 WARNINGS PERFECT BUILD!
 ```
 
-지침에 따라 `git commit`은 실행하지 않았으며, 모든 소스코드가 작업 공간에 무결하게 보존되어 있습니다.
+지침에 따라 `git commit`은 집행하지 않았으며, 모든 소스코드가 작업 공간에 무결하게 보존되어 있습니다.

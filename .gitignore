@@ -32,15 +32,9 @@ frontend/.env
 Thumbs.db
 
 # Project-specific temporary/backup files
-frontend.zip
-create_pdf_raw.py
-*.log
-*.sql
-backend/data/raw/*.json
-backend/temp_shp/
-*.pdf
-*.pdf.txt
-*.txt.cache
+# Compressed files
+*.zip
+Datasets.zip
 
 # Essential geospatial seed datasets are tracked for seamless Git Clone cold-start
 # Datasets/

@@ -38,6 +38,53 @@ export default function BoardModal({ show, onClose, apiFetch, showToast }) {
   const [faqSearch, setFaqSearch] = useState('');
   const [openFaqId, setOpenFaqId] = useState(null);
 
+  // 공지사항 첨부파일 상태
+  const [noticeAttachmentName, setNoticeAttachmentName] = useState('');
+  const [noticeAttachmentUrl, setNoticeAttachmentUrl] = useState('');
+  const [noticeUploading, setNoticeUploading] = useState(false);
+
+  // 자유게시판 첨부파일 상태
+  const [postAttachmentName, setPostAttachmentName] = useState('');
+  const [postAttachmentUrl, setPostAttachmentUrl] = useState('');
+  const [postUploading, setPostUploading] = useState(false);
+
+  // 첨부파일 업로드 처리 핸들러
+  const handleFileUpload = async (file, targetType) => {
+    if (!file) return;
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    if (targetType === 'notice') setNoticeUploading(true);
+    else setPostUploading(true);
+
+    try {
+      const fetchFn = apiFetch || fetch;
+      const res = await fetchFn('/api/v1/board/upload-attachment', {
+        method: 'POST',
+        body: formData
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (targetType === 'notice') {
+          setNoticeAttachmentName(data.attachment_name);
+          setNoticeAttachmentUrl(data.attachment_url);
+        } else {
+          setPostAttachmentName(data.attachment_name);
+          setPostAttachmentUrl(data.attachment_url);
+        }
+        if (showToast) showToast(`📎 첨부파일 '${data.attachment_name}'이 업로드되었습니다.`, 'success');
+      } else {
+        if (showToast) showToast('첨부파일 업로드에 실패했습니다.', 'error');
+      }
+    } catch (err) {
+      console.error('[Upload Attachment Error]', err);
+      if (showToast) showToast('첨부파일 업로드 중 오류가 발생했습니다.', 'error');
+    } finally {
+      if (targetType === 'notice') setNoticeUploading(false);
+      else setPostUploading(false);
+    }
+  };
+
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const role = sessionStorage.getItem('role') || 'user';
@@ -102,7 +149,9 @@ export default function BoardModal({ show, onClose, apiFetch, showToast }) {
         body: JSON.stringify({
           title: noticeTitle,
           content: noticeContent,
-          is_pinned: noticePinned
+          is_pinned: noticePinned,
+          attachment_name: noticeAttachmentName,
+          attachment_url: noticeAttachmentUrl
         })
       });
 
@@ -111,6 +160,8 @@ export default function BoardModal({ show, onClose, apiFetch, showToast }) {
         setNoticeTitle('');
         setNoticeContent('');
         setNoticePinned(false);
+        setNoticeAttachmentName('');
+        setNoticeAttachmentUrl('');
         setEditingNoticeId(null);
         setShowNoticeForm(false);
         fetchBoardData('notices');
@@ -130,6 +181,8 @@ export default function BoardModal({ show, onClose, apiFetch, showToast }) {
     setNoticeTitle(n.title);
     setNoticeContent(n.content);
     setNoticePinned(n.is_pinned);
+    setNoticeAttachmentName(n.attachment_name || '');
+    setNoticeAttachmentUrl(n.attachment_url || '');
     setShowNoticeForm(true);
   };
 
@@ -233,13 +286,17 @@ export default function BoardModal({ show, onClose, apiFetch, showToast }) {
           title: newTitle,
           content: newContent,
           author_name: newAuthor,
-          department: newDept
+          department: newDept,
+          attachment_name: postAttachmentName,
+          attachment_url: postAttachmentUrl
         })
       });
       if (res.ok) {
         if (showToast) showToast('게시글이 정상 등록되었습니다.', 'success');
         setNewTitle('');
         setNewContent('');
+        setPostAttachmentName('');
+        setPostAttachmentUrl('');
         setShowWriteForm(false);
         fetchBoardData('community');
       } else {
@@ -422,6 +479,30 @@ export default function BoardModal({ show, onClose, apiFetch, showToast }) {
                           required
                         />
                       </div>
+                      <div>
+                        <label className="block text-[11px] text-slate-400 mb-1 font-semibold">📎 공문서/첨부파일 등록 (선택)</label>
+                        <div className="flex items-center gap-3 bg-slate-900/90 border border-slate-700 rounded-lg p-2.5">
+                          <input
+                            type="file"
+                            onChange={(e) => handleFileUpload(e.target.files[0], 'notice')}
+                            className="text-xs text-slate-300 file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-bold file:bg-indigo-600 file:text-white hover:file:bg-indigo-500 cursor-pointer"
+                            disabled={noticeUploading}
+                          />
+                          {noticeUploading && <span className="text-xs text-indigo-400 animate-pulse font-semibold">⏳ 업로드 중...</span>}
+                          {noticeAttachmentName && !noticeUploading && (
+                            <div className="flex items-center gap-2 bg-indigo-950/80 text-indigo-300 px-3 py-1 rounded border border-indigo-500/50 text-xs font-semibold">
+                              <span>📄 {noticeAttachmentName}</span>
+                              <button
+                                type="button"
+                                onClick={() => { setNoticeAttachmentName(''); setNoticeAttachmentUrl(''); }}
+                                className="text-rose-400 hover:text-rose-200 font-bold ml-1 cursor-pointer"
+                              >
+                                ✕
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
                       <div className="flex justify-end gap-2 pt-1">
                         <button
                           type="button"
@@ -432,7 +513,7 @@ export default function BoardModal({ show, onClose, apiFetch, showToast }) {
                         </button>
                         <button
                           type="submit"
-                          disabled={noticeSubmitting}
+                          disabled={noticeSubmitting || noticeUploading}
                           className="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold px-5 py-2 rounded-lg disabled:opacity-50 cursor-pointer shadow-md"
                         >
                           {noticeSubmitting ? '저장 중...' : (editingNoticeId ? '수정 완료' : '공지 등록')}
@@ -466,6 +547,20 @@ export default function BoardModal({ show, onClose, apiFetch, showToast }) {
                         <p className="text-xs text-slate-300 whitespace-pre-wrap leading-relaxed my-3 bg-slate-950/40 p-3.5 rounded-lg border border-slate-800">
                           {n.content}
                         </p>
+                        {n.attachment_url && (
+                          <div className="mb-3 flex items-center">
+                            <a
+                              href={n.attachment_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-2 bg-indigo-950/70 hover:bg-indigo-900/90 text-indigo-300 hover:text-white text-xs px-3.5 py-1.5 rounded-lg border border-indigo-500/40 transition-all font-semibold shadow-sm"
+                            >
+                              <span>📎 첨부파일:</span>
+                              <span className="font-bold underline decoration-indigo-400/50">{n.attachment_name || '첨부 문서 다운로드'}</span>
+                              <span>📥</span>
+                            </a>
+                          </div>
+                        )}
                         <div className="flex items-center justify-between text-[11px] text-slate-400 border-t border-slate-700/40 pt-2">
                           <span>발행 명의: <strong className="text-slate-200">{n.author}</strong></span>
                           {isAdmin && (
@@ -554,6 +649,30 @@ export default function BoardModal({ show, onClose, apiFetch, showToast }) {
                           required
                         />
                       </div>
+                      <div>
+                        <label className="block text-[10px] text-slate-400 mb-1 font-semibold">📎 공문서/이미지 첨부파일 (선택)</label>
+                        <div className="flex items-center gap-3 bg-slate-900/90 border border-slate-700 rounded-lg p-2.5">
+                          <input
+                            type="file"
+                            onChange={(e) => handleFileUpload(e.target.files[0], 'post')}
+                            className="text-xs text-slate-300 file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-bold file:bg-indigo-600 file:text-white hover:file:bg-indigo-500 cursor-pointer"
+                            disabled={postUploading}
+                          />
+                          {postUploading && <span className="text-xs text-indigo-400 animate-pulse font-semibold">⏳ 업로드 중...</span>}
+                          {postAttachmentName && !postUploading && (
+                            <div className="flex items-center gap-2 bg-indigo-950/80 text-indigo-300 px-3 py-1 rounded border border-indigo-500/50 text-xs font-semibold">
+                              <span>📄 {postAttachmentName}</span>
+                              <button
+                                type="button"
+                                onClick={() => { setPostAttachmentName(''); setPostAttachmentUrl(''); }}
+                                className="text-rose-400 hover:text-rose-200 font-bold ml-1 cursor-pointer"
+                              >
+                                ✕
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
                       <div className="flex justify-end gap-2 pt-1">
                         <button
                           type="button"
@@ -564,7 +683,7 @@ export default function BoardModal({ show, onClose, apiFetch, showToast }) {
                         </button>
                         <button
                           type="submit"
-                          disabled={posting}
+                          disabled={posting || postUploading}
                           className="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold px-5 py-2 rounded-lg disabled:opacity-50 cursor-pointer shadow-md"
                         >
                           {posting ? '등록 중...' : '게시글 등록'}
@@ -584,6 +703,20 @@ export default function BoardModal({ show, onClose, apiFetch, showToast }) {
                         <p className="text-xs text-slate-300 whitespace-pre-wrap leading-relaxed my-3 bg-slate-950/40 p-3.5 rounded-lg border border-slate-800">
                           {p.content}
                         </p>
+                        {p.attachment_url && (
+                          <div className="mb-3 flex items-center">
+                            <a
+                              href={p.attachment_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-2 bg-indigo-950/70 hover:bg-indigo-900/90 text-indigo-300 hover:text-white text-xs px-3.5 py-1.5 rounded-lg border border-indigo-500/40 transition-all font-semibold shadow-sm"
+                            >
+                              <span>📎 첨부파일:</span>
+                              <span className="font-bold underline decoration-indigo-400/50">{p.attachment_name || '첨부 문서 다운로드'}</span>
+                              <span>📥</span>
+                            </a>
+                          </div>
+                        )}
                         <div className="flex items-center justify-between text-[11px] text-slate-400 border-t border-slate-700/40 pt-2">
                           <span>작성자: <strong className="text-slate-200">{p.author_name}</strong> ({p.department})</span>
                           <div className="flex items-center gap-3">

@@ -1,5 +1,8 @@
 # -*- coding: utf-8 -*-
-from fastapi import APIRouter, Depends, HTTPException, status
+import os
+import urllib.parse
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
+from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 from sqlalchemy import text
@@ -10,22 +13,31 @@ from app.database import get_db
 
 router = APIRouter(prefix="/api/v1/board", tags=["board"])
 
+ATTACHMENT_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "data", "raw", "board_attachments")
+os.makedirs(ATTACHMENT_DIR, exist_ok=True)
+
 # --- 1. DTO Schemas ---
 class NoticeCreateRequest(BaseModel):
     title: str = Field(..., description="공지사항 제목")
     content: str = Field(..., description="공지사항 본문")
     is_pinned: bool = Field(False, description="상단 고정 여부")
+    attachment_name: Optional[str] = Field(None, description="첨부파일명")
+    attachment_url: Optional[str] = Field(None, description="첨부파일 다운로드 URL")
 
 class NoticeUpdateRequest(BaseModel):
     title: str = Field(..., description="공지사항 제목")
     content: str = Field(..., description="공지사항 본문")
     is_pinned: bool = Field(False, description="상단 고정 여부")
+    attachment_name: Optional[str] = Field(None, description="첨부파일명")
+    attachment_url: Optional[str] = Field(None, description="첨부파일 다운로드 URL")
 
 class PostCreateRequest(BaseModel):
     title: str = Field(..., description="게시글 제목")
     content: str = Field(..., description="게시글 본문")
     author_name: str = Field("스마트도시과 공무원", description="작성자 성명/직책")
     department: str = Field("스마트도시과", description="작성 부서")
+    attachment_name: Optional[str] = Field(None, description="첨부파일명")
+    attachment_url: Optional[str] = Field(None, description="첨부파일 다운로드 URL")
 
 class FaqCreateRequest(BaseModel):
     category: str = Field(..., description="FAQ 범주 카테고리")
@@ -120,62 +132,6 @@ INITIAL_FAQS = [
         "answer": "해당 필지의 '🗺️ 로드뷰 보기' 버튼을 누르면 카카오맵 실시간 로드뷰 창이 새 탭으로 즉시 열려, 현장에 직접 방문하지 않고도 보도 폭, 도로 점용 상태 및 주변 상가 환경을 로드뷰 이미지로 즉각 확인하실 수 있습니다."
     },
     {
-        "category": "⚖️ AI 심의 & 보고서",
-        "question": "[Step 5/6] 3자 AI 모의 심의 토론(Debate Simulator) 기동 및 진행 흐름 관찰 방법은 무엇인가요?",
-        "answer": "Step 4 추천 카드 하단의 'Step 6. 의사결정 갈등 심의 이동' 버튼을 클릭한 후 토론 시작을 누르면, 찬성자(입지 찬성), 반대자(주민 민원), 중재자(행정관) 3자 LLM이 실시간 SSE 스트리밍으로 심의 토론을 진행하며 실시간 토론록이 작성됩니다."
-    },
-    {
-        "category": "⚖️ AI 심의 & 보고서",
-        "question": "[Step 6] 최종 행정 의결서(PDF / DOCX) 인출 및 관인 날인 적용 방법은 무엇인가요?",
-        "answer": "모의 심의 토론이 완료되면 팝업 하단에 '📄 행정 심의 의결서 인출 (PDF/DOCX)' 버튼이 활성화됩니다. 클릭 시 AHP 점수, CSS 갈등도, 토론 요약 및 지자체 관인이 날인된 표준 행정 의결서 양식이 전자 문서로 즉시 다운로드됩니다."
-    },
-    {
-        "category": "📜 RAG 조례 & 이력",
-        "question": "[RAG 조례 관리] 우리 구의 신규 금연 조례 PDF 파일을 RAG 지식베이스에 올리는 방법은 무엇인가요?",
-        "answer": "상단 메뉴의 'RAG 조례 관리' 버튼을 누른 후, 파일 선택 창에서 지자체 조례 PDF/HWP 파일을 올려주시면 됩니다. 백엔드 pgvector가 1초 만에 1,536차원 벡터 공간으로 전환하여 지식베이스에 자동 적재합니다."
-    },
-    {
-        "category": "📜 RAG 조례 & 이력",
-        "question": "[RAG 조례 관리] 조례 PDF를 올린 후 개정 전후 조항 차이(Diff)를 확인하는 법은 무엇인가요?",
-        "answer": "RAG 조례 관리 모달의 등록된 파일 목록에서 각 조례 항목 우측의 '⚖️ 개정 이력' 버튼을 1클릭하시면, pgvector가 감지한 신규 신설, 수정 개정, 삭제 폐지 조항 변동 요약을 프리뷰 카드로 바로 확인하실 수 있습니다."
-    },
-    {
-        "category": "📜 RAG 조례 & 이력",
-        "question": "[이력 대시보드] 과거에 우리 부서에서 분석했던 입지 심의 이력을 조회하는 방법은 무엇인가요?",
-        "answer": "상단 네비게이션의 '이력 대시보드 (Analytics)' 메뉴로 이동하시면, 그동안 수행했던 입지 분석 날짜, 도메인, Top 1 지번, AHP 점수 및 SHA-256 검증 상태가 목록으로 정렬되어 1클릭 조회가 가능합니다."
-    },
-    {
-        "category": "📜 RAG 조례 & 이력",
-        "question": "[이력 대시보드] 분석 이력 목록에서 '🔍 심의 이력 상세 보기' 버튼을 누르면 무엇을 볼 수 있나요?",
-        "answer": "과거 수행된 입지 분석의 세부 AHP 가중치, 후보지별 ISI 수용성 점수, 진행된 3자 AI 모의 토론록 전문 및 당시 편찬된 행정 의결서를 언제든지 재열람 및 다운로드하실 수 있습니다."
-    },
-    {
-        "category": "📜 RAG 조례 & 이력",
-        "question": "[이력 대시보드] 준공 후 사후 실증 공문서(PDF)를 등록하여 RAG OCR 감리를 받는 방법은 무엇인가요?",
-        "answer": "이력 대시보드의 '사후 실증 공문 적재' 세션에서 실제 준공 고시 공문 PDF를 업로드하시면, RAG OCR 파이프라인이 실측 수치를 자동 추출하여 규제 부합률(%)을 감리하고 적격 시 지식베이스에 자동 축적합니다."
-    },
-    {
-        "category": "🗺️ AHP & 공간 추천",
-        "question": "공유킥보드 거치대나 전기차 충전소 등 다른 인프라 도메인을 선택하여 분석하는 방법은 무엇인가요?",
-        "answer": "좌측 공간 제어 패널 상단의 '시설물 도메인 선택' 드롭다운에서 흡연부스, 공유이동수단 거치대, 전기차 충전소, 안심 옐로카펫 중 원하는 인프라를 선택하시면 해당 시설물 전용 지표 및 규제 반경이 자동 스왑 적용됩니다."
-    },
-    {
-        "category": "🗺️ AHP & 공간 추천",
-        "question": "후보지 상세 카드의 공시지가 및 면적 수치는 어디서 연동되어 가져오는 것인가요?",
-        "answer": "국토교통부 지적도(Cadastral Lands) 및 부동산 공시지가 표준 PostgreSQL PostGIS 지오메트리 데이터베이스에서 해당 필지의 PNU 코드를 기반으로 실시간 100% 동적 인출되는 행정 데이터입니다."
-    },
-    {
-        "category": "📄 데이터 업로드 & 감리",
-        "question": "행정망 보안 로그아웃 처리 및 비밀번호 변경은 어디서 수행하나요?",
-        "answer": "상단 네비게이션 우측의 프로필 아이콘을 클릭하시면 '비밀번호 변경' 및 '안전 로그아웃' 메뉴가 인출됩니다. 보안 정책에 따라 60분 간 조작이 없을 경우 보안 세션이 자동 만료됩니다."
-    },
-    {
-        "category": "⚖️ AI 심의 & 보고서",
-        "question": "SHA-256 감사 해시 체인(Hash Chain) 검증 마크는 어디서 확인할 수 있나요?",
-        "answer": "입지 분석이 완료되면 우측 패널 하단 및 다운로드받으신 행정 의결서 문서 하단에 SHA-256 단방향 암호화 해시 코드(예: 8f9a2b...)가 위변조 방지 인증 인장으로 표출됩니다."
-    },
-    {
-        "category": "🗺️ AHP & 공간 추천",
         "question": "자치구별/시설물별 법정 이격거리 규제 반경(10m~200m) 기준을 직접 변경하거나 설정하는 방법은 무엇인가요?",
         "answer": "상단 네비게이션 우측의 '⚙️ 관리자 콘솔 (Admin Console)' 메뉴로 진입하시면, 자치구별 조례 이격거리 가이드라인(학교 50m, 어린이집 10m 등) 및 시설물별 규제 반경 수치를 직접 수정 및 적용하실 수 있습니다. 기타 시스템 관련 문의는 지자체 전산망 지원 핫라인을 통해 접수하실 수 있습니다."
     }
@@ -183,12 +139,42 @@ INITIAL_FAQS = [
 
 # --- 4. Endpoints ---
 
+@router.post("/upload-attachment")
+async def upload_board_attachment(file: UploadFile = File(...)):
+    """게시글/공지사항 문서 및 이미지 첨부파일 업로드 API"""
+    try:
+        import shutil
+        clean_filename = os.path.basename(file.filename)
+        save_path = os.path.join(ATTACHMENT_DIR, clean_filename)
+        with open(save_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+        
+        encoded_name = urllib.parse.quote(clean_filename)
+        file_url = f"/api/v1/board/attachments/{encoded_name}"
+        return {
+            "status": "success",
+            "attachment_name": clean_filename,
+            "attachment_url": file_url,
+            "message": f"첨부파일 '{clean_filename}'이 성공적으로 업로드되었습니다."
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"첨부파일 저장 처리 실패: {str(e)}")
+
+@router.get("/attachments/{filename}")
+async def get_board_attachment(filename: str):
+    """게시글/공지사항 첨부파일 다운로드 API"""
+    decoded_name = urllib.parse.unquote(filename)
+    file_path = os.path.join(ATTACHMENT_DIR, decoded_name)
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="해당 첨부파일을 서버에서 찾을 수 없습니다.")
+    return FileResponse(file_path, filename=decoded_name)
+
 @router.get("/notices")
 async def get_notices(db: Session = Depends(get_db)):
     ensure_board_tables(db)
     
     try:
-        rows = db.execute(text("SELECT id, title, content, is_pinned, author, created_at FROM system_notices ORDER BY is_pinned DESC, id DESC")).fetchall()
+        rows = db.execute(text("SELECT id, title, content, is_pinned, author, created_at, attachment_name, attachment_url FROM system_notices ORDER BY is_pinned DESC, id DESC")).fetchall()
     except Exception:
         db.rollback()
         rows = []
@@ -215,7 +201,9 @@ async def get_notices(db: Session = Depends(get_db)):
             "content": r[2],
             "is_pinned": r[3],
             "author": r[4],
-            "created_at": r[5].strftime("%Y-%m-%d %H:%M") if r[5] else ""
+            "created_at": r[5].strftime("%Y-%m-%d %H:%M") if r[5] else "",
+            "attachment_name": r[6] if len(r) > 6 else None,
+            "attachment_url": r[7] if len(r) > 7 else None
         }
         for r in rows
     ]
@@ -224,9 +212,15 @@ async def get_notices(db: Session = Depends(get_db)):
 async def create_notice(req: NoticeCreateRequest, db: Session = Depends(get_db)):
     ensure_board_tables(db)
     db.execute(text("""
-        INSERT INTO system_notices (title, content, is_pinned, author)
-        VALUES (:title, :content, :is_pinned, '시스템 최고 관리자')
-    """), {"title": req.title, "content": req.content, "is_pinned": req.is_pinned})
+        INSERT INTO system_notices (title, content, is_pinned, author, attachment_name, attachment_url)
+        VALUES (:title, :content, :is_pinned, '시스템 최고 관리자', :attachment_name, :attachment_url)
+    """), {
+        "title": req.title, 
+        "content": req.content, 
+        "is_pinned": req.is_pinned,
+        "attachment_name": req.attachment_name,
+        "attachment_url": req.attachment_url
+    })
     db.commit()
     return {"message": "공지사항이 성공적으로 등록되었습니다."}
 
@@ -235,9 +229,16 @@ async def update_notice(notice_id: int, req: NoticeUpdateRequest, db: Session = 
     ensure_board_tables(db)
     result = db.execute(text("""
         UPDATE system_notices 
-        SET title = :title, content = :content, is_pinned = :is_pinned 
+        SET title = :title, content = :content, is_pinned = :is_pinned, attachment_name = :attachment_name, attachment_url = :attachment_url 
         WHERE id = :id
-    """), {"title": req.title, "content": req.content, "is_pinned": req.is_pinned, "id": notice_id})
+    """), {
+        "title": req.title, 
+        "content": req.content, 
+        "is_pinned": req.is_pinned, 
+        "attachment_name": req.attachment_name,
+        "attachment_url": req.attachment_url,
+        "id": notice_id
+    })
     db.commit()
     if result.rowcount == 0:
         raise HTTPException(status_code=404, detail="해당 공지사항을 찾을 수 없습니다.")
@@ -256,7 +257,7 @@ async def delete_notice(notice_id: int, db: Session = Depends(get_db)):
 async def get_community_posts(db: Session = Depends(get_db)):
     ensure_board_tables(db)
     try:
-        rows = db.execute(text("SELECT id, title, content, author_name, department, views_count, created_at FROM community_posts ORDER BY id DESC")).fetchall()
+        rows = db.execute(text("SELECT id, title, content, author_name, department, views_count, created_at, attachment_name, attachment_url FROM community_posts ORDER BY id DESC")).fetchall()
     except Exception:
         db.rollback()
         rows = []
@@ -271,7 +272,7 @@ async def get_community_posts(db: Session = Depends(get_db)):
                 ('어린이집 30m 법정 이격거리 버퍼 산정 시 PostGIS GIST 인덱스 적용 후기', '신규 조례 등록 시 어린이집 이격거리가 30m로 자동 교정되어 공간 쿼리 탐색 속도가 비약적으로 향상되었습니다.', '이주무관', '도시계획과')
             """))
             db.commit()
-            rows = db.execute(text("SELECT id, title, content, author_name, department, views_count, created_at FROM community_posts ORDER BY id DESC")).fetchall()
+            rows = db.execute(text("SELECT id, title, content, author_name, department, views_count, created_at, attachment_name, attachment_url FROM community_posts ORDER BY id DESC")).fetchall()
         except Exception as e:
             db.rollback()
             print(f"[Community Seed Error] {e}")
@@ -284,7 +285,9 @@ async def get_community_posts(db: Session = Depends(get_db)):
             "author_name": r[3],
             "department": r[4],
             "views_count": r[5],
-            "created_at": r[6].strftime("%Y-%m-%d %H:%M") if r[6] else ""
+            "created_at": r[6].strftime("%Y-%m-%d %H:%M") if r[6] else "",
+            "attachment_name": r[7] if len(r) > 7 else None,
+            "attachment_url": r[8] if len(r) > 8 else None
         }
         for r in rows
     ]
@@ -293,13 +296,15 @@ async def get_community_posts(db: Session = Depends(get_db)):
 async def create_community_post(req: PostCreateRequest, db: Session = Depends(get_db)):
     ensure_board_tables(db)
     db.execute(text("""
-        INSERT INTO community_posts (title, content, author_name, department)
-        VALUES (:title, :content, :author_name, :department)
+        INSERT INTO community_posts (title, content, author_name, department, attachment_name, attachment_url)
+        VALUES (:title, :content, :author_name, :department, :attachment_name, :attachment_url)
     """), {
         "title": req.title,
         "content": req.content,
         "author_name": req.author_name,
-        "department": req.department
+        "department": req.department,
+        "attachment_name": req.attachment_name,
+        "attachment_url": req.attachment_url
     })
     db.commit()
     return {"message": "자유게시판 게시글이 성공적으로 등록되었습니다."}

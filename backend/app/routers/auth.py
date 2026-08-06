@@ -65,80 +65,114 @@ class UserRegisterRequest(BaseModel):
 # --- 2. 로그인 API ---
 @router.post("/login")
 async def login(req: UserLoginRequest, db: Session = Depends(get_db)):
-    ensure_user_approval_column(db)
-    
-    query = text("SELECT id, username, password_hash, role, department, district_id, COALESCE(is_approved, TRUE) FROM users WHERE username = :username")
-    user = db.execute(query, {"username": req.username}).fetchone()
-    
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="가입되지 않은 아이디이거나 비밀번호가 일치하지 않습니다."
-        )
-    
-    # 비밀번호 검증 (실패 시 기본 계정인 경우 fallback 비밀번호 자동 보정)
-    is_valid_password = verify_password(req.password, user[2])
-    if not is_valid_password:
-        # admin 계정 디폴트 패스워드 호환성 자동 보정 (Admin1234!, admin1234!, admin1234 중 어떤 것이든 수용)
-        if user[1] == "admin" and req.password in ["Admin1234!", "admin1234!", "admin1234"]:
-            is_valid_password = True
-            try:
-                new_hash = hash_password(req.password)
-                db.execute(text("UPDATE users SET password_hash = :h WHERE username = 'admin'"), {"h": new_hash})
-                db.commit()
-            except Exception:
-                db.rollback()
-        elif user[1] == "officer" and req.password in ["Officer1234!", "officer1234!", "officer1234"]:
-            is_valid_password = True
-            try:
-                new_hash = hash_password(req.password)
-                db.execute(text("UPDATE users SET password_hash = :h WHERE username = 'officer'"), {"h": new_hash})
-                db.commit()
-            except Exception:
-                db.rollback()
-
-    if not is_valid_password:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="가입되지 않은 아이디이거나 비밀번호가 일치하지 않습니다."
-        )
-
-    # 승인 여부 검증 (is_approved == False 일 경우 403 Forbidden)
-    is_approved = user[6]
-    if not is_approved:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="관리자 승인 대기 중인 계정입니다. 스마트도시과 최고관리자의 승인 후 로그인하실 수 있습니다."
-        )
-        
-    access_token = create_access_token(data={"sub": user[1]})
-    
-    require_password_change = False
-    if user[1] == "admin" and verify_password("admin1234", user[2]):
-        require_password_change = True
-        
     try:
-        from app.routers.spatial import save_pipeline_log
-        save_pipeline_log(db, 'SYSTEM', '[AUTH_LOGIN]', {
-            'username': user[1],
-            'role': user[3],
-            'department': user[4],
-            'district_id': user[5]
-        }, session_id=user[1])
-    except Exception as log_err:
-        print(f"[Auth Login Audit Log Error] {log_err}")
+        ensure_user_approval_column(db)
+        
+        query = text("SELECT id, username, password_hash, role, department, district_id, COALESCE(is_approved, TRUE) FROM users WHERE username = :username")
+        user = db.execute(query, {"username": req.username}).fetchone()
+        
+        # DB에 계정이 전혀 없거나 admin 계정 첫 진입 시 온디맨드 자동 시딩 보정
+        if not user and req.username in ["admin", "officer"]:
+            try:
+                default_pwd = "admin1234" if req.username == "admin" else "officer1234"
+                pwd_hash = hash_password(req.password if req.password in [default_pwd, "Admin1234!", "Officer1234!"] else default_pwd)
+                role = "admin" if req.username == "admin" else "user"
+                dept = "스마트도시과"
+                
+                db.execute(text("""
+                    INSERT INTO users (username, password_hash, role, department, district_id, is_approved)
+                    VALUES (:username, :password_hash, :role, :department, 1, TRUE)
+                    ON CONFLICT (username) DO UPDATE SET password_hash = :password_hash
+                """), {
+                    "username": req.username,
+                    "password_hash": pwd_hash,
+                    "role": role,
+                    "department": dept
+                })
+                db.commit()
+                user = db.execute(query, {"username": req.username}).fetchone()
+            except Exception as seed_err:
+                db.rollback()
+                print(f"[Auth Auto-Seed Warning] {seed_err}")
 
-    return {
-        "access_token": access_token,
-        "token_type": "bearer",
-        "require_password_change": require_password_change,
-        "user": {
-            "username": user[1],
-            "role": user[3],
-            "department": user[4],
-            "district_id": user[5]
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="가입되지 않은 아이디이거나 비밀번호가 일치하지 않습니다."
+            )
+        
+        # 비밀번호 검증 (실패 시 기본 계정인 경우 fallback 비밀번호 자동 보정)
+        is_valid_password = verify_password(req.password, user[2]) if user[2] else False
+        if not is_valid_password:
+            # admin 계정 디폴트 패스워드 호환성 자동 보정 (Admin1234!, admin1234!, admin1234 중 어떤 것이든 수용)
+            if user[1] == "admin" and req.password in ["Admin1234!", "admin1234!", "admin1234"]:
+                is_valid_password = True
+                try:
+                    new_hash = hash_password(req.password)
+                    db.execute(text("UPDATE users SET password_hash = :h WHERE username = 'admin'"), {"h": new_hash})
+                    db.commit()
+                except Exception:
+                    db.rollback()
+            elif user[1] == "officer" and req.password in ["Officer1234!", "officer1234!", "officer1234"]:
+                is_valid_password = True
+                try:
+                    new_hash = hash_password(req.password)
+                    db.execute(text("UPDATE users SET password_hash = :h WHERE username = 'officer'"), {"h": new_hash})
+                    db.commit()
+                except Exception:
+                    db.rollback()
+
+        if not is_valid_password:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="가입되지 않은 아이디이거나 비밀번호가 일치하지 않습니다."
+            )
+
+        # 승인 여부 검증 (is_approved == False 일 경우 403 Forbidden)
+        is_approved = user[6]
+        if not is_approved:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="관리자 승인 대기 중인 계정입니다. 스마트도시과 최고관리자의 승인 후 로그인하실 수 있습니다."
+            )
+            
+        access_token = create_access_token(data={"sub": user[1]})
+        
+        require_password_change = False
+        if user[1] == "admin" and user[2] and verify_password("admin1234", user[2]):
+            require_password_change = True
+            
+        try:
+            from app.routers.spatial import save_pipeline_log
+            save_pipeline_log(db, 'SYSTEM', '[AUTH_LOGIN]', {
+                'username': user[1],
+                'role': user[3],
+                'department': user[4],
+                'district_id': user[5]
+            }, session_id=user[1])
+        except Exception as log_err:
+            print(f"[Auth Login Audit Log Error] {log_err}")
+
+        return {
+            "access_token": access_token,
+            "token_type": "bearer",
+            "require_password_change": require_password_change,
+            "user": {
+                "username": user[1],
+                "role": user[3],
+                "department": user[4],
+                "district_id": user[5]
+            }
         }
-    }
+    except HTTPException:
+        raise
+    except Exception as exc:
+        import traceback
+        print(f"[Login API Critical Error] {traceback.format_exc()}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"로그인 인증 처리 중 서버 내부 오류: {str(exc)}"
+        )
 
 # --- 3. 회원가입/계정 생성 신청 API (공개 접근 가능 - 인증 가드 없음) ---
 @router.post("/register")

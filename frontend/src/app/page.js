@@ -90,12 +90,18 @@ export default function GatewayPage() {
           router.push('/spatial');
         }
       } else {
-        const errData = await res.json();
-        alert(errData.detail || "로그인 인증에 실패했습니다. 정보를 재검토하십시오.");
+        let errorMsg = "로그인 인증에 실패했습니다. 정보를 재검토하십시오.";
+        try {
+          const errData = await res.json();
+          errorMsg = errData.detail || errorMsg;
+        } catch (_) {
+          errorMsg = `서버 응답 오류 (HTTP ${res.status}: ${res.statusText || 'Backend Proxy Error'})`;
+        }
+        alert(errorMsg);
         setLoading(false);
       }
     } catch (err) {
-      alert("서버 연결에 실패했습니다. 백엔드 기동 여부를 확인해 주십시오.");
+      alert(`서버 연결 실패: ${err.message || '네트워크 통신 중 오류가 발생했습니다.'}`);
       setLoading(false);
     }
   };

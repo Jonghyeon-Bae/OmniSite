@@ -90,6 +90,22 @@ python backend/app/scripts/test_e2e_full_pipeline.py
 
 ---
 
-**작성일**: 2026-07-23  
-**시스템 버전**: `v1.3.0-stable-Rev131`  
+## ☁️ 6. AWS Lightsail 프로덕션 배포 및 DB exact-copy 복제 (AWS SOP)
+
+AWS Lightsail 클라우드 인스턴스(Ubuntu 22.04) 상에서 Docker 및 Docker Compose로 `pgvector`, `PostGIS` 및 21개 전수 테이블 스키마를 단 한 번의 에러 없이 배포하고 콜드스타트를 실행하는 가이드입니다.
+
+* **상세 절차서**: [AWS_LIGHTSAIL_DEPLOYMENT_SOP.md](file:///c:/Users/Admin/Desktop/%EB%B9%85%ED%94%84%EB%A1%9C%EC%A0%9D%ED%8A%B8%20%EA%B4%80%EB%A0%A8%EC%9E%90%EB%A3%8C/%EC%B5%9C%EC%A2%851%EC%B0%A8/1.0-prototype/AWS_LIGHTSAIL_DEPLOYMENT_SOP.md)
+* **원클릭 배포 명령**:
+  ```bash
+  # 1. 프로덕션 멀티 컨테이너 가동 (DB healthcheck 자동 대기)
+  docker compose -f docker-compose.production.yml up -d
+
+  # 2. AWS DB 1:1 exact-copy 데이터 시딩 (6,524 필지, 6,509 상가, 268 제한구역)
+  docker compose -f docker-compose.production.yml exec backend python /workspace/seed_db.py
+  ```
+
+---
+
+**작성일**: 2026-08-06  
+**시스템 버전**: `v1.5.0-stable-AWS-Certified`  
 **관리자**: 스마트시티 SDSS 옴니사이트(OmniSite) 개발팀

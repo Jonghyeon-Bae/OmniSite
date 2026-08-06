@@ -10,12 +10,17 @@ services:
     environment:
       POSTGRES_DB: postgres
       POSTGRES_USER: Admin
-      POSTGRES_PASSWORD: admin1234_production_key
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-admin1234_production_key}
     volumes:
       - postgres_prod_data:/var/lib/postgresql/data
       - ./DB/init:/docker-entrypoint-initdb.d
     ports:
       - "127.0.0.1:5432:5432" # 격리 보안: 로컬 루프백 인터페이스로만 바인딩하여 무단 원격 침투 차단
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U Admin -d postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   backend:
     build:
@@ -24,12 +29,17 @@ services:
     container_name: omnisite_prod_be
     restart: always
     environment:
-      - DATABASE_URL=postgresql+psycopg://Admin:admin1234_production_key@database:5432/postgres
+      - DATABASE_URL=postgresql+psycopg://Admin:${POSTGRES_PASSWORD:-admin1234_production_key}@database:5432/postgres
       - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - PYTHONPATH=/workspace
+    volumes:
+      - ./Datasets:/workspace/Datasets:ro
+      - ./seed_db.py:/workspace/seed_db.py:ro
     ports:
       - "8000:8000"
     depends_on:
-      - database
+      database:
+        condition: service_healthy
 
   frontend:
     build:
@@ -38,11 +48,12 @@ services:
     container_name: omnisite_prod_fe
     restart: always
     ports:
-      - "80:3000" # 80포트 대문 개방 (SSL 프록시 연동 시 3000포트로 포워딩 가능)
+      - "80:3000" # 80포트 대문 개방 (AWS Lightsail 기본 80포트 접속)
     environment:
-      - NEXT_PUBLIC_API_URL=http://localhost:8000
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:8000}
     depends_on:
       - backend
 
 volumes:
   postgres_prod_data:
+

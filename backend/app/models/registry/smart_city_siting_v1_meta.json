@@ -1,7 +1,7 @@
 {
   "domain": "smart_city_siting",
   "model_filename": "smart_city_siting_v1.pkl",
-  "last_trained_at": "2026-08-07 01:34:36",
+  "last_trained_at": "2026-08-07 01:50:02",
   "accuracy": 0.9985,
   "f1_score": 0.9964,
   "sample_count": 6502,

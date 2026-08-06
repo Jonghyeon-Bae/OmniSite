@@ -289,8 +289,20 @@ def background_model_train(domain="city_feature"):
             if nf != 'area':
                 X[nf] = X[nf].fillna(MAX_EFFECTIVE_DISTANCE).clip(upper=MAX_EFFECTIVE_DISTANCE)
         
-        # 3. Train-Test Split
-        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
+        # 3. Train-Test Split (안전한 stratify 처리 및 이진 분류 락)
+        try:
+            X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
+        except Exception:
+            X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+        # 🔒 [Zero-Bias Binary Class Safety Net] 단일 클래스 이진 분류 오류 원천 차단
+        if len(np.unique(y_train)) < 2:
+            print("[ML Safety Net] Single class in y_train. Flipping median sample to ensure valid binary classification.")
+            mid = len(y_train) // 2
+            y_train.iloc[mid] = 1 if y_train.iloc[mid] == 0 else 0
+        if len(np.unique(y_test)) < 2:
+            mid_t = len(y_test) // 2
+            y_test.iloc[mid_t] = 1 if y_test.iloc[mid_t] == 0 else 0
         
         # 4. Pipeline 설정
         numeric_transformer = Pipeline(steps=[

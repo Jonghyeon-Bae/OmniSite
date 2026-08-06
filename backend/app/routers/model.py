@@ -205,6 +205,15 @@ def background_model_train(domain="city_feature"):
                 r["target_label"] = 0
 
         labeled_rows = [r for r in rows if r["target_label"] != -1]
+
+        # 🔒 [ML Class Balance Auto-Healing] 양성(1)/음성(0) 단일 클래스 편향 예방 분위수 자동 할당
+        pos_count = sum(1 for r in labeled_rows if r["target_label"] == 1)
+        neg_count = sum(1 for r in labeled_rows if r["target_label"] == 0)
+        if (pos_count == 0 or neg_count == 0) and len(labeled_rows) > 0:
+            labeled_rows.sort(key=lambda r: (r.get("complaint_count", 0), r.get("area", 0)), reverse=True)
+            top_20_cutoff = max(1, int(len(labeled_rows) * 0.2))
+            for idx, r in enumerate(labeled_rows):
+                r["target_label"] = 1 if idx < top_20_cutoff else 0
         
         # [RAG-ML 실증 피드백 결합]: decision_histories에서 실증 성공/실패 처리된 이력을 긁어옴
         feedback_query = text("""

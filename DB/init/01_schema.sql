@@ -323,5 +323,12 @@ CREATE TABLE IF NOT EXISTS building_ledgers (
     underground_floors INT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
-CREATE INDEX IF NOT EXISTS idx_building_ledgers_pnu ON building_ledgers(pnu);
+-- 28. 사용자 지정 가상 금지구역 테이블
+CREATE TABLE IF NOT EXISTS user_exclusion_zones (
+    id SERIAL PRIMARY KEY,
+    zone_name VARCHAR(150),
+    coordinates JSONB,
+    memo TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
 

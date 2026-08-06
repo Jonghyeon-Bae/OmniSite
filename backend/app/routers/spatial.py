@@ -795,6 +795,9 @@ async def recommend_optimal_sites(
         candidates = []
         search_radius = 0.003 # 1차 기본 300m 반경 조건
         
+        # 🔒 [User Exclusion Table Guard] DB 릴레이션 부재 예외 및 롤백 방지
+        ensure_user_exclusions_table(db)
+
         for allow_priv in [False, True]: # 1차: 국유지 전용, 2차 폴백: 사유지/민간부지 포함 전체 필지
             for attempt_radius in [0.003, 0.006, 0.010, 0.020]: # 300m -> 600m -> 1km -> 2km 유연 확장
                 try:
@@ -833,6 +836,39 @@ async def recommend_optimal_sites(
                     candidates = []
             if len(candidates) >= 3:
                 break
+
+        # 🔒 [Zero-Candidate Graceful Fallback] spatial_query 결과 0건 시 cadastral_lands 전역 필지 안전 탐색
+        if not candidates:
+            try:
+                fallback_query = text("""
+                    SELECT c.id, c.pnu, c.jibun, c.land_use_code, c.ownership_type, 
+                           ST_Area(c.geom::geography) AS area, 
+                           ST_X(ST_Centroid(c.geom)) AS lng, 
+                           ST_Y(ST_Centroid(c.geom)) AS lat, 
+                           c.dong_id,
+                           ST_Distance(ST_Centroid(c.geom)::geography, ST_SetSRID(ST_MakePoint(:ref_lng, :ref_lat), 4326)::geography) AS dist_from_ref,
+                           COALESCE(c.dist_to_school_m, 9999.0) AS dist_to_school,
+                           COALESCE(c.dist_to_childcare_m, 9999.0) AS dist_to_childcare
+                    FROM cadastral_lands c
+                    WHERE ST_IsValid(c.geom)
+                    ORDER BY ST_Distance(ST_Centroid(c.geom)::geography, ST_SetSRID(ST_MakePoint(:ref_lng, :ref_lat), 4326)::geography) ASC
+                    LIMIT 10
+                """)
+                fb_rows = db.execute(fallback_query, {"ref_lng": base_lng, "ref_lat": base_lat}).fetchall()
+                for r in fb_rows:
+                    candidates.append({
+                        "id": r[0], "pnu": r[1], 
+                        "jibun": to_road_address(r[2], r[3]),
+                        "land_use_code": r[3],
+                        "ownership_type": r[4], "area": round(float(r[5]), 1),
+                        "lng": float(r[6]), "lat": float(r[7]), "dong_id": r[8],
+                        "dist_from_ref": float(r[9]) if len(r) > 9 else 0.0,
+                        "dist_to_school": float(r[10]) if len(r) > 10 else 9999.0,
+                        "dist_to_childcare": float(r[11]) if len(r) > 11 else 9999.0
+                    })
+                print(f"[Fallback Candidate Generator] Generated {len(candidates)} candidates via general fallback.")
+            except Exception as fb_ex:
+                print(f"[Fallback Candidate Fail] {fb_ex}")
 
         # [v4.9.30] 조장님 지시: 실시간 업로드된 금지구역 CSV/JSON 좌표들을 캐싱/추출하여 물리적 200m 내부 후보지 자동 완벽 탈락 (Hard Drop)
         realtime_exclusions = []
@@ -2927,6 +2963,8 @@ def ensure_decision_histories_table(db: Session):
             );
         """))
         db.execute(text("ALTER TABLE verified_precedents ADD COLUMN IF NOT EXISTS selected_parcel_pnu VARCHAR(50);"))
+        db.execute(text("ALTER TABLE verified_precedents ADD COLUMN IF NOT EXISTS match_score NUMERIC;"))
+        db.execute(text("ALTER TABLE verified_precedents ADD COLUMN IF NOT EXISTS audit_opinion TEXT;"))
         db.commit()
     except Exception as e:
         db.rollback()
@@ -3364,6 +3402,79 @@ async def delete_decision_history(history_id: int, db: Session = Depends(get_db)
         return {"status": "success", "message": f"모의 심의 이력 #{history_id} 가 삭제되었습니다."}
     except Exception as e:
         db.rollback()
+        raise HTTPException(status_code=500, detail=f"삭제 실패: {str(e)}")
+
+
+# ========================================================
+# [User Exclusion Zones REST API Endpoints]
+# ========================================================
+class UserExclusionCreateRequest(BaseModel):
+    zone_name: str
+    coordinates: List[Dict[str, float]]
+    memo: Optional[str] = '지정 사유 없음'
+
+@router.get("/spatial/user-exclusions")
+async def get_user_exclusions(db: Session = Depends(get_db)):
+    ensure_user_exclusions_table(db)
+    try:
+        rows = db.execute(text("SELECT id, zone_name, coordinates, memo, created_at FROM user_exclusion_zones ORDER BY id DESC")).fetchall()
+        features = []
+        for r in rows:
+            coords = json.loads(r[2]) if isinstance(r[2], str) else r[2]
+            features.append({
+                "type": "Feature",
+                "properties": {
+                    "id": r[0],
+                    "zone_name": r[1],
+                    "memo": r[3],
+                    "created_at": r[4].strftime("%Y-%m-%d %H:%M") if r[4] else ""
+                },
+                "geometry": {
+                    "type": "Polygon",
+                    "coordinates": [[[pt["lng"], pt["lat"]] for pt in coords] + ([[coords[0]["lng"], coords[0]["lat"]]] if coords else [])]
+                }
+            })
+        return {
+            "type": "FeatureCollection",
+            "features": features
+        }
+    except Exception as e:
+        return {"type": "FeatureCollection", "features": []}
+
+@router.post("/spatial/user-exclusions")
+async def create_user_exclusion(req: UserExclusionCreateRequest, db: Session = Depends(get_db)):
+    ensure_user_exclusions_table(db)
+    try:
+        db.execute(text("""
+            INSERT INTO user_exclusion_zones (zone_name, coordinates, memo)
+            VALUES (:zone_name, :coordinates, :memo)
+        """), {
+            "zone_name": req.zone_name,
+            "coordinates": json.dumps(req.coordinates),
+            "memo": req.memo
+        })
+        db.commit()
+        try:
+            save_pipeline_log(db, 'SPATIAL', '[USER_EXCLUSION_CREATE]', {'zone_name': req.zone_name, 'points_count': len(req.coordinates)})
+        except Exception:
+            pass
+        return {"status": "success", "message": f"가상 금지구역 '{req.zone_name}'이(가) 성공적으로 저장되었습니다."}
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"가상 금지구역 저장 실패: {str(e)}")
+
+@router.delete("/spatial/user-exclusions/{exclusion_id}")
+async def delete_user_exclusion(exclusion_id: int, db: Session = Depends(get_db)):
+    ensure_user_exclusions_table(db)
+    try:
+        res = db.execute(text("DELETE FROM user_exclusion_zones WHERE id = :id"), {"id": exclusion_id})
+        db.commit()
+        if res.rowcount == 0:
+            raise HTTPException(status_code=404, detail="해당 가상 금지구역을 찾을 수 없습니다.")
+        return {"status": "success", "message": f"가상 금지구역 #{exclusion_id} 이 삭제되었습니다."}
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"삭제 실패: {str(e)}")
         raise HTTPException(status_code=500, detail=f"이력 삭제 실패: {str(e)}")
 
 @router.delete("/spatial/precedents/{precedent_id}")

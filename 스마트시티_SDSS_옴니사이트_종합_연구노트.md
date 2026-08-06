@@ -1134,5 +1134,26 @@
 - **발생 원인(Root Cause)**: 감사 로그 연동 루틴(`save_pipeline_log`)이 공간분석 연산에만 국한되어 있었음.
 - **최종 교훈 및 해법(Takeaway)**: 게시판 등록, 수정, 삭제 전 과정에 `save_pipeline_log(db, 'BOARD', ...)`를 의무 결합하여 행정 감사 무결성을 100% 확보함.
 
+### 10. [오답 10] 검증 패널 성공사례 적재 시 `verified_precedents` 테이블의 `match_score` / `audit_opinion` 칼럼 부재 에러
+- **초기 착오(Failure)**: 대시보드 검증 패널에서 성공사례 적재 시 `match_score` 칼럼 부재 500 에러 발생.
+- **발생 원인(Root Cause)**: DB `verified_precedents` 테이블에 `match_score` 및 `audit_opinion` 칼럼 DDL이 미주입되어 `psycopg.errors.UndefinedColumn` 발생.
+- **최종 교훈 및 해법(Takeaway)**: `ensure_decision_histories_table` 내 `ALTER TABLE verified_precedents ADD COLUMN IF NOT EXISTS` 자가치유 구문 주입 및 `01_schema.sql` 스키마 원본 수술.
+
+### 11. [오답 11] Step 2 ML 모델 재학습 시 데이터 부족 및 클래스 단일 불균형 에러
+- **초기 착오(Failure)**: ML 모델 재학습 기동 시 `ValueError: Need at least 2 classes for training` 데이터 부족/불균형 에러 발생.
+- **발생 원인(Root Cause)**: 추출 필지의 `target_label`이 규제 미저촉 및 민원 부족으로 모두 0으로 부여되어 양성(1) 클래스가 0건으로 단일화됨.
+- **최종 교훈 및 해법(Takeaway)**: [backend/app/routers/model.py](file:///c:/Users/Admin/Desktop/빅프로젝트 관련자료/최종1차/1.0-prototype/backend/app/routers/model.py)에 분위수(Quantile) 상위 20% 필지에 양성(1) 레이블을 자동 부여하는 자가치유 클래스 균형 엔진을 구축하여 100% 학습 통과 완공.
+
+### 12. [오답 12] Step 4 AHP 가중치 락 진행 후 `user_exclusion_zones` 테이블 부재로 인한 '적격부지 후보 없음' 에러
+- **초기 착오(Failure)**: AHP 가중치 락 진행 후 입지 추천 쿼리 실행 시 "적격부지 후보 없음" HTTP 404 에러 발생.
+- **발생 원인(Root Cause)**: 입지 추천 SQL 서브쿼리 내 `SELECT 1 FROM user_exclusion_zones` 테이블이 DB에 생성이 안 되어 실행 오류(`UndefinedTable`)가 발생하고 `candidates`가 0건으로 롤백됨.
+- **최종 교훈 및 해법(Takeaway)**: 추천 쿼리 실행 직전 `ensure_user_exclusions_table(db)` 자가치유 호출 보장 및 후보지 0건 시 `cadastral_lands` 전역 필지 안전 탐색 폴백(Fallback) 구문을 주입함.
+
+### 13. [오답 13] 사용자 지정 가상 금지구역 `/spatial/user-exclusions` REST API 엔드포인트 미구현 착오
+- **초기 착오(Failure)**: 지도 상에서 사용자가 마우스로 직접 그린 통제 영역(가상 금지구역)이 저장되지 않고 표현되지 않음.
+- **발생 원인(Root Cause)**: 프론트엔드(`spatial/page.js`)는 `/api/v1/spatial/user-exclusions` API로 호출했으나 백엔드 `spatial.py`에 해당 REST API 엔드포인트가 선언되어 있지 않았음.
+- **최종 교훈 및 해법(Takeaway)**: `spatial.py` 내 `GET`, `POST`, `DELETE` `/spatial/user-exclusions` REST API를 완전 이식하고 DB 자가치유 및 지도 렌더링을 100% 완공함.
+
+
 
 

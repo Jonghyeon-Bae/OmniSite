@@ -38,39 +38,29 @@ def resolve_path(key, default_fallback):
         if not datasets_base or not os.path.exists(datasets_base):
             continue
             
-        datasets_mapping = {
-            "dong_mapping": os.path.join(datasets_base, "1_boundaries", "용산구_법정동_행정동_연계매핑.csv"),
-            "parcels": os.path.join(datasets_base, "2_cadastral", "05.용산구_부지면적_좌표(흡연부스 후보).csv"),
-            "bus_stations": os.path.join(datasets_base, "5_indicators", "서울시 버스정류소 위치정보.csv"),
-            "subway_stations": os.path.join(datasets_base, "5_indicators", "서울시 역사마스터 정보.csv"),
-            "bus_passengers": os.path.join(datasets_base, "5_indicators", "BUS_STATION_BOARDING_MONTH_202605.csv"),
-            "subway_passengers": os.path.join(datasets_base, "5_indicators", "CARD_SUBWAY_MONTH_202605.csv"),
-            "illegal_dumping": os.path.join(datasets_base, "4_restrictions", "07. 담배꽁초_상습_무단투기.csv"),
-            "local_population": os.path.join(datasets_base, "5_indicators", "LOCAL_PEOPLE_DONG_202605_YONGSAN.csv"),
-            "restricted_zones": os.path.join(datasets_base, "4_restrictions", "06. 06-07 금연구역 통합본.csv"),
+        ind_dir = os.path.join(datasets_base, "5_indicators")
+        rest_dir = os.path.join(datasets_base, "4_restrictions")
+        cad_dir = os.path.join(datasets_base, "2_cadastral")
+        bound_dir = os.path.join(datasets_base, "1_boundaries")
+
+        candidate_map = {
+            "dong_mapping": [os.path.join(bound_dir, "용산구_법정동_행정동_연계매핑.csv")],
+            "parcels": [os.path.join(cad_dir, "05.용산구_부지면적_좌표(흡연부스 후보).csv"), os.path.join(ind_dir, "05.용산구_부지면적_좌표(흡연부스 후보).csv")],
+            "bus_stations": [os.path.join(ind_dir, "서울시 버스정류소 위치정보_YONGSAN.csv"), os.path.join(ind_dir, "서울시 버스정류소 위치정보.csv"), os.path.join(ind_dir, "01.버스정류소_유동인구.csv")],
+            "subway_stations": [os.path.join(ind_dir, "02. 지하철역 위치.csv"), os.path.join(ind_dir, "서울시 역사마스터 정보.csv")],
+            "bus_passengers": [os.path.join(ind_dir, "BUS_STATION_BOARDING_MONTH_202605_YONGSAN.csv"), os.path.join(ind_dir, "BUS_STATION_BOARDING_MONTH_202605.csv")],
+            "subway_passengers": [os.path.join(ind_dir, "CARD_SUBWAY_MONTH_202605_YONGSAN.csv"), os.path.join(ind_dir, "CARD_SUBWAY_MONTH_202605.csv"), os.path.join(ind_dir, "03. 지하철역_유동인구.csv")],
+            "illegal_dumping": [os.path.join(ind_dir, "07. 담배꽁초_상습_무단투기.csv"), os.path.join(rest_dir, "07. 담배꽁초_상습_무단투기.csv")],
+            "local_population": [os.path.join(ind_dir, "LOCAL_PEOPLE_DONG_202605_YONGSAN_PEAK.csv"), os.path.join(ind_dir, "LOCAL_PEOPLE_DONG_202605_YONGSAN.csv"), os.path.join(ind_dir, "04. 생활인구.csv")],
+            "restricted_zones": [os.path.join(rest_dir, "06. 06-07 금연구역 통합본.csv"), os.path.join(ind_dir, "06. 06-07 금연구역 통합본.csv")],
+            "commercial_shops": [os.path.join(ind_dir, "10. 소상공인시장진흥공단_상가.csv")]
         }
-        if key in datasets_mapping and os.path.exists(datasets_mapping[key]):
-            return datasets_mapping[key]
-            
-    if os.path.exists(default_fallback):
-        return default_fallback
-        
-    pkg_base = os.path.abspath(os.path.join(base_dir, "..", "데이터", "최초 ColdStart를 위한 데이터셋"))
-    pkg_essential = os.path.join(pkg_base, "필수데이터")
-    
-    mapping = {
-        "dong_mapping": os.path.join(pkg_essential, "dong_boundaries", "용산구_법정동_행정동_연계매핑.csv"),
-        "parcels": os.path.join(pkg_essential, "cadastral_lands", "05.용산구_부지면적_좌표(흡연부스 후보).csv"),
-        "bus_stations": os.path.join(pkg_essential, "transit_stations", "서울시 버스정류소 위치정보.csv"),
-        "subway_stations": os.path.join(pkg_essential, "transit_stations", "서울시 역사마스터 정보.csv"),
-        "bus_passengers": os.path.join(pkg_essential, "transit_passangers", "BUS_STATION_BOARDING_MONTH_202605.csv"),
-        "subway_passengers": os.path.join(pkg_essential, "transit_passangers", "CARD_SUBWAY_MONTH_202605.csv"),
-        "illegal_dumping": os.path.join(pkg_essential, "restricted_zones", "07. 담배꽁초_상습_무단투기.csv"),
-        "local_population": os.path.join(pkg_essential, "population_stats", "LOCAL_PEOPLE_DONG_202605_YONGSAN.csv"),
-        "restricted_zones": os.path.join(pkg_essential, "restricted_zones", "06. 06-07 금연구역 통합본.csv"),
-    }
-    if key in mapping and os.path.exists(mapping[key]):
-        return mapping[key]
+
+        if key in candidate_map:
+            for p in candidate_map[key]:
+                if os.path.exists(p):
+                    return p
+
     return default_fallback
 
 datasets_base_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "Datasets")

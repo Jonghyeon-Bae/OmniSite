@@ -1365,14 +1365,32 @@ export default function Home() {
 
         // Next.js BFF Proxy 및 상대 경로 동적 라우팅을 위한 backendBaseUrl 바인딩
         const backendBaseUrl = process.env.NEXT_PUBLIC_BACKEND_API_URL || '';
-        const res = await fetch(`${backendBaseUrl}/api/v1/spatial/debate`, {
-          method: 'POST',
-          headers: { 
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${sessionStorage.getItem('token') || sessionStorage.getItem('jwtToken') || ''}`
-          },
-          body: JSON.stringify(payload)
-        });
+        const fetchHeaders = { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${sessionStorage.getItem('token') || sessionStorage.getItem('jwtToken') || ''}`
+        };
+
+        let res;
+        try {
+          res = await fetch(`${backendBaseUrl}/api/v1/spatial/debate`, {
+            method: 'POST',
+            headers: fetchHeaders,
+            body: JSON.stringify(payload)
+          });
+          if (res.status === 404 || res.status === 502 || res.status === 504) {
+            res = await fetch(`http://localhost:8000/api/v1/spatial/debate`, {
+              method: 'POST',
+              headers: fetchHeaders,
+              body: JSON.stringify(payload)
+            });
+          }
+        } catch (netErr) {
+          res = await fetch(`http://localhost:8000/api/v1/spatial/debate`, {
+            method: 'POST',
+            headers: fetchHeaders,
+            body: JSON.stringify(payload)
+          });
+        }
 
         if (!res.ok) {
           throw new Error(`SSE stream initiation failed: ${res.statusText}`);

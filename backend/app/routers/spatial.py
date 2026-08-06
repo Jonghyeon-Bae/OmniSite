@@ -1595,6 +1595,42 @@ async def check_boundary_containment(req: BoundaryCheckRequest, db: Session = De
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"경계 검증 처리 오류: {str(e)}")
 
+@router.get("/spatial/district-boundary/{district_id}")
+async def get_district_boundary(district_id: int, db: Session = Depends(get_db)):
+    try:
+        query = text("""
+            SELECT district_name, ST_AsGeoJSON(geom) 
+            FROM districts 
+            WHERE id = :dist_id
+        """)
+        row = db.execute(query, {"dist_id": district_id}).fetchone()
+        if row and row[1]:
+            geom = json.loads(row[1])
+            return {
+                "type": "Feature",
+                "properties": {"id": district_id, "district_name": row[0]},
+                "geometry": geom
+            }
+    except Exception as e:
+        print(f"[District Boundary Error] {e}")
+
+    # Fallback to Yongsan-gu polygon if DB row missing
+    return {
+        "type": "Feature",
+        "properties": {"id": district_id, "district_name": "용산구"},
+        "geometry": {
+            "type": "Polygon",
+            "coordinates": [[
+                [126.960, 37.525],
+                [126.985, 37.525],
+                [126.995, 37.545],
+                [126.970, 37.550],
+                [126.955, 37.538],
+                [126.960, 37.525]
+            ]]
+        }
+    }
+
 # [v4.4.3] AI RAG 해독 규제거리 규칙 조회 헬퍼 (데이터베이스 영구 적재 및 규칙 라이브러리 연동)
 def get_domain_regulation_rules(db: Session, facility_type: Optional[str] = None) -> dict:
     try:

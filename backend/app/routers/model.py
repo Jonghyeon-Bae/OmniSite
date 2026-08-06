@@ -141,7 +141,7 @@ def background_model_train(domain="city_feature"):
                         ORDER BY ST_Centroid(c.geom) <-> geom 
                         LIMIT 1
                     ) rz
-                    WHERE c.district_id = 1
+                    WHERE c.ownership_type IN ('국유지', '시유지', '구유지')
                 )
             """)
             select_parts.append(f"COALESCE({z_clean}_tbl.dist_to_{z_clean}, 9999.0) AS dist_to_{z_clean}")
@@ -170,8 +170,7 @@ def background_model_train(domain="city_feature"):
             {join_sql}
             LEFT JOIN civil_complaints cc ON c.dong_id = cc.dong_id
             LEFT JOIN building_ledgers b ON c.pnu = b.pnu
-            WHERE c.district_id = 1
-              AND c.ownership_type IN (:owner_1, :owner_2, :owner_3)
+            WHERE c.ownership_type IN (:owner_1, :owner_2, :owner_3)
               AND ST_IsValid(c.geom);
         """)
         
@@ -184,36 +183,30 @@ def background_model_train(domain="city_feature"):
         headers = list(result.keys())
         rows = [dict(zip(headers, r)) for r in result]
 
-        # [v6.0.0 Zero-Bias Pure Dynamic RAG Rule Ground Truth Labeling & F1 Balance]
+        # [v6.8.0 Pure Zero-Bias Real Dynamic PostGIS Spatial Labeling]
         rules_map = get_domain_regulation_rules(db, domain)
         if not rules_map:
             rules_map = {"school": 200.0, "childcare_center": 50.0, "nosmoking_zone": 10.0}
 
+        complaint_vals = [float(r.get("complaint_count", 0)) for r in rows]
+        median_complaint = float(np.median(complaint_vals)) if (len(complaint_vals) > 0 and max(complaint_vals) > 0) else 100.0
+
         for r in rows:
-            is_violation = False
+            violation_count = 0
             for z_type, buf_dist in rules_map.items():
                 z_clean = z_type.replace('-', '_').replace(' ', '_')
                 d_val = r.get(f"dist_to_{z_clean}", 9999.0)
                 if d_val < buf_dist:
-                    is_violation = True
-                    break
+                    violation_count += 1
 
-            complaint = r.get("complaint_count", 0)
-            if is_violation or complaint >= 110:
+            complaint = float(r.get("complaint_count", 0))
+            # 실측 공간 저촉(>=1개) 및 지역 민원 중위수 이상, 또는 2개 이상 상시 저촉 시 고갈등/위험(1), 그 외 저갈등/안전(0)
+            if (violation_count >= 1 and complaint >= median_complaint) or violation_count >= 2:
                 r["target_label"] = 1
             else:
                 r["target_label"] = 0
 
         labeled_rows = [r for r in rows if r["target_label"] != -1]
-
-        # 🔒 [ML Class Balance Auto-Healing] 양성(1)/음성(0) 단일 클래스 편향 예방 분위수 자동 할당
-        pos_count = sum(1 for r in labeled_rows if r["target_label"] == 1)
-        neg_count = sum(1 for r in labeled_rows if r["target_label"] == 0)
-        if (pos_count == 0 or neg_count == 0) and len(labeled_rows) > 0:
-            labeled_rows.sort(key=lambda r: (r.get("complaint_count", 0), r.get("area", 0)), reverse=True)
-            top_20_cutoff = max(1, int(len(labeled_rows) * 0.2))
-            for idx, r in enumerate(labeled_rows):
-                r["target_label"] = 1 if idx < top_20_cutoff else 0
         
         # [RAG-ML 실증 피드백 결합]: decision_histories에서 실증 성공/실패 처리된 이력을 긁어옴
         feedback_query = text("""
@@ -325,37 +318,9 @@ def background_model_train(domain="city_feature"):
             ))
         ])
         
-        # 5. [v6.5.0 AI Intent-Weighted Dynamic Sample & Feature Training]
-        # Step 1 AI 감리 결과(rules_metadata/score_modifiers)에서 해당 태그의 가중치 편향 수식 동적 반영
-        sample_weights = np.ones(len(y_train))
-        
-        if "ev" in domain:
-            for idx, (p_idx, row_data) in enumerate(X_train.iterrows()):
-                w = 1.0
-                if row_data.get("area", 0) > 100:
-                    w += 0.6
-                if row_data.get("dist_to_parking_lot", 9999.0) < 300:
-                    w += 0.5
-                sample_weights[idx] = w
-        elif "smoking" in domain or "smoke" in domain:
-            for idx, (p_idx, row_data) in enumerate(X_train.iterrows()):
-                w = 1.0
-                if row_data.get("complaint_count", 0) > 80:
-                    w += 0.6
-                if row_data.get("dist_to_nosmoking_zone", 9999.0) < 50:
-                    w += 0.5
-                sample_weights[idx] = w
-        elif "shelter" in domain:
-            for idx, (p_idx, row_data) in enumerate(X_train.iterrows()):
-                w = 1.0
-                if row_data.get("dist_to_school", 9999.0) < 300:
-                    w += 0.6
-                if row_data.get("dist_to_childcare_center", 9999.0) < 100:
-                    w += 0.5
-                sample_weights[idx] = w
-
-        print("[ML Process] Fitting final AI Intent-Weighted XGBoost model pipeline...")
-        pipeline.fit(X_train, y_train, classifier__sample_weight=sample_weights)
+        # 5. [v6.8.0 Pure Zero-Bias Dynamic Sample Training] 하드코딩 편향 가중치 전면 제거
+        print("[ML Process] Fitting final Pure Zero-Bias PostGIS XGBoost model pipeline...")
+        pipeline.fit(X_train, y_train)
         
         # 6. Evaluation
         y_pred = pipeline.predict(X_test)

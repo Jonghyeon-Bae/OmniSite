@@ -22,5 +22,5 @@ COPY . /workspace
 
 EXPOSE 8000
 
-# Use Gunicorn with Uvicorn workers for production reliability and concurrency
+# Use Gunicorn with Uvicorn workers for production reliability and concurrency.
 CMD ["gunicorn", "app.main:app", "-w", "4", "-k", "uvicorn.workers.UvicornWorker", "-b", "0.0.0.0:8000"]

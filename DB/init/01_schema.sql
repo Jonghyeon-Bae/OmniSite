@@ -198,7 +198,7 @@ CREATE TABLE registered_domain_tags (
     embedding VECTOR(1536)
 );
 
--- 18. 범용 스마트시티 공간 시설물 테이블 (가/감점 요인 통합 관리용)
+-- 18. 범용 스마트시티 공간 시설물 테이블 (가/감점 요인 통합 관리용).
 CREATE TABLE city_spatial_features (
     id SERIAL PRIMARY KEY,
     district_id INT REFERENCES districts(id) ON DELETE CASCADE,

@@ -155,7 +155,8 @@ def seed():
                     age_demographics, 
                     cadastral_lands, 
                     restricted_zones, 
-                    dong_boundaries 
+                    dong_boundaries,
+                    commercial_shops
                 CASCADE;
             """))
             

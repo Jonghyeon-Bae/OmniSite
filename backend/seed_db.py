@@ -672,8 +672,22 @@ def seed():
             except Exception as e:
                 print(f"    [Skipped] commercial_shops seeding skipped: {e}")
 
-            # [11] Seed default admin user if not exists
+            # [11] Seed default admin user if not exists (Auto-healing users schema migration)
             print("[11] Seeding default admin account...")
+            try:
+                conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255);"))
+                conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS is_approved BOOLEAN DEFAULT TRUE;"))
+                conn.execute(text("""
+                    DO $$ 
+                    BEGIN 
+                        IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='hashed_password') THEN
+                            UPDATE users SET password_hash = hashed_password WHERE password_hash IS NULL;
+                        END IF;
+                    END $$;
+                """))
+            except Exception as schema_err:
+                print(f"    [Users Schema Warning] {schema_err}")
+
             pwd_bytes = "admin1234".encode('utf-8')
             salt = bcrypt.gensalt()
             hashed = bcrypt.hashpw(pwd_bytes, salt).decode('utf-8')

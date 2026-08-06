@@ -216,10 +216,11 @@ CREATE INDEX idx_city_features_type ON city_spatial_features (feature_type);
 CREATE TABLE IF NOT EXISTS users (
     id SERIAL PRIMARY KEY,
     username VARCHAR(100) UNIQUE NOT NULL,
-    hashed_password VARCHAR(255) NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
     role VARCHAR(50) DEFAULT 'user',
     department VARCHAR(100) DEFAULT '스마트도시과',
     district_id INT REFERENCES districts(id) ON DELETE CASCADE,
+    is_approved BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 

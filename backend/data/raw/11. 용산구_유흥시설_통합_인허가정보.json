@@ -1,0 +1,1892 @@
+[
+  {
+    "lat": 37.5381864,
+    "lng": 126.9609644,
+    "dong_id": 1724,
+    "properties": {
+      "address": "서울특별시 용산구 용문동 8-77 지하1층동",
+      "data": {
+        "﻿facility_name": "세븐",
+        "address": "서울특별시 용산구 용문동 8-77 지하1층동",
+        "lat": "37.5381864",
+        "lng": "126.9609644",
+        "facility_type": "노래연습장"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
+    }
+  },
+  {
+    "lat": 37.5338863,
+    "lng": 126.9738476,
+    "dong_id": 1727,
+    "properties": {
+      "address": "서울특별시 용산구 한강로1가 197 2층동",
+      "data": {
+        "﻿facility_name": "데코",
+        "address": "서울특별시 용산구 한강로1가 197 2층동",
+        "lat": "37.5338863",
+        "lng": "126.9738476",
+        "facility_type": "노래연습장"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
+    }
+  },
+  {
+    "lat": 37.5334416,
+    "lng": 127.0061583,
+    "dong_id": 1734,
+    "properties": {
+      "address": "서울특별시 용산구 한남동 634-1",
+      "data": {
+        "﻿facility_name": "로데오노래연습장",
+        "address": "서울특별시 용산구 한남동 634-1",
+        "lat": "37.5334416",
+        "lng": "127.0061583",
+        "facility_type": "노래연습장"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
+    }
+  },
+  {
+    "lat": 37.5343896,
+    "lng": 126.9739108,
+    "dong_id": 1727,
+    "properties": {
+      "address": "서울특별시 용산구 한강로1가 152-1 지층",
+      "data": {
+        "﻿facility_name": "한강노래연습장",
+        "address": "서울특별시 용산구 한강로1가 152-1 지층",
+        "lat": "37.5343896",
+        "lng": "126.9739108",
+        "facility_type": "노래연습장"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
+    }
+  },
+  {
+    "lat": 37.5487107,
+    "lng": 126.9779391,
+    "dong_id": 1704,
+    "properties": {
+      "address": "서울특별시 용산구 후암동 244-11 지하1층",
+      "data": {
+        "﻿facility_name": "브라보 노래연습장",
+        "address": "서울특별시 용산구 후암동 244-11 지하1층",
+        "lat": "37.5487107",
+        "lng": "126.9779391",
+        "facility_type": "노래연습장"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
+    }
+  },
+  {
+    "lat": 37.5340916,
+    "lng": 126.9933848,
+    "dong_id": 1733,
+    "properties": {
+      "address": "서울특별시 용산구 이태원동 128-7 지하1층",
+      "data": {
+        "﻿facility_name": "보스노래연습장",
+        "address": "서울특별시 용산구 이태원동 128-7 지하1층",
+        "lat": "37.5340916",
+        "lng": "126.9933848",
+        "facility_type": "노래연습장"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
+    }
+  },
+  {
+    "lat": 37.5395557,
+    "lng": 126.989592,
+    "dong_id": 1733,
+    "properties": {
+      "address": "서울특별시 용산구 이태원동 225-94",
+      "data": {
+        "﻿facility_name": "싸이노래연습장",
+        "address": "서울특별시 용산구 이태원동 225-94",
+        "lat": "37.5395557",
+        "lng": "126.989592",
+        "facility_type": "노래연습장"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
+    }
+  },
+  {
+    "lat": 37.5434703,
+    "lng": 126.9728762,
+    "dong_id": 1708,
+    "properties": {
+      "address": "서울특별시 용산구 남영동 61-3 2층",
+      "data": {
+        "﻿facility_name": "황금",
+        "address": "서울특별시 용산구 남영동 61-3 2층",
+        "lat": "37.5434703",
+        "lng": "126.9728762",
+        "facility_type": "노래연습장"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
+    }
+  },
+  {
+    "lat": 37.5544894,
+    "lng": 126.9687457,
+    "dong_id": 1711,
+    "properties": {
+      "address": "서울특별시 용산구 서계동 220-3",
+      "data": {
+        "﻿facility_name": "드림21",
+        "address": "서울특별시 용산구 서계동 220-3",
+        "lat": "37.5544894",
+        "lng": "126.9687457",
+        "facility_type": "노래연습장"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
+    }
+  },
+  {
+    "lat": 37.5256952,
+    "lng": 126.9638396,
+    "dong_id": 1731,
+    "properties": {
+      "address": "서울특별시 용산구 한강로3가 40-152 2층동",
+      "data": {
+        "﻿facility_name": "용산",
+        "address": "서울특별시 용산구 한강로3가 40-152 2층동",
+        "lat": "37.5256952",
+        "lng": "126.9638396",
+        "facility_type": "노래연습장"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
+    }
+  },
+  {
+    "lat": 37.5490833,
+    "lng": 126.9774136,
+    "dong_id": 1704,
+    "properties": {
+      "address": "서울특별시 용산구 후암동 105-70",
+      "data": {
+        "﻿facility_name": "무지개",
+        "address": "서울특별시 용산구 후암동 105-70",
+        "lat": "37.5490833",
+        "lng": "126.9774136",
+        "facility_type": "노래연습장"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
+    }
+  },
+  {
+    "lat": 37.5286196,
+    "lng": 126.9984743,
+    "dong_id": 1739,
+    "properties": {
+      "address": "서울특별시 용산구 보광동 257-1",
+      "data": {
+        "﻿facility_name": "오디션",
+        "address": "서울특별시 용산구 보광동 257-1",
+        "lat": "37.5286196",
+        "lng": "126.9984743",
+        "facility_type": "노래연습장"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
+    }
+  },
+  {
+    "lat": 37.5500263,
+    "lng": 126.9765865,
+    "dong_id": 1704,
+    "properties": {
+      "address": "서울특별시 용산구 후암동 103-10 지층동",
+      "data": {
+        "﻿facility_name": "연출",
+        "address": "서울특별시 용산구 후암동 103-10 지층동",
+        "lat": "37.5500263",
+        "lng": "126.9765865",
+        "facility_type": "노래연습장"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
+    }
+  },
+  {
+    "lat": 37.5462926,
+    "lng": 126.9819662,
+    "dong_id": 1705,
+    "properties": {
+      "address": "서울특별시 용산구 용산동2가 1-1418 지층동",
+      "data": {
+        "﻿facility_name": "자기연출",
+        "address": "서울특별시 용산구 용산동2가 1-1418 지층동",
+        "lat": "37.5462926",
+        "lng": "126.9819662",
+        "facility_type": "노래연습장"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
+    }
+  },
+  {
+    "lat": 37.5331081,
+    "lng": 127.0054781,
+    "dong_id": 1734,
+    "properties": {
+      "address": "서울특별시 용산구 한남동 641-3 지층",
+      "data": {
+        "﻿facility_name": "썸",
+        "address": "서울특별시 용산구 한남동 641-3 지층",
+        "lat": "37.5331081",
+        "lng": "127.0054781",
+        "facility_type": "노래연습장"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
+    }
+  },
+  {
+    "lat": 37.525913,
+    "lng": 126.9644209,
+    "dong_id": 1731,
+    "properties": {
+      "address": "서울특별시 용산구 한강로3가 40-592 지층동",
+      "data": {
+        "﻿facility_name": "필",
+        "address": "서울특별시 용산구 한강로3가 40-592 지층동",
+        "lat": "37.525913",
+        "lng": "126.9644209",
+        "facility_type": "노래연습장"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
+    }
+  },
+  {
+    "lat": 37.5444534,
+    "lng": 126.9685389,
+    "dong_id": 1713,
+    "properties": {
+      "address": "서울특별시 용산구 청파동2가 71-75",
+      "data": {
+        "﻿facility_name": "퀸",
+        "address": "서울특별시 용산구 청파동2가 71-75",
+        "lat": "37.5444534",
+        "lng": "126.9685389",
+        "facility_type": "노래연습장"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
+    }
+  },
+  {
+    "lat": 37.534145,
+    "lng": 126.9739379,
+    "dong_id": 1727,
+    "properties": {
+      "address": "서울특별시 용산구 한강로1가 196-1",
+      "data": {
+        "﻿facility_name": "민들레",
+        "address": "서울특별시 용산구 한강로1가 196-1",
+        "lat": "37.534145",
+        "lng": "126.9739379",
+        "facility_type": "노래연습장"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
+    }
+  },
+  {
+    "lat": 37.5440882,
+    "lng": 126.9726497,
+    "dong_id": 1708,
+    "properties": {
+      "address": "서울특별시 용산구 남영동 24-6",
+      "data": {
+        "﻿facility_name": "위아더월드",
+        "address": "서울특별시 용산구 남영동 24-6",
+        "lat": "37.5440882",
+        "lng": "126.9726497",
+        "facility_type": "노래연습장"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
+    }
+  },
+  {
+    "lat": 37.5346959,
+    "lng": 126.9585714,
+    "dong_id": 1720,
+    "properties": {
+      "address": "서울특별시 용산구 원효로3가 35-3 지하1층동",
+      "data": {
+        "﻿facility_name": "베토벤",
+        "address": "서울특별시 용산구 원효로3가 35-3 지하1층동",
+        "lat": "37.5346959",
+        "lng": "126.9585714",
+        "facility_type": "노래연습장"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
+    }
+  },
+  {
+    "lat": 37.5338801,
+    "lng": 126.9954332,
+    "dong_id": 1733,
+    "properties": {
+      "address": "서울특별시 용산구 이태원동 132-1 3층동",
+      "data": {
+        "﻿facility_name": "나이스",
+        "address": "서울특별시 용산구 이태원동 132-1 3층동",
+        "lat": "37.5338801",
+        "lng": "126.9954332",
+        "facility_type": "노래연습장"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
+    }
+  },
+  {
+    "lat": 37.5204115,
+    "lng": 126.9742766,
+    "dong_id": 1732,
+    "properties": {
+      "address": "서울특별시 용산구 이촌동 301-139 3층동",
+      "data": {
+        "﻿facility_name": "하모니",
+        "address": "서울특별시 용산구 이촌동 301-139 3층동",
+        "lat": "37.5204115",
+        "lng": "126.9742766",
+        "facility_type": "노래연습장"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
+    }
+  },
+  {
+    "lat": 37.5408604,
+    "lng": 126.9685391,
+    "dong_id": 1715,
+    "properties": {
+      "address": "서울특별시 용산구 원효로1가 12-20",
+      "data": {
+        "﻿facility_name": "2차노래연습장",
+        "address": "서울특별시 용산구 원효로1가 12-20",
+        "lat": "37.5408604",
+        "lng": "126.9685391",
+        "facility_type": "노래연습장"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
+    }
+  },
+  {
+    "lat": 37.5516667,
+    "lng": 126.9719867,
+    "dong_id": 1710,
+    "properties": {
+      "address": "서울특별시 용산구 동자동 43-13 2층동",
+      "data": {
+        "﻿facility_name": "노래마을",
+        "address": "서울특별시 용산구 동자동 43-13 2층동",
+        "lat": "37.5516667",
+        "lng": "126.9719867",
+        "facility_type": "노래연습장"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
+    }
+  },
+  {
+    "lat": 37.5505832,
+    "lng": 126.9749817,
+    "dong_id": 1710,
+    "properties": {
+      "address": "서울특별시 용산구 동자동 19-40 지층동",
+      "data": {
+        "﻿facility_name": "피노키오 노래연습장",
+        "address": "서울특별시 용산구 동자동 19-40 지층동",
+        "lat": "37.5505832",
+        "lng": "126.9749817",
+        "facility_type": "노래연습장"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
+    }
+  },
+  {
+    "lat": 37.5365625,
+    "lng": 126.9599151,
+    "dong_id": 1724,
+    "properties": {
+      "address": "서울특별시 용산구 용문동 41-25 2층동",
+      "data": {
+        "﻿facility_name": "GO래GO래 노래연습장",
+        "address": "서울특별시 용산구 용문동 41-25 2층동",
+        "lat": "37.5365625",
+        "lng": "126.9599151",
+        "facility_type": "노래연습장"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
+    }
+  },
+  {
+    "lat": 37.5431211,
+    "lng": 126.9722006,
+    "dong_id": 1707,
+    "properties": {
+      "address": "서울특별시 용산구 갈월동 90-10 2층동",
+      "data": {
+        "﻿facility_name": "새로노래연습장",
+        "address": "서울특별시 용산구 갈월동 90-10 2층동",
+        "lat": "37.5431211",
+        "lng": "126.9722006",
+        "facility_type": "노래연습장"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
+    }
+  },
+  {
+    "lat": 37.5377312,
+    "lng": 126.9663542,
+    "dong_id": 1716,
+    "properties": {
+      "address": "서울특별시 용산구 원효로2가 1-38 2층동",
+      "data": {
+        "﻿facility_name": "카니발",
+        "address": "서울특별시 용산구 원효로2가 1-38 2층동",
+        "lat": "37.5377312",
+        "lng": "126.9663542",
+        "facility_type": "노래연습장"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
+    }
+  },
+  {
+    "lat": 37.5324562,
+    "lng": 127.005653,
+    "dong_id": 1734,
+    "properties": {
+      "address": "서울특별시 용산구 한남동 631-17 지층동",
+      "data": {
+        "﻿facility_name": "한강",
+        "address": "서울특별시 용산구 한남동 631-17 지층동",
+        "lat": "37.5324562",
+        "lng": "127.005653",
+        "facility_type": "노래연습장"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
+    }
+  },
+  {
+    "lat": 37.5331559,
+    "lng": 127.0053236,
+    "dong_id": 1734,
+    "properties": {
+      "address": "서울특별시 용산구 대사관로 66 (한남동",
+      "data": {
+        "﻿facility_name": "제우스",
+        "address": "서울특별시 용산구 대사관로 66 (한남동",
+        "lat": "37.5331559",
+        "lng": "127.0053236",
+        "facility_type": "단란주점"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
+    }
+  },
+  {
+    "lat": 37.5331469,
+    "lng": 127.0043293,
+    "dong_id": 1734,
+    "properties": {
+      "address": "서울특별시 용산구 대사관로24길 6 (한남동",
+      "data": {
+        "﻿facility_name": "1차원",
+        "address": "서울특별시 용산구 대사관로24길 6 (한남동",
+        "lat": "37.5331469",
+        "lng": "127.0043293",
+        "facility_type": "단란주점"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
+    }
+  },
+  {
+    "lat": 37.5309437,
+    "lng": 126.9916835,
+    "dong_id": 1733,
+    "properties": {
+      "address": "서울특별시 용산구 녹사평대로26길 24 (이태원동",
+      "data": {
+        "﻿facility_name": "퓨전",
+        "address": "서울특별시 용산구 녹사평대로26길 24 (이태원동",
+        "lat": "37.5309437",
+        "lng": "126.9916835",
+        "facility_type": "단란주점"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
+    }
+  },
+  {
+    "lat": 37.5336007,
+    "lng": 127.0070999,
+    "dong_id": 1734,
+    "properties": {
+      "address": "서울특별시 용산구 한남대로 55 (한남동",
+      "data": {
+        "﻿facility_name": "한",
+        "address": "서울특별시 용산구 한남대로 55 (한남동",
+        "lat": "37.5336007",
+        "lng": "127.0070999",
+        "facility_type": "단란주점"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
+    }
+  },
+  {
+    "lat": 37.53365,
+    "lng": 126.9954237,
+    "dong_id": 1733,
+    "properties": {
+      "address": "서울특별시 용산구 우사단로 37 (이태원동",
+      "data": {
+        "﻿facility_name": "왕소라",
+        "address": "서울특별시 용산구 우사단로 37 (이태원동",
+        "lat": "37.53365",
+        "lng": "126.9954237",
+        "facility_type": "단란주점"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
+    }
+  },
+  {
+    "lat": 37.5260851,
+    "lng": 126.9639138,
+    "dong_id": 1731,
+    "properties": {
+      "address": "서울특별시 용산구 한강대로15길 8-3",
+      "data": {
+        "﻿facility_name": "유랑",
+        "address": "서울특별시 용산구 한강대로15길 8-3",
+        "lat": "37.5260851",
+        "lng": "126.9639138",
+        "facility_type": "단란주점"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
+    }
+  },
+  {
+    "lat": 37.5348257,
+    "lng": 126.9945663,
+    "dong_id": 1733,
+    "properties": {
+      "address": "서울특별시 용산구 이태원로 183-4",
+      "data": {
+        "﻿facility_name": "와키노래타운(waki)",
+        "address": "서울특별시 용산구 이태원로 183-4",
+        "lat": "37.5348257",
+        "lng": "126.9945663",
+        "facility_type": "단란주점"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
+    }
+  },
+  {
+    "lat": 37.5319203,
+    "lng": 126.9624423,
+    "dong_id": 1731,
+    "properties": {
+      "address": "서울특별시 용산구 청파로20길 95",
+      "data": {
+        "﻿facility_name": "내추럴8",
+        "address": "서울특별시 용산구 청파로20길 95",
+        "lat": "37.5319203",
+        "lng": "126.9624423",
+        "facility_type": "단란주점"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
+    }
+  },
+  {
+    "lat": 37.5354236,
+    "lng": 126.9607592,
+    "dong_id": 1716,
+    "properties": {
+      "address": "서울특별시 용산구 원효로41길 62 (원효로2가",
+      "data": {
+        "﻿facility_name": "연예인",
+        "address": "서울특별시 용산구 원효로41길 62 (원효로2가",
+        "lat": "37.5354236",
+        "lng": "126.9607592",
+        "facility_type": "단란주점"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
+    }
+  },
+  {
+    "lat": 37.5206989,
+    "lng": 126.9677578,
+    "dong_id": 1732,
+    "properties": {
+      "address": "서울특별시 용산구 이촌로54길 13 (이촌동",
+      "data": {
+        "﻿facility_name": "보스톤",
+        "address": "서울특별시 용산구 이촌로54길 13 (이촌동",
+        "lat": "37.5206989",
+        "lng": "126.9677578",
+        "facility_type": "단란주점"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
+    }
+  },
+  {
+    "lat": 37.5284333,
+    "lng": 126.9923555,
+    "dong_id": 1735,
+    "properties": {
+      "address": "서울특별시 용산구 장문로 18 (동빙고동",
+      "data": {
+        "﻿facility_name": "이태원힐즈(ITAEWON HILLS)",
+        "address": "서울특별시 용산구 장문로 18 (동빙고동",
+        "lat": "37.5284333",
+        "lng": "126.9923555",
+        "facility_type": "단란주점"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
+    }
+  },
+  {
+    "lat": 37.5320543,
+    "lng": 127.0059549,
+    "dong_id": 1734,
+    "properties": {
+      "address": "서울특별시 용산구 대사관로34길 25 (한남동",
+      "data": {
+        "﻿facility_name": "도쿄라이브러리",
+        "address": "서울특별시 용산구 대사관로34길 25 (한남동",
+        "lat": "37.5320543",
+        "lng": "127.0059549",
+        "facility_type": "단란주점"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
+    }
+  },
+  {
+    "lat": 37.5446862,
+    "lng": 126.9690453,
+    "dong_id": 1713,
+    "properties": {
+      "address": "서울특별시 용산구 청파로47길 25 (청파동2가",
+      "data": {
+        "﻿facility_name": "스타노래짱",
+        "address": "서울특별시 용산구 청파로47길 25 (청파동2가",
+        "lat": "37.5446862",
+        "lng": "126.9690453",
+        "facility_type": "단란주점"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
+    }
+  },
+  {
+    "lat": 37.5353856,
+    "lng": 126.9606842,
+    "dong_id": 1716,
+    "properties": {
+      "address": "서울특별시 용산구 원효로41길 60 (원효로2가",
+      "data": {
+        "﻿facility_name": "샤방샤방",
+        "address": "서울특별시 용산구 원효로41길 60 (원효로2가",
+        "lat": "37.5353856",
+        "lng": "126.9606842",
+        "facility_type": "단란주점"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
+    }
+  },
+  {
+    "lat": 37.5428751,
+    "lng": 126.9729067,
+    "dong_id": 1708,
+    "properties": {
+      "address": "서울특별시 용산구 한강대로 276",
+      "data": {
+        "﻿facility_name": "사운드 노래주점",
+        "address": "서울특별시 용산구 한강대로 276",
+        "lat": "37.5428751",
+        "lng": "126.9729067",
+        "facility_type": "단란주점"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
+    }
+  },
+  {
+    "lat": 37.5395437,
+    "lng": 126.9978135,
+    "dong_id": 1734,
+    "properties": {
+      "address": "서울특별시 용산구 소월로 322 (한남동",
+      "data": {
+        "﻿facility_name": "그랜드 하얏트 서울 파리스빠",
+        "address": "서울특별시 용산구 소월로 322 (한남동",
+        "lat": "37.5395437",
+        "lng": "126.9978135",
+        "facility_type": "단란주점"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
+    }
+  },
+  {
+    "lat": 37.5323164,
+    "lng": 127.0053712,
+    "dong_id": 1734,
+    "properties": {
+      "address": "서울특별시 용산구 대사관로24길 30 (한남동",
+      "data": {
+        "﻿facility_name": "딜라일라",
+        "address": "서울특별시 용산구 대사관로24길 30 (한남동",
+        "lat": "37.5323164",
+        "lng": "127.0053712",
+        "facility_type": "단란주점"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
+    }
+  },
+  {
+    "lat": 37.5347635,
+    "lng": 127.0102597,
+    "dong_id": 1734,
+    "properties": {
+      "address": "서울특별시 용산구 독서당로 89 (한남동",
+      "data": {
+        "﻿facility_name": "니키타",
+        "address": "서울특별시 용산구 독서당로 89 (한남동",
+        "lat": "37.5347635",
+        "lng": "127.0102597",
+        "facility_type": "단란주점"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
+    }
+  },
+  {
+    "lat": 37.5444852,
+    "lng": 126.9695621,
+    "dong_id": 1714,
+    "properties": {
+      "address": "서울특별시 용산구 청파로45길 20 (청파동3가",
+      "data": {
+        "﻿facility_name": "샵노래바",
+        "address": "서울특별시 용산구 청파로45길 20 (청파동3가",
+        "lat": "37.5444852",
+        "lng": "126.9695621",
+        "facility_type": "단란주점"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
+    }
+  },
+  {
+    "lat": 37.5340809,
+    "lng": 127.0057481,
+    "dong_id": 1734,
+    "properties": {
+      "address": "서울특별시 용산구 대사관로31길 17 (한남동",
+      "data": {
+        "﻿facility_name": "하몬드",
+        "address": "서울특별시 용산구 대사관로31길 17 (한남동",
+        "lat": "37.5340809",
+        "lng": "127.0057481",
+        "facility_type": "단란주점"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
+    }
+  },
+  {
+    "lat": 37.533874,
+    "lng": 127.005975,
+    "dong_id": 1734,
+    "properties": {
+      "address": "서울특별시 용산구 대사관로31길 12 (한남동",
+      "data": {
+        "﻿facility_name": "호박",
+        "address": "서울특별시 용산구 대사관로31길 12 (한남동",
+        "lat": "37.533874",
+        "lng": "127.005975",
+        "facility_type": "단란주점"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
+    }
+  },
+  {
+    "lat": 37.5276438,
+    "lng": 126.9993358,
+    "dong_id": 1739,
+    "properties": {
+      "address": "서울특별시 용산구 보광로 39 (보광동",
+      "data": {
+        "﻿facility_name": "체리바",
+        "address": "서울특별시 용산구 보광로 39 (보광동",
+        "lat": "37.5276438",
+        "lng": "126.9993358",
+        "facility_type": "단란주점"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
+    }
+  },
+  {
+    "lat": 37.5414135,
+    "lng": 126.9733311,
+    "dong_id": 1708,
+    "properties": {
+      "address": "서울특별시 용산구 한강대로 258 (남영동",
+      "data": {
+        "﻿facility_name": "보스노래",
+        "address": "서울특별시 용산구 한강대로 258 (남영동",
+        "lat": "37.5414135",
+        "lng": "126.9733311",
+        "facility_type": "단란주점"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
+    }
+  },
+  {
+    "lat": 37.5265798,
+    "lng": 127.0018301,
+    "dong_id": 1739,
+    "properties": {
+      "address": "서울특별시 용산구 장문로 111-3 (보광동",
+      "data": {
+        "﻿facility_name": "울리불리",
+        "address": "서울특별시 용산구 장문로 111-3 (보광동",
+        "lat": "37.5265798",
+        "lng": "127.0018301",
+        "facility_type": "단란주점"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
+    }
+  },
+  {
+    "lat": 37.5348252,
+    "lng": 126.9956687,
+    "dong_id": 1733,
+    "properties": {
+      "address": "서울특별시 용산구 이태원로 195 (이태원동",
+      "data": {
+        "﻿facility_name": "주식회사 핑서울",
+        "address": "서울특별시 용산구 이태원로 195 (이태원동",
+        "lat": "37.5348252",
+        "lng": "126.9956687",
+        "facility_type": "단란주점"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
+    }
+  },
+  {
+    "lat": 37.5342725,
+    "lng": 127.0101173,
+    "dong_id": 1734,
+    "properties": {
+      "address": "서울특별시 용산구 독서당로 86 (한남동",
+      "data": {
+        "﻿facility_name": "화",
+        "address": "서울특별시 용산구 독서당로 86 (한남동",
+        "lat": "37.5342725",
+        "lng": "127.0101173",
+        "facility_type": "단란주점"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
+    }
+  },
+  {
+    "lat": 37.5341807,
+    "lng": 127.0057568,
+    "dong_id": 1734,
+    "properties": {
+      "address": "서울특별시 용산구 대사관로31길 19 (한남동",
+      "data": {
+        "﻿facility_name": "후 라이브",
+        "address": "서울특별시 용산구 대사관로31길 19 (한남동",
+        "lat": "37.5341807",
+        "lng": "127.0057568",
+        "facility_type": "단란주점"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
+    }
+  },
+  {
+    "lat": 37.5343419,
+    "lng": 127.0061939,
+    "dong_id": 1734,
+    "properties": {
+      "address": "서울특별시 용산구 한남대로21길 14 (한남동",
+      "data": {
+        "﻿facility_name": "맘마미아",
+        "address": "서울특별시 용산구 한남대로21길 14 (한남동",
+        "lat": "37.5343419",
+        "lng": "127.0061939",
+        "facility_type": "단란주점"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
+    }
+  },
+  {
+    "lat": 37.5342094,
+    "lng": 126.973542,
+    "dong_id": 1727,
+    "properties": {
+      "address": "서울특별시 용산구 한강대로62길 16 (한강로1가",
+      "data": {
+        "﻿facility_name": "탈렌트",
+        "address": "서울특별시 용산구 한강대로62길 16 (한강로1가",
+        "lat": "37.5342094",
+        "lng": "126.973542",
+        "facility_type": "단란주점"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
+    }
+  },
+  {
+    "lat": 37.5331907,
+    "lng": 127.0049504,
+    "dong_id": 1734,
+    "properties": {
+      "address": "서울특별시 용산구 대사관로 62 (한남동",
+      "data": {
+        "﻿facility_name": "블라인드피그",
+        "address": "서울특별시 용산구 대사관로 62 (한남동",
+        "lat": "37.5331907",
+        "lng": "127.0049504",
+        "facility_type": "단란주점"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
+    }
+  },
+  {
+    "lat": 37.5371425,
+    "lng": 126.9607224,
+    "dong_id": 1724,
+    "properties": {
+      "address": "서울특별시 용산구 새창로 115 (용문동",
+      "data": {
+        "﻿facility_name": "청춘노래",
+        "address": "서울특별시 용산구 새창로 115 (용문동",
+        "lat": "37.5371425",
+        "lng": "126.9607224",
+        "facility_type": "단란주점"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
+    }
+  },
+  {
+    "lat": 37.5360128,
+    "lng": 126.9614411,
+    "dong_id": 1716,
+    "properties": {
+      "address": "서울특별시 용산구 새창로 131 (원효로2가",
+      "data": {
+        "﻿facility_name": "대월",
+        "address": "서울특별시 용산구 새창로 131 (원효로2가",
+        "lat": "37.5360128",
+        "lng": "126.9614411",
+        "facility_type": "단란주점"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
+    }
+  },
+  {
+    "lat": 37.5347741,
+    "lng": 126.9586474,
+    "dong_id": 1720,
+    "properties": {
+      "address": "서울특별시 용산구 원효로41길 21-1 (원효로3가",
+      "data": {
+        "﻿facility_name": "아리랑",
+        "address": "서울특별시 용산구 원효로41길 21-1 (원효로3가",
+        "lat": "37.5347741",
+        "lng": "126.9586474",
+        "facility_type": "단란주점"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
+    }
+  },
+  {
+    "lat": 37.5345515,
+    "lng": 126.9583374,
+    "dong_id": 1720,
+    "properties": {
+      "address": "서울특별시 용산구 원효로41길 15 (원효로3가",
+      "data": {
+        "﻿facility_name": "빙고",
+        "address": "서울특별시 용산구 원효로41길 15 (원효로3가",
+        "lat": "37.5345515",
+        "lng": "126.9583374",
+        "facility_type": "단란주점"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
+    }
+  },
+  {
+    "lat": 37.5344028,
+    "lng": 126.9585579,
+    "dong_id": 1720,
+    "properties": {
+      "address": "서울특별시 용산구 원효로41길 16 (원효로3가",
+      "data": {
+        "﻿facility_name": "힐탑",
+        "address": "서울특별시 용산구 원효로41길 16 (원효로3가",
+        "lat": "37.5344028",
+        "lng": "126.9585579",
+        "facility_type": "단란주점"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
+    }
+  },
+  {
+    "lat": 37.5338702,
+    "lng": 126.9947076,
+    "dong_id": 1733,
+    "properties": {
+      "address": "서울특별시 용산구 보광로60길 10 (이태원동",
+      "data": {
+        "﻿facility_name": "블랙다이아(Black dia)",
+        "address": "서울특별시 용산구 보광로60길 10 (이태원동",
+        "lat": "37.5338702",
+        "lng": "126.9947076",
+        "facility_type": "단란주점"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
+    }
+  },
+  {
+    "lat": 37.5332519,
+    "lng": 127.0047189,
+    "dong_id": 1734,
+    "properties": {
+      "address": "서울특별시 용산구 대사관로 60 (한남동",
+      "data": {
+        "﻿facility_name": "궁",
+        "address": "서울특별시 용산구 대사관로 60 (한남동",
+        "lat": "37.5332519",
+        "lng": "127.0047189",
+        "facility_type": "단란주점"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
+    }
+  },
+  {
+    "lat": 37.5262192,
+    "lng": 126.9989834,
+    "dong_id": 1739,
+    "properties": {
+      "address": "서울특별시 용산구 장문로 83-1 (보광동",
+      "data": {
+        "﻿facility_name": "모리(森)",
+        "address": "서울특별시 용산구 장문로 83-1 (보광동",
+        "lat": "37.5262192",
+        "lng": "126.9989834",
+        "facility_type": "단란주점"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
+    }
+  },
+  {
+    "lat": 37.5198531,
+    "lng": 126.9699155,
+    "dong_id": 1732,
+    "properties": {
+      "address": "서울특별시 용산구 이촌로64길 26 (이촌동",
+      "data": {
+        "﻿facility_name": "더클럽바",
+        "address": "서울특별시 용산구 이촌로64길 26 (이촌동",
+        "lat": "37.5198531",
+        "lng": "126.9699155",
+        "facility_type": "단란주점"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
+    }
+  },
+  {
+    "lat": 37.5337073,
+    "lng": 126.9726828,
+    "dong_id": 1727,
+    "properties": {
+      "address": "서울특별시 용산구 한강대로 168-2 (한강로1가",
+      "data": {
+        "﻿facility_name": "발리",
+        "address": "서울특별시 용산구 한강대로 168-2 (한강로1가",
+        "lat": "37.5337073",
+        "lng": "126.9726828",
+        "facility_type": "단란주점"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
+    }
+  },
+  {
+    "lat": 37.5341511,
+    "lng": 127.009902,
+    "dong_id": 1734,
+    "properties": {
+      "address": "서울특별시 용산구 독서당로 84 (한남동",
+      "data": {
+        "﻿facility_name": "파티스테이션(P.S)",
+        "address": "서울특별시 용산구 독서당로 84 (한남동",
+        "lat": "37.5341511",
+        "lng": "127.009902",
+        "facility_type": "단란주점"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
+    }
+  },
+  {
+    "lat": 37.5338459,
+    "lng": 126.9942957,
+    "dong_id": 1733,
+    "properties": {
+      "address": "서울특별시 용산구 보광로 124 (이태원동",
+      "data": {
+        "﻿facility_name": "퀸(QUEEN)",
+        "address": "서울특별시 용산구 보광로 124 (이태원동",
+        "lat": "37.5338459",
+        "lng": "126.9942957",
+        "facility_type": "단란주점"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
+    }
+  },
+  {
+    "lat": 37.5534072,
+    "lng": 126.9743427,
+    "dong_id": 1710,
+    "properties": {
+      "address": "서울특별시 용산구 후암로 101 (동자동",
+      "data": {
+        "﻿facility_name": "뉴서울가요주점",
+        "address": "서울특별시 용산구 후암로 101 (동자동",
+        "lat": "37.5534072",
+        "lng": "126.9743427",
+        "facility_type": "단란주점"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
+    }
+  },
+  {
+    "lat": 37.5319327,
+    "lng": 126.9709308,
+    "dong_id": 1728,
+    "properties": {
+      "address": "서울특별시 용산구 한강대로 144 (한강로2가",
+      "data": {
+        "﻿facility_name": "팡팡",
+        "address": "서울특별시 용산구 한강대로 144 (한강로2가",
+        "lat": "37.5319327",
+        "lng": "126.9709308",
+        "facility_type": "단란주점"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
+    }
+  },
+  {
+    "lat": 37.53465,
+    "lng": 127.005814,
+    "dong_id": 1734,
+    "properties": {
+      "address": "서울특별시 용산구 대사관로31길 29 (한남동",
+      "data": {
+        "﻿facility_name": "엘피",
+        "address": "서울특별시 용산구 대사관로31길 29 (한남동",
+        "lat": "37.53465",
+        "lng": "127.005814",
+        "facility_type": "단란주점"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
+    }
+  },
+  {
+    "lat": 37.5349189,
+    "lng": 126.9636976,
+    "dong_id": 1726,
+    "properties": {
+      "address": "서울특별시 용산구 원효로58길 31 (신계동",
+      "data": {
+        "﻿facility_name": "스카이노래주점",
+        "address": "서울특별시 용산구 원효로58길 31 (신계동",
+        "lat": "37.5349189",
+        "lng": "126.9636976",
+        "facility_type": "단란주점"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
+    }
+  },
+  {
+    "lat": 37.5275803,
+    "lng": 126.9994274,
+    "dong_id": 1739,
+    "properties": {
+      "address": "서울특별시 용산구 보광로 37-1 (보광동",
+      "data": {
+        "﻿facility_name": "타임",
+        "address": "서울특별시 용산구 보광로 37-1 (보광동",
+        "lat": "37.5275803",
+        "lng": "126.9994274",
+        "facility_type": "단란주점"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
+    }
+  },
+  {
+    "lat": 37.5309124,
+    "lng": 126.970026,
+    "dong_id": 1728,
+    "properties": {
+      "address": "서울특별시 용산구 한강대로42길 3 (한강로2가",
+      "data": {
+        "﻿facility_name": "놀아줘",
+        "address": "서울특별시 용산구 한강대로42길 3 (한강로2가",
+        "lat": "37.5309124",
+        "lng": "126.970026",
+        "facility_type": "단란주점"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
+    }
+  },
+  {
+    "lat": 37.534227,
+    "lng": 126.9958412,
+    "dong_id": 1733,
+    "properties": {
+      "address": "서울특별시 용산구 우사단로 46 (이태원동",
+      "data": {
+        "﻿facility_name": "여보클럽",
+        "address": "서울특별시 용산구 우사단로 46 (이태원동",
+        "lat": "37.534227",
+        "lng": "126.9958412",
+        "facility_type": "단란주점"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
+    }
+  },
+  {
+    "lat": 37.5349548,
+    "lng": 126.994769,
+    "dong_id": 1733,
+    "properties": {
+      "address": "서울특별시 용산구 이태원로27가길 9 (이태원동",
+      "data": {
+        "﻿facility_name": "(주)아울라운지",
+        "address": "서울특별시 용산구 이태원로27가길 9 (이태원동",
+        "lat": "37.5349548",
+        "lng": "126.994769",
+        "facility_type": "단란주점"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
+    }
+  },
+  {
+    "lat": 37.537494,
+    "lng": 126.96574,
+    "dong_id": 1716,
+    "properties": {
+      "address": "서울특별시 용산구 원효로 214 (원효로2가",
+      "data": {
+        "﻿facility_name": "태평양단란주점",
+        "address": "서울특별시 용산구 원효로 214 (원효로2가",
+        "lat": "37.537494",
+        "lng": "126.96574",
+        "facility_type": "단란주점"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
+    }
+  },
+  {
+    "lat": 37.5261378,
+    "lng": 126.9646297,
+    "dong_id": 1731,
+    "properties": {
+      "address": "서울특별시 용산구 한강대로 57 (한강로3가",
+      "data": {
+        "﻿facility_name": "팡파르",
+        "address": "서울특별시 용산구 한강대로 57 (한강로3가",
+        "lat": "37.5261378",
+        "lng": "126.9646297",
+        "facility_type": "단란주점"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
+    }
+  },
+  {
+    "lat": 37.5449096,
+    "lng": 126.9723989,
+    "dong_id": 1708,
+    "properties": {
+      "address": "서울특별시 용산구 한강대로 298 (남영동",
+      "data": {
+        "﻿facility_name": "팅커벨",
+        "address": "서울특별시 용산구 한강대로 298 (남영동",
+        "lat": "37.5449096",
+        "lng": "126.9723989",
+        "facility_type": "단란주점"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
+    }
+  },
+  {
+    "lat": 37.5251032,
+    "lng": 126.9632627,
+    "dong_id": 1731,
+    "properties": {
+      "address": "서울특별시 용산구 한강대로11길 6 (한강로3가",
+      "data": {
+        "﻿facility_name": "옛정노래",
+        "address": "서울특별시 용산구 한강대로11길 6 (한강로3가",
+        "lat": "37.5251032",
+        "lng": "126.9632627",
+        "facility_type": "단란주점"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
+    }
+  },
+  {
+    "lat": 37.5454824,
+    "lng": 126.972301,
+    "dong_id": 1707,
+    "properties": {
+      "address": "서울특별시 용산구 한강대로 306",
+      "data": {
+        "﻿facility_name": "뉴욕",
+        "address": "서울특별시 용산구 한강대로 306",
+        "lat": "37.5454824",
+        "lng": "126.972301",
+        "facility_type": "단란주점"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
+    }
+  },
+  {
+    "lat": 37.5325917,
+    "lng": 127.0062293,
+    "dong_id": 1734,
+    "properties": {
+      "address": "서울특별시 용산구 대사관로34길 13",
+      "data": {
+        "﻿facility_name": "샤인",
+        "address": "서울특별시 용산구 대사관로34길 13",
+        "lat": "37.5325917",
+        "lng": "127.0062293",
+        "facility_type": "단란주점"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
+    }
+  },
+  {
+    "lat": 37.5330043,
+    "lng": 127.0064698,
+    "dong_id": 1734,
+    "properties": {
+      "address": "서울특별시 용산구 대사관로 76",
+      "data": {
+        "﻿facility_name": "오컴",
+        "address": "서울특별시 용산구 대사관로 76",
+        "lat": "37.5330043",
+        "lng": "127.0064698",
+        "facility_type": "단란주점"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
+    }
+  },
+  {
+    "lat": 37.5356247,
+    "lng": 126.9617529,
+    "dong_id": 1716,
+    "properties": {
+      "address": "서울특별시 용산구 원효로 171 (원효로2가",
+      "data": {
+        "﻿facility_name": "칼라",
+        "address": "서울특별시 용산구 원효로 171 (원효로2가",
+        "lat": "37.5356247",
+        "lng": "126.9617529",
+        "facility_type": "유흥주점"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
+    }
+  },
+  {
+    "lat": 37.5335462,
+    "lng": 126.9725154,
+    "dong_id": 1727,
+    "properties": {
+      "address": "서울특별시 용산구 한강대로 166-1 (한강로1가",
+      "data": {
+        "﻿facility_name": "오페라",
+        "address": "서울특별시 용산구 한강대로 166-1 (한강로1가",
+        "lat": "37.5335462",
+        "lng": "126.9725154",
+        "facility_type": "유흥주점"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
+    }
+  },
+  {
+    "lat": 37.5433931,
+    "lng": 126.9727659,
+    "dong_id": 1708,
+    "properties": {
+      "address": "서울특별시 용산구 한강대로 280-2 (남영동",
+      "data": {
+        "﻿facility_name": "벅스노래바Q",
+        "address": "서울특별시 용산구 한강대로 280-2 (남영동",
+        "lat": "37.5433931",
+        "lng": "126.9727659",
+        "facility_type": "유흥주점"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
+    }
+  },
+  {
+    "lat": 37.5350236,
+    "lng": 126.9615765,
+    "dong_id": 1716,
+    "properties": {
+      "address": "서울특별시 용산구 원효로 166 (원효로2가",
+      "data": {
+        "﻿facility_name": "황제",
+        "address": "서울특별시 용산구 원효로 166 (원효로2가",
+        "lat": "37.5350236",
+        "lng": "126.9615765",
+        "facility_type": "유흥주점"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
+    }
+  },
+  {
+    "lat": 37.5416242,
+    "lng": 126.9715529,
+    "dong_id": 1707,
+    "properties": {
+      "address": "서울특별시 용산구 한강대로77길 21 (갈월동",
+      "data": {
+        "﻿facility_name": "팡팡노래뱅크",
+        "address": "서울특별시 용산구 한강대로77길 21 (갈월동",
+        "lat": "37.5416242",
+        "lng": "126.9715529",
+        "facility_type": "유흥주점"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
+    }
+  },
+  {
+    "lat": 37.520074,
+    "lng": 126.9694413,
+    "dong_id": 1732,
+    "properties": {
+      "address": "서울특별시 용산구 이촌로62길 9 (이촌동",
+      "data": {
+        "﻿facility_name": "싸이티로스",
+        "address": "서울특별시 용산구 이촌로62길 9 (이촌동",
+        "lat": "37.520074",
+        "lng": "126.9694413",
+        "facility_type": "유흥주점"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
+    }
+  },
+  {
+    "lat": 37.533907,
+    "lng": 126.9888318,
+    "dong_id": 1733,
+    "properties": {
+      "address": "서울특별시 용산구 이태원로 134 (이태원동",
+      "data": {
+        "﻿facility_name": "케이크샵",
+        "address": "서울특별시 용산구 이태원로 134 (이태원동",
+        "lat": "37.533907",
+        "lng": "126.9888318",
+        "facility_type": "유흥주점"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
+    }
+  },
+  {
+    "lat": 37.5357936,
+    "lng": 126.9617155,
+    "dong_id": 1716,
+    "properties": {
+      "address": "서울특별시 용산구 새창로 131-6 (원효로2가",
+      "data": {
+        "﻿facility_name": "팔팔노래",
+        "address": "서울특별시 용산구 새창로 131-6 (원효로2가",
+        "lat": "37.5357936",
+        "lng": "126.9617155",
+        "facility_type": "유흥주점"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
+    }
+  },
+  {
+    "lat": 37.5336992,
+    "lng": 126.99585,
+    "dong_id": 1733,
+    "properties": {
+      "address": "서울특별시 용산구 우사단로 40 (이태원동",
+      "data": {
+        "﻿facility_name": "그레인 하우스(Grain Haus)",
+        "address": "서울특별시 용산구 우사단로 40 (이태원동",
+        "lat": "37.5336992",
+        "lng": "126.99585",
+        "facility_type": "유흥주점"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
+    }
+  },
+  {
+    "lat": 37.5347439,
+    "lng": 126.9938628,
+    "dong_id": 1733,
+    "properties": {
+      "address": "서울특별시 용산구 이태원로 지하 179 (이태원동",
+      "data": {
+        "﻿facility_name": "유토피아",
+        "address": "서울특별시 용산구 이태원로 지하 179 (이태원동",
+        "lat": "37.5347439",
+        "lng": "126.9938628",
+        "facility_type": "유흥주점"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
+    }
+  },
+  {
+    "lat": 37.5351561,
+    "lng": 126.9935148,
+    "dong_id": 1733,
+    "properties": {
+      "address": "서울특별시 용산구 이태원로27가길 26 (이태원동",
+      "data": {
+        "﻿facility_name": "데이앤나이트",
+        "address": "서울특별시 용산구 이태원로27가길 26 (이태원동",
+        "lat": "37.5351561",
+        "lng": "126.9935148",
+        "facility_type": "유흥주점"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
+    }
+  },
+  {
+    "lat": 37.5499989,
+    "lng": 126.9715912,
+    "dong_id": 1710,
+    "properties": {
+      "address": "서울특별시 용산구 한강대로 353-4 (동자동",
+      "data": {
+        "﻿facility_name": "퀸",
+        "address": "서울특별시 용산구 한강대로 353-4 (동자동",
+        "lat": "37.5499989",
+        "lng": "126.9715912",
+        "facility_type": "유흥주점"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
+    }
+  },
+  {
+    "lat": 37.5351561,
+    "lng": 126.9935148,
+    "dong_id": 1733,
+    "properties": {
+      "address": "서울특별시 용산구 이태원로27가길 26 (이태원동",
+      "data": {
+        "﻿facility_name": "글램",
+        "address": "서울특별시 용산구 이태원로27가길 26 (이태원동",
+        "lat": "37.5351561",
+        "lng": "126.9935148",
+        "facility_type": "유흥주점"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
+    }
+  },
+  {
+    "lat": 37.5310738,
+    "lng": 126.9700762,
+    "dong_id": 1728,
+    "properties": {
+      "address": "서울특별시 용산구 한강대로 132 (한강로2가",
+      "data": {
+        "﻿facility_name": "002",
+        "address": "서울특별시 용산구 한강대로 132 (한강로2가",
+        "lat": "37.5310738",
+        "lng": "126.9700762",
+        "facility_type": "유흥주점"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
+    }
+  },
+  {
+    "lat": 37.5433627,
+    "lng": 126.9730083,
+    "dong_id": 1708,
+    "properties": {
+      "address": "서울특별시 용산구 한강대로 280-1 (남영동",
+      "data": {
+        "﻿facility_name": "탈렌트",
+        "address": "서울특별시 용산구 한강대로 280-1 (남영동",
+        "lat": "37.5433627",
+        "lng": "126.9730083",
+        "facility_type": "유흥주점"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
+    }
+  },
+  {
+    "lat": 37.5356592,
+    "lng": 126.9612672,
+    "dong_id": 1716,
+    "properties": {
+      "address": "서울특별시 용산구 새창로 132 (원효로2가",
+      "data": {
+        "﻿facility_name": "스카이",
+        "address": "서울특별시 용산구 새창로 132 (원효로2가",
+        "lat": "37.5356592",
+        "lng": "126.9612672",
+        "facility_type": "유흥주점"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
+    }
+  },
+  {
+    "lat": 37.549824,
+    "lng": 126.971569,
+    "dong_id": 1710,
+    "properties": {
+      "address": "서울특별시 용산구 한강대로 353 (동자동",
+      "data": {
+        "﻿facility_name": "백악관",
+        "address": "서울특별시 용산구 한강대로 353 (동자동",
+        "lat": "37.549824",
+        "lng": "126.971569",
+        "facility_type": "유흥주점"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
+    }
+  },
+  {
+    "lat": 37.5340799,
+    "lng": 126.9965718,
+    "dong_id": 1733,
+    "properties": {
+      "address": "서울특별시 용산구 우사단로14길 16 (이태원동",
+      "data": {
+        "﻿facility_name": "그랜드올아프리클럽",
+        "address": "서울특별시 용산구 우사단로14길 16 (이태원동",
+        "lat": "37.5340799",
+        "lng": "126.9965718",
+        "facility_type": "유흥주점"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
+    }
+  },
+  {
+    "lat": 37.5343566,
+    "lng": 126.9953606,
+    "dong_id": 1733,
+    "properties": {
+      "address": "서울특별시 용산구 이태원로 192",
+      "data": {
+        "﻿facility_name": "퍼블릭서울",
+        "address": "서울특별시 용산구 이태원로 192",
+        "lat": "37.5343566",
+        "lng": "126.9953606",
+        "facility_type": "유흥주점"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
+    }
+  }
+]

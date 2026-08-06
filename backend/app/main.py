@@ -25,13 +25,12 @@ app.include_router(spatial_router)
 app.include_router(model_router)
 app.include_router(board_router)
 
-# Next.js 연동을 위한 CORS 미들웨어 개설 (CORS_ORIGINS 환경변수 및 동적 allow_origin_regex 적용)
-cors_origins = [origin.strip() for origin in settings.CORS_ORIGINS.split(",") if origin.strip()]
+# Next.js 및 외부 퍼블릭 IP 연동을 위한 CORS 미들웨어 전면 개방 (Preflight OPTIONS 100% 통과)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=cors_origins,
+    allow_origins=["*"],
     allow_origin_regex=r".*",
-    allow_credentials=True,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )

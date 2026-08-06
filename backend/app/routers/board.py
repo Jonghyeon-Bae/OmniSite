@@ -230,6 +230,11 @@ async def create_notice(req: NoticeCreateRequest, db: Session = Depends(get_db))
         "attachment_url": req.attachment_url
     })
     db.commit()
+    try:
+        from app.routers.spatial import save_pipeline_log
+        save_pipeline_log(db, 'BOARD', '[NOTICE_CREATE]', {'title': req.title, 'is_pinned': req.is_pinned})
+    except Exception as log_err:
+        print(f"[Notice Log Error] {log_err}")
     return {"message": "공지사항이 성공적으로 등록되었습니다."}
 
 @router.put("/notices/{notice_id}")
@@ -250,6 +255,11 @@ async def update_notice(notice_id: int, req: NoticeUpdateRequest, db: Session = 
     db.commit()
     if result.rowcount == 0:
         raise HTTPException(status_code=404, detail="해당 공지사항을 찾을 수 없습니다.")
+    try:
+        from app.routers.spatial import save_pipeline_log
+        save_pipeline_log(db, 'BOARD', '[NOTICE_UPDATE]', {'notice_id': notice_id, 'title': req.title})
+    except Exception as log_err:
+        print(f"[Notice Log Error] {log_err}")
     return {"message": "공지사항이 수정되었습니다."}
 
 @router.delete("/notices/{notice_id}")
@@ -259,6 +269,11 @@ async def delete_notice(notice_id: int, db: Session = Depends(get_db)):
     db.commit()
     if result.rowcount == 0:
         raise HTTPException(status_code=404, detail="해당 공지사항을 찾을 수 없습니다.")
+    try:
+        from app.routers.spatial import save_pipeline_log
+        save_pipeline_log(db, 'BOARD', '[NOTICE_DELETE]', {'notice_id': notice_id})
+    except Exception as log_err:
+        print(f"[Notice Log Error] {log_err}")
     return {"message": "공지사항이 삭제되었습니다."}
 
 @router.get("/community")
@@ -315,6 +330,11 @@ async def create_community_post(req: PostCreateRequest, db: Session = Depends(ge
         "attachment_url": req.attachment_url
     })
     db.commit()
+    try:
+        from app.routers.spatial import save_pipeline_log
+        save_pipeline_log(db, 'BOARD', '[COMMUNITY_POST_CREATE]', {'title': req.title, 'author': req.author_name, 'department': req.department})
+    except Exception as log_err:
+        print(f"[Community Log Error] {log_err}")
     return {"message": "자유게시판 게시글이 성공적으로 등록되었습니다."}
 
 @router.delete("/community/{post_id}")
@@ -324,6 +344,11 @@ async def delete_community_post(post_id: int, db: Session = Depends(get_db)):
     db.commit()
     if result.rowcount == 0:
         raise HTTPException(status_code=404, detail="해당 게시글을 찾을 수 없습니다.")
+    try:
+        from app.routers.spatial import save_pipeline_log
+        save_pipeline_log(db, 'BOARD', '[COMMUNITY_POST_DELETE]', {'post_id': post_id})
+    except Exception as log_err:
+        print(f"[Community Log Error] {log_err}")
     return {"message": "게시글이 삭제되었습니다."}
 
 # --- FAQ DB Table CRUD Endpoints ---

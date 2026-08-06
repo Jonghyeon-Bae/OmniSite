@@ -1213,4 +1213,25 @@
 - **발생 원인(Root Cause)**: AWS DB에 칼럼이 없어 `psycopg.errors.UndefinedColumn` 500 에러 발생.
 - **최종 교훈 및 해법(Takeaway)**: API 엔드포인트 진입 시 `ALTER TABLE ADD COLUMN IF NOT EXISTS` DDL 자가치유(Auto-Healing) 구문을 자동 실행하고, [DB/init/01_schema.sql](file:///c:/Users/Admin/Desktop/빅프로젝트 관련자료/최종1차/1.0-prototype/DB/init/01_schema.sql) 원본 스키마에 5개 테이블 DDL을 100% 반영하여 콜드스타트 무결성을 완공함.
 
+### 6. [오답 06] 관리자 콘솔 시맨틱 태그 삭제 시 `domain_regulation_rules` 릴레이션 부재 에러
+- **초기 착오(Failure)**: 관리자 콘솔에서 시맨틱 태그 삭제 시 `domain_regulation_rules` 테이블 삭제 `DELETE` 쿼리가 실행되어 500 에러 발생.
+- **발생 원인(Root Cause)**: `domain_regulation_rules` 테이블이 AWS PostgreSQL DB에 미생성되어 `psycopg.errors.UndefinedTable` 발생.
+- **최종 교훈 및 해법(Takeaway)**: `ensure_domain_regulation_rules_table(db)` 자가치유 헬퍼 함수를 이식하여 API 진입 시 DDL이 자동 생성되도록 조치하고, `DB/init/01_schema.sql` 원본 스키마에 반영함.
+
+### 7. [오답 07] Step 2 ML 모델 재학습 시 `building_ledgers` 릴레이션 부재 에러
+- **초기 착오(Failure)**: ML 재학습 비동기 태스크 실행 시 `building_ledgers` 테이블 조인 쿼리에서 학습 실패 발생.
+- **발생 원인(Root Cause)**: DB에 `building_ledgers` 테이블이 없어 `psycopg.errors.UndefinedTable` 발생.
+- **최종 교훈 및 해법(Takeaway)**: [backend/app/routers/model.py](file:///c:/Users/Admin/Desktop/빅프로젝트 관련자료/최종1차/1.0-prototype/backend/app/routers/model.py)에 `ensure_model_tables(db)` 자가치유 헬퍼 함수를 구축하여 학습 시작 전 DDL 및 PNU 인덱스를 자동 보정하도록 완공함.
+
+### 8. [오답 08] Step 1 시맨틱 태그 `smoking_zone` ➔ `unknown_facility` / `ev_charging` 오분류 착오
+- **초기 착오(Failure)**: 흡연부스 데이터셋 업로드 시 시맨틱 태그가 `unknown_facility` 또는 `ev_charging`으로 오인식됨.
+- **발생 원인(Root Cause)**: `upload.py` Fallback 키워드 감지 룰에서 흡연구역 태그가 `"unknown_facility"` 오타로 적재되어 있었으며, `ev_charging` 키워드 리스트에 포함된 `"주차장"` 단어로 인해 흡연부스 데이터의 주차장 컬럼이 `ev_charging`으로 잘못 선점 매칭됨.
+- **최종 교훈 및 해법(Takeaway)**: `smoking_zone` 키워드 우선 검사 배치, 오타 태그명 `"smoking_zone"` 전면 교정, `"주차장"` 과도 키워드 배제로 100% 무편향 정밀 시맨틱 분류를 완공함.
+
+### 9. [오답 09] 게시판 모든 CRUD(공지사항, 자유게시판, FAQ) 행정 감사 로그 미적재 착오
+- **초기 착오(Failure)**: 게시판 글 작성/수정/삭제 조작 시 행정 감사 로그(`pipeline_execution_logs`)에 조작 내역이 남지 않음.
+- **발생 원인(Root Cause)**: 감사 로그 연동 루틴(`save_pipeline_log`)이 공간분석 연산에만 국한되어 있었음.
+- **최종 교훈 및 해법(Takeaway)**: 게시판 등록, 수정, 삭제 전 과정에 `save_pipeline_log(db, 'BOARD', ...)`를 의무 결합하여 행정 감사 무결성을 100% 확보함.
+
+
 

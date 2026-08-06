@@ -302,3 +302,26 @@ CREATE TABLE IF NOT EXISTS decision_histories (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- 26. 시맨틱 도메인 공간 규제 규칙 테이블
+CREATE TABLE IF NOT EXISTS domain_regulation_rules (
+    id SERIAL PRIMARY KEY,
+    facility_type VARCHAR(100) UNIQUE NOT NULL,
+    rules_json JSONB,
+    rules_metadata JSONB,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 27. 건축물대장 메타 정보 테이블
+CREATE TABLE IF NOT EXISTS building_ledgers (
+    id SERIAL PRIMARY KEY,
+    pnu VARCHAR(19),
+    building_name VARCHAR(150),
+    main_use_name VARCHAR(100),
+    structure_name VARCHAR(100),
+    total_area NUMERIC,
+    ground_floors INT,
+    underground_floors INT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_building_ledgers_pnu ON building_ledgers(pnu);
+

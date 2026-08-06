@@ -72,6 +72,36 @@ def get_domain_regulation_rules(db, facility_type: str) -> dict:
         print(f"[get_domain_regulation_rules Error in model.py] {ex}")
     return {"school": 200.0, "childcare_center": 50.0, "nosmoking_zone": 10.0}
 
+def ensure_model_tables(db: Session):
+    try:
+        db.execute(text("""
+            CREATE TABLE IF NOT EXISTS building_ledgers (
+                id SERIAL PRIMARY KEY,
+                pnu VARCHAR(19),
+                building_name VARCHAR(150),
+                main_use_name VARCHAR(100),
+                structure_name VARCHAR(100),
+                total_area NUMERIC,
+                ground_floors INT,
+                underground_floors INT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        """))
+        db.execute(text("CREATE INDEX IF NOT EXISTS idx_building_ledgers_pnu ON building_ledgers(pnu);"))
+        db.execute(text("""
+            CREATE TABLE IF NOT EXISTS domain_regulation_rules (
+                id SERIAL PRIMARY KEY,
+                facility_type VARCHAR(100) UNIQUE NOT NULL,
+                rules_json JSONB,
+                rules_metadata JSONB,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        """))
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        print(f"[Model Tables Init Warning] {e}")
+
 def background_model_train(domain="city_feature"):
     """XGBoost 모델 학습 및 핫스왑 비동기 태스크 (동적 공간 피처 추출 지원)"""
     global training_status
@@ -79,6 +109,7 @@ def background_model_train(domain="city_feature"):
     training_status["error"] = None
     
     db = SessionLocal()
+    ensure_model_tables(db)
     try:
         print(f"[ML Process] Starting dynamic spatial data querying for domain: {domain}")
         

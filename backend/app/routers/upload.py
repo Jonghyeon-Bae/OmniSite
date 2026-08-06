@@ -988,7 +988,14 @@ async def audit_upload_files(request: AuditRequest, db: Session = Depends(get_db
         combined_text = " ".join(pdf_texts) + " " + " ".join(request.filenames)
         combined_lower = combined_text.lower()
 
-        if any(keyword in combined_lower for keyword in ["쉼터", "스마트", "그늘막", "와이파이", "한파", "무더위", "shelter", "쉘터"]):
+        if any(keyword in combined_lower for keyword in ["금연", "흡연", "담배", "smoking", "tobacco"]):
+            inferred_purpose = "실외 흡연구역 입지 선정 및 간접흡연 규제 배제 분석"
+            inferred_domain_tag = "smoking_zone"
+            hitl_question = "업로드하신 데이터들은 [실외 흡연구역/흡연구역 지정]을 위한 입지 분석이 맞습니까?"
+            reasoning_global = "공간 데이터 파일명 및 조례 텍스트에서 금연/흡연(smoking) 관련 키워드가 감지되어 실외 흡연구역 선정을 위한 입지분석 목적으로 시맨틱 추론했습니다."
+            inferred_domain_tag = get_or_create_merged_tag(inferred_domain_tag, reasoning_global, db)
+
+        elif any(keyword in combined_lower for keyword in ["쉼터", "스마트", "그늘막", "와이파이", "한파", "무더위", "shelter", "쉘터"]):
             inferred_purpose = "지능형 스마트 쉼터 최적 입지 매핑 및 규제 분석"
             inferred_domain_tag = "smart_shelter"
             hitl_question = "업로드하신 데이터들은 [지능형 스마트 쉼터/스마트 쉘터]를 위한 입지 분석이 맞습니까?"
@@ -1005,7 +1012,7 @@ async def audit_upload_files(request: AuditRequest, db: Session = Depends(get_db
             ]
             inferred_domain_tag = get_or_create_merged_tag(inferred_domain_tag, reasoning_global, db)
 
-        elif any(keyword in combined_lower for keyword in ["충전", "전기차", "ev", "battery", "주차장"]):
+        elif any(keyword in combined_lower for keyword in ["충전", "전기차", "ev", "battery"]):
             inferred_purpose = "전기차 충전소 최적 입지 매핑 및 규제구역 제외 분석"
             inferred_domain_tag = "ev_charging"
             hitl_question = "업로드하신 데이터들은 [전기차 충전 인프라 설치]를 위한 입지 분석이 맞습니까?"
@@ -1030,13 +1037,6 @@ async def audit_upload_files(request: AuditRequest, db: Session = Depends(get_db
             reasoning_global = "공간 데이터 파일명에서 자전거/대여소 관련 키워드가 감지되어 자전거 대여소 선정을 위한 분석 목적으로 시맨틱 추론했습니다."
             inferred_domain_tag = get_or_create_merged_tag(inferred_domain_tag, reasoning_global, db)
 
-        elif any(keyword in combined_lower for keyword in ["금연", "흡연", "smoking", "tobacco"]):
-            inferred_purpose = "실외 흡연구역 입지 선정 및 간접흡연 규제 배제 분석"
-            inferred_domain_tag = "unknown_facility"
-            hitl_question = "업로드하신 데이터들은 [실외 흡연구역/흡연구역 지정]을 위한 입지 분석이 맞습니까?"
-            reasoning_global = "공간 데이터 파일명 및 조례 텍스트에서 금연/흡연(smoking) 관련 키워드가 감지되어 실외 흡연구역 선정을 위한 입지분석 목적으로 시맨틱 추론했습니다."
-            inferred_domain_tag = get_or_create_merged_tag(inferred_domain_tag, reasoning_global, db)
-
         else:
             # 매칭되는 특화 도메인이 없는 경우 일반 스마트시티(city_feature)로 안전 Fallback [v4.2.8]
             inferred_purpose = "일반 스마트시티 공간의사결정 입지 분석"
@@ -1044,6 +1044,12 @@ async def audit_upload_files(request: AuditRequest, db: Session = Depends(get_db
             hitl_question = "업로드하신 데이터를 토대로 다목적 스마트시티 공간 입지 분석을 진행하시겠습니까?"
             reasoning_global = "특화 도메인 키워드가 무매칭되어 일반 스마트시티(city_feature) 표준 시맨틱 태그로 자동 할당했습니다."
             inferred_domain_tag = get_or_create_merged_tag(inferred_domain_tag, reasoning_global, db)
+
+    # 🔒 AI 감리 추론 완료 시 DB(registered_domain_tags)에 시맨틱 태그 즉시 자동 등록
+    try:
+        register_inferred_domain_tag(db, inferred_domain_tag, inferred_purpose)
+    except Exception as tag_err:
+        print(f"[AI Tag Auto-Register Warning] {tag_err}")
 
     # AI가 누락했거나 Fallback인 경우 파일별 기본 성격 분류 (금지/불가능 단어 감지 시 exclusion)
     for f in request.filenames:
@@ -3060,9 +3066,49 @@ def get_registered_domain_tags(db: Session = Depends(get_db)):
         ], "detail": str(e)}
 
 
+def ensure_domain_regulation_rules_table(db: Session):
+    try:
+        db.execute(text("""
+            CREATE TABLE IF NOT EXISTS domain_regulation_rules (
+                id SERIAL PRIMARY KEY,
+                facility_type VARCHAR(100) UNIQUE NOT NULL,
+                rules_json JSONB,
+                rules_metadata JSONB,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        """))
+        db.execute(text("""
+            CREATE TABLE IF NOT EXISTS registered_domain_tags (
+                id SERIAL PRIMARY KEY,
+                tag_name VARCHAR(50) UNIQUE,
+                tag_description TEXT,
+                embedding VECTOR(1536)
+            );
+        """))
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        print(f"[Domain Regulation Rules Init Warning] {e}")
+
+def register_inferred_domain_tag(db: Session, tag_name: str, tag_description: str):
+    try:
+        ensure_domain_regulation_rules_table(db)
+        existing = db.execute(text("SELECT id FROM registered_domain_tags WHERE tag_name = :tag_name"), {"tag_name": tag_name}).fetchone()
+        if not existing:
+            db.execute(text("INSERT INTO registered_domain_tags (tag_name, tag_description) VALUES (:tag_name, :tag_description)"), {
+                "tag_name": tag_name,
+                "tag_description": tag_description
+            })
+            db.commit()
+            print(f"[Semantic Tag Auto-Register] Registered new tag '{tag_name}' ({tag_description})")
+    except Exception as e:
+        db.rollback()
+        print(f"[Tag Auto-Register Warning] {e}")
+
 @router.delete("/upload/domain-tags/{tag_name}")
 def delete_domain_tag(tag_name: str, db: Session = Depends(get_db), current_admin: dict = Depends(get_current_admin)):
     """[v5.5.0] DB(registered_domain_tags & domain_regulation_rules) 시맨틱 도메인 태그 삭제 API"""
+    ensure_domain_regulation_rules_table(db)
     try:
         db.execute(text("DELETE FROM registered_domain_tags WHERE tag_name = :tag_name"), {"tag_name": tag_name})
         db.execute(text("DELETE FROM domain_regulation_rules WHERE facility_type = :tag_name"), {"tag_name": tag_name})

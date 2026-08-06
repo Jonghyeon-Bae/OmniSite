@@ -36,7 +36,7 @@ export default function GatewayPage() {
       const token = sessionStorage.getItem('token');
       const savedUser = sessionStorage.getItem('username');
       if (token && savedUser) {
-        fetch('/api/v1/auth/me', {
+        safeApiFetch('/api/v1/auth/me', {
           headers: { 'Authorization': `Bearer ${token}` }
         })
         .then(res => {
@@ -66,7 +66,7 @@ export default function GatewayPage() {
     
     setLoading(true);
     try {
-      const res = await fetch('/api/v1/auth/login', {
+      const res = await safeApiFetch('/api/v1/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password })
@@ -170,7 +170,7 @@ export default function GatewayPage() {
     setResetLoading(true);
     try {
       const token = sessionStorage.getItem('token');
-      const res = await fetch('/api/v1/auth/change-password', {
+      const res = await safeApiFetch('/api/v1/auth/change-password', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',

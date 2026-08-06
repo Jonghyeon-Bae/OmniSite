@@ -18,7 +18,7 @@ import BoardModal from '../../components/BoardModal';
 import GlobalFooter from '../../components/GlobalFooter';
 import { OMNISITE_DISPLAY_VERSION } from '../../config/version';
 
-const apiFetch = (url, options = {}) => {
+const apiFetch = async (url, options = {}) => {
   const token = typeof window !== 'undefined' 
     ? (sessionStorage.getItem('token') || sessionStorage.getItem('jwtToken')) 
     : null;
@@ -27,7 +27,20 @@ const apiFetch = (url, options = {}) => {
     ...(token ? { 'Authorization': `Bearer ${token}` } : {})
   };
   const nativeFetch = typeof window !== 'undefined' ? window.fetch : (typeof globalThis !== 'undefined' ? globalThis.fetch : null);
-  return nativeFetch ? nativeFetch(url, { ...options, headers }) : Promise.reject(new Error('Fetch not available'));
+  if (!nativeFetch) return Promise.reject(new Error('Fetch not available'));
+
+  try {
+    const res = await nativeFetch(url, { ...options, headers });
+    if (res.status !== 404 && res.status !== 502 && res.status !== 504) {
+      return res;
+    }
+  } catch (_) {}
+
+  if (typeof url === 'string' && url.startsWith('/api/v1')) {
+    return nativeFetch(`http://localhost:8000${url}`, { ...options, headers });
+  }
+
+  return nativeFetch(url, { ...options, headers });
 };
 
 const parseJwt = (token) => {

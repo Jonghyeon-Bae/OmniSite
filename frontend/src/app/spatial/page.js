@@ -18,20 +18,6 @@ import BoardModal from '../../components/BoardModal';
 import GlobalFooter from '../../components/GlobalFooter';
 import { OMNISITE_DISPLAY_VERSION } from '../../config/version';
 
-const getApiBaseUrl = () => {
-  if (typeof window !== 'undefined') {
-    if (process.env.NEXT_PUBLIC_API_URL && process.env.NEXT_PUBLIC_API_URL !== 'http://localhost:8000') {
-      return process.env.NEXT_PUBLIC_API_URL;
-    }
-    const { protocol, hostname } = window.location;
-    if (!hostname || hostname === 'localhost' || hostname === '127.0.0.1') {
-      return 'http://localhost:8000';
-    }
-    return `${protocol}//${hostname}:8000`;
-  }
-  return '';
-};
-
 const apiFetch = async (url, options = {}) => {
   const token = typeof window !== 'undefined' 
     ? (sessionStorage.getItem('token') || sessionStorage.getItem('jwtToken')) 
@@ -43,15 +29,18 @@ const apiFetch = async (url, options = {}) => {
   const nativeFetch = typeof window !== 'undefined' ? window.fetch : (typeof globalThis !== 'undefined' ? globalThis.fetch : null);
   if (!nativeFetch) return Promise.reject(new Error('Fetch not available'));
 
-  const apiBase = getApiBaseUrl();
-  const fullUrl = (typeof url === 'string' && url.startsWith('/api/v1')) ? `${apiBase}${url}` : url;
-
+  // 1차 시도: 라이트세일 80포트 대문 프록시 통과 상대경로 (/api/v1/...) 시도
   try {
-    const res = await nativeFetch(fullUrl, { ...options, headers });
+    const res = await nativeFetch(url, { ...options, headers });
     if (res.status !== 404 && res.status !== 502 && res.status !== 504) {
       return res;
     }
   } catch (_) {}
+
+  // 2차 폴백: 로컬 개발 환경 (http://localhost:8000) 직접 시도
+  if (typeof url === 'string' && url.startsWith('/api/v1')) {
+    return nativeFetch(`http://localhost:8000${url}`, { ...options, headers });
+  }
 
   return nativeFetch(url, { ...options, headers });
 };

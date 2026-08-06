@@ -2883,8 +2883,58 @@ class DecisionHistoryCreate(BaseModel):
     selected_parcel_css: Optional[int] = 0
     debate_logs: List[Dict[str, str]] = []
 
+def ensure_decision_histories_table(db: Session):
+    try:
+        db.execute(text("""
+            CREATE TABLE IF NOT EXISTS decision_histories (
+                id SERIAL PRIMARY KEY,
+                region VARCHAR(100),
+                facility_type VARCHAR(50),
+                infra VARCHAR(100),
+                pnu_count INT DEFAULT 0,
+                status VARCHAR(50) DEFAULT '진행중',
+                audit_state VARCHAR(50) DEFAULT '대기중',
+                audit_opinion TEXT,
+                inferred_purpose VARCHAR(150),
+                ahp_weights JSONB,
+                selected_parcel_pnu VARCHAR(50),
+                selected_parcel_jibun VARCHAR(250),
+                selected_parcel_price NUMERIC,
+                selected_parcel_area NUMERIC,
+                selected_parcel_css NUMERIC,
+                debate_logs JSONB,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        """))
+        db.execute(text("ALTER TABLE decision_histories ADD COLUMN IF NOT EXISTS selected_parcel_pnu VARCHAR(50);"))
+        db.execute(text("ALTER TABLE decision_histories ADD COLUMN IF NOT EXISTS selected_parcel_jibun VARCHAR(250);"))
+        db.execute(text("ALTER TABLE decision_histories ADD COLUMN IF NOT EXISTS selected_parcel_price NUMERIC;"))
+        db.execute(text("ALTER TABLE decision_histories ADD COLUMN IF NOT EXISTS selected_parcel_area NUMERIC;"))
+        db.execute(text("ALTER TABLE decision_histories ADD COLUMN IF NOT EXISTS selected_parcel_css NUMERIC;"))
+        db.execute(text("ALTER TABLE decision_histories ADD COLUMN IF NOT EXISTS debate_logs JSONB;"))
+
+        db.execute(text("""
+            CREATE TABLE IF NOT EXISTS verified_precedents (
+                id SERIAL PRIMARY KEY,
+                conflict_simulation_id INT,
+                document_title VARCHAR(250),
+                document_ocr_text TEXT,
+                actual_scenario VARCHAR(250),
+                selected_parcel_pnu VARCHAR(50),
+                match_score NUMERIC,
+                audit_opinion TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        """))
+        db.execute(text("ALTER TABLE verified_precedents ADD COLUMN IF NOT EXISTS selected_parcel_pnu VARCHAR(50);"))
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        print(f"[Decision Histories Table Init Warning] {e}")
+
 @router.get("/spatial/history")
 async def get_decision_history(db: Session = Depends(get_db)):
+    ensure_decision_histories_table(db)
     try:
         query = text("""
             SELECT id, TO_CHAR(created_at, 'YYYY-MM-DD') as date_str, region, facility_type, infra, pnu_count, status, audit_state, audit_opinion, inferred_purpose, ahp_weights, selected_parcel_jibun, selected_parcel_price, selected_parcel_area, selected_parcel_css, debate_logs
@@ -2919,6 +2969,7 @@ async def get_decision_history(db: Session = Depends(get_db)):
 
 @router.post("/spatial/history")
 async def create_decision_history(req: DecisionHistoryCreate, db: Session = Depends(get_db)):
+    ensure_decision_histories_table(db)
     try:
         query = text("""
             INSERT INTO decision_histories (region, facility_type, infra, pnu_count, status, audit_state, audit_opinion, inferred_purpose, ahp_weights, selected_parcel_jibun, selected_parcel_price, selected_parcel_area, selected_parcel_css, debate_logs)

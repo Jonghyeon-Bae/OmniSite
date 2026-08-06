@@ -150,6 +150,8 @@ CREATE TABLE ahp_models (
     criteria_weights JSONB NOT NULL,
     consistency_ratio NUMERIC NOT NULL,
     is_locked BOOLEAN DEFAULT FALSE,
+    criteria_list JSONB,
+    uploaded_files JSONB,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -173,8 +175,11 @@ CREATE TABLE verified_precedents (
     conflict_simulation_id INT REFERENCES conflict_simulations(id) ON DELETE SET NULL,
     document_title VARCHAR(250),
     document_ocr_text TEXT,
-    actual_scenario VARCHAR(50) NOT NULL,
-    verified_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    actual_scenario VARCHAR(250) NOT NULL,
+    selected_parcel_pnu VARCHAR(50),
+    match_score NUMERIC,
+    audit_opinion TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- 17. 자치구별 조례 RAG 임베딩 테이블
@@ -240,5 +245,60 @@ CREATE TABLE IF NOT EXISTS system_settings (
     setting_key VARCHAR(100) PRIMARY KEY,
     setting_value TEXT NOT NULL,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 22. 시스템 공지사항 게시판 테이블
+CREATE TABLE IF NOT EXISTS system_notices (
+    id SERIAL PRIMARY KEY,
+    title VARCHAR(255) NOT NULL,
+    content TEXT NOT NULL,
+    is_pinned BOOLEAN DEFAULT FALSE,
+    author VARCHAR(100) DEFAULT '시스템 관리자',
+    attachment_name VARCHAR(255),
+    attachment_url VARCHAR(500),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 23. 시스템 자유게시판 테이블
+CREATE TABLE IF NOT EXISTS community_posts (
+    id SERIAL PRIMARY KEY,
+    title VARCHAR(255) NOT NULL,
+    content TEXT NOT NULL,
+    author_name VARCHAR(100) NOT NULL,
+    department VARCHAR(100) NOT NULL,
+    views_count INT DEFAULT 0,
+    attachment_name VARCHAR(255),
+    attachment_url VARCHAR(500),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 24. 시스템 FAQ 게시판 테이블
+CREATE TABLE IF NOT EXISTS system_faqs (
+    id SERIAL PRIMARY KEY,
+    category VARCHAR(100) NOT NULL,
+    question TEXT NOT NULL,
+    answer TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 25. 심의 이력 테이블
+CREATE TABLE IF NOT EXISTS decision_histories (
+    id SERIAL PRIMARY KEY,
+    region VARCHAR(100),
+    facility_type VARCHAR(50),
+    infra VARCHAR(100),
+    pnu_count INT DEFAULT 0,
+    status VARCHAR(50) DEFAULT '진행중',
+    audit_state VARCHAR(50) DEFAULT '대기중',
+    audit_opinion TEXT,
+    inferred_purpose VARCHAR(150),
+    ahp_weights JSONB,
+    selected_parcel_pnu VARCHAR(50),
+    selected_parcel_jibun VARCHAR(250),
+    selected_parcel_price NUMERIC,
+    selected_parcel_area NUMERIC,
+    selected_parcel_css NUMERIC,
+    debate_logs JSONB,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 

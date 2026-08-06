@@ -73,8 +73,31 @@ async def calculate_cr_only(request: AHPLockRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"C.R. 연산 중 오류 발생: {str(e)}")
 
+def ensure_ahp_models_table(db: Session):
+    try:
+        db.execute(text("""
+            CREATE TABLE IF NOT EXISTS ahp_models (
+                id SERIAL PRIMARY KEY,
+                district_id INT NOT NULL,
+                facility_type VARCHAR(50) DEFAULT 'smoking_zone',
+                criteria_weights JSONB NOT NULL,
+                consistency_ratio NUMERIC NOT NULL,
+                is_locked BOOLEAN DEFAULT FALSE,
+                criteria_list JSONB,
+                uploaded_files JSONB,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        """))
+        db.execute(text("ALTER TABLE ahp_models ADD COLUMN IF NOT EXISTS criteria_list JSONB;"))
+        db.execute(text("ALTER TABLE ahp_models ADD COLUMN IF NOT EXISTS uploaded_files JSONB;"))
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        print(f"[AHP Table Init Warning] {e}")
+
 @router.post("/ahp/lock")
 async def lock_ahp_model(request: AHPLockRequest, db: Session = Depends(get_db)):
+    ensure_ahp_models_table(db)
     try:
         # C.R. 연산 실행
         cr = calculate_ahp_cr(request.criteria_weights)

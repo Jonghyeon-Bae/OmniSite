@@ -279,6 +279,16 @@ async def change_password(req: PasswordChangeRequest, db: Session = Depends(get_
         update_query = text("UPDATE users SET password_hash = :new_hash WHERE id = :id")
         db.execute(update_query, {"new_hash": new_hash, "id": user_id})
         db.commit()
+
+        try:
+            from app.routers.spatial import save_pipeline_log
+            save_pipeline_log(db, 'SYSTEM', '[AUTH_PASSWORD_CHANGE]', {
+                'username': current_user["username"],
+                'user_id': user_id,
+                'status': 'SUCCESS'
+            }, session_id=current_user["username"])
+        except Exception as log_err:
+            print(f"[Password Change Audit Log Error] {log_err}")
             
         return {"status": "success", "message": "비밀번호가 성공적으로 변경되었습니다."}
     except HTTPException:

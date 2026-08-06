@@ -1073,3 +1073,45 @@
     - **디커플드 어댑터 패턴**: LLM 모델을 FastAPI 내부에 직접 로드하지 않고 별도 추상화 REST 통신 어댑터로 분리하여 OmniSite 백엔드의 쾌적성과 가용성을 100% 보증함.
     - **프롬프트/포맷 하모니**: 프로바이더 교체 시에도 OpenAI 호환 규격 포맷을 유지하여 기존 AI 모의 토론 및 데이터 감리 로직 수정 없이 모델 교체가 가동되도록 조율함.
     - **전수 무결성 검증 완료**: Next.js Turbopack 프로덕션 빌드 `✓ Compiled successfully in 1675ms` (0 Error, 0 Warning) 및 4대 자동화 테스트 100% 통과 확정.
+
+
+### [4.0.0-AwsProductionDockerAndSchemaAutoHealing] AWS 라이트세일 프로덕션 배포, 80포트 리버스 프록시, CORS Preflight, NameError 핫픽스 및 DB 자가치유(Auto-Healing) 완공 (v4.0.0-AwsProductionDockerAndSchemaAutoHealing)
+* **연구 내용:** AWS 라이트세일 멀티 컨테이너 도커 프로덕션 환경 배포 과정에서 발생한 프록시 연결 거부(`ECONNREFUSED`), Uvicorn ASGI 서버 스펙 정합성, `from typing import Optional` 임포트 누락으로 인한 부팅 크래시(`NameError`), 크로스 포트(80포트 -> 8000포트) CORS Preflight `OPTIONS` 브라우저 차단 문제, 및 PostgreSQL 스키마 칼럼 미비(`attachment_name`, `selected_parcel_pnu`, `criteria_list`)로 인한 HTTP 500 장애의 원인을 전수 분석하고 100% 자가치유(Auto-Healing) 아키텍처로 수술 완공함.
+* **주요 의사결정:**
+    - **80포트 상대경로(`safeApiFetch`) 1차 + Localhost 2차 폴백 체계 수립**: AWS 라이트세일 외곽 방화벽(IPv4 Firewall)이 기본적으로 8000번 포트를 차단하는 문제를 극복하기 위해, 프론트엔드가 80번 포트 상대경로(`/api/v1/...`)를 사용해 Next.js 내부 리버스 프록시로 도커 인트라넷(`http://backend:8000`)에 전달하는 구조를 확정함.
+    - **FastAPI `CORSMiddleware` 전면 개방(`allow_origins=["*"]`)**: 브라우저에서 8000번 포트로 직통 Preflight `OPTIONS` 요청을 쏠 경우에도 `Provisional headers are shown` 에러 없이 200 OK를 반환하도록 미들웨어를 전면 개방함.
+    - **백엔드 부팅 크래시(`NameError: Optional is not defined`) 핫픽스**: `backend/app/routers/auth.py` 상단에 `from typing import Optional` 임포트를 주입하여 백엔드 컨테이너가 영구 부팅을 유지하도록 보정함.
+    - **PostgreSQL 5대 테이블 스키마 DDL 자가치유(Auto-Healing) 구축**: `system_notices`, `community_posts`, `ahp_models`, `decision_histories`, `verified_precedents` 테이블에 대해 API 호출 시 `ALTER TABLE ADD COLUMN IF NOT EXISTS` 및 `%` 이스케이핑(`100%%`)을 자동 실행하여 DB 칼럼 결함으로 인한 500 에러를 원천 차단함.
+    - **비밀번호 변경 감사 로그 연동**: 비밀번호 변경 성공 시 `save_pipeline_log(db, 'SYSTEM', '[AUTH_PASSWORD_CHANGE]', ...)` 감사 로그가 DB에 영구 기록되도록 보완함.
+
+
+---
+
+## 📑 [부록/특별장] OmniSite SDSS 트러블슈팅 오답노트 및 시행착오 실록 (Retrospective Error Analysis & Failure Cases)
+
+### 1. [오답 01] Uvicorn vs Gunicorn 서빙 프로세스 무단 개조 착오
+- **초기 착오(Failure)**: AWS 라이트세일 멀티 프로세스 서빙을 달성한다는 명목으로 백엔드 `Dockerfile`을 Gunicorn 프로세스 매니저(`gunicorn app.main:app -w 4 -k uvicorn.workers.UvicornWorker`)로 무단 교체함.
+- **발생 원인(Root Cause)**: 로컬 개발 환경(`uvicorn`)과 AWS 프로덕션 환경(`gunicorn`)의 세션 및 인메모리 싱글톤 객체 관리 방식이 불일치하였고, 멀티 워커 간 PostGIS 세션 경합이 유발됨.
+- **최종 교훈 및 해법(Takeaway)**: 조장(USER)의 통찰 깊은 지적에 따라 순수 Uvicorn 비동기 싱글톤 서빙 규격으로 즉시 원상 복구(`git reset --hard 7c27b73`)하고, 프로세스 확장은 도커 스케일아웃으로 처리하도록 아키텍처 원칙을 철저히 정립함.
+
+### 2. [오답 02] 브라우저 직통 8000번 포트 호출과 AWS 라이트세일 방화벽(Firewall) 충돌
+- **초기 착오(Failure)**: 프론트엔드 JavaScript에서 동적 런타임 호스트(`http://<AWS_LIGHTSAIL_IP>:8000`)로 직접 백엔드 API를 쏘도록 구현함.
+- **발생 원인(Root Cause)**: AWS 라이트세일 인스턴스의 외곽 방화벽(IPv4 Firewall)은 기본적으로 22, 80, 443 포트 외에 8000번 포트를 전면 차단(Drop)하고 있음. 브라우저가 TCP 패킷을 날렸으나 응답(SYN-ACK)을 받지 못해 Chrome DevTools에 `Provisional headers are shown` 타임아웃 에러가 터짐.
+- **최종 교훈 및 해법(Takeaway)**: 외곽 방화벽이 이미 열려있는 **80번 포트 대문 상대경로(`/api/v1/...`) 1차 호출 + Next.js internal rewrite proxy 연동** 구조로 개편하여 방화벽 개방 없이 도커 인트라넷 통신을 100% 성립시킴.
+
+### 3. [오답 03] Cross-Origin (80포트 ➔ 8000포트) 전환 시 CORS Preflight(`OPTIONS`) 미스매치
+- **초기 착오(Failure)**: 백엔드의 기존 CORS 설정(`cors_origins = ["http://localhost:3000"]`)을 그대로 방치함.
+- **발생 원인(Root Cause)**: 80포트 동일 출처(Same-Origin) 프록시 통신 시절에는 브라우저가 Preflight를 보낼 필요가 없었으나, 8000포트 직통 호출 시에는 브라우저가 Cross-Origin으로 인식하여 사전 검사(`OPTIONS`)를 보냄. 백엔드가 AWS 퍼블릭 IP를 거부하여 CORS 차단 발생.
+- **최종 교훈 및 해법(Takeaway)**: [backend/app/main.py](file:///c:/Users/Admin/Desktop/빅프로젝트 관련자료/최종1차/1.0-prototype/backend/app/main.py)의 FastAPI `CORSMiddleware`에 `allow_origins=["*"]`를 주입하여 어떤 IP/포트에서 날아오는 Preflight `OPTIONS`도 200 OK 통과되도록 보정함.
+
+### 4. [오답 04] 파이썬 `from typing import Optional` 임포트 누락으로 인한 컨테이너 크래시 및 `ECONNREFUSED` 착오
+- **초기 착오(Failure)**: `backend/app/routers/auth.py`에 `PasswordChangeRequest` DTO를 작성하며 `Optional[str]` 타입 힌트를 사용했으나 상단 `typing` 임포트를 누락함.
+- **발생 원인(Root Cause)**: 백엔드 컨테이너가 부팅하자마자 `NameError: name 'Optional' is not defined` 구문 오류를 던지며 Exit 1 크래시됨. 8000번 포트가 닫혀 프론트엔드가 `ECONNREFUSED 172.18.0.2:8000`을 내뿜고 브라우저에는 HTTP 500이 터짐.
+- **최종 교훈 및 해법(Takeaway)**: `from typing import Optional` 주입 및 백엔드 단독 모듈 임포트 검증(`python -c "import app.main"`) 프로세스를 의무화하여 크래시를 원천 차단함.
+
+### 5. [오답 05] PostgreSQL DB 스키마 칼럼 미비로 인한 HTTP 500 에러 및 자가치유(Auto-Healing) 미비
+- **초기 착오(Failure)**: 로컬 DB와 AWS DB 간 신규 기능(게시판 첨부파일 `attachment_name`, AHP `criteria_list`, 심의이력 `selected_parcel_pnu`) 칼럼 동기화 없이 백엔드 API만 업데이트함.
+- **발생 원인(Root Cause)**: AWS DB에 칼럼이 없어 `psycopg.errors.UndefinedColumn` 500 에러 발생.
+- **최종 교훈 및 해법(Takeaway)**: API 엔드포인트 진입 시 `ALTER TABLE ADD COLUMN IF NOT EXISTS` DDL 자가치유(Auto-Healing) 구문을 자동 실행하고, [DB/init/01_schema.sql](file:///c:/Users/Admin/Desktop/빅프로젝트 관련자료/최종1차/1.0-prototype/DB/init/01_schema.sql) 원본 스키마에 5개 테이블 DDL을 100% 반영하여 콜드스타트 무결성을 완공함.
+
+

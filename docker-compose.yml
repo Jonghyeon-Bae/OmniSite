@@ -38,11 +38,14 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        - BACKEND_API_URL=http://backend:8000
     container_name: omnisite_dev_fe
     restart: always
     ports:
       - "3000:3000" # 개발 로컬 3000포트 개방
     environment:
+      - BACKEND_API_URL=http://backend:8000
       - NEXT_PUBLIC_API_URL=http://localhost:8000
     volumes:
       - ./frontend:/app # 핫 리로딩용 로컬 디렉터리 동기화 마운트

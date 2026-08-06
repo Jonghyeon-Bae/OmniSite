@@ -8,8 +8,10 @@ RUN npm install
 
 COPY . /app
 
-# Disable telemetry and build the production bundle
+# Disable telemetry and build the production bundle with Docker backend service URL
 ENV NEXT_TELEMETRY_DISABLED 1
+ARG BACKEND_API_URL=http://backend:8000
+ENV BACKEND_API_URL=${BACKEND_API_URL}
 RUN npm run build
 
 FROM node:20-alpine AS runner
@@ -18,6 +20,8 @@ WORKDIR /app
 
 ENV NODE_ENV production
 ENV NEXT_TELEMETRY_DISABLED 1
+ARG BACKEND_API_URL=http://backend:8000
+ENV BACKEND_API_URL=${BACKEND_API_URL}
 
 # Copy built assets and public folder from builder
 COPY --from=builder /app/public /app/public

@@ -1,20 +1,11 @@
 FROM postgis/postgis:15-3.3
 
-# 로케일 설정 및 pgvector 빌드 필수 종속성 통합 설치
+# 로케일 설정 및 official postgresql-15-pgvector 패키지 통합 설치 (Make 빌드 파기 exit code 2 완전 예방)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     locales \
-    postgresql-server-dev-15 \
-    git \
-    build-essential \
+    postgresql-15-pgvector \
     && localedef -i ko_KR -c -f UTF-8 -A /usr/share/locale/locale.alias ko_KR.UTF-8 \
-    && cd /tmp \
-    && git clone --branch v0.4.4 https://github.com/pgvector/pgvector.git \
-    && cd pgvector \
-    && make \
-    && make install \
-    && apt-get remove -y postgresql-server-dev-15 git build-essential \
-    && apt-get autoremove -y \
-    && rm -rf /var/lib/apt/lists/* /tmp/pgvector
+    && rm -rf /var/lib/apt/lists/*
 
 ENV LANG=ko_KR.UTF-8
 ENV LC_ALL=ko_KR.UTF-8

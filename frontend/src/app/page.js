@@ -5,6 +5,24 @@ import { useRouter } from 'next/navigation';
 import { OMNISITE_VERSION } from '../config/version';
 import GlobalFooter from '../components/GlobalFooter';
 
+// 🔒 로컬(http://localhost:8000) & AWS 프록시(/api/v1) 이중 듀얼 통신 안전 래퍼 함수
+const safeApiFetch = async (endpoint, options = {}) => {
+  const nativeFetch = typeof window !== 'undefined' ? window.fetch : (typeof globalThis !== 'undefined' ? globalThis.fetch : null);
+  if (!nativeFetch) return Promise.reject(new Error('Fetch not available'));
+
+  try {
+    const res = await nativeFetch(endpoint, options);
+    if (res.status !== 404 && res.status !== 502 && res.status !== 504) {
+      return res;
+    }
+  } catch (_) {}
+
+  if (typeof endpoint === 'string' && endpoint.startsWith('/api/v1')) {
+    return nativeFetch(`http://localhost:8000${endpoint}`, options);
+  }
+  return nativeFetch(endpoint, options);
+};
+
 export default function GatewayPage() {
   const router = useRouter();
 

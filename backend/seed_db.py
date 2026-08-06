@@ -120,6 +120,30 @@ def seed():
             conn.execute(text("CREATE EXTENSION IF NOT EXISTS postgis;"))
             conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector;"))
             
+            print("[1-2] Ensuring users table and password_hash schema integrity...")
+            conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS users (
+                    id SERIAL PRIMARY KEY,
+                    username VARCHAR(100) UNIQUE NOT NULL,
+                    password_hash VARCHAR(255) NOT NULL,
+                    role VARCHAR(50) DEFAULT 'user',
+                    department VARCHAR(100) DEFAULT '스마트도시과',
+                    district_id INT,
+                    is_approved BOOLEAN DEFAULT TRUE,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+            """))
+            conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255);"))
+            conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS is_approved BOOLEAN DEFAULT TRUE;"))
+            conn.execute(text("""
+                DO $$ 
+                BEGIN 
+                    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='hashed_password') THEN
+                        UPDATE users SET password_hash = hashed_password WHERE password_hash IS NULL;
+                    END IF;
+                END $$;
+            """))
+            
             print("[2] Truncating target tables...")
             conn.execute(text("""
                 TRUNCATE TABLE 

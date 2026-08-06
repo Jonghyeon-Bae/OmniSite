@@ -39,6 +39,11 @@ try:
 except ImportError:
     docx = None
 
+class RegulationDiffRequest(BaseModel):
+    version_a: str = "v1.0"
+    version_b: str = "v2.0"
+    district_id: Optional[int] = 1
+
 def set_docx_font(run, font_name="맑은 고딕", size_pt=None, bold=None, color_rgb=None):
     if run is None:
         return

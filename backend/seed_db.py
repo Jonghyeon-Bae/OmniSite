@@ -787,6 +787,68 @@ def seed():
             """), {"pwd_hash": hashed})
             print("    Default admin account (admin/admin1234) upserted successfully.")
 
+            # [12] Seed default Yongsan-gu municipal regulations (district_regulations)
+            print("[12] Seeding default Yongsan-gu municipal regulations into district_regulations...")
+            try:
+                conn.execute(text("""
+                    CREATE TABLE IF NOT EXISTS district_regulations (
+                        id SERIAL PRIMARY KEY,
+                        district_id INT DEFAULT 1,
+                        regulation_title VARCHAR(255) NOT NULL,
+                        clause_number VARCHAR(50),
+                        content TEXT NOT NULL,
+                        category VARCHAR(100) DEFAULT 'general',
+                        version_tag VARCHAR(30) DEFAULT 'v1.0',
+                        effective_date VARCHAR(20),
+                        document_name VARCHAR(255),
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    );
+                """))
+                conn.execute(text("ALTER TABLE district_regulations ADD COLUMN IF NOT EXISTS version_tag VARCHAR(30) DEFAULT 'v1.0';"))
+                conn.execute(text("ALTER TABLE district_regulations ADD COLUMN IF NOT EXISTS effective_date VARCHAR(20);"))
+                conn.execute(text("ALTER TABLE district_regulations ADD COLUMN IF NOT EXISTS document_name VARCHAR(255);"))
+                try:
+                    conn.execute(text("ALTER TABLE district_regulations ALTER COLUMN embedding DROP NOT NULL;"))
+                except Exception:
+                    pass
+                
+                default_regulations = [
+                    {
+                        "title": "서울특별시 용산구 금연구역 지정 및 간접흡연 피해방지 조례",
+                        "clause": "제5조(금연구역의 지정)",
+                        "content": "구청장은 간접흡연 피해 방지를 위하여 유치원, 초·중·고등학교 경계선으로부터 200m 이내의 구역, 어린이집 경계 50m 이내, 버스정류소 10m 이내를 금연구역으로 지정 관리하여야 한다.",
+                        "category": "smoking_booth"
+                    },
+                    {
+                        "title": "서울특별시 용산구 환경친화적 자동차의 개발 및 보급 촉진 조례",
+                        "clause": "제4조(전기자동차 충전시설 구축)",
+                        "content": "구청장은 주차대수 50대 이상의 공공건물 및 공영주차장에 전기자동차 급속충전시설을 우선적으로 설치하여야 하며, 화재 예방을 위하여 주거밀집지로부터 10m 이상 안전 이격을 확보한다.",
+                        "category": "ev_charging"
+                    },
+                    {
+                        "title": "서울특별시 용산구 스마트도시 조성 및 운영 조례",
+                        "clause": "제8조(스마트 쉼터 및 공공시설물 설치)",
+                        "content": "유동인구가 집중되는 버스정류장 및 지하철역 인근 300m 이내에 스마트 쉼터를 설치하되, 통행 장애 및 안전사고 방지를 위해 도로점용 기준을 준수해야 한다.",
+                        "category": "smart_shelter"
+                    },
+                    {
+                        "title": "서울특별시 용산구 어린이 보호구역 교통안전 조례",
+                        "clause": "제3조(옐로우카펫 및 보행안전시설 구축)",
+                        "content": "초등학교 및 어린이집 출입구 반경 300m 이내 보호구역 횡단보도 대기 공간에 옐로우카펫 및 안전 표지석을 설치 관리하여야 한다.",
+                        "category": "yellow_carpet"
+                    }
+                ]
+                
+                for reg in default_regulations:
+                    conn.execute(text("""
+                        INSERT INTO district_regulations (district_id, regulation_title, clause_number, content, category, version_tag, embedding)
+                        VALUES (1, :title, :clause, :content, :category, 'v1.0', array_fill(0.0, ARRAY[1536])::vector)
+                        ON CONFLICT DO NOTHING;
+                    """), reg)
+                print("    Default municipal regulations seeded successfully into district_regulations.")
+            except Exception as reg_err:
+                print(f"    [Regulations Seeding Warning] {reg_err}")
+
             print("[+] Database Seeding Phase Complete. Launching Spatial Denormalization Hook...")
             optimize_spatial_relations()
 

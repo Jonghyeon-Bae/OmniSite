@@ -802,6 +802,13 @@ def seed():
                         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                     );
                 """))
+                conn.execute(text("ALTER TABLE district_regulations ADD COLUMN IF NOT EXISTS version_tag VARCHAR(30) DEFAULT 'v1.0';"))
+                conn.execute(text("ALTER TABLE district_regulations ADD COLUMN IF NOT EXISTS effective_date VARCHAR(20);"))
+                conn.execute(text("ALTER TABLE district_regulations ADD COLUMN IF NOT EXISTS document_name VARCHAR(255);"))
+                try:
+                    conn.execute(text("ALTER TABLE district_regulations ALTER COLUMN embedding DROP NOT NULL;"))
+                except Exception:
+                    pass
                 
                 default_regulations = [
                     {

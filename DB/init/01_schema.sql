@@ -196,6 +196,9 @@ CREATE TABLE district_regulations (
     content TEXT NOT NULL,
     embedding VECTOR(1536),
     category VARCHAR(50) NOT NULL DEFAULT 'health_sanitation',
+    version_tag VARCHAR(30) DEFAULT 'v1.0',
+    effective_date VARCHAR(20),
+    document_name VARCHAR(255),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 CREATE INDEX idx_regulations_district_category_vector ON district_regulations (district_id, category) INCLUDE (embedding);

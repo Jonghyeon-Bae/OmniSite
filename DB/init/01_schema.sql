@@ -107,7 +107,12 @@ CREATE TABLE cadastral_lands (
     jibun VARCHAR(100),
     land_use_code VARCHAR(5),
     ownership_type VARCHAR(10),
-    geom GEOMETRY(MultiPolygon, 4326) NOT NULL
+    geom GEOMETRY(MultiPolygon, 4326) NOT NULL,
+    is_restricted BOOLEAN DEFAULT FALSE,
+    dist_to_school_m NUMERIC,
+    dist_to_childcare_m NUMERIC,
+    dist_to_overpass_m NUMERIC,
+    dist_to_tunnel_m NUMERIC
 );
 CREATE INDEX idx_cadastral_geom ON cadastral_lands USING GIST(geom);
 
@@ -331,5 +336,27 @@ CREATE TABLE IF NOT EXISTS user_exclusion_zones (
     geom GEOMETRY(Geometry, 4326),
     memo TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 29. 행정동 단축 참조 메타 테이블
+CREATE TABLE IF NOT EXISTS dongs (
+    id SERIAL PRIMARY KEY,
+    district_id INT REFERENCES districts(id) ON DELETE CASCADE,
+    name VARCHAR(100) NOT NULL,
+    code VARCHAR(10)
+);
+
+-- 30. 지적 필지 기본 단위 테이블
+CREATE TABLE IF NOT EXISTS cadastral_parcels (
+    id SERIAL PRIMARY KEY,
+    pnu VARCHAR(19) NOT NULL,
+    jibun VARCHAR(100) NOT NULL,
+    geom_4326 GEOMETRY(MultiPolygon, 4326) NOT NULL,
+    area_m2 DOUBLE PRECISION NOT NULL,
+    land_use VARCHAR(50) NOT NULL,
+    owner_type VARCHAR(50) NOT NULL,
+    is_restricted BOOLEAN DEFAULT FALSE,
+    dist_to_school_m NUMERIC,
+    dist_to_childcare_m NUMERIC
 );
 

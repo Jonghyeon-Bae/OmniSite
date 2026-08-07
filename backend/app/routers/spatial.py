@@ -649,7 +649,7 @@ async def recommend_optimal_sites(
                         elif isinstance(dist_m, (int, float, str)):
                             try:
                                 parsed_dist = float(dist_m)
-                            except:
+                            except Exception:
                                 continue
                         else:
                             continue
@@ -688,7 +688,7 @@ async def recommend_optimal_sites(
                             t_dist = t_dist.get("distance_meters", 10.0)
                         try:
                             t_dist = float(t_dist)
-                        except:
+                        except Exception:
                             t_dist = 10.0
                         transit_sql = f"""
               AND NOT EXISTS (
@@ -2160,9 +2160,12 @@ async def stream_debate_sim(req: DebateRequest, db: Session = Depends(get_db)):
                 full_text = disclaimer_alert
 
                 for step_idx, (role_name, agent_system_prompt) in enumerate(turns):
-                    prefix = f"\n\n{role_name}: "
-                    yield f"data: {json.dumps({'text': prefix}, ensure_ascii=False)}\n\n"
-                    full_text += prefix
+                    # 턴 시작 시 표준 브라켓 헤더(\n\n[{role_name}]\n)를 1글자씩 명시 릴레이하여 말풍선 분리 100% 보장
+                    turn_header = f"\n\n[{role_name}]\n"
+                    for char in turn_header:
+                        yield f"data: {json.dumps({'text': char}, ensure_ascii=False)}\n\n"
+                        await asyncio.sleep(0.01)
+                    full_text += turn_header
 
                     messages = [{"role": "system", "content": agent_system_prompt}]
                     for hist in chat_history:
@@ -2190,15 +2193,21 @@ async def stream_debate_sim(req: DebateRequest, db: Session = Depends(get_db)):
                             # 모의 심의 완료 환각 브라켓 필터링
                             if "[모의 심의 완료]" in content or "[모의 심의 완료]" in turn_text:
                                 content = content.replace("[모의 심의 완료]", "").replace("[모의심의완료]", "")
-                            if not turn_text and (content.strip().startswith("**") or content.strip().startswith(role_name)):
-                                continue
+                            
+                            # OpenAI 모델이 턴 첫머리에 자발적으로 뱉어내는 중복 {role_name} 및 접두어 철저 소거
+                            if not turn_text:
+                                content = re.sub(rf"^\s*\[?(?:{role_name}|찬성측|반대측|정부측|상인대표|주민대표|갈등조정관)\]?:?\s*", "", content, flags=re.I)
+                                content = re.sub(rf"^\s*\[?(?:{role_name}|찬성측|반대측|정부측|상인대표|주민대표|갈등조정관)\]?:?\s*", "", content, flags=re.I)
+                                if not content.strip():
+                                    continue
+
                             turn_text += content
                             if content:
                                 for char in content:
                                     yield f"data: {json.dumps({'text': char}, ensure_ascii=False)}\n\n"
                                     await asyncio.sleep(0.01)
 
-                    chat_history.append({"role": "assistant" if role_name == coordinator_name else "user", "content": f"{role_name}: {turn_text}"})
+                    chat_history.append({"role": "assistant" if role_name == coordinator_name else "user", "content": turn_text})
                     full_text += turn_text
                     await asyncio.sleep(0.4)
 
@@ -2277,92 +2286,8 @@ async def stream_debate_sim(req: DebateRequest, db: Session = Depends(get_db)):
             for char in segment:
                 yield f"data: {json.dumps({'text': char}, ensure_ascii=False)}\n\n"
                 await asyncio.sleep(0.02)
-            await asyncio.sleep(0.3)
 
-    client = get_async_openai_client()
     if client:
-        async def event_generator():
-            try:
-                # 1. 시스템 프롬프트 이식 (최신 RAG 조례 배제 수치 & AHP 가중치 주입)
-                system_prompt = f"""
-당신은 지능형 다목적 스마트시티 입지 분석 SDSS AI 심의 기구입니다.
-대상 부지 지번: '{req.candidate_jibun}' (갈등 민감도 CSS: {req.candidate_css}점 / 강도: {req.intensity_level})
-시설 유형: {req.facility_type} ({req.inferred_purpose})
-가중치 세부 현황: {ahp_text}
-주변 관할동 인프라 현황: 반경 내 유동인구 {int(transit_score or 0):,}명, 누적 공공 민원 {int(complaint_score or 0)}건, 상습 무단투기 {int(dumping_score or 0)}개소
-조례 및 배제조건 컨텍스트:
-{rag_context if rag_context else '관련 자치구 이격거리 조례 규정 준수'}
-
-[페르소나 정의 및 발언 규칙]
-- 상인대표({merchant_name}): 상권 활성화, 유동인구 수용, 경제적 실익 적극 피력. (반드시 '{merchant_name}:' 으로 시작)
-- 주민대표({resident_name}): 주거 환경 파괴, 소음/악취, 무단투기 민원 우려 및 정주권 보호 강조. (반드시 '{resident_name}:' 으로 시작)
-- 갈등조정관({coordinator_name}): 중립적 지위에서 이격거리 후퇴, 주민 감찰권 부여, 안전설비 확충 등 상생 중재안 타결 도출. (반드시 '{coordinator_name}:' 으로 시작)
-
-[필수 이행사항]
-총 8턴의 티키타카 상호 대립 및 중재 논의를 진행하고 맨 마지막 줄에는 반드시 '[시스템] [모의 심의 완료]' 태그를 정확히 출력하십시오.
-"""
-                chat_history = [
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": f"'{req.candidate_jibun}' 부지에 대한 3자 모의 토론 심의를 시작해주십시오."}
-                ]
-
-                # 최초 시작 시스템 알림 덤프
-                init_msg = f"[시스템 알림] '{req.candidate_jibun}' 부지에 대한 갈등 분석 모의 토론을 시작합니다. (갈등 강도: {req.intensity_level}, CSS: {req.candidate_css}점)\n\n"
-                yield f"data: {json.dumps({'text': init_msg}, ensure_ascii=False)}\n\n"
-                full_text = init_msg
-
-                # 3자 모의 심의 토론 8턴 진행
-                turn_roles = [
-                    merchant_name, resident_name, merchant_name, resident_name,
-                    coordinator_name, merchant_name, resident_name, coordinator_name
-                ]
-
-                for role_name in turn_roles:
-                    chat_history.append({"role": "user", "content": f"다음은 {role_name} 실무 위원의 발언 순서입니다. 논거를 명확히 제시하십시오."})
-                    response = await client.chat.completions.create(
-                        model="gpt-4o-mini",
-                        messages=chat_history,
-                        temperature=0.7,
-                        max_tokens=300,
-                        stream=True
-                    )
-                    turn_text = ""
-                    async for chunk in response:
-                        content = chunk.choices[0].delta.content
-                        if content:
-                            if "[모의 심의 완료]" in content or "[모의 심의 완료]" in turn_text:
-                                content = content.replace("[모의 심의 완료]", "").replace("[모의심의완료]", "")
-                            if not turn_text and (content.strip().startswith("**") or content.strip().startswith(role_name)):
-                                continue
-                            turn_text += content
-                            if content:
-                                yield f"data: {json.dumps({'text': content}, ensure_ascii=False)}\n\n"
-
-                    chat_history.append({"role": "assistant" if role_name == coordinator_name else "user", "content": f"{role_name}: {turn_text}"})
-                    full_text += turn_text
-                    await asyncio.sleep(0.4)
-
-                completion_notice = "\n\n[시스템] [모의 심의 완료]"
-                yield f"data: {json.dumps({'text': completion_notice}, ensure_ascii=False)}\n\n"
-                full_text += completion_notice
-
-                try:
-                    save_debate_log_to_file(req, full_text)
-                    save_pipeline_log(db, 'STEP_5', '[DEBATE_COMPLETE]', {
-                        'target_jibun': getattr(req, 'candidate_jibun', ''),
-                        'facility_type': getattr(req, 'facility_type', ''),
-                        'intensity_level': getattr(req, 'intensity_level', ''),
-                        'status': '토론 완료',
-                        'audit_state': '실증 성공'
-                    })
-                except Exception as fs_err:
-                    print(f"[File Log Save Error] {fs_err}")
-
-            except Exception as e:
-                print(f"[OpenAI API 429 Quota Exhausted / Stream Error] {e} -> Fallback to mock_event_generator")
-                async for mock_chunk in mock_event_generator():
-                    yield mock_chunk
-
         return StreamingResponse(
             event_generator(), 
             media_type="text/event-stream",

@@ -1,16 +1,16 @@
 {
   "domain": "smoking_booth",
   "model_filename": "smoking_booth_v1.pkl",
-  "last_trained_at": "2026-08-07 21:08:17",
+  "last_trained_at": "2026-08-07 23:14:04",
   "accuracy": 0.7986,
   "f1_score": 0.6236,
   "sample_count": 6502,
   "feature_importances": {
-    "area": 0.08785095065832138,
-    "dist_to_nosmoking_zone": 0.08719588071107864,
-    "dist_to_childcare_center": 0.19230186939239502,
-    "dist_to_school": 0.5324773192405701,
-    "land_use_code_도": 0.10017403960227966,
+    "area": 0.0879846066236496,
+    "dist_to_nosmoking_zone": 0.08732853829860687,
+    "dist_to_school": 0.5314357876777649,
+    "dist_to_childcare_center": 0.1929246336221695,
+    "land_use_code_도": 0.10032644867897034,
     "land_use_code_잡": 0.0,
     "ownership_type_국유지": 0.0,
     "building_use_미지정": 0.0

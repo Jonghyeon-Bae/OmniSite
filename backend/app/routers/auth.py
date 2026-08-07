@@ -31,7 +31,12 @@ def validate_password_strength(password: str) -> None:
             detail="비밀번호는 영문, 숫자, 특수문자를 모두 포함하여 8자리 이상이어야 합니다."
         )
 
+_USER_APPROVAL_CHECKED = False
+
 def ensure_user_approval_column(db: Session):
+    global _USER_APPROVAL_CHECKED
+    if _USER_APPROVAL_CHECKED:
+        return
     try:
         db.execute(text("""
             DO $$ 
@@ -45,6 +50,7 @@ def ensure_user_approval_column(db: Session):
         db.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255);"))
         db.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS is_approved BOOLEAN DEFAULT TRUE;"))
         db.commit()
+        _USER_APPROVAL_CHECKED = True
     except Exception as e:
         db.rollback()
         print(f"[User Approval Column Warning] {e}")

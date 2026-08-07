@@ -11,8 +11,8 @@
         "위도": "35.1563638"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
@@ -27,8 +27,8 @@
         "위도": "37.54212643"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
@@ -43,8 +43,8 @@
         "위도": "37.52708689"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
@@ -59,8 +59,8 @@
         "위도": "37.52595597"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
@@ -75,8 +75,8 @@
         "위도": "37.53965349"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
@@ -91,8 +91,8 @@
         "위도": "37.53488648"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
@@ -107,8 +107,8 @@
         "위도": "37.52865689"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
@@ -123,8 +123,8 @@
         "위도": "37.52640509"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   }
 ]

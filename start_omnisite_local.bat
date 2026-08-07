@@ -40,7 +40,7 @@ echo.
 
 :: 4. 백엔드 및 프론트엔드 동시 실행
 echo [4/4] 프론트엔드(Next.js) 의존성 확인 후 통합 핫리로드 구동...
-start /b cmd /c "python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload"
+start /b cmd /c "python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload --reload-dir app"
 
 cd ../frontend
 if not exist node_modules (

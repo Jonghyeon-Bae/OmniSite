@@ -77,12 +77,16 @@ export default function Home() {
     // 마운트 시 백엔드 실시간 유효성 200 OK 판정 (/api/v1/auth/me)
     apiFetch('/api/v1/auth/me')
       .then(res => {
-        if (!res.ok) {
+        if (res.status === 401) {
           setIsTokenValid(false);
           setIsLoggedIn(false);
           sessionStorage.clear();
           alert("🔒 행정 인증 세션이 만료되거나 무효화되었습니다. 다시 로그인해 주십시오.");
           router.push('/');
+          return null;
+        }
+        if (!res.ok) {
+          console.warn('[Session Auth Warning] Server returned status:', res.status);
           return null;
         }
         return res.json();
@@ -187,7 +191,7 @@ export default function Home() {
     }
     setLoginLoading(true);
     try {
-      const res = await fetch('/api/v1/auth/login', {
+      const res = await apiFetch('/api/v1/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username: loginUsername, password: loginPassword })
@@ -211,8 +215,15 @@ export default function Home() {
         setLoginPassword('');
         alert(`✓ ${data.user.username} 실무관님, 행정망 세션 인증 성공. 소속: ${data.user.department}`);
       } else {
-        const errData = await res.json();
-        alert(errData.detail || "로그인 인증에 실패했습니다. 아이디와 비밀번호를 재확인하십시오.");
+        let errDetail = "로그인 인증에 실패했습니다. 아이디와 비밀번호를 재확인하십시오.";
+        try {
+          const errData = await res.json();
+          errDetail = errData.detail || errDetail;
+        } catch (_) {
+          const rawText = await res.text();
+          console.warn("[Auth Login Warning] Non-JSON response:", rawText);
+        }
+        alert(errDetail);
       }
     } catch (err) {
       alert("서버 연결에 실패했습니다: " + err.message);
@@ -1369,8 +1380,23 @@ export default function Home() {
           selection_reason: currentParcel.reason || ""
         };
 
-        // Next.js BFF Proxy 및 상대 경로 동적 라우팅을 위한 backendBaseUrl 바인딩
-        const backendBaseUrl = process.env.NEXT_PUBLIC_BACKEND_API_URL || '';
+        // [v4.9.35] AWS Lightsail Docker 및 로컬 개발 환경 호스트 동적 감지
+        let primaryUrl = process.env.NEXT_PUBLIC_BACKEND_API_URL || '';
+        let fallbackUrl = 'http://localhost:8000/api/v1/spatial/debate';
+        
+        if (typeof window !== 'undefined') {
+          const host = window.location.hostname;
+          if (host === 'localhost' || host === '127.0.0.1') {
+            // 로컬 환경: Next.js 프록시 버퍼링을 우회하여 10ms 타자기 실시간 스트리밍을 위해 8000 직통 시도
+            primaryUrl = 'http://localhost:8000/api/v1/spatial/debate';
+            fallbackUrl = '/api/v1/spatial/debate';
+          } else {
+            // AWS 라이트세일 도커 환경: Nginx 80포트 대문 프록시 상대 경로 우선 사용
+            primaryUrl = '/api/v1/spatial/debate';
+            fallbackUrl = process.env.NEXT_PUBLIC_BACKEND_API_URL ? `${process.env.NEXT_PUBLIC_BACKEND_API_URL}/api/v1/spatial/debate` : '/api/v1/spatial/debate';
+          }
+        }
+
         const fetchHeaders = { 
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${sessionStorage.getItem('token') || sessionStorage.getItem('jwtToken') || ''}`
@@ -1378,20 +1404,20 @@ export default function Home() {
 
         let res;
         try {
-          res = await fetch(`${backendBaseUrl}/api/v1/spatial/debate`, {
+          res = await fetch(primaryUrl, {
             method: 'POST',
             headers: fetchHeaders,
             body: JSON.stringify(payload)
           });
           if (!res.ok || res.status === 404 || res.status === 502 || res.status === 504) {
-            res = await fetch(`http://localhost:8000/api/v1/spatial/debate`, {
+            res = await fetch(fallbackUrl, {
               method: 'POST',
               headers: fetchHeaders,
               body: JSON.stringify(payload)
             });
           }
         } catch (netErr) {
-          res = await fetch(`http://localhost:8000/api/v1/spatial/debate`, {
+          res = await fetch(fallbackUrl, {
             method: 'POST',
             headers: fetchHeaders,
             body: JSON.stringify(payload)
@@ -1442,11 +1468,10 @@ export default function Home() {
                 debate_logs: lastParsedLogs || []
               };
 
-              fetch(`${backendBaseUrl}/api/v1/spatial/history`, {
+              apiFetch('/api/v1/spatial/history', {
                 method: 'POST',
                 headers: {
-                  'Content-Type': 'application/json',
-                  'Authorization': `Bearer ${sessionStorage.getItem('jwtToken') || sessionStorage.getItem('token') || ''}`
+                  'Content-Type': 'application/json'
                 },
                 body: JSON.stringify(historyPayload)
               }).then(hRes => {
@@ -1481,41 +1506,57 @@ export default function Home() {
                   if (data.text) {
                     accumulatedText += data.text;
                     
-                    // 누적 텍스트를 줄 단위로 분해하여 토론 로그 재구성
+                    // [v4.9.39] ID #100 규격 준수: 본문 환각 태그 사전 정제 및 정밀 3자 카드 분할
                     const parsedLogs = [];
-                    const rawLines = accumulatedText.split('\n');
+                    const merchantName = activePersonas[0] || '찬성측';
+                    const residentName = activePersonas[1] || '반대측';
+                    const coordinatorName = activePersonas[2] || '정부측';
+
+                    // 1. 대화 본문 내부 조사 결합형 환각 태그 사전 교정 (예: "[찬성측]\n은" -> "찬성 측은")
+                    let cleanedStream = accumulatedText.replace(/\[?(찬성측|반대측|정부측)\]?\s*[\r\n]+\s*(은|는|이|가|의|과|와|에게|을|를)/g, '$1 $2');
                     
-                    const merchantName = activePersonas[0] || '찬성';
-                    const residentName = activePersonas[1] || '반대';
-                    const coordinatorName = activePersonas[2] || '정부';
-                    
-                    const escapeRegExp = (string) => string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-                    
-                    const merchantRegex = new RegExp(`^(${escapeRegExp(merchantName)}|찬성측|상인대표|상인)\\s*(\\(찬성\\))?:\\s*`);
-                    const residentRegex = new RegExp(`^(${escapeRegExp(residentName)}|반대측|주민대표|구민대표|주민)\\s*(\\(반대\\))?:\\s*`);
-                    const coordinatorRegex = new RegExp(`^(${escapeRegExp(coordinatorName)}|정부측|갈등조정관|조정관|정부)\\s*(\\(중재\\)|\\(조정안\\)|\\(조정\\))?:\\s*`);
-                    
-                    for (let rawLine of rawLines) {
-                      const trimmed = rawLine.trim();
+                    // 2. 턴 마감 시점 꼬리 환각 태그 사전 소거 (예: "...반대해야 합니다.찬성측:\n[반대측]" -> "...반대해야 합니다.\n[반대측]")
+                    cleanedStream = cleanedStream.replace(/(?:찬성측|반대측|정부측|상인대표|주민대표|갈등조정관):?\s*(?=\n*\[?(?:찬성측|반대측|정부측|상인대표|주민대표|갈등조정관)\]?:?)/gi, '');
+                    cleanedStream = cleanedStream.replace(/(?<=[\.\!\?])\s*(?:찬성측|반대측|정부측|상인대표|주민대표|갈등조정관):?\s*(?=\n)/gi, '');
+
+                    // 3. 표준 턴 식별 헤더 기준으로 블록 분할
+                    const rawBlocks = cleanedStream.split(/(?=\n\s*\[?(?:찬성측|반대측|정부측|상인대표|주민대표|갈등조정관|시스템)\]?:?)/gi);
+                    let currentSender = merchantName;
+
+                    for (let block of rawBlocks) {
+                      let trimmed = block.trim();
                       if (!trimmed) continue;
-                      
-                      if (trimmed.startsWith('[시스템') || trimmed.startsWith('[시스템 면책') || trimmed.startsWith('[시스템 알림]')) {
-                        const content = trimmed.replace(/^\[시스템[^\]]*\]\s*/, '');
-                        parsedLogs.push({ sender: '시스템', text: content || trimmed });
-                      } else if (merchantRegex.test(trimmed)) {
-                        const content = trimmed.replace(merchantRegex, '');
-                        parsedLogs.push({ sender: merchantName, text: content });
-                      } else if (residentRegex.test(trimmed)) {
-                        const content = trimmed.replace(residentRegex, '');
-                        parsedLogs.push({ sender: residentName, text: content });
-                      } else if (coordinatorRegex.test(trimmed)) {
-                        const content = trimmed.replace(coordinatorRegex, '');
-                        parsedLogs.push({ sender: coordinatorName, text: content });
+
+                      let sender = '';
+                      if (/^\s*\[?(?:찬성측|상인대표|상인)\]?:?/i.test(trimmed)) {
+                        sender = merchantName;
+                      } else if (/^\s*\[?(?:반대측|주민대표|구민대표|주민)\]?:?/i.test(trimmed)) {
+                        sender = residentName;
+                      } else if (/^\s*\[?(?:정부측|갈등조정관|조정관|정부)\]?:?/i.test(trimmed)) {
+                        sender = coordinatorName;
+                      } else if (/^\s*\[?시스템/i.test(trimmed)) {
+                        sender = '시스템';
                       } else {
-                        if (parsedLogs.length > 0) {
-                          parsedLogs[parsedLogs.length - 1].text += ' ' + trimmed;
+                        sender = currentSender;
+                      }
+
+                      currentSender = sender;
+
+                      // 시스템 알림 및 면책고지 태그 명시 정제 후 중복 헤더 소거
+                      let cleanText = trimmed;
+                      if (sender === '시스템') {
+                        cleanText = cleanText.replace(/^\s*\[?시스템\s*(?:면책\s*고지|알림)?\]?:?\s*/i, '').trim();
+                      } else {
+                        while (/^\s*\[?(?:찬성측|반대측|정부측|상인대표|주민대표|갈등조정관)\]?:?\s*/i.test(cleanText)) {
+                          cleanText = cleanText.replace(/^\s*\[?(?:찬성측|반대측|정부측|상인대표|주민대표|갈등조정관)\]?:?\s*/gi, '').trim();
+                        }
+                      }
+
+                      if (cleanText) {
+                        if (parsedLogs.length > 0 && parsedLogs[parsedLogs.length - 1].sender === sender) {
+                          parsedLogs[parsedLogs.length - 1].text += '\n\n' + cleanText;
                         } else {
-                          parsedLogs.push({ sender: '토론위원', text: trimmed });
+                          parsedLogs.push({ sender, text: cleanText });
                         }
                       }
                     }
@@ -1586,12 +1627,20 @@ export default function Home() {
         method: 'POST',
         body: formData
       });
-      if (!uploadRes.ok) {
-        const err = await uploadRes.json();
-        throw new Error(err.detail || '파일 업로드 실패');
+      
+      const uploadText = await uploadRes.text();
+      let uploadData;
+      try {
+        uploadData = JSON.parse(uploadText);
+      } catch (jsonErr) {
+        console.error('[Upload API JSON Parse Error] Raw text response:', uploadText);
+        throw new Error(`백엔드 업로드 응답 판독 불가 (${uploadRes.status}): ` + (uploadText.slice(0, 100) || '서버 응답 없음'));
       }
-      const uploadData = await uploadRes.json();
-      const filenames = uploadData.files.map(f => f.filename);
+
+      if (!uploadRes.ok) {
+        throw new Error(uploadData.detail || '파일 업로드 중 백엔드 에러가 발생했습니다.');
+      }
+      const filenames = uploadData.files ? uploadData.files.map(f => f.filename) : [];
       setUploadedFilenames(filenames);
 
       // 2. AI 교차 시맨틱 목적 추론 감리 API 호출
@@ -1607,7 +1656,7 @@ export default function Home() {
         auditData = JSON.parse(responseText);
       } catch (jsonErr) {
         console.error('[AI Audit JSON Parse Error] Raw text response:', responseText);
-        throw new Error('AI 감리 서버 응답을 파싱할 수 없습니다: ' + (responseText.slice(0, 100) || 'Internal Server Error'));
+        throw new Error(`AI 감리 서버 응답 판독 불가 (${auditRes.status}): ` + (responseText.slice(0, 100) || 'Internal Server Error'));
       }
       
       if (!auditRes.ok) {
@@ -1962,19 +2011,34 @@ export default function Home() {
         onLoginSuccess={async (u, p) => {
           setLoginLoading(true);
           try {
-            const formData = new URLSearchParams();
-            formData.append('username', u);
-            formData.append('password', p);
             const res = await apiFetch('/api/v1/auth/login', {
               method: 'POST',
-              headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-              body: formData
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ username: u, password: p })
             });
-            if (!res.ok) throw new Error('로그인 인증 실패');
+            if (!res.ok) {
+              let detailMsg = '로그인 인증 실패';
+              try {
+                const errData = await res.json();
+                detailMsg = errData.detail || detailMsg;
+              } catch (_) {}
+              throw new Error(detailMsg);
+            }
             const data = await res.json();
             sessionStorage.setItem('token', data.access_token);
+            sessionStorage.setItem('username', data.user.username);
+            sessionStorage.setItem('role', data.user.role);
+            sessionStorage.setItem('department', data.user.department);
+            sessionStorage.setItem('district_id', data.user.district_id);
+            
+            setIsLoggedIn(true);
+            setIsTokenValid(true);
+            setMunicipalId(data.user.username);
+            setUserRole(data.user.role);
+            setDepartment(data.user.department);
+            setUserDistrictId(data.user.district_id || 1);
             setShowLoginModal(false);
-            showToast('로그인이 완료되었습니다.', 'success');
+            showToast(`✓ ${data.user.username} 실무관님 로그인 성공.`, 'success');
           } catch (err) {
             showToast('로그인 실패: ' + err.message, 'error');
           } finally {

@@ -13,8 +13,8 @@
         "facility_type": "노래연습장"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
@@ -31,8 +31,8 @@
         "facility_type": "노래연습장"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
@@ -49,8 +49,8 @@
         "facility_type": "노래연습장"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
@@ -67,8 +67,8 @@
         "facility_type": "노래연습장"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
@@ -85,8 +85,8 @@
         "facility_type": "노래연습장"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
@@ -103,8 +103,8 @@
         "facility_type": "노래연습장"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
@@ -121,8 +121,8 @@
         "facility_type": "노래연습장"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
@@ -139,8 +139,8 @@
         "facility_type": "노래연습장"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
@@ -157,8 +157,8 @@
         "facility_type": "노래연습장"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
@@ -175,8 +175,8 @@
         "facility_type": "노래연습장"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
@@ -193,8 +193,8 @@
         "facility_type": "노래연습장"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
@@ -211,8 +211,8 @@
         "facility_type": "노래연습장"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
@@ -229,8 +229,8 @@
         "facility_type": "노래연습장"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
@@ -247,8 +247,8 @@
         "facility_type": "노래연습장"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
@@ -265,8 +265,8 @@
         "facility_type": "노래연습장"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
@@ -283,8 +283,8 @@
         "facility_type": "노래연습장"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
@@ -301,8 +301,8 @@
         "facility_type": "노래연습장"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
@@ -319,8 +319,8 @@
         "facility_type": "노래연습장"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
@@ -337,8 +337,8 @@
         "facility_type": "노래연습장"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
@@ -355,8 +355,8 @@
         "facility_type": "노래연습장"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
@@ -373,8 +373,8 @@
         "facility_type": "노래연습장"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
@@ -391,8 +391,8 @@
         "facility_type": "노래연습장"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
@@ -409,8 +409,8 @@
         "facility_type": "노래연습장"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
@@ -427,8 +427,8 @@
         "facility_type": "노래연습장"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
@@ -445,8 +445,8 @@
         "facility_type": "노래연습장"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
@@ -463,8 +463,8 @@
         "facility_type": "노래연습장"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
@@ -481,8 +481,8 @@
         "facility_type": "노래연습장"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
@@ -499,8 +499,8 @@
         "facility_type": "노래연습장"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
@@ -517,8 +517,8 @@
         "facility_type": "노래연습장"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
@@ -535,8 +535,8 @@
         "facility_type": "단란주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
@@ -553,8 +553,8 @@
         "facility_type": "단란주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
@@ -571,8 +571,8 @@
         "facility_type": "단란주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
@@ -589,8 +589,8 @@
         "facility_type": "단란주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
@@ -607,8 +607,8 @@
         "facility_type": "단란주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
@@ -625,8 +625,8 @@
         "facility_type": "단란주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
@@ -643,8 +643,8 @@
         "facility_type": "단란주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
@@ -661,8 +661,8 @@
         "facility_type": "단란주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
@@ -679,8 +679,8 @@
         "facility_type": "단란주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
@@ -697,8 +697,8 @@
         "facility_type": "단란주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
@@ -715,8 +715,8 @@
         "facility_type": "단란주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
@@ -733,8 +733,8 @@
         "facility_type": "단란주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
@@ -751,8 +751,8 @@
         "facility_type": "단란주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
@@ -769,8 +769,8 @@
         "facility_type": "단란주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
@@ -787,8 +787,8 @@
         "facility_type": "단란주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
@@ -805,8 +805,8 @@
         "facility_type": "단란주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
@@ -823,8 +823,8 @@
         "facility_type": "단란주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
@@ -841,8 +841,8 @@
         "facility_type": "단란주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
@@ -859,8 +859,8 @@
         "facility_type": "단란주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
@@ -877,8 +877,8 @@
         "facility_type": "단란주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
@@ -895,8 +895,8 @@
         "facility_type": "단란주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
@@ -913,8 +913,8 @@
         "facility_type": "단란주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
@@ -931,8 +931,8 @@
         "facility_type": "단란주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
@@ -949,8 +949,8 @@
         "facility_type": "단란주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
@@ -967,8 +967,8 @@
         "facility_type": "단란주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
@@ -985,8 +985,8 @@
         "facility_type": "단란주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
@@ -1003,8 +1003,8 @@
         "facility_type": "단란주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
@@ -1021,8 +1021,8 @@
         "facility_type": "단란주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
@@ -1039,8 +1039,8 @@
         "facility_type": "단란주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
@@ -1057,8 +1057,8 @@
         "facility_type": "단란주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
@@ -1075,8 +1075,8 @@
         "facility_type": "단란주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
@@ -1093,8 +1093,8 @@
         "facility_type": "단란주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
@@ -1111,8 +1111,8 @@
         "facility_type": "단란주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
@@ -1129,8 +1129,8 @@
         "facility_type": "단란주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
@@ -1147,8 +1147,8 @@
         "facility_type": "단란주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
@@ -1165,8 +1165,8 @@
         "facility_type": "단란주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
@@ -1183,8 +1183,8 @@
         "facility_type": "단란주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
@@ -1201,8 +1201,8 @@
         "facility_type": "단란주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
@@ -1219,8 +1219,8 @@
         "facility_type": "단란주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
@@ -1237,8 +1237,8 @@
         "facility_type": "단란주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
@@ -1255,8 +1255,8 @@
         "facility_type": "단란주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
@@ -1273,8 +1273,8 @@
         "facility_type": "단란주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
@@ -1291,8 +1291,8 @@
         "facility_type": "단란주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
@@ -1309,8 +1309,8 @@
         "facility_type": "단란주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
@@ -1327,8 +1327,8 @@
         "facility_type": "단란주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
@@ -1345,8 +1345,8 @@
         "facility_type": "단란주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
@@ -1363,8 +1363,8 @@
         "facility_type": "단란주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
@@ -1381,8 +1381,8 @@
         "facility_type": "단란주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
@@ -1399,8 +1399,8 @@
         "facility_type": "단란주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
@@ -1417,8 +1417,8 @@
         "facility_type": "단란주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
@@ -1435,8 +1435,8 @@
         "facility_type": "단란주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
@@ -1453,8 +1453,8 @@
         "facility_type": "단란주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
@@ -1471,8 +1471,8 @@
         "facility_type": "단란주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
@@ -1489,8 +1489,8 @@
         "facility_type": "단란주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
@@ -1507,8 +1507,8 @@
         "facility_type": "단란주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
@@ -1525,8 +1525,8 @@
         "facility_type": "단란주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
@@ -1543,8 +1543,8 @@
         "facility_type": "단란주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
@@ -1561,8 +1561,8 @@
         "facility_type": "유흥주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
@@ -1579,8 +1579,8 @@
         "facility_type": "유흥주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
@@ -1597,8 +1597,8 @@
         "facility_type": "유흥주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
@@ -1615,8 +1615,8 @@
         "facility_type": "유흥주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
@@ -1633,8 +1633,8 @@
         "facility_type": "유흥주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
@@ -1651,8 +1651,8 @@
         "facility_type": "유흥주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
@@ -1669,8 +1669,8 @@
         "facility_type": "유흥주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
@@ -1687,8 +1687,8 @@
         "facility_type": "유흥주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
@@ -1705,8 +1705,8 @@
         "facility_type": "유흥주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
@@ -1723,8 +1723,8 @@
         "facility_type": "유흥주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
@@ -1741,8 +1741,8 @@
         "facility_type": "유흥주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
@@ -1759,8 +1759,8 @@
         "facility_type": "유흥주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
@@ -1777,8 +1777,8 @@
         "facility_type": "유흥주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
@@ -1795,8 +1795,8 @@
         "facility_type": "유흥주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
@@ -1813,8 +1813,8 @@
         "facility_type": "유흥주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
@@ -1831,8 +1831,8 @@
         "facility_type": "유흥주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
@@ -1849,8 +1849,8 @@
         "facility_type": "유흥주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
@@ -1867,8 +1867,8 @@
         "facility_type": "유흥주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
@@ -1885,8 +1885,8 @@
         "facility_type": "유흥주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   }
 ]

@@ -314,6 +314,11 @@ def background_model_train(domain="city_feature"):
         
         # 2. 전처리 & 학습 준비
         numeric_features = ['area'] + [f"dist_to_{z.replace('-', '_').replace(' ', '_')}" for z in zone_types]
+        
+        # [Fail-safe Feature Alignment] 동적 거리 피처가 df 컬럼에 존재하지 않을 경우 디폴트 999.0m로 자동 보충
+        for nf in numeric_features:
+            if nf not in df.columns:
+                df[nf] = 999.0
         categorical_features = ['land_use_code', 'ownership_type', 'building_use']
         
         X = df[numeric_features + categorical_features].copy()

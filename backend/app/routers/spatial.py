@@ -2224,6 +2224,10 @@ async def stream_debate_sim(req: DebateRequest, db: Session = Depends(get_db)):
                     yield mock_chunk
 
     async def mock_event_generator():
+        # [Fail-safe Streaming Metadata Guard] 폴백 모드에서도 프론트엔드의 파서가 붕괴하지 않도록 메타데이터 선제 발송
+        yield f"data: {json.dumps({'text': disclaimer_alert}, ensure_ascii=False)}\n\n"
+        yield f"data: {json.dumps({'meta': True, 'personas': [merchant_name, resident_name, coordinator_name]}, ensure_ascii=False)}\n\n"
+        
         if req.intensity_level == "dangerous":
             dialogue = [
                 f"[시스템 알림] '{req.candidate_jibun}' 부지에 대한 갈등 분석 모의 토론을 시작합니다. (갈등 강도: 위험 🟡, CSS: {req.candidate_css}점)\n\n",

@@ -298,6 +298,14 @@ def seed():
 
             # 4. Load parcels and seed cadastral_lands
             print("[5] Seeding cadastral_lands...")
+            
+            # [Auto-Healing Constraints] pnu 컬럼에 UNIQUE 제약조건이 없을 시 자동 바인딩 보장
+            try:
+                conn.execute(text("ALTER TABLE cadastral_lands ADD CONSTRAINT unique_pnu UNIQUE (pnu);"))
+                print("    [Auto-Healing] UNIQUE (pnu) constraint successfully added to cadastral_lands.")
+            except Exception:
+                pass
+                
             try:
                 parcel_headers, parcel_rows = load_csv_data(sources["parcels"], ["utf-8-sig", "utf-8"])
                 parcel_count = 0

@@ -103,7 +103,7 @@ CREATE TABLE cadastral_lands (
     id SERIAL PRIMARY KEY,
     district_id INT REFERENCES districts(id) ON DELETE CASCADE,
     dong_id INT REFERENCES dong_boundaries(id) ON DELETE SET NULL,
-    pnu VARCHAR(19) NOT NULL,
+    pnu VARCHAR(19) NOT NULL UNIQUE,
     jibun VARCHAR(100),
     land_use_code VARCHAR(5),
     ownership_type VARCHAR(10),

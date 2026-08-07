@@ -1,11 +1,12 @@
 # Root .dockerignore for OmniSite SDSS Platform
-# Prevents sensitive environment files and temporary build artifacts from entering Docker images
+# Prevents sensitive environment files, documentation, test scripts, and temporary build artifacts from entering Docker images
 
+# Sensitive Files
 .env
 .env.*
 !.env.example
 
-# Python
+# Python virtual environment & cache
 **/venv/
 **/.venv/
 **/__pycache__/
@@ -20,9 +21,25 @@
 **/out/
 **/build/
 
-# Git & Logs
+# Git, Agents & Logs
 .git/
 .gitignore
 **/*.log
+
+# Reports, Scratch & Documentation artifacts (Not required for Docker runtime execution)
+결과보고/
 scratch/
 brain/
+.checkpoints/
+.agents/
+
+# Testing & inspection scripts
+backend/app/scripts/test_*.py
+backend/app/scripts/check_*.py
+test_*.py
+check_*.py
+
+# Compressed archives (Crucial datasets zip files in Datasets/ are explicitly preserved for coldstart seeding)
+*.zip
+!Datasets/**/*.zip
+!backend/data/**/*.zip

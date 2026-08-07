@@ -26,17 +26,29 @@ htmlcov/
 backend/.env
 frontend/.env
 *.env.local
+*.env.production
 
-# Operating System files
+# Operating System & IDE files
 .DS_Store
 Thumbs.db
+.vscode/
+.idea/
 
-# Project-specific temporary/backup files
-# Compressed files
+# Reports, Scratch & Documentation artifacts (Excluded from Git / Production container builds)
+결과보고/
+scratch/
+brain/
+.checkpoints/
+.agents/
+
+# One-off testing & inspection scripts
+backend/app/scripts/test_*.py
+backend/app/scripts/check_*.py
+test_*.py
+check_*.py
+
+# Logs and compressed archives (Crucial datasets zip files in Datasets/ are explicitly included)
+*.log
 *.zip
-Datasets.zip
-
-# Essential geospatial seed datasets are tracked for seamless Git Clone cold-start
-# Datasets/
-# backend/data/processed/css_train_dataset.csv
-
+!Datasets/**/*.zip
+!backend/data/**/*.zip

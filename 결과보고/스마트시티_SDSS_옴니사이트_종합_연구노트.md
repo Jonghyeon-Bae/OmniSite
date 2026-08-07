@@ -1374,6 +1374,31 @@
   2) HTTP 실측 검증: `http://localhost:3000/dashboard` (200 OK - 19,841 Bytes), `http://localhost:8000/api/v1/spatial/history` (200 OK - 310,015 Bytes - 61건), `http://localhost:8000/api/v1/spatial/precedents` (200 OK - 369 Bytes).
   3) `python -c "import app.main"` 및 `npm run build` 모두 **0 Error** 프로덕션 무결성 완공.
 
+### 43. [오답 43] AWS Lightsail 도커(Docker) 멀티 컨테이너 설정 확정 및 배포 준비 완공
+- **현상 및 요구사항**: 로컬 정상 동작 무결성을 보존한 상태에서 DB 데이터 손실 없이 AWS Lightsail 도커 배포 환경 준비 요청.
+- **점검 및 준비 내역**:
+  1) **도커 컴포즈 구문 검증**: `docker compose -f docker-compose.production.yml config` 검증을 수행하여 3개 서비스(`database`, `backend`, `frontend`) 구문 및 볼륨 마운트/네트워크 100% 무결 확인.
+  2) **`AWS_LIGHTSAIL_DEPLOYMENT_SOP.md` 명세 확정**: Lightsail 인스턴스 사양(4GB RAM, 2 vCPU, 80GB SSD), 인바운드 방화벽 규칙(80, 8000, 443, 22), Swapfile 할당 및 무손실 DB 시딩 명령어를 이식 확정.
+  3) **CLI & 프로덕션 빌드**: `python -c "import app.main"` 및 `npm run build` 모두 **0 Error** 무결성 입증 완공.
+
+### 44. [오답 44] Datasets zip 압축파일 예외 정정 및 6단계 통합 파이프라인 명세 개작 완료
+- **현상 및 요구사항**:
+  1) `*.zip` 통째 예외 처리 시 `Datasets/` 하위 정품 공간 데이터셋(SHP/CSV zip)까지 누락되는 결정적 위험 요소 포착.
+  2) 5단계 표기를 조장님의 확정 지침에 따라 **6단계 파이프라인 (① AI 감리 ➔ ② ML 재학습 ➔ ③ HITL 마커 지정 ➔ ④ AHP 가중치 ➔ ⑤ 입지 리스트 결과 ➔ ⑥ AI 토론)**으로 정명 정정 및 전체 보고서 개작 요청.
+- **최종 교훈 및 해법(Takeaway)**:
+  1) `.gitignore` 및 `.dockerignore`에 `!Datasets/**/*.zip` 구문을 이식하여 정품 시드 압축파일 추적/보존 무결성 확립.
+  2) `OmniSite_국책과제급_최종시연발표_및_결과보고서.md`, `OmniSite_전체시스템_정밀_기술해설서.md`, `OmniSite_최종시연발표_시나리오_및_발표대본.md` 등 `결과보고/` 내 핵심 문서들을 6단계 파이프라인 명세로 전면 개작 동기화 완료.
+  3) `python -c "import app.main"` 및 `npm run build` 모두 **0 Error** 무결성 확보.
+
+### 45. [오답 45] ERD 31개 마스터 스키마 정의서, 페이지별 기능 정의서, README 초상세 개작 및 최종 시연 이관 완공
+- **현상 및 요구사항**: ERD 스키마 정의서, 기능 정의서, 초상세 README.md 작성 및 `결과보고/최종시연및발표/` 디렉터리로 중요 문서 통합 정리 이관 요청.
+- **최종 교훈 및 해법(Takeaway)**:
+  1) `OmniSite_데이터베이스_ERD_및_31개_마스터_스키마_정밀정의서.md` 작성: 31개 전체 마스터 테이블, PostGIS R-Tree, pgvector HNSW 인덱스 명세 작성.
+  2) `OmniSite_시스템_핵심_기능_및_페이지별_정밀명세서.md` 작성: `/spatial`, `/dashboard`, `/admin` 3대 주요 페이지의 컴포넌트, API 연동, 버퍼 롤백 및 데드락 방어 로직 기술.
+  3) `README.md` 전면 개작: 초보자/실무자/개발자를 위한 6단계 파이프라인, 도커 기동법, 로컬 디버깅, AWS Lightsail SOP, 10대 FAQ를 100% 완전 작성.
+  4) `결과보고/최종시연및발표/` 디렉터리로 핵심 문서 8종을 통합 이관 완료.
+  5) `python -c "import app.main"` 및 `npm run build` 모두 **0 Error** 무결성 확보.
+
 
 
 

@@ -357,7 +357,14 @@ def seed():
                 print("[5.2] Updating cadastral_lands ownership using national_property...")
                 try:
                     np_headers, np_rows = load_csv_data(sources["national_property"], ["cp949", "euc-kr"])
-                    addr_idx = np_headers.index("소재지")
+                    addr_idx = -1
+                    for idx, h in enumerate(np_headers):
+                        if "소재지(지번)" in h or "소재지" in h or "지번" in h:
+                            addr_idx = idx
+                            break
+                    if addr_idx == -1:
+                        raise ValueError(f"Could not find address column in headers: {np_headers}")
+
                     national_jibuns = set()
                     for r in np_rows:
                         if len(r) > addr_idx:
@@ -369,20 +376,15 @@ def seed():
                     national_jibuns_list = list(national_jibuns)
                     print(f"    Loaded {len(national_jibuns_list)} unique national property addresses.")
                     
-                    chunk_size = 500
-                    total_updated = 0
-                    for i in range(0, len(national_jibuns_list), chunk_size):
-                        chunk = national_jibuns_list[i:i+chunk_size]
-                        if not chunk:
-                            continue
-                        update_query = text("""
-                            UPDATE cadastral_lands
-                            SET ownership_type = '국유지'
-                            WHERE jibun IN :jibuns;
-                        """)
-                        res = conn.execute(update_query, {"jibuns": tuple(chunk)})
-                        total_updated += res.rowcount
-                    print(f"    Updated {total_updated} parcels as '국유지' from national property data.")
+                    update_query = text("""
+                        UPDATE cadastral_lands
+                        SET ownership_type = '국유지'
+                        FROM unnest(CAST(:jibuns AS text[])) AS np(addr)
+                        WHERE cadastral_lands.jibun = np.addr 
+                           OR cadastral_lands.jibun LIKE np.addr || '%';
+                    """)
+                    res = conn.execute(update_query, {"jibuns": national_jibuns_list})
+                    print(f"    Updated {res.rowcount} parcels as '국유지' from national property data.")
                 except Exception as np_err:
                     print(f"    [Warning] Failed to update ownership with national properties: {np_err}")
             except Exception as e:
@@ -701,11 +703,17 @@ def seed():
                     for shp_geom in sf.shapes():
                         if shp_geom.shapeType == shapefile.NULL: continue
                         g = shape(shp_geom)
-                        conn.execute(text("""
+                        res = conn.execute(text("""
                             INSERT INTO restricted_zones (district_id, zone_name, geom, zone_type, area)
-                            VALUES (:did, :zname, ST_Transform(ST_SetSRID(ST_GeomFromText(:wkt), 5179), 4326), :ztype, 10.0)
-                        """), {"did": district_id, "zname": f"{z_type}_{cnt}", "wkt": g.wkt, "ztype": z_type})
-                        cnt += 1
+                            SELECT :did, :zname, ST_Transform(ST_SetSRID(ST_GeomFromText(:wkt), 5179), 4326), :ztype, 10.0
+                            WHERE ST_Intersects(
+                                ST_Transform(ST_SetSRID(ST_GeomFromText(:wkt), 5179), 4326),
+                                ST_MakeEnvelope(126.93, 37.51, 127.02, 37.56, 4326)
+                            )
+                            RETURNING id;
+                        """), {"did": district_id, "zname": f"{z_type}_{cnt}", "wkt": g.wkt, "ztype": z_type}).fetchone()
+                        if res:
+                            cnt += 1
                     return cnt
                 except Exception as e:
                     print(f"      [Error] {z_type} seeding skipped: {e}")

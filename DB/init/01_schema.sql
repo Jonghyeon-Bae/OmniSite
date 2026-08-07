@@ -194,7 +194,7 @@ CREATE TABLE district_regulations (
     regulation_title VARCHAR(250) NOT NULL,
     clause_number VARCHAR(50),
     content TEXT NOT NULL,
-    embedding VECTOR(1536) NOT NULL,
+    embedding VECTOR(1536),
     category VARCHAR(50) NOT NULL DEFAULT 'health_sanitation',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

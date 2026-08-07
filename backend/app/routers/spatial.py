@@ -1823,6 +1823,13 @@ class DebateRequest(BaseModel):
 
 
 
+class AnalyzeAddressRequest(BaseModel):
+    candidate_jibun: str
+    candidate_lat: float
+    candidate_lng: float
+    facility_type: str
+    selection_reason: Optional[str] = ""
+
 def get_rag_matched_regulations(db: Session, query_str: str, facility_type: str = "", limit: int = 3) -> list:
     """[v4.9.45] 100% 도메인 정합성 보장 RAG 조례 매칭 엔진 (OpenAI 코사인 유사도 + 도메인 키워드 3단계 하이브리드 필터링)"""
     matched_regulations = []

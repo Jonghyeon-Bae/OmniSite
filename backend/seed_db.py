@@ -917,11 +917,14 @@ def seed():
             # [14] Default Pipeline Execution Audit Logs Seeding
             try:
                 print("[14] Seeding default pipeline execution audit logs...")
+                conn.execute(text("ALTER TABLE pipeline_execution_logs ALTER COLUMN step_name DROP NOT NULL;"))
+                conn.execute(text("ALTER TABLE pipeline_execution_logs ALTER COLUMN status DROP NOT NULL;"))
+                conn.commit()
                 conn.execute(text("""
-                    INSERT INTO pipeline_execution_logs (id, session_id, step_number, action_type, detail_json, current_hash, prev_hash)
+                    INSERT INTO pipeline_execution_logs (id, session_id, step_number, action_type, detail_json, current_hash, prev_hash, step_name, status)
                     VALUES 
-                    (1, 'SESSION_GENESIS', 'STEP-1', 'SYSTEM_INITIALIZATION', '{"message": "지능형 입지 선정 SDSS 시스템 구동 및 데이터베이스 마운트", "operator": "시스템 관리자"}'::jsonb, 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855', '0000000000000000000000000000000000000000000000000000000000000000'),
-                    (2, 'SESSION_GENESIS', 'STEP-2', 'SPATIAL_INDEX_BUILD', '{"message": "용산구 지적 필지 6,524건 및 restricted_zones PostGIS 공간 인덱스 바인딩", "operator": "시스템 관리자"}'::jsonb, 'f865b53623b87910549449f87424fb89e34e9e0d196f4f2277d33d98767e7801', 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855')
+                    (1, 'SESSION_GENESIS', 'STEP-1', 'SYSTEM_INITIALIZATION', '{"message": "지능형 입지 선정 SDSS 시스템 구동 및 데이터베이스 마운트", "operator": "시스템 관리자"}'::jsonb, 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855', '0000000000000000000000000000000000000000000000000000000000000000', 'STEP-1', 'COMPLETED'),
+                    (2, 'SESSION_GENESIS', 'STEP-2', 'SPATIAL_INDEX_BUILD', '{"message": "용산구 지적 필지 6,524건 및 restricted_zones PostGIS 공간 인덱스 바인딩", "operator": "시스템 관리자"}'::jsonb, 'f865b53623b87910549449f87424fb89e34e9e0d196f4f2277d33d98767e7801', 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855', 'STEP-2', 'COMPLETED')
                     ON CONFLICT (id) DO NOTHING;
                 """))
                 conn.commit()

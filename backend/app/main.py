@@ -77,6 +77,12 @@ def init_db_schema():
                 ALTER TABLE verified_precedents DROP CONSTRAINT IF EXISTS verified_precedents_conflict_simulation_id_fkey;
             """))
             conn.commit()
+            try:
+                conn.execute(text("ALTER TABLE pipeline_execution_logs ALTER COLUMN step_name DROP NOT NULL;"))
+                conn.execute(text("ALTER TABLE pipeline_execution_logs ALTER COLUMN status DROP NOT NULL;"))
+                conn.commit()
+            except Exception:
+                pass
     except Exception as e:
         print(f"[DB Startup Warning] DDL init warning: {e}")
 

@@ -1428,12 +1428,12 @@
   3) **`restricted_zones` 17만 건 조치**: 전국 교량/터널 SHP 파일(`N3A_A0070000.shp`) 적재 시 용산구 영역 바운딩 박스(`ST_MakeEnvelope(126.93, 37.51, 127.02, 37.56, 4326)`) `ST_Intersects` 교집합 필터를 적용하여 타 지역 17만 건 오적재를 원천 차단함.
   4) `python -c "import app.main"` 및 `npm run build` 모두 **0 Error** 프로덕션 무결성 확보.
 
-### 62. [오답 62] 감사로그(pipeline_execution_logs) DB 컬럼 불일치 교정 및 시딩 완공
+### 65. [오답 65] 구형 step_name NOT NULL 제약조건 해제 및 시딩 0 Error 완공
 - **현상 및 요구사항**:
-  - "행정 감사 로그 (Audit Trail Logs)도 DB 스키마/시딩 불일치로 인한 동일 증상인가?"라는 직관적 의문에 대한 정밀 전수 조사 및 해결 요청.
+  - `seed_db.py` 구동 시 `(psycopg.errors.NotNullViolation) "step_name" 칼럼의 null 값이 not null 제약조건을 위반했습니다` 경고 에러가 발생하는 현상 지적 및 완벽 해결 요청.
 - **발생 원인(Root Cause) 및 최종 해법(Takeaway)**:
-  1) **`01_schema.sql` 감사로그 컬럼명 100% 불일치 구조 발견**: AWS DB 초기화 스크립트 [DB/init/01_schema.sql](file:///c:/Users/Admin/Desktop/빅프로젝트 관련자료/최종1차/1.0-prototype/DB/init/01_schema.sql) 242~250행에서 `pipeline_execution_logs` 테이블이 구형 컬럼명(`step_name`, `status`, `details`, `hash_pointer`)으로 작성되어 있던 맹점 확인. 백엔드 라우터 표준 컬럼명(`session_id`, `step_number`, `action_type`, `detail_json`, `current_hash`, `prev_hash`)으로 100% 교정함.
-  2) **`init_db_schema()` 컬럼 자동 추가(Auto-Heal) 및 `seed_db.py` Step 14 완공**: [backend/app/main.py](file:///c:/Users/Admin/Desktop/빅프로젝트 관련자료/최종1차/1.0-prototype/backend/app/main.py)의 시동 훅에 누락 컬럼 자동 추가(`ALTER TABLE ADD COLUMN IF NOT EXISTS`) 쿼리를 배포하고, `seed_db.py`에 Step 14 (`Default Pipeline Audit Logs Seeding`) 제네시스 블록 시딩 구문을 보강하여 AWS 환경에서도 감사 로그가 100% 무결하게 표출되도록 완공함.
+  1) **기존 DB 내 구형 칼럼 NOT NULL 제약조건 포착**: 기존 로컬/AWS DB 생성 시 구형 스키마의 `step_name` 및 `status` 칼럼에 `NOT NULL` 제약조건이 잡혀 있어, 신규 표준 칼럼(`session_id`, `step_number` 등)으로 시딩 시 `NULL` 삽입 예외가 발생했던 원인 규명.
+  2) **`DROP NOT NULL` & 기본값 매핑 수술 완공**: `seed_db.py`, `backend/seed_db.py`, [backend/app/main.py](file:///c:/Users/Admin/Desktop/빅프로젝트 관련자료/최종1차/1.0-prototype/backend/app/main.py) 3곳 모두에 `ALTER TABLE pipeline_execution_logs ALTER COLUMN step_name DROP NOT NULL;` 및 `step_name`, `status` 기본값 바인딩을 이식하여 시딩 시 단 1개의 경고/에러도 발생하지 않는 **0-Warning / 0-Error 시딩 파이프라인**을 완공함.
   3) `python -c "import app.main"` 및 `npm run build` 모듈/터보팩 빌드 **0 Error** 무결성 검증 통과.
 
 

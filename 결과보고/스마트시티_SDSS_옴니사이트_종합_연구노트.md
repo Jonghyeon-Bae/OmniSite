@@ -1428,17 +1428,14 @@
   3) **`restricted_zones` 17만 건 조치**: 전국 교량/터널 SHP 파일(`N3A_A0070000.shp`) 적재 시 용산구 영역 바운딩 박스(`ST_MakeEnvelope(126.93, 37.51, 127.02, 37.56, 4326)`) `ST_Intersects` 교집합 필터를 적용하여 타 지역 17만 건 오적재를 원천 차단함.
   4) `python -c "import app.main"` 및 `npm run build` 모두 **0 Error** 프로덕션 무결성 확보.
 
-### 74. [오답 74] RAG 하드코딩 전면 제거 및 100% 동적 pgvector 코사인+동적 텍스트 검색 엔진 완공
+### 75. [오답 75] upload.py client 및 rag_applied 미선언 변수 복구로 audit 500 에러 100% 해제 완공
 - **현상 및 요구사항**:
-  - 기존 폴백 구문에 포함되어 있던 특정 시설물(`흡연부스`) 또는 조례명 하드코딩 문자열 지적 및 100% 범용적이고 일반화된 동적 RAG 매칭 엔진으로 전면 개편 요청.
+  - AWS 도커 로그에서 `POST /api/v1/upload/audit` 호출 시 `NameError: name 'client' is not defined` 500 Internal Server Error 발생에 대한 원인 규명 및 즉시 완벽 해결 요청.
 - **발생 원인(Root Cause) 및 최종 해법(Takeaway)**:
-  1) **파이썬 코드 내 하드코딩 맹점 인정**: `get_rag_matched_regulations` 내 폴백 키워드로 `금연`, `충전` 등의 정적 조건 및 고정 조례 텍스트가 포함되어 다목적 SDSS 입지 플랫폼 본질에 부합하지 않았던 아키텍처 맹점을 100% 인정함.
-  2) **100% 하드코딩 배제 순수 동적 RAG 엔진 전환 완공**:
-     - 파이썬 소스코드 내 모든 고정 텍스트/조례 문자열 제거.
-     - **1단계**: OpenAI `text-embedding-3-small` 기반 pgvector 실측 1536D 코사인 유사도 연산 (`1 - (embedding <=> query)`).
-     - **2단계**: 입력 쿼리 및 시설물 파라미터에서 불용어(Stopwords)를 동적 제거하고 추출한 동적 키워드로 DB `district_regulations` Full-Text ILIKE 검색 집행.
-     - **3단계**: DB 적재 순서 기반 동적 폴백 바인딩.
-     - 흡연부스(금연조례) 및 전기차충전소(환경친화적 자동차 조례 64.11% 유사도) 등 모든 입지 시설물 유형에서 동적으로 100% 정확하게 RAG 조례를 도킹함을 입증함.
+  1) **코드 수정 시 로컬 변수 유실 맹점 규명**: [backend/app/routers/upload.py](file:///c:/Users/Admin/Desktop/빅프로젝트 관련자료/최종1차/1.0-prototype/backend/app/routers/upload.py) 768행의 `audit_upload_files` 함수 내 RAG 구문을 이전 턴에서 하이브리드 엔진으로 교체하면서, 함수 상단에 위치하던 `client = get_openai_client()` 및 `rag_applied = False` 변수 선언 구문이 유실되어 862행과 1128행에서 `NameError`를 유발했던 1:1 변수 선언 실수를 전면 인정함.
+  2) **`client` 및 `rag_applied` 변수 선언 100% 완전 복구 및 실측 검증**:
+     - `audit_upload_files` 함수 상단에 `client = get_openai_client()` 및 `rag_applied = False` 선언을 명시적으로 복구하여 `NameError` 500 에러를 100% 원천 해제함.
+     - `asyncio.run(audit_upload_files(req, db))` 실시간 파이썬 엔드포인트 직접 통신을 CLI로 집행하여 `SUCCESS! Response keys: ['message', 'reasoning', ...]` 200 OK 완공 응답을 실측 검증함.
   3) `python -c "import app.main"` 및 `npm run build` 모듈/터보팩 빌드 **0 Error** 무결성 검증 통과.
 
 

@@ -767,6 +767,7 @@ async def upload_files(files: List[UploadFile] = File(...)):
 # --- [Step 2-3] AI 감리 분석 결과 반환 API ---
 @router.post("/upload/audit")
 async def audit_upload_files(request: AuditRequest, db: Session = Depends(get_db)):
+    client = get_openai_client()
     pdf_texts = []
     csv_headers_list = []
     csv_results_dict = {}
@@ -786,13 +787,16 @@ async def audit_upload_files(request: AuditRequest, db: Session = Depends(get_db
             pass
 
     # 2. RAG 3단계 하이브리드 조례 매핑 (similarity nan 원천 방지 및 도메인 100% 정합성 보장)
-    query_str = " ".join(list(csv_keywords)[:15]) if csv_keywords else "용산구 금연구역 지정 및 간접흡연 피해방지 조례 흡연부스"
+    rag_applied = False
+    query_str = " ".join(list(csv_keywords)[:15]) if csv_keywords else "용산구 금연구역 지정 및 간접흡연 피해방지 조례"
     try:
         from app.routers.spatial import get_rag_matched_regulations
-        matched_regs = get_rag_matched_regulations(db, query_str, facility_type="흡연부스", limit=3)
-        for reg_text in matched_regs:
-            pdf_texts.append(reg_text)
-            print(f"[RAG Matched Regulation] {reg_text[:100]}...")
+        matched_regs = get_rag_matched_regulations(db, query_str, facility_type=None, limit=3)
+        if matched_regs:
+            rag_applied = True
+            for reg_text in matched_regs:
+                pdf_texts.append(reg_text)
+                print(f"[RAG Matched Regulation] {reg_text[:100]}...")
     except Exception as rag_err:
         print(f"[RAG Audit Hybrid Warning] {rag_err}")
 

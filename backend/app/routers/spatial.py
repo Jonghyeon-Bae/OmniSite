@@ -2186,61 +2186,146 @@ async def stream_debate_sim(req: DebateRequest, db: Session = Depends(get_db)):
                 async for mock_chunk in mock_event_generator():
                     yield mock_chunk
 
+    async def mock_event_generator():
+        if req.intensity_level == "dangerous":
+            dialogue = [
+                f"[시스템 알림] '{req.candidate_jibun}' 부지에 대한 갈등 분석 모의 토론을 시작합니다. (갈등 강도: 위험 🟡, CSS: {req.candidate_css}점)\n\n",
+                f"{merchant_name}: 저희 상인회 입장에서는 이번 {req.facility_type} 설치가 매우 절박합니다. 현재 반경 내 유동인구 {int(transit_score or 0):,}명을 감당할 인프라가 전무해 상권 활성화의 기회를 놓치고 있습니다. 님비 정서로만 반대하지 마시고 상생을 논해야 합니다.\n\n",
+                f"{resident_name}: 님비 정서가 아닙니다! 누적 민원이 {int(complaint_score or 0)}건에 달하고 이미 무단투기 단속구역이 {int(dumping_score or 0)}개소나 지정된 상황에서, 추가 오염원 유발 시설이 들어오면 주거 정주 환경은 완전히 파괴됩니다. 상인의 이익 때문에 주민의 건강권이 희생될 순 없습니다.\n\n",
+                f"{merchant_name}: 주민대표님 말씀도 일리가 있지만, 무단투기 {int(dumping_score or 0)}개소 문제를 해결하기 위해 이번 시설 내부에 정밀 폐쇄회로(CCTV)와 수거함을 연동하면 오히려 슬럼화된 거리를 정화하는 계기가 될 수 있습니다. 무조건적인 반대보다는 이런 위생 보강책을 토대로 합의를 모색해야 합니다.\n\n",
+                f"{resident_name}: CCTV 연동이나 필터 보강 약속은 설치 허가를 받기 위한 임시방편일 뿐, 관리 소홀로 필터 악취나 연기가 흘러나오면 그 피해는 고스란히 주민과 학생들에게 돌아갑니다. 시설 운영 시 발생하는 환경 위험 요소를 완벽히 통제할 구체적인 감시 권한을 주민단에 넘기지 않는다면 수용하기 어렵습니다.\n\n",
+                f"{coordinator_name}: 두 분 모두 타당한 논거를 대고 계십니다. 상인의 유동인구 {int(transit_score or 0):,}명 대응 필요성과 주민의 {int(complaint_score or 0)}건 민원 우려를 극적으로 해소하기 위해 조정안을 제시합니다. 첫째, 교육기관 경계선 및 완충 구역 밖으로 최소 이격거리를 1.5배 추가 후퇴하겠습니다. 둘째, 주민자치위원회에 시설 상시 감찰 및 가동 정지 권한을 공식 부여하겠습니다. 수용 가능한 범위입니까?\n\n",
+                f"{merchant_name}: 아쉬운 제약조건이지만 상권 활성화 and 공존을 위해 이격거리 후퇴 및 주민 위생 감찰권 중재안을 받아들이겠습니다.\n\n",
+                f"{resident_name}: 조정관께서 주민 직접 통제 및 정지 권한을 명문화해 주신다면, 저희 주민대표단도 이 조건하에 상생 타협안을 수용하겠습니다.\n\n",
+                f"{coordinator_name}: 팽팽했던 대립 속에서 양측의 한 걸음 양보로 상생 합의가 도출되었습니다. 완충 이격과 감찰 권한 이양을 골자로 본 의사결정을 타결합니다.\n\n",
+                f"[시스템] [모의 심의 완료]"
+            ]
+        elif req.intensity_level == "extreme":
+            dialogue = [
+                f"[시스템 알림] '{req.candidate_jibun}' 부지에 대한 긴급 갈등 분석 토론을 시작합니다. (갈등 강도: 매우 위험/교착 🔴, CSS: {req.candidate_css}점)\n\n",
+                f"{merchant_name}: 저희는 더 이상 대화로 시간만 끌 수 없습니다. 상인 생존권이 붕괴되는 와중에 주민들의 일방적인 반대가 계속된다면, 상인회 차원의 단체 행동과 더불어 안전 규정 준수를 서약하고 설치를 추진할 수밖에 없습니다!\n\n",
+                f"{resident_name}: 밀어붙이겠다는 말씀입니까? 어디 한번 해보십시오! 주민들의 화재 안전 우려와 쓰레기 무단투기로 인한 악취 문제가 해결되지 않는 한, 주민 전체의 물리적 진입 차단 서명 운동과 대대적인 시위로 끝까지 저지하겠습니다!\n\n",
+                f"{merchant_name}: 화재 및 위생 방지를 위해 최신 질식소화포와 강화형 소방 설비를 구비하겠다는데도 무조건 반대하시는 것은 상생을 외면한 님비입니다. 반경 내 {int(transit_score or 0):,}명의 유동인구를 위한 필수 시설을 막연한 공포 때문에 무산시킬 수는 없습니다!\n\n",
+                f"{resident_name}: 막연한 공포가 아닙니다! 누적 민원이 {int(complaint_score or 0)}건에 달하고 무단투기가 이미 {int(dumping_score or 0)}개소나 발생하는 환경에서 만에 하나 사고가 발생하면 누가 책임집니까? 주민들이 직접 상시 감찰하고 즉각 가동을 멈추게 할 강제 점검권이 없다면 타협은 불가능합니다!\n\n",
+                f"{coordinator_name}: 양측의 대립이 매우 격앙되어 타협점을 찾기 어려운 교착 상태입니다. 조정관으로서 파국을 막기 위한 강제 중재안을 내놓겠습니다. 첫째, 주민대표단에게 소방/위생 위반 시 가동을 정지시킬 수 있는 '상시 가동정지 요청 및 직접 점검권'을 부여하겠습니다. 둘째, 화재 예방용 질식소화포 and 강화형 소방 장비를 상인회 예산으로 추가 확충합니다. 셋째, 미관 및 분진 방지를 위해 1.5배 넓은 물리적 차폐막 설치를 보장합니다. 양측의 최종 의사를 밝혀주십시오.\n\n",
+                f"{merchant_name}: 가동정지권 부여는 영업에 큰 부담이지만, 상권이 아예 무너지는 것보다 안전 설비를 확충하고 이를 수용하는 편이 낫겠군요. 조건부 동의하겠습니다.\n\n",
+                f"{resident_name}: 주민 직접 감찰과 가동정지권, 질식소화포 같은 안전 대책이 공식 명문화된다면, 주민들도 일단 단체 행동을 유보하고 조건부로 수용하겠습니다.\n\n",
+                f"{coordinator_name}: 극한의 교착 상태에서 화재 안전 및 상시 점검권 조항을 통해 극적인 조건부 합의를 도출했습니다. 조정안을 최종 가결하며 토론을 마칩니다.\n\n",
+                f"[시스템] [모의 심의 완료]"
+            ]
+        else: # normal
+            dialogue = [
+                f"[시스템 알림] '{req.candidate_jibun}' 부지에 대한 일상 갈등 분석 모의 토론을 시작합니다. (갈등 강도: 보통 🟢, CSS: {req.candidate_css}점)\n\n",
+                f"{merchant_name}: 안녕하십니까. 상인회 대표입니다. 이번에 제안된 '{req.candidate_jibun}' 부지는 반경 300m 유동인구가 {int(transit_score or 0):,}명에 달해 입지 적합성이 우수합니다. 주민 편의 제공 및 상권 활성화를 위해 설치가 긍정적으로 검토되기를 희망하며, 가중치 분석({ahp_text}) 결과를 보아도 합당한 선택입니다.\n\n",
+                f"{resident_name}: 네, 상인회의 경제 활성화 의지에 공감합니다. 다만 관할동 내 누적 공공 민원이 {int(complaint_score or 0)}건이고 무단투기 우려도 있으므로 주거지 인근 위생 대책을 철저히 마련해주셨으면 합니다. 안전하고 위생적인 시설 관리가 보장된다면 무조건적인 반대는 하지 않겠습니다.\n\n",
+                f"{merchant_name}: 주민분들의 건설적인 지적에 감사드립니다. 시설 관리를 위한 스마트 자동 정화 및 정밀 여과 필터를 장착하고, CCTV를 연동해 위생 환경을 청결히 유지하겠습니다. 주민들이 안심하실 수 있도록 실시간 모니터링 수치도 투명하게 공개하겠습니다.\n\n",
+                f"{resident_name}: 스마트 정화 설비와 투명한 정보 공개가 약속된다면 주민대표단도 찬성 의견으로 선회할 수 있습니다. 적극적인 관리 및 주기적 위생 점검에 협조해주시기를 당부드립니다.\n\n",
+                f"{coordinator_name}: 양측의 원만한 상생과 협조 노력에 감사드립니다. 본 안건은 찬성 측의 '스마트 정화 필터 장착 및 주기적 점검'과 반대 측의 '투명 정보 수용'을 골자로 원만히 합의 타결되었음을 선포합니다.\n\n",
+                f"[시스템] [모의 심의 완료]"
+            ]
+
+        full_text = "".join(dialogue)
+        try:
+            save_debate_log_to_file(req, full_text)
+        except Exception as fs_err:
+            print(f"[File Log Save Error] {fs_err}")
+            
+        for segment in dialogue:
+            for char in segment:
+                yield f"data: {json.dumps({'text': char}, ensure_ascii=False)}\n\n"
+                await asyncio.sleep(0.02)
+            await asyncio.sleep(0.3)
+
+    client = get_async_openai_client()
+    if client:
+        async def event_generator():
+            try:
+                # 1. 시스템 프롬프트 이식 (최신 RAG 조례 배제 수치 & AHP 가중치 주입)
+                system_prompt = f"""
+당신은 지능형 다목적 스마트시티 입지 분석 SDSS AI 심의 기구입니다.
+대상 부지 지번: '{req.candidate_jibun}' (갈등 민감도 CSS: {req.candidate_css}점 / 강도: {req.intensity_level})
+시설 유형: {req.facility_type} ({req.inferred_purpose})
+가중치 세부 현황: {ahp_text}
+주변 관할동 인프라 현황: 반경 내 유동인구 {int(transit_score or 0):,}명, 누적 공공 민원 {int(complaint_score or 0)}건, 상습 무단투기 {int(dumping_score or 0)}개소
+조례 및 배제조건 컨텍스트:
+{rag_context if rag_context else '관련 자치구 이격거리 조례 규정 준수'}
+
+[페르소나 정의 및 발언 규칙]
+- 상인대표({merchant_name}): 상권 활성화, 유동인구 수용, 경제적 실익 적극 피력. (반드시 '{merchant_name}:' 으로 시작)
+- 주민대표({resident_name}): 주거 환경 파괴, 소음/악취, 무단투기 민원 우려 및 정주권 보호 강조. (반드시 '{resident_name}:' 으로 시작)
+- 갈등조정관({coordinator_name}): 중립적 지위에서 이격거리 후퇴, 주민 감찰권 부여, 안전설비 확충 등 상생 중재안 타결 도출. (반드시 '{coordinator_name}:' 으로 시작)
+
+[필수 이행사항]
+총 8턴의 티키타카 상호 대립 및 중재 논의를 진행하고 맨 마지막 줄에는 반드시 '[시스템] [모의 심의 완료]' 태그를 정확히 출력하십시오.
+"""
+                chat_history = [
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": f"'{req.candidate_jibun}' 부지에 대한 3자 모의 토론 심의를 시작해주십시오."}
+                ]
+
+                # 최초 시작 시스템 알림 덤프
+                init_msg = f"[시스템 알림] '{req.candidate_jibun}' 부지에 대한 갈등 분석 모의 토론을 시작합니다. (갈등 강도: {req.intensity_level}, CSS: {req.candidate_css}점)\n\n"
+                yield f"data: {json.dumps({'text': init_msg}, ensure_ascii=False)}\n\n"
+                full_text = init_msg
+
+                # 3자 모의 심의 토론 8턴 진행
+                turn_roles = [
+                    merchant_name, resident_name, merchant_name, resident_name,
+                    coordinator_name, merchant_name, resident_name, coordinator_name
+                ]
+
+                for role_name in turn_roles:
+                    chat_history.append({"role": "user", "content": f"다음은 {role_name} 실무 위원의 발언 순서입니다. 논거를 명확히 제시하십시오."})
+                    response = await client.chat.completions.create(
+                        model="gpt-4o-mini",
+                        messages=chat_history,
+                        temperature=0.7,
+                        max_tokens=300,
+                        stream=True
+                    )
+                    turn_text = ""
+                    async for chunk in response:
+                        content = chunk.choices[0].delta.content
+                        if content:
+                            if "[모의 심의 완료]" in content or "[모의 심의 완료]" in turn_text:
+                                content = content.replace("[모의 심의 완료]", "").replace("[모의심의완료]", "")
+                            if not turn_text and (content.strip().startswith("**") or content.strip().startswith(role_name)):
+                                continue
+                            turn_text += content
+                            if content:
+                                yield f"data: {json.dumps({'text': content}, ensure_ascii=False)}\n\n"
+
+                    chat_history.append({"role": "assistant" if role_name == coordinator_name else "user", "content": f"{role_name}: {turn_text}"})
+                    full_text += turn_text
+                    await asyncio.sleep(0.4)
+
+                completion_notice = "\n\n[시스템] [모의 심의 완료]"
+                yield f"data: {json.dumps({'text': completion_notice}, ensure_ascii=False)}\n\n"
+                full_text += completion_notice
+
+                try:
+                    save_debate_log_to_file(req, full_text)
+                    save_pipeline_log(db, 'STEP_5', '[DEBATE_COMPLETE]', {
+                        'target_jibun': getattr(req, 'candidate_jibun', ''),
+                        'facility_type': getattr(req, 'facility_type', ''),
+                        'intensity_level': getattr(req, 'intensity_level', ''),
+                        'status': '토론 완료',
+                        'audit_state': '실증 성공'
+                    })
+                except Exception as fs_err:
+                    print(f"[File Log Save Error] {fs_err}")
+
+            except Exception as e:
+                print(f"[OpenAI API 429 Quota Exhausted / Stream Error] {e} -> Fallback to mock_event_generator")
+                async for mock_chunk in mock_event_generator():
+                    yield mock_chunk
+
         return StreamingResponse(
             event_generator(), 
             media_type="text/event-stream",
             headers={"Cache-Control": "no-cache", "Connection": "keep-alive", "X-Accel-Buffering": "no"}
         )
     else:
-        async def mock_event_generator():
-            if req.intensity_level == "dangerous":
-                dialogue = [
-                    f"[시스템 알림] '{req.candidate_jibun}' 부지에 대한 갈등 분석 모의 토론을 시작합니다. (갈등 강도: 위험 🟡, CSS: {req.candidate_css}점)\n\n",
-                    f"{merchant_name}: 저희 상인회 입장에서는 이번 {req.facility_type} 설치가 매우 절박합니다. 현재 반경 내 유동인구 {int(transit_score or 0):,}명을 감당할 인프라가 전무해 상권 활성화의 기회를 놓치고 있습니다. 님비 정서로만 반대하지 마시고 상생을 논해야 합니다.\n\n",
-                    f"{resident_name}: 님비 정서가 아닙니다! 누적 민원이 {int(complaint_score or 0)}건에 달하고 이미 무단투기 단속구역이 {int(dumping_score or 0)}개소나 지정된 상황에서, 추가 오염원 유발 시설이 들어오면 주거 정주 환경은 완전히 파괴됩니다. 상인의 이익 때문에 주민의 건강권이 희생될 순 없습니다.\n\n",
-                    f"{merchant_name}: 주민대표님 말씀도 일리가 있지만, 무단투기 {int(dumping_score or 0)}개소 문제를 해결하기 위해 이번 시설 내부에 정밀 폐쇄회로(CCTV)와 수거함을 연동하면 오히려 슬럼화된 거리를 정화하는 계기가 될 수 있습니다. 무조건적인 반대보다는 이런 위생 보강책을 토대로 합의를 모색해야 합니다.\n\n",
-                    f"{resident_name}: CCTV 연동이나 필터 보강 약속은 설치 허가를 받기 위한 임시방편일 뿐, 관리 소홀로 필터 악취나 연기가 흘러나오면 그 피해는 고스란히 주민과 학생들에게 돌아갑니다. 시설 운영 시 발생하는 환경 위험 요소를 완벽히 통제할 구체적인 감시 권한을 주민단에 넘기지 않는다면 수용하기 어렵습니다.\n\n",
-                    f"{coordinator_name}: 두 분 모두 타당한 논거를 대고 계십니다. 상인의 유동인구 {int(transit_score or 0):,}명 대응 필요성과 주민의 {int(complaint_score or 0)}건 민원 우려를 극적으로 해소하기 위해 조정안을 제시합니다. 첫째, 교육기관 경계선 및 완충 구역 밖으로 최소 이격거리를 1.5배 추가 후퇴하겠습니다. 둘째, 주민자치위원회에 시설 상시 감찰 및 가동 정지 권한을 공식 부여하겠습니다. 수용 가능한 범위입니까?\n\n",
-                    f"{merchant_name}: 아쉬운 제약조건이지만 상권 활성화 and 공존을 위해 이격거리 후퇴 및 주민 위생 감찰권 중재안을 받아들이겠습니다.\n\n",
-                    f"{resident_name}: 조정관께서 주민 직접 통제 및 정지 권한을 명문화해 주신다면, 저희 주민대표단도 이 조건하에 상생 타협안을 수용하겠습니다.\n\n",
-                    f"{coordinator_name}: 팽팽했던 대립 속에서 양측의 한 걸음 양보로 상생 합의가 도출되었습니다. 완충 이격과 감찰 권한 이양을 골자로 본 의사결정을 타결합니다.\n\n",
-                    f"[시스템] [모의 심의 완료]"
-                ]
-            elif req.intensity_level == "extreme":
-                dialogue = [
-                    f"[시스템 알림] '{req.candidate_jibun}' 부지에 대한 긴급 갈등 분석 토론을 시작합니다. (갈등 강도: 매우 위험/교착 🔴, CSS: {req.candidate_css}점)\n\n",
-                    f"{merchant_name}: 저희는 더 이상 대화로 시간만 끌 수 없습니다. 상인 생존권이 붕괴되는 와중에 주민들의 일방적인 반대가 계속된다면, 상인회 차원의 단체 행동과 더불어 안전 규정 준수를 서약하고 설치를 추진할 수밖에 없습니다!\n\n",
-                    f"{resident_name}: 밀어붙이겠다는 말씀입니까? 어디 한번 해보십시오! 주민들의 화재 안전 우려와 쓰레기 무단투기로 인한 악취 문제가 해결되지 않는 한, 주민 전체의 물리적 진입 차단 서명 운동과 대대적인 시위로 끝까지 저지하겠습니다!\n\n",
-                    f"{merchant_name}: 화재 및 위생 방지를 위해 최신 질식소화포와 강화형 소방 설비를 구비하겠다는데도 무조건 반대하시는 것은 상생을 외면한 님비입니다. 반경 내 {int(transit_score or 0):,}명의 유동인구를 위한 필수 시설을 막연한 공포 때문에 무산시킬 수는 없습니다!\n\n",
-                    f"{resident_name}: 막연한 공포가 아닙니다! 누적 민원이 {int(complaint_score or 0)}건에 달하고 무단투기가 이미 {int(dumping_score or 0)}개소나 발생하는 환경에서 만에 하나 사고가 발생하면 누가 책임집니까? 주민들이 직접 상시 감찰하고 즉각 가동을 멈추게 할 강제 점검권이 없다면 타협은 불가능합니다!\n\n",
-                    f"{coordinator_name}: 양측의 대립이 매우 격앙되어 타협점을 찾기 어려운 교착 상태입니다. 조정관으로서 파국을 막기 위한 강제 중재안을 내놓겠습니다. 첫째, 주민대표단에게 소방/위생 위반 시 가동을 정지시킬 수 있는 '상시 가동정지 요청 및 직접 점검권'을 부여하겠습니다. 둘째, 화재 예방용 질식소화포 and 강화형 소방 장비를 상인회 예산으로 추가 확충합니다. 셋째, 미관 및 분진 방지를 위해 1.5배 넓은 물리적 차폐막 설치를 보장합니다. 양측의 최종 의사를 밝혀주십시오.\n\n",
-                    f"{merchant_name}: 가동정지권 부여는 영업에 큰 부담이지만, 상권이 아예 무너지는 것보다 안전 설비를 확충하고 이를 수용하는 편이 낫겠군요. 조건부 동의하겠습니다.\n\n",
-                    f"{resident_name}: 주민 직접 감찰과 가동정지권, 질식소화포 같은 안전 대책이 공식 명문화된다면, 주민들도 일단 단체 행동을 유보하고 조건부로 수용하겠습니다.\n\n",
-                    f"{coordinator_name}: 극한의 교착 상태에서 화재 안전 및 상시 점검권 조항을 통해 극적인 조건부 합의를 도출했습니다. 조정안을 최종 가결하며 토론을 마칩니다.\n\n",
-                    f"[시스템] [모의 심의 완료]"
-                ]
-            else: # normal
-                dialogue = [
-                    f"[시스템 알림] '{req.candidate_jibun}' 부지에 대한 일상 갈등 분석 모의 토론을 시작합니다. (갈등 강도: 보통 🟢, CSS: {req.candidate_css}점)\n\n",
-                    f"{merchant_name}: 안녕하십니까. 상인회 대표입니다. 이번에 제안된 '{req.candidate_jibun}' 부지는 반경 300m 유동인구가 {int(transit_score or 0):,}명에 달해 입지 적합성이 우수합니다. 주민 편의 제공 및 상권 활성화를 위해 설치가 긍정적으로 검토되기를 희망하며, 가중치 분석({ahp_text}) 결과를 보아도 합당한 선택입니다.\n\n",
-                    f"{resident_name}: 네, 상인회의 경제 활성화 의지에 공감합니다. 다만 관할동 내 누적 공공 민원이 {int(complaint_score or 0)}건이고 무단투기 우려도 있으므로 주거지 인근 위생 대책을 철저히 마련해주셨으면 합니다. 안전하고 위생적인 시설 관리가 보장된다면 무조건적인 반대는 하지 않겠습니다.\n\n",
-                    f"{merchant_name}: 주민분들의 건설적인 지적에 감사드립니다. 시설 관리를 위한 스마트 자동 정화 및 정밀 여과 필터를 장착하고, CCTV를 연동해 위생 환경을 청결히 유지하겠습니다. 주민들이 안심하실 수 있도록 실시간 모니터링 수치도 투명하게 공개하겠습니다.\n\n",
-                    f"{resident_name}: 스마트 정화 설비와 투명한 정보 공개가 약속된다면 주민대표단도 찬성 의견으로 선회할 수 있습니다. 적극적인 관리 및 주기적 위생 점검에 협조해주시기를 당부드립니다.\n\n",
-                    f"{coordinator_name}: 양측의 원만한 상생과 협조 노력에 감사드립니다. 본 안건은 찬성 측의 '스마트 정화 필터 장착 및 주기적 점검'과 반대 측의 '투명 정보 수용'을 골자로 원만히 합의 타결되었음을 선포합니다.\n\n",
-                    f"[시스템] [모의 심의 완료]"
-                ]
-
-            full_text = "".join(dialogue)
-            try:
-                save_debate_log_to_file(req, full_text)
-            except Exception as fs_err:
-                print(f"[File Log Save Error] {fs_err}")
-                
-            for segment in dialogue:
-                for char in segment:
-                    yield f"data: {json.dumps({'text': char}, ensure_ascii=False)}\n\n"
-                    await asyncio.sleep(0.02)
-                await asyncio.sleep(0.3)
         return StreamingResponse(
             mock_event_generator(), 
             media_type="text/event-stream",

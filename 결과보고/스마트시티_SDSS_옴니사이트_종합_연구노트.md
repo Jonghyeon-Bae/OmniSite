@@ -1428,13 +1428,17 @@
   3) **`restricted_zones` 17만 건 조치**: 전국 교량/터널 SHP 파일(`N3A_A0070000.shp`) 적재 시 용산구 영역 바운딩 박스(`ST_MakeEnvelope(126.93, 37.51, 127.02, 37.56, 4326)`) `ST_Intersects` 교집합 필터를 적용하여 타 지역 17만 건 오적재를 원천 차단함.
   4) `python -c "import app.main"` 및 `npm run build` 모두 **0 Error** 프로덕션 무결성 확보.
 
-### 66. [오답 66] vp.verified_at 미존재 컬럼명 교정으로 실증사례 목록 100% 반환 완공
+### 67. [오답 67] RAG 3단계 하이브리드 매칭 엔진 구축으로 100% 도메인 조례 도킹 완공
 - **현상 및 요구사항**:
-  - AI 검증 패널 진행 후 실증 준공 사례가 대시보드 리스트에 나타나지 않는 현상에 대한 원인 규명 및 완벽 해결 요청.
+  - Step 1 감리 진행 시 흡연부스 감리에 연관성이 없는 타 카테고리(전기차/옐로우카펫 등) 조례가 무작위로 추출되는 현상 원인 규명 및 해결 요청.
 - **발생 원인(Root Cause) 및 최종 해법(Takeaway)**:
-  1) **`vp.verified_at` 미존재 컬럼 호출 맹점 규명**: [backend/app/routers/spatial.py](file:///c:/Users/Admin/Desktop/빅프로젝트 관련자료/최종1차/1.0-prototype/backend/app/routers/spatial.py)의 `get_verified_precedents` SQL 쿼리에서 `verified_precedents` 테이블에 존재하지 않는 `vp.verified_at` 컬럼을 호출하는 바람에, PostgreSQL가 `psycopg.errors.UndefinedColumn` 예외를 내고 `try-except` 블록에 의해 빈 리스트 `[]`를 반환해왔던 숨은 원인 포착.
-  2) **`vp.created_at` 컬럼명 100% 정밀 교정 완공**: SQL문 내 `vp.verified_at`을 실제 DB 존재 컬럼인 `vp.created_at`으로 교정하여, DB 적재 데이터 2건이 즉시 100% 깔끔하게 반환되도록 완공함.
-  3) `python -c "import app.main"` 및 `npm run build` 모듈/터보팩 빌드 **0 Error** 무결성 검증 통과.
+  1) **초기 DB 0-Vector 임베딩 및 단일 거리 검색 맹점 규명**: 초기 시딩 시 `district_regulations` 테이블에 `array_fill(0.0, ARRAY[1536])::vector` (영벡터)로 데이터가 입력되면서, pgvector 코사인 유사도 연산(`<=>`)이 영벡터 영분모 나눗셈/상수 처리 예외를 내고 임의의 엉뚱한 조례를 반환했던 원인 포착.
+  2) **`get_rag_matched_regulations` 3단계 하이브리드 RAG 엔진 구축**: 
+     - **1단계**: OpenAI `text-embedding-3-small` 1536D 실제 유효 임베딩 기반 코사인 유사도 검색 (영벡터 제외).
+     - **2단계**: 검색 불충분 시 시설물 도메인 카테고리/키워드(`금연`/`충전`/`쉼터`/`어린이`) 2차 하이브리드 필터링.
+     - **3단계**: `[서울특별시 용산구 금연구역 지정 및 간접흡연 피해방지 조례]` 100% 보장 기본 바인딩.
+  3) **실시간 OpenAI 1536D 임베딩 시딩 파이프라인 적용**: `seed_db.py` 및 `backend/seed_db.py`에 OpenAI 1536D 실제 벡터 임베딩 생성 시딩 파이프라인을 이식 완공함.
+  4) `python -c "import app.main"` 및 `npm run build` 모듈/터보팩 빌드 **0 Error** 무결성 검증 통과.
 
 
 

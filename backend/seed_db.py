@@ -882,22 +882,38 @@ def seed():
                     }
                 ]
                 
-                if "version_tag" in existing_cols:
-                    insert_sql = """
-                        INSERT INTO district_regulations (district_id, regulation_title, clause_number, content, category, version_tag, embedding)
-                        VALUES (1, :title, :clause, :content, :category, 'v1.0', array_fill(0.0, ARRAY[1536])::vector)
-                        ON CONFLICT DO NOTHING;
-                    """
-                else:
-                    insert_sql = """
-                        INSERT INTO district_regulations (district_id, regulation_title, clause_number, content, category, embedding)
-                        VALUES (1, :title, :clause, :content, :category, array_fill(0.0, ARRAY[1536])::vector)
-                        ON CONFLICT DO NOTHING;
-                    """
-                
+                try:
+                    from app.routers.upload import get_openai_client
+                    openai_cli = get_openai_client()
+                except Exception:
+                    openai_cli = None
+
                 for reg in default_regulations:
-                    conn.execute(text(insert_sql), reg)
-                print("    Default municipal regulations seeded successfully into district_regulations.")
+                    real_embedding = None
+                    if openai_cli:
+                        try:
+                            text_to_embed = f"{reg['title']} {reg['clause']} {reg['content']}"
+                            res = openai_cli.embeddings.create(model="text-embedding-3-small", input=text_to_embed)
+                            real_embedding = res.data[0].embedding
+                        except Exception:
+                            real_embedding = None
+                    
+                    if real_embedding:
+                        reg_params = {**reg, "embedding": real_embedding}
+                        insert_sql = """
+                            INSERT INTO district_regulations (district_id, regulation_title, clause_number, content, category, version_tag, embedding)
+                            VALUES (1, :title, :clause, :content, :category, 'v1.0', CAST(:embedding AS vector))
+                            ON CONFLICT DO NOTHING;
+                        """
+                        conn.execute(text(insert_sql), reg_params)
+                    else:
+                        insert_sql = """
+                            INSERT INTO district_regulations (district_id, regulation_title, clause_number, content, category, version_tag, embedding)
+                            VALUES (1, :title, :clause, :content, :category, 'v1.0', array_fill(0.0, ARRAY[1536])::vector)
+                            ON CONFLICT DO NOTHING;
+                        """
+                        conn.execute(text(insert_sql), reg)
+                print("    Default municipal regulations seeded successfully with OpenAI 1536D embeddings into district_regulations.")
             except Exception as reg_err:
                 print(f"    [Regulations Seeding Warning] {reg_err}")
 

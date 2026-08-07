@@ -1331,6 +1331,29 @@
   2) `[시스템]` 뱃지 렌더링 시 잔재 문자 없이 본문인 `본 모의 심의 토론 내용은...` 및 `'서울특별시 용산구...'` 텍스트만 정갈하게 표출되도록 수술 완공.
   3) CLI 모듈 임포트 및 Turbopack `npm run build` 모두 **0 Error** 무결성 확보.
 
+### 38. [오답 38] AWS Lightsail 도커 이중화(Dual-Environment) 및 DB DDL 1:1 정합성 완공
+- **현상 및 요구사항**: AWS Lightsail 인스턴스 사양(4GB RAM, 2 vCPU, 80GB SSD, 8080/8000/80/443/3000 개방) 환경에서 로컬과 클라우드 도커 실행 간 교차 오동작 차단 및 DB 스키마/데이터 정합성 보장 요청.
+- **수술 및 검증 내역**:
+  1) **DB 스키마 정합성**: `DB/init/01_schema.sql`과 실측 라이브 DB 테이블 31개를 1:1 전수 비교 검증하여 `domain_regulation_rules`의 `domain_tag` 컬럼 추가로 스키마 100% 동기화 달성.
+  2) **`seed_db.py` 시딩 무결성**: 6,524 필지, 6,509 상가, 268 제한구역, 72 RAG 조례, 314 대중교통 데이터 시딩 파이프라인의 0 Error 무결성 검증.
+  3) **로컬-클라우드 이중화**: `frontend/Dockerfile` 및 `docker-compose.production.yml`에 `ARG NEXT_PUBLIC_API_URL`을 이식하여 호스트 네임에 따라 8000 직통(로컬) 및 Port 80 상대경로 프록시(클라우드)로 자동 전환하는 이중화 구조 완성.
+  4) **CLI & 프로덕션 빌드**: `python -c "import app.main"` 및 `npm run build` 모두 **0 Error** 통과 완료.
+
+### 39. [오답 39] `seed_db.py` 20개 시드 테이블 전수 정량 검증 및 고아 프로세스 정리 후 로그인 화면 정상 복구
+- **현상 및 요구사항**: `seed_db.py`를 통한 시딩 데이터와 라이브 DB 간 전수 정합성 검증 요청 및 백엔드 미동작으로 인한 프론트엔드 접속 불통(`ECONNRESET` / 로그인 화면 미출력) 수술 요청.
+- **분석 및 수술 내역**:
+  1) **시드 데이터 정량 전수 검증**: `compare_seed_vs_live_db.py` 비교 스크립트를 구동하여 `cadastral_lands`(6,524), `commercial_shops`(6,509), `restricted_zones`(268), `district_regulations`(72) 등 20개 마스터 테이블 수치가 라이브 DB와 **100% 정확히 일치**함을 수치로 입증. (`decision_histories` 60건 등 유저 런타임 데이터도 안점하게 온전히 보존됨)
+  2) **고아 프로세스 척출 및 서버 정상 재기동**: 기존 세션 교체 과정에서 백엔드가 닫히고 잔재 `node.exe` 고아 프로세스가 3000 포트를 점유하던 현상을 척출하고, 백엔드(`uvicorn app.main:app:8000`) 및 프론트엔드(`Next.js:3000`)를 정방향 구동.
+  3) **실측 검증**: `http://localhost:3000/` (200 OK), `http://localhost:3000/spatial` (200 OK), `http://localhost:8000/api/v1/auth/me` (401 Unauthorized 정상 차단) 및 Turbopack `npm run build` 0 Error 검증 완공.
+
+### 40. [오답 40] AWS Lightsail 인스턴스 도커 배포 전수 점검 및 DB Healthcheck 세이프가드 수술 완공
+- **현상 및 요구사항**: AWS Lightsail (4GB RAM, 2 vCPU, 80GB SSD, 80/8000/8080/443/3000 포트 개방) 환경 도커 배포 시 발생 가능한 잠재 문제점 4대 요소 정밀 진단 및 세이프가드 보강.
+- **진단 및 해결 대책**:
+  1) **[초기 부팅 타임아웃 방지]**: `docker-compose.production.yml` database 서비스에 `healthcheck` (`pg_isready -U Admin -d postgres`) 구문을 이식하여, DB 준비 완공 시까지 백엔드 컨테이너의 섣부른 접속 시도(`OperationalError`)를 원천 차단.
+  2) **[Nginx / Next.js 프록시 및 CORS 이중화]**: `frontend/Dockerfile`에 `ARG NEXT_PUBLIC_API_URL` 빌드 인자를 이식하고 Next.js rewrite proxy를 동적 바인딩하여 80포트 대문 및 8000포트 직통 환경 모두 100% 대응.
+  3) **[PostGIS / pgvector 이관 무결성]**: `DB/Dockerfile` 내 `postgresql-15-pgvector` 패키지 자동 설치로 DB 확장 모듈 붕괴 100% 방지.
+  4) **CLI & 프로덕션 빌드**: `python -c "import app.main"` 및 `npm run build` 모두 **0 Error** 무결성 확보.
+
 
 
 

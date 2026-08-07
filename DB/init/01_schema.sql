@@ -311,8 +311,10 @@ CREATE TABLE IF NOT EXISTS decision_histories (
 CREATE TABLE IF NOT EXISTS domain_regulation_rules (
     id SERIAL PRIMARY KEY,
     facility_type VARCHAR(100) UNIQUE NOT NULL,
+    domain_tag VARCHAR(100),
     rules_json JSONB,
     rules_metadata JSONB,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 

@@ -182,21 +182,17 @@ def seed():
             conn.execute(text("DROP INDEX IF EXISTS idx_regulations_district_category_vector;"))
             conn.execute(text("CREATE INDEX IF NOT EXISTS idx_regulations_district_category ON district_regulations (district_id, category);"))
             
-            print("[2] Truncating target tables...")
-            conn.execute(text("""
-                TRUNCATE TABLE 
-                    transit_passengers, 
-                    transit_stations, 
-                    civil_complaints, 
-                    illegal_dumping_zones, 
-                    population_stats, 
-                    age_demographics, 
-                    cadastral_lands, 
-                    restricted_zones, 
-                    dong_boundaries,
-                    commercial_shops
-                CASCADE;
-            """))
+            print("[2] Clearing target tables safely...")
+            tables_to_clear = [
+                "transit_passengers", "transit_stations", "civil_complaints",
+                "illegal_dumping_zones", "population_stats", "age_demographics",
+                "cadastral_lands", "restricted_zones", "dong_boundaries", "commercial_shops"
+            ]
+            for tbl in tables_to_clear:
+                try:
+                    conn.execute(text(f"DELETE FROM {tbl};"))
+                except Exception as t_err:
+                    print(f"    [Table Clear Skip] {tbl}: {t_err}")
             
             print("[3] Seeding districts...")
             district_id = conn.execute(text("""
@@ -888,14 +884,18 @@ def seed():
                 except Exception:
                     openai_cli = None
 
-                for reg in default_regulations:
+                for idx, reg in enumerate(default_regulations, 1):
                     real_embedding = None
                     if openai_cli:
                         try:
                             text_to_embed = f"{reg['title']} {reg['clause']} {reg['content']}"
-                            res = openai_cli.embeddings.create(model="text-embedding-3-small", input=text_to_embed)
+                            res = openai_cli.embeddings.create(
+                                model="text-embedding-3-small", 
+                                input=text_to_embed,
+                                timeout=5.0
+                            )
                             real_embedding = res.data[0].embedding
-                        except Exception:
+                        except Exception as embed_err:
                             real_embedding = None
                     
                     if real_embedding:
@@ -913,7 +913,8 @@ def seed():
                             ON CONFLICT DO NOTHING;
                         """
                         conn.execute(text(insert_sql), reg)
-                print("    Default municipal regulations seeded successfully with OpenAI 1536D embeddings into district_regulations.")
+                    conn.commit()
+                print("    Default municipal regulations seeded successfully into district_regulations.")
             except Exception as reg_err:
                 print(f"    [Regulations Seeding Warning] {reg_err}")
 

@@ -100,6 +100,25 @@ def init_db_schema():
                 conn.commit()
             except Exception:
                 pass
+
+            # [v4.9.47] district_regulations 영벡터(Zero Vector) 감지 시 OpenAI 1536D 실측 임베딩 자동 치유
+            try:
+                import os
+                api_key = os.getenv("OPENAI_API_KEY")
+                if api_key:
+                    from openai import OpenAI
+                    cli = OpenAI(api_key=api_key)
+                    rows = conn.execute(text("SELECT id, regulation_title, clause_number, content FROM district_regulations WHERE embedding = array_fill(0.0, ARRAY[1536])::vector OR embedding IS NULL")).fetchall()
+                    for r in rows:
+                        txt = f"{r[1]} {r[2] or ''} {r[3]}"
+                        res = cli.embeddings.create(model="text-embedding-3-small", input=txt, timeout=5.0)
+                        vec = res.data[0].embedding
+                        conn.execute(text("UPDATE district_regulations SET embedding = CAST(:vec AS vector) WHERE id = :id"), {"vec": vec, "id": r[0]})
+                    conn.commit()
+                    if rows:
+                        print(f"[DB Startup Auto-Heal] Healed {len(rows)} district_regulations zero-vectors with real OpenAI 1536D embeddings.")
+            except Exception as heal_err:
+                print(f"[DB Startup Auto-Heal Warning] {heal_err}")
     except Exception as e:
         print(f"[DB Startup Warning] DDL init warning: {e}")
 

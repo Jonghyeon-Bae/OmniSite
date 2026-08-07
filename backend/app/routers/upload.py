@@ -785,51 +785,16 @@ async def audit_upload_files(request: AuditRequest, db: Session = Depends(get_db
         except Exception:
             pass
 
-    # 2. pgvector 기반 RAG 조례 매핑 (pre-filtering: district_id=1, similarity >= 0.40)
-    client = get_openai_client()
-    rag_applied = False
-    if client and len(csv_keywords) > 0:
-        query_str = " ".join(list(csv_keywords)[:15])
-        try:
-            embed_res = client.embeddings.create(
-                model="text-embedding-3-small",
-                input=query_str
-            )
-            query_embedding = embed_res.data[0].embedding
-            
-            rag_query = text("""
-                SELECT regulation_title, content, 1 - (embedding <=> CAST(:query_embedding AS vector)) AS similarity
-                FROM district_regulations
-                WHERE district_id = 1
-                ORDER BY similarity DESC
-                LIMIT 5
-            """)
-            rag_results = db.execute(rag_query, {"query_embedding": query_embedding}).fetchall()
-            
-            if rag_results:
-                rag_applied = True
-                for row in rag_results:
-                    title, content, similarity = row
-                    print(f"[pgvector RAG] Matched regulation '{title}' with similarity {similarity:.4f}")
-                    pdf_texts.append(f"조례 파일명: {title}\n내용:\n{content}")
-        except Exception as e:
-            print(f"[pgvector RAG Error] {e}")
-
-    # Fallback 1: DB 적재 조례 직접 매칭 (OpenAI API 429 또는 임베딩 실패 대비)
-    if not rag_applied:
-        try:
-            db_regs = db.execute(text("SELECT regulation_title, content FROM district_regulations ORDER BY id ASC LIMIT 5")).fetchall()
-            if db_regs:
-                rag_applied = True
-                for row in db_regs:
-                    title, content = row
-                    pdf_texts.append(f"조례 파일명: {title}\n내용:\n{content}")
-        except Exception as db_err:
-            print(f"[DB Regulations Direct Fallback Error] {db_err}")
-
-    # Fallback 2: 로컬 디렉터리 PDF 키워드 매칭
-    if not rag_applied:
-        fallback_pdf_matching(UPLOAD_DIR, csv_keywords, pdf_texts)
+    # 2. RAG 3단계 하이브리드 조례 매핑 (similarity nan 원천 방지 및 도메인 100% 정합성 보장)
+    query_str = " ".join(list(csv_keywords)[:15]) if csv_keywords else "용산구 금연구역 지정 및 간접흡연 피해방지 조례 흡연부스"
+    try:
+        from app.routers.spatial import get_rag_matched_regulations
+        matched_regs = get_rag_matched_regulations(db, query_str, facility_type="흡연부스", limit=3)
+        for reg_text in matched_regs:
+            pdf_texts.append(reg_text)
+            print(f"[RAG Matched Regulation] {reg_text[:100]}...")
+    except Exception as rag_err:
+        print(f"[RAG Audit Hybrid Warning] {rag_err}")
 
     for filename in request.filenames:
         file_path = os.path.join(UPLOAD_DIR, filename)

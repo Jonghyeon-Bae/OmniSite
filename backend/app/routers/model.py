@@ -254,7 +254,45 @@ def background_model_train(domain="city_feature"):
             print(f"[ML Process Feedback Join] PNU: {pnu_val}, Status: {status_val} -> Labeled as {label_val}")
         
         if len(labeled_rows) < 10:
-            raise ValueError(f"학습에 필요한 최소 샘플 수가 부족합니다. (가용 레이블 행 수: {len(labeled_rows)}개)")
+            # [Dynamic Seeding Fail-safe Fallback]
+            print(f"[Warning] DB training samples ({len(labeled_rows)}) too small. Forcing CSV fallback...")
+            fallback_paths = [
+                os.path.join(base_dir, "data", "processed", "css_train_dataset.csv"),
+                "data/processed/css_train_dataset.csv",
+                "backend/data/processed/css_train_dataset.csv"
+            ]
+            loaded_df = None
+            for fp in fallback_paths:
+                if os.path.exists(fp):
+                    try:
+                        loaded_df = pd.read_csv(fp, encoding='utf-8-sig')
+                        print(f"Successfully loaded fallback dataset from: {fp}")
+                        break
+                    except Exception as csv_err:
+                        print(f"Fallback CSV read warning: {csv_err}")
+                        continue
+            
+            if loaded_df is not None and len(loaded_df) >= 10:
+                labeled_rows = []
+                for idx_fb, r_val in loaded_df.iterrows():
+                    labeled_rows.append({
+                        "parcel_id": 99999,
+                        "pnu": f"11170{idx_fb + 1000000000:014d}",
+                        "jibun": "서울특별시 용산구 fallback",
+                        "land_use_code": r_val.get("land_use_code", "대"),
+                        "ownership_type": r_val.get("ownership_type", "국유지"),
+                        "area": float(r_val.get("area", 100.0)),
+                        "lng": 126.97,
+                        "lat": 37.53,
+                        "dist_to_school": float(r_val.get("dist_to_school", 999.0)),
+                        "dist_to_childcare_center": float(r_val.get("dist_to_childcare", 999.0)),
+                        "dist_to_nosmoking_zone": float(r_val.get("dist_to_nosmoking_zone", 999.0)) if "dist_to_nosmoking_zone" in r_val else 999.0,
+                        "complaint_count": int(r_val.get("complaint_count", 0) if "complaint_count" in r_val else 10),
+                        "building_use": "미지정",
+                        "target_label": int(r_val.get("target_label", 0))
+                    })
+            else:
+                raise ValueError(f"학습에 필요한 최소 샘플 수가 부족하며 백업 데이터셋도 유실되었습니다. (가용 레이블 행 수: {len(labeled_rows)}개)")
             
         df = pd.DataFrame(labeled_rows)
         

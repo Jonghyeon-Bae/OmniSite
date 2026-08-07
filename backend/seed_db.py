@@ -299,8 +299,7 @@ def seed():
             # 4. Load parcels and seed cadastral_lands
             print("[5] Seeding cadastral_lands...")
             try:
-                parcel_headers, parcel_rows = load_csv_data(sources["parcels"])
-                parcel_count = 0
+                parcel_headers, parcel_rows = load_csv_data(sources["parcels"], ["utf-8-sig", "utf-8"])
                 parcel_count = 0
                 for idx, row in enumerate(parcel_rows):
                     if not row or len(row) < 8:
@@ -347,7 +346,7 @@ def seed():
                 # [5.2] Update ownership_type using national_property CSV
                 print("[5.2] Updating cadastral_lands ownership using national_property...")
                 try:
-                    np_headers, np_rows = load_csv_data(sources["national_property"])
+                    np_headers, np_rows = load_csv_data(sources["national_property"], ["cp949", "euc-kr"])
                     addr_idx = np_headers.index("소재지")
                     national_jibuns = set()
                     for r in np_rows:

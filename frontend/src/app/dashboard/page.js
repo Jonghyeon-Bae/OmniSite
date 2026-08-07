@@ -223,13 +223,29 @@ export default function Dashboard() {
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [selectedHistory, setSelectedHistory] = useState(null);
 
-  // 과거 의사결정 심의 이력 실제 DB 조회 API 연계
+  // 과거 의사결정 심의 이력 실제 DB 조회 API 연계 (v4.9.43 무결성 직통 우회 폴백 보강)
   const fetchHistory = async () => {
     try {
-      const res = await apiFetch('/api/v1/spatial/history');
-      if (res.ok) {
+      let res = null;
+      try {
+        res = await apiFetch('/api/v1/spatial/history');
+      } catch (_) {}
+
+      if (!res || !res.ok) {
+        if (typeof window !== 'undefined') {
+          const host = window.location.hostname;
+          const protocol = window.location.protocol;
+          const envApiUrl = (process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_BACKEND_API_URL || '').replace(/\/$/, '');
+          const directUrl = envApiUrl ? `${envApiUrl}/api/v1/spatial/history` : `${protocol}//${host}:8000/api/v1/spatial/history`;
+          try {
+            res = await fetch(directUrl);
+          } catch (_) {}
+        }
+      }
+
+      if (res && res.ok) {
         const data = await res.json();
-        setHistoryList(data);
+        setHistoryList(Array.isArray(data) ? data : []);
       }
     } catch (err) {
       console.error("Failed to fetch history:", err);
@@ -256,13 +272,29 @@ export default function Dashboard() {
     }
   };
 
-  // RAG 실증사례 목록 조회 API 연계
+  // RAG 실증사례 목록 조회 API 연계 (v4.9.43 무결성 직통 우회 폴백 보강)
   const fetchPrecedents = async () => {
     try {
-      const res = await apiFetch('/api/v1/spatial/precedents');
-      if (res.ok) {
+      let res = null;
+      try {
+        res = await apiFetch('/api/v1/spatial/precedents');
+      } catch (_) {}
+
+      if (!res || !res.ok) {
+        if (typeof window !== 'undefined') {
+          const host = window.location.hostname;
+          const protocol = window.location.protocol;
+          const envApiUrl = (process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_BACKEND_API_URL || '').replace(/\/$/, '');
+          const directUrl = envApiUrl ? `${envApiUrl}/api/v1/spatial/precedents` : `${protocol}//${host}:8000/api/v1/spatial/precedents`;
+          try {
+            res = await fetch(directUrl);
+          } catch (_) {}
+        }
+      }
+
+      if (res && res.ok) {
         const data = await res.json();
-        setPrecedentList(data);
+        setPrecedentList(Array.isArray(data) ? data : []);
       }
     } catch (err) {
       console.error("Failed to fetch precedents:", err);

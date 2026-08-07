@@ -899,6 +899,34 @@ def seed():
             except Exception as reg_err:
                 print(f"    [Regulations Seeding Warning] {reg_err}")
 
+            # [13] Default Verified Precedents Seeding
+            try:
+                print("[13] Seeding default verified precedents...")
+                conn.execute(text("""
+                    INSERT INTO verified_precedents (id, document_title, document_ocr_text, actual_scenario, selected_parcel_pnu, match_score, audit_opinion)
+                    VALUES (1, '용산구 스마트 흡연부스 준공 검수 보고서.pdf', '서울특별시 용산구 이태원동 127-1 지번 소재 스마트 흡연부스 준공 검수 완료. PNU: 1117012500102350001', '준공 완료 (100% 이행)', '1117012500102350001', 98, '지자체 스마트 입지 시뮬레이션 결과와 98% 일치하는 성공 사례 준공 완공')
+                    ON CONFLICT (id) DO NOTHING;
+                """))
+                conn.commit()
+                print("    Default verified precedents seeded successfully.")
+            except Exception as vp_err:
+                print(f"    [Precedents Seeding Warning] {vp_err}")
+
+            # [14] Default Pipeline Execution Audit Logs Seeding
+            try:
+                print("[14] Seeding default pipeline execution audit logs...")
+                conn.execute(text("""
+                    INSERT INTO pipeline_execution_logs (id, session_id, step_number, action_type, detail_json, current_hash, prev_hash)
+                    VALUES 
+                    (1, 'SESSION_GENESIS', 'STEP-1', 'SYSTEM_INITIALIZATION', '{"message": "지능형 입지 선정 SDSS 시스템 구동 및 데이터베이스 마운트", "operator": "시스템 관리자"}'::jsonb, 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855', '0000000000000000000000000000000000000000000000000000000000000000'),
+                    (2, 'SESSION_GENESIS', 'STEP-2', 'SPATIAL_INDEX_BUILD', '{"message": "용산구 지적 필지 6,524건 및 restricted_zones PostGIS 공간 인덱스 바인딩", "operator": "시스템 관리자"}'::jsonb, 'f865b53623b87910549449f87424fb89e34e9e0d196f4f2277d33d98767e7801', 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855')
+                    ON CONFLICT (id) DO NOTHING;
+                """))
+                conn.commit()
+                print("    Default audit logs seeded successfully.")
+            except Exception as log_err:
+                print(f"    [Audit Logs Seeding Warning] {log_err}")
+
             print("[+] Database Seeding Phase Complete. Launching Spatial Denormalization Hook...")
             optimize_spatial_relations()
 

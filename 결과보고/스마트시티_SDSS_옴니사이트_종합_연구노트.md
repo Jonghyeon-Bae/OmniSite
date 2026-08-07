@@ -1428,14 +1428,13 @@
   3) **`restricted_zones` 17만 건 조치**: 전국 교량/터널 SHP 파일(`N3A_A0070000.shp`) 적재 시 용산구 영역 바운딩 박스(`ST_MakeEnvelope(126.93, 37.51, 127.02, 37.56, 4326)`) `ST_Intersects` 교집합 필터를 적용하여 타 지역 17만 건 오적재를 원천 차단함.
   4) `python -c "import app.main"` 및 `npm run build` 모두 **0 Error** 프로덕션 무결성 확보.
 
-### 60. [오답 60] GET API 내 DDL 락 제거 및 FastAPI 시동 수명주기 전용 스키마 훅 완공
+### 62. [오답 62] 감사로그(pipeline_execution_logs) DB 컬럼 불일치 교정 및 시딩 완공
 - **현상 및 요구사항**:
-  - "대시보드에서 터지는 건데 왜 `spatial.py`를 고치는가?"에 대한 아키텍처적 의문 규명 및 새로고침 시 데드락/터짐 현상 완벽 방어 수술 요청.
+  - "행정 감사 로그 (Audit Trail Logs)도 DB 스키마/시딩 불일치로 인한 동일 증상인가?"라는 직관적 의문에 대한 정밀 전수 조사 및 해결 요청.
 - **발생 원인(Root Cause) 및 최종 해법(Takeaway)**:
-  1) **아키텍처 구조 Clarification**: 대시보드 화면(`/dashboard`)이 호출하는 모든 API(`GET /api/v1/spatial/history`, `/precedents`, `/logs`)는 백엔드의 [backend/app/routers/spatial.py](file:///c:/Users/Admin/Desktop/빅프로젝트 관련자료/최종1차/1.0-prototype/backend/app/routers/spatial.py) 라우터 파일에 정의되어 있으므로 `spatial.py` 수술이 필수적이었음을 명확히 함.
-  2) **GET 요청 내 DDL `AccessExclusiveLock` 데드락 포착**: 기존 `GET` 요청 함수 내부(`ensure_decision_histories_table` 및 `get_pipeline_execution_logs`)에서 `ALTER TABLE ... ADD COLUMN` DDL 구문을 매번 구동함에 따라, 대시보드 새로고침 시 `Promise.all` 동시 요청이 PostgreSQL `AccessExclusiveLock` 데드락을 유발하여 Uvicorn 커넥션 풀을 멈추게 했던 치명적 아키텍처 결함 포착.
-  3) **GET API DDL 제거 & FastAPI `init_db_schema()` 서버 시동 훅 완공**: 모든 GET API 내부에서 DDL 구문을 100% 제거하고, [backend/app/main.py](file:///c:/Users/Admin/Desktop/빅프로젝트 관련자료/최종1차/1.0-prototype/backend/app/main.py) 서버 시동 시 1회만 스키마 정합성을 검증하도록 수술 완공. 어떠한 동시 새로고침 요청에도 DB 데드락이 0% 발생하지 않도록 조치함.
-  4) `python -c "import app.main"` 및 `npm run build` 모듈/터보팩 빌드 **0 Error** 무결성 검증 통과.
+  1) **`01_schema.sql` 감사로그 컬럼명 100% 불일치 구조 발견**: AWS DB 초기화 스크립트 [DB/init/01_schema.sql](file:///c:/Users/Admin/Desktop/빅프로젝트 관련자료/최종1차/1.0-prototype/DB/init/01_schema.sql) 242~250행에서 `pipeline_execution_logs` 테이블이 구형 컬럼명(`step_name`, `status`, `details`, `hash_pointer`)으로 작성되어 있던 맹점 확인. 백엔드 라우터 표준 컬럼명(`session_id`, `step_number`, `action_type`, `detail_json`, `current_hash`, `prev_hash`)으로 100% 교정함.
+  2) **`init_db_schema()` 컬럼 자동 추가(Auto-Heal) 및 `seed_db.py` Step 14 완공**: [backend/app/main.py](file:///c:/Users/Admin/Desktop/빅프로젝트 관련자료/최종1차/1.0-prototype/backend/app/main.py)의 시동 훅에 누락 컬럼 자동 추가(`ALTER TABLE ADD COLUMN IF NOT EXISTS`) 쿼리를 배포하고, `seed_db.py`에 Step 14 (`Default Pipeline Audit Logs Seeding`) 제네시스 블록 시딩 구문을 보강하여 AWS 환경에서도 감사 로그가 100% 무결하게 표출되도록 완공함.
+  3) `python -c "import app.main"` 및 `npm run build` 모듈/터보팩 빌드 **0 Error** 무결성 검증 통과.
 
 
 

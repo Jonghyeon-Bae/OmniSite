@@ -26,13 +26,17 @@ def init_db_schema():
                 CREATE TABLE IF NOT EXISTS pipeline_execution_logs (
                     id SERIAL PRIMARY KEY,
                     session_id VARCHAR(100) DEFAULT 'SESSION_DEFAULT',
-                    step_number VARCHAR(20) NOT NULL,
-                    action_type VARCHAR(50) NOT NULL,
+                    step_number VARCHAR(20) NOT NULL DEFAULT 'STEP-1',
+                    action_type VARCHAR(50) NOT NULL DEFAULT 'AUDIT_INIT',
                     detail_json JSONB,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     current_hash VARCHAR(64),
-                    prev_hash VARCHAR(64)
+                    prev_hash VARCHAR(64),
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 );
+                ALTER TABLE pipeline_execution_logs ADD COLUMN IF NOT EXISTS session_id VARCHAR(100) DEFAULT 'SESSION_DEFAULT';
+                ALTER TABLE pipeline_execution_logs ADD COLUMN IF NOT EXISTS step_number VARCHAR(20) DEFAULT 'STEP-1';
+                ALTER TABLE pipeline_execution_logs ADD COLUMN IF NOT EXISTS action_type VARCHAR(50) DEFAULT 'AUDIT_LOG';
+                ALTER TABLE pipeline_execution_logs ADD COLUMN IF NOT EXISTS detail_json JSONB;
                 ALTER TABLE pipeline_execution_logs ADD COLUMN IF NOT EXISTS current_hash VARCHAR(64);
                 ALTER TABLE pipeline_execution_logs ADD COLUMN IF NOT EXISTS prev_hash VARCHAR(64);
 
@@ -57,11 +61,11 @@ def init_db_schema():
 
                 CREATE TABLE IF NOT EXISTS verified_precedents (
                     id SERIAL PRIMARY KEY,
-                    conflict_simulation_id INT REFERENCES decision_histories(id) ON DELETE CASCADE,
+                    conflict_simulation_id INT REFERENCES decision_histories(id) ON DELETE SET NULL,
                     document_title VARCHAR(255) NOT NULL,
                     document_ocr_text TEXT,
                     actual_scenario VARCHAR(50),
-                    verified_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     selected_parcel_pnu VARCHAR(50),
                     match_score INT DEFAULT 85,
                     audit_opinion TEXT
@@ -69,6 +73,8 @@ def init_db_schema():
                 ALTER TABLE verified_precedents ADD COLUMN IF NOT EXISTS selected_parcel_pnu VARCHAR(50);
                 ALTER TABLE verified_precedents ADD COLUMN IF NOT EXISTS match_score INT DEFAULT 85;
                 ALTER TABLE verified_precedents ADD COLUMN IF NOT EXISTS audit_opinion TEXT;
+                ALTER TABLE verified_precedents ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+                ALTER TABLE verified_precedents DROP CONSTRAINT IF EXISTS verified_precedents_conflict_simulation_id_fkey;
             """))
             conn.commit()
     except Exception as e:

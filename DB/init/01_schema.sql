@@ -177,12 +177,12 @@ CREATE TABLE conflict_simulations (
 -- 16. 실제 이행 사례 기록 테이블
 CREATE TABLE verified_precedents (
     id SERIAL PRIMARY KEY,
-    conflict_simulation_id INT REFERENCES conflict_simulations(id) ON DELETE SET NULL,
+    conflict_simulation_id INT REFERENCES decision_histories(id) ON DELETE SET NULL,
     document_title VARCHAR(250),
     document_ocr_text TEXT,
     actual_scenario VARCHAR(250) NOT NULL,
     selected_parcel_pnu VARCHAR(50),
-    match_score NUMERIC,
+    match_score NUMERIC DEFAULT 85,
     audit_opinion TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -241,11 +241,12 @@ CREATE TABLE IF NOT EXISTS users (
 -- 20. 행정 감사 로그 (Audit Ledger) 테이블
 CREATE TABLE IF NOT EXISTS pipeline_execution_logs (
     id SERIAL PRIMARY KEY,
-    step_name VARCHAR(100) NOT NULL,
-    status VARCHAR(50) NOT NULL,
-    details JSONB,
-    hash_pointer VARCHAR(64),
-    previous_hash VARCHAR(64),
+    session_id VARCHAR(100) DEFAULT 'SESSION_DEFAULT',
+    step_number VARCHAR(20) NOT NULL DEFAULT 'STEP-1',
+    action_type VARCHAR(50) NOT NULL DEFAULT 'AUDIT_INIT',
+    detail_json JSONB,
+    current_hash VARCHAR(64),
+    prev_hash VARCHAR(64),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 

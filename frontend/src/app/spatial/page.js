@@ -1461,12 +1461,14 @@ export default function Home() {
           }
 
           buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split('\n\n');
-          buffer = lines.pop(); // 아직 완료되지 않은 라인은 버퍼로 이월
+          const lines = buffer.split('\n');
+          buffer = lines.pop() || '';
 
           for (const line of lines) {
-            if (line.trim().startsWith('data:')) {
-              const dataContent = line.replace('data:', '').trim();
+            const trimmed = line.trim();
+            if (trimmed.startsWith('data:')) {
+              const dataContent = trimmed.substring(5).trim();
+              if (!dataContent) continue;
               try {
                 const data = JSON.parse(dataContent);
                 if (data) {

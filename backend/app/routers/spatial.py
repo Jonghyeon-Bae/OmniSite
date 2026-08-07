@@ -2186,7 +2186,11 @@ async def stream_debate_sim(req: DebateRequest, db: Session = Depends(get_db)):
                 async for mock_chunk in mock_event_generator():
                     yield mock_chunk
 
-        return StreamingResponse(event_generator(), media_type="text/event-stream")
+        return StreamingResponse(
+            event_generator(), 
+            media_type="text/event-stream",
+            headers={"Cache-Control": "no-cache", "Connection": "keep-alive", "X-Accel-Buffering": "no"}
+        )
     else:
         async def mock_event_generator():
             if req.intensity_level == "dangerous":
@@ -2235,9 +2239,13 @@ async def stream_debate_sim(req: DebateRequest, db: Session = Depends(get_db)):
             for segment in dialogue:
                 for char in segment:
                     yield f"data: {json.dumps({'text': char}, ensure_ascii=False)}\n\n"
-                    await asyncio.sleep(0.015)
+                    await asyncio.sleep(0.02)
                 await asyncio.sleep(0.3)
-        return StreamingResponse(mock_event_generator(), media_type="text/event-stream")
+        return StreamingResponse(
+            mock_event_generator(), 
+            media_type="text/event-stream",
+            headers={"Cache-Control": "no-cache", "Connection": "keep-alive", "X-Accel-Buffering": "no"}
+        )
 
 class ReportDownloadRequest(BaseModel):
     district_id: Optional[int] = 1

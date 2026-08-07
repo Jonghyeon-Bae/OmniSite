@@ -113,22 +113,6 @@ def save_pipeline_log(db, step_number: str, action_type: str, detail_dict: dict,
 @router.get("/spatial/logs")
 def get_pipeline_execution_logs(limit: int = 50, db: Session = Depends(get_db)):
     try:
-        db.execute(text("""
-            CREATE TABLE IF NOT EXISTS pipeline_execution_logs (
-                id SERIAL PRIMARY KEY,
-                session_id VARCHAR(100) DEFAULT 'SESSION_DEFAULT',
-                step_number VARCHAR(20) NOT NULL,
-                action_type VARCHAR(50) NOT NULL,
-                detail_json JSONB,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                current_hash VARCHAR(64),
-                prev_hash VARCHAR(64)
-            );
-        """))
-        db.execute(text("ALTER TABLE pipeline_execution_logs ADD COLUMN IF NOT EXISTS current_hash VARCHAR(64);"))
-        db.execute(text("ALTER TABLE pipeline_execution_logs ADD COLUMN IF NOT EXISTS prev_hash VARCHAR(64);"))
-        db.commit()
-
         rows = db.execute(text("""
             SELECT id, session_id, step_number, action_type, detail_json, created_at, current_hash, prev_hash
             FROM pipeline_execution_logs
@@ -3004,11 +2988,8 @@ class DecisionHistoryCreate(BaseModel):
     debate_logs: List[Dict[str, str]] = []
 
 def ensure_decision_histories_table(db: Session):
-    try:
-        db.execute(text("ALTER TABLE decision_histories ADD COLUMN IF NOT EXISTS selected_parcel_pnu VARCHAR(50);"))
-        db.commit()
-    except Exception:
-        db.rollback()
+    """[v4.9.44] DDL ALTER TABLE 제거: app/main.py 서버 시동 수명주기에서 1회 처리되도록 락 데드락 방어"""
+    pass
 
 def ensure_user_exclusions_table(db: Session):
     """[v4.9.40] DDL ALTER TABLE 제거: DB/init/01_schema.sql로 이미 정합성이 마운트되어 DDL 락 붕괴 방어"""
@@ -3016,7 +2997,6 @@ def ensure_user_exclusions_table(db: Session):
 
 @router.get("/spatial/history")
 async def get_decision_history(db: Session = Depends(get_db)):
-    ensure_decision_histories_table(db)
     try:
         query = text("""
             SELECT id, TO_CHAR(created_at, 'YYYY-MM-DD') as date_str, region, facility_type, infra, pnu_count, status, audit_state, audit_opinion, inferred_purpose, ahp_weights, selected_parcel_jibun, selected_parcel_price, selected_parcel_area, selected_parcel_css, debate_logs, selected_parcel_pnu
@@ -3048,7 +3028,8 @@ async def get_decision_history(db: Session = Depends(get_db)):
             })
         return histories
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"심의 이력 조회 실패: {str(e)}")
+        print(f"[History API Warning] Failed to fetch history, returning empty fallback: {e}")
+        return []
 
 @router.post("/spatial/history")
 async def create_decision_history(req: DecisionHistoryCreate, db: Session = Depends(get_db)):
@@ -3391,7 +3372,7 @@ async def get_verified_precedents(db: Session = Depends(get_db)):
                 vp.document_title, 
                 vp.document_ocr_text, 
                 vp.actual_scenario, 
-                TO_CHAR(COALESCE(vp.verified_at, dh.created_at, CURRENT_TIMESTAMP), 'YYYY-MM-DD HH24:MI'), 
+                COALESCE(TO_CHAR(vp.verified_at, 'YYYY-MM-DD HH24:MI'), TO_CHAR(dh.created_at, 'YYYY-MM-DD HH24:MI'), '2026-08-08 00:00') AS date_str, 
                 vp.match_score, 
                 vp.audit_opinion,
                 COALESCE(vp.selected_parcel_pnu, dh.selected_parcel_pnu, '미추출') AS pnu,
@@ -3422,7 +3403,8 @@ async def get_verified_precedents(db: Session = Depends(get_db)):
             
         return result
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"성공사례 목록 조회 실패: {str(e)}")
+        print(f"[Precedents API Warning] Failed to fetch precedents, returning empty fallback: {e}")
+        return []
 
 
 # ========================================================

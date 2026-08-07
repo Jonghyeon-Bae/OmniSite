@@ -17,6 +17,66 @@ app = FastAPI(
     version="1.0.0-solo-build"
 )
 
+def init_db_schema():
+    """[v4.9.44] FastAPI 서버 시동 시 1회만 DDL 스키마 정합성을 검증하여 GET 요청 중 DDL 락 데드락을 원천 방지"""
+    from app.database import engine
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS pipeline_execution_logs (
+                    id SERIAL PRIMARY KEY,
+                    session_id VARCHAR(100) DEFAULT 'SESSION_DEFAULT',
+                    step_number VARCHAR(20) NOT NULL,
+                    action_type VARCHAR(50) NOT NULL,
+                    detail_json JSONB,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    current_hash VARCHAR(64),
+                    prev_hash VARCHAR(64)
+                );
+                ALTER TABLE pipeline_execution_logs ADD COLUMN IF NOT EXISTS current_hash VARCHAR(64);
+                ALTER TABLE pipeline_execution_logs ADD COLUMN IF NOT EXISTS prev_hash VARCHAR(64);
+
+                CREATE TABLE IF NOT EXISTS decision_histories (
+                    id SERIAL PRIMARY KEY,
+                    region VARCHAR(100) DEFAULT '서울특별시 용산구',
+                    facility_type VARCHAR(100) DEFAULT '흡연부스',
+                    infra VARCHAR(100) DEFAULT '흡연부스',
+                    ahp_weights JSONB,
+                    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                    status VARCHAR(50) DEFAULT '모의 심의 완료',
+                    selected_parcel_jibun VARCHAR(100),
+                    selected_parcel_pnu VARCHAR(50),
+                    selected_parcel_price INT DEFAULT 0,
+                    selected_parcel_area DOUBLE PRECISION DEFAULT 0.0,
+                    selected_parcel_css DOUBLE PRECISION DEFAULT 50.0,
+                    debate_logs JSONB,
+                    audit_state VARCHAR(50) DEFAULT '미검증',
+                    audit_opinion TEXT
+                );
+                ALTER TABLE decision_histories ADD COLUMN IF NOT EXISTS selected_parcel_pnu VARCHAR(50);
+
+                CREATE TABLE IF NOT EXISTS verified_precedents (
+                    id SERIAL PRIMARY KEY,
+                    conflict_simulation_id INT REFERENCES decision_histories(id) ON DELETE CASCADE,
+                    document_title VARCHAR(255) NOT NULL,
+                    document_ocr_text TEXT,
+                    actual_scenario VARCHAR(50),
+                    verified_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    selected_parcel_pnu VARCHAR(50),
+                    match_score INT DEFAULT 85,
+                    audit_opinion TEXT
+                );
+                ALTER TABLE verified_precedents ADD COLUMN IF NOT EXISTS selected_parcel_pnu VARCHAR(50);
+                ALTER TABLE verified_precedents ADD COLUMN IF NOT EXISTS match_score INT DEFAULT 85;
+                ALTER TABLE verified_precedents ADD COLUMN IF NOT EXISTS audit_opinion TEXT;
+            """))
+            conn.commit()
+    except Exception as e:
+        print(f"[DB Startup Warning] DDL init warning: {e}")
+
+# 시동 1회 DDL 구동
+init_db_schema()
+
 # 라우터 등록 (Notice CRUD Admin, Password Auto-Heal & Registration Approval Flow 포함)
 app.include_router(auth_router)
 app.include_router(upload_router)

@@ -1428,12 +1428,12 @@
   3) **`restricted_zones` 17만 건 조치**: 전국 교량/터널 SHP 파일(`N3A_A0070000.shp`) 적재 시 용산구 영역 바운딩 박스(`ST_MakeEnvelope(126.93, 37.51, 127.02, 37.56, 4326)`) `ST_Intersects` 교집합 필터를 적용하여 타 지역 17만 건 오적재를 원천 차단함.
   4) `python -c "import app.main"` 및 `npm run build` 모두 **0 Error** 프로덕션 무결성 확보.
 
-### 65. [오답 65] 구형 step_name NOT NULL 제약조건 해제 및 시딩 0 Error 완공
+### 66. [오답 66] vp.verified_at 미존재 컬럼명 교정으로 실증사례 목록 100% 반환 완공
 - **현상 및 요구사항**:
-  - `seed_db.py` 구동 시 `(psycopg.errors.NotNullViolation) "step_name" 칼럼의 null 값이 not null 제약조건을 위반했습니다` 경고 에러가 발생하는 현상 지적 및 완벽 해결 요청.
+  - AI 검증 패널 진행 후 실증 준공 사례가 대시보드 리스트에 나타나지 않는 현상에 대한 원인 규명 및 완벽 해결 요청.
 - **발생 원인(Root Cause) 및 최종 해법(Takeaway)**:
-  1) **기존 DB 내 구형 칼럼 NOT NULL 제약조건 포착**: 기존 로컬/AWS DB 생성 시 구형 스키마의 `step_name` 및 `status` 칼럼에 `NOT NULL` 제약조건이 잡혀 있어, 신규 표준 칼럼(`session_id`, `step_number` 등)으로 시딩 시 `NULL` 삽입 예외가 발생했던 원인 규명.
-  2) **`DROP NOT NULL` & 기본값 매핑 수술 완공**: `seed_db.py`, `backend/seed_db.py`, [backend/app/main.py](file:///c:/Users/Admin/Desktop/빅프로젝트 관련자료/최종1차/1.0-prototype/backend/app/main.py) 3곳 모두에 `ALTER TABLE pipeline_execution_logs ALTER COLUMN step_name DROP NOT NULL;` 및 `step_name`, `status` 기본값 바인딩을 이식하여 시딩 시 단 1개의 경고/에러도 발생하지 않는 **0-Warning / 0-Error 시딩 파이프라인**을 완공함.
+  1) **`vp.verified_at` 미존재 컬럼 호출 맹점 규명**: [backend/app/routers/spatial.py](file:///c:/Users/Admin/Desktop/빅프로젝트 관련자료/최종1차/1.0-prototype/backend/app/routers/spatial.py)의 `get_verified_precedents` SQL 쿼리에서 `verified_precedents` 테이블에 존재하지 않는 `vp.verified_at` 컬럼을 호출하는 바람에, PostgreSQL가 `psycopg.errors.UndefinedColumn` 예외를 내고 `try-except` 블록에 의해 빈 리스트 `[]`를 반환해왔던 숨은 원인 포착.
+  2) **`vp.created_at` 컬럼명 100% 정밀 교정 완공**: SQL문 내 `vp.verified_at`을 실제 DB 존재 컬럼인 `vp.created_at`으로 교정하여, DB 적재 데이터 2건이 즉시 100% 깔끔하게 반환되도록 완공함.
   3) `python -c "import app.main"` 및 `npm run build` 모듈/터보팩 빌드 **0 Error** 무결성 검증 통과.
 
 

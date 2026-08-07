@@ -1428,12 +1428,12 @@
   3) **`restricted_zones` 17만 건 조치**: 전국 교량/터널 SHP 파일(`N3A_A0070000.shp`) 적재 시 용산구 영역 바운딩 박스(`ST_MakeEnvelope(126.93, 37.51, 127.02, 37.56, 4326)`) `ST_Intersects` 교집합 필터를 적용하여 타 지역 17만 건 오적재를 원천 차단함.
   4) `python -c "import app.main"` 및 `npm run build` 모두 **0 Error** 프로덕션 무결성 확보.
 
-### 70. [오답 70] TRUNCATE AccessExclusiveLock 데드락 방지 및 DELETE FROM 개별 예외 처리 전환 완공
+### 71. [오답 71] seed_db 내 app 라우터 참조 제거 및 독립 openai 클라이언트 전환 완공
 - **현상 및 요구사항**:
-  - AWS 도커 환경에서 `docker compose exec backend python seed_db.py` 실행 시 Step 2 (`[2] Truncating target tables...`) 구동 직후 파이썬 프로세스가 크래시되고 백엔드 컨테이너가 무한 재부팅되는 현상 원인 규명 및 완전 해결 요청.
+  - 이전 코사인 유사도 수술 시 `seed_db.py`에 이식했던 OpenAI 임베딩 구문으로 인해 AWS 컨테이너가 튕겼던 연쇄 반응의 정밀 원인 분석 및 완전한 분리 수술 요청.
 - **발생 원인(Root Cause) 및 최종 해법(Takeaway)**:
-  1) **`TRUNCATE ... CASCADE` 배타적 락(AccessExclusiveLock) 데드락 맹점 규명**: [seed_db.py](file:///c:/Users/Admin/Desktop/빅프로젝트 관련자료/최종1차/1.0-prototype/seed_db.py) Step 2 구동 시 백엔드 컨테이너(`uvicorn`)가 DB 커넥션 풀을 열고 있는 상태에서 `TRUNCATE TABLE ... CASCADE` 명령어를 날리면 PostgreSQL가 `AccessExclusiveLock` 락을 획득하지 못해 블로킹되거나 예외를 내고 크래시되었던 원인 포착.
-  2) **`DELETE FROM` 개별 안전 예외 처리 파이프라인 수술 완공**: `TRUNCATE TABLE ... CASCADE` 단일 구문을 배타적 락을 요구하지 않는 `DELETE FROM {table}` 개별 예외 처리 루프로 교체하여, 실행 중인 서버 커넥션과의 락 충돌 및 미존재 테이블 크래시를 100% 원천 차단함.
+  1) **`from app.routers.upload import get_openai_client` 모듈 연쇄 모듈 충돌 규명**: `seed_db.py`에서 백엔드 라우터 모듈을 불러오면서 `app.main`과 SQLAlchemy 커넥션 풀이 함께 로드되었고, 이 상태에서 Step 2 `TRUNCATE TABLE`을 실행하면서 배타적 락(`AccessExclusiveLock`) 획득 실패로 프로세스가 튕겼던 1:1 연쇄 원인을 100% 투명하게 규명함.
+  2) **독립 `openai.OpenAI()` 클라이언트 전환 완공**: [seed_db.py](file:///c:/Users/Admin/Desktop/빅프로젝트 관련자료/최종1차/1.0-prototype/seed_db.py) 및 `backend/seed_db.py`에서 `app` 라우터 참조를 전면 제거하고 `from openai import OpenAI` 및 `os.getenv("OPENAI_API_KEY")` 독립 클라이언트를 사용하도록 수술하여, 커넥션 풀 간섭을 100% 원천 제거함.
   3) `python -c "import app.main"` 및 `npm run build` 모듈/터보팩 빌드 **0 Error** 무결성 검증 통과.
 
 

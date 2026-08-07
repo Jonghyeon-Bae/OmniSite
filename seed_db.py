@@ -876,11 +876,14 @@ def seed():
                     }
                 ]
                 
-                try:
-                    from app.routers.upload import get_openai_client
-                    openai_cli = get_openai_client()
-                except Exception:
-                    openai_cli = None
+                api_key = os.getenv("OPENAI_API_KEY")
+                openai_cli = None
+                if api_key:
+                    try:
+                        from openai import OpenAI
+                        openai_cli = OpenAI(api_key=api_key)
+                    except Exception:
+                        openai_cli = None
 
                 for idx, reg in enumerate(default_regulations, 1):
                     real_embedding = None

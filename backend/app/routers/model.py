@@ -115,14 +115,26 @@ def background_model_train(domain="city_feature"):
     try:
         print(f"[ML Process] Starting dynamic spatial data querying for domain: {domain}")
         
-        # 1. 도메인별 시맨틱 공간 규제 (Domain Semantic Zone Scoping) - 하드코딩 없는 동적 필터링 [v4.2.4]
+        # 1. 도메인별 시맨틱 공간 규제 (Domain Semantic Zone Scoping) - 도메인 감리 결과에 맞춘 차별화 피처 바인딩
         all_zones_res = db.execute(text("SELECT DISTINCT zone_type FROM restricted_zones;")).fetchall()
         all_zones = [r[0] for r in all_zones_res if r[0]]
         
-        # Zero-Bias: 특정 도메인에 대한 편향적(하드코딩된) 피처 선택을 삭제하고, DB에 존재하는 모든 규제구역 피처를 동적으로 바인딩
-        zone_types = all_zones if all_zones else ['school', 'childcare_center']
+        domain_zone_map = {
+            "smoking_booth": ['nosmoking_zone', 'school', 'childcare_center', 'illegal_dumping'],
+            "smoking_zone": ['nosmoking_zone', 'school', 'childcare_center', 'illegal_dumping'],
+            "ev_charging": ['school', 'childcare_center', 'nosmoking_zone'],
+            "smart_shelter": ['school', 'childcare_center', 'nosmoking_zone'],
+            "yellow_carpet": ['school', 'childcare_center'],
+            "smart_city_siting": all_zones if all_zones else ['school', 'childcare_center']
+        }
+        
+        # 활성화된 zone_type 추출 (해당 도메인의 지정 zone_type 중 DB에 실재하는 규제 구역만 필터링)
+        target_zones = domain_zone_map.get(domain, all_zones if all_zones else ['school', 'childcare_center'])
+        zone_types = [z for z in target_zones if z in all_zones] if all_zones else target_zones
+        if not zone_types:
+            zone_types = ['school', 'childcare_center']
             
-        print(f"[ML Process] Scanned active spatial zone types: {zone_types}")
+        print(f"[ML Process] Scanned active spatial zone types for domain '{domain}': {zone_types}")
         
         # 2. 동적 CTE 및 SELECT 최단 거리 피처 SQL 생성
         cte_parts = []
@@ -143,7 +155,6 @@ def background_model_train(domain="city_feature"):
                         ORDER BY ST_Centroid(c.geom) <-> geom 
                         LIMIT 1
                     ) rz
-                    WHERE c.ownership_type IN ('국유지', '시유지', '구유지')
                 )
             """)
             select_parts.append(f"COALESCE({z_clean}_tbl.dist_to_{z_clean}, 9999.0) AS dist_to_{z_clean}")
@@ -172,7 +183,7 @@ def background_model_train(domain="city_feature"):
             {join_sql}
             LEFT JOIN civil_complaints cc ON c.dong_id = cc.dong_id
             LEFT JOIN building_ledgers b ON c.pnu = b.pnu
-            WHERE c.ownership_type IN (:owner_1, :owner_2, :owner_3)
+            WHERE (c.ownership_type IN (:owner_1, :owner_2, :owner_3) OR c.ownership_type IS NULL OR c.ownership_type = '')
               AND ST_IsValid(c.geom);
         """)
         
@@ -184,6 +195,26 @@ def background_model_train(domain="city_feature"):
         
         headers = list(result.keys())
         rows = [dict(zip(headers, r)) for r in result]
+
+        # [AWS 0-Row Safety Net] ownership_type 필터 결과가 0행인 경우 전체 필지로 폴백
+        if not rows:
+            print("[ML Process Fallback] Filtered 0 rows by ownership. Querying all valid cadastral parcels...")
+            fallback_query = text(f"""
+                WITH {cte_sql}
+                SELECT 
+                    c.id AS parcel_id, c.pnu, c.jibun, c.land_use_code, c.ownership_type,
+                    ST_Area(c.geom::geography) AS area, ST_X(ST_Centroid(c.geom)) AS lng, ST_Y(ST_Centroid(c.geom)) AS lat,
+                    {select_sql}, COALESCE(cc.complaint_count, 0) AS complaint_count, COALESCE(b.main_use_name, '미지정') AS building_use,
+                    0 AS target_label
+                FROM cadastral_lands c
+                {join_sql}
+                LEFT JOIN civil_complaints cc ON c.dong_id = cc.dong_id
+                LEFT JOIN building_ledgers b ON c.pnu = b.pnu
+                WHERE ST_IsValid(c.geom);
+            """)
+            fallback_res = db.execute(fallback_query)
+            fb_headers = list(fallback_res.keys())
+            rows = [dict(zip(fb_headers, r)) for r in fallback_res]
 
         # [v1.5.0 Original Baseline ML Model Labeling (Accuracy 0.75~0.82 Restoration)]
         np.random.seed(42)

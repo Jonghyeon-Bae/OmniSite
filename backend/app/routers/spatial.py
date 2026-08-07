@@ -2194,7 +2194,9 @@ async def stream_debate_sim(req: DebateRequest, db: Session = Depends(get_db)):
                                 continue
                             turn_text += content
                             if content:
-                                yield f"data: {json.dumps({'text': content}, ensure_ascii=False)}\n\n"
+                                for char in content:
+                                    yield f"data: {json.dumps({'text': char}, ensure_ascii=False)}\n\n"
+                                    await asyncio.sleep(0.01)
 
                     chat_history.append({"role": "assistant" if role_name == coordinator_name else "user", "content": f"{role_name}: {turn_text}"})
                     full_text += turn_text

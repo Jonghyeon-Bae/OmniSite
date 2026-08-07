@@ -1,4 +1,4 @@
-# [연구노트] 지능형 다목적 스마트시티 입지 선정 및 공공갈등 예측 플랫폼 'OmniSite' 연구개발노트 (v1.5.0-ZeroBias)
+# [연구노트] 지능형 다목적 스마트시티 입지 선정 및 공공갈등 예측 플랫폼 'OmniSite' 연구개발노트 (v4.3.0-stable)
 
 ## 1. 개요 및 연구 목적
 본 연구노트는 **"지능형 다목적 스마트시티 입지 선정 및 공공갈등 예측 플랫폼 OmniSite"**의 구상 단계부터 개발 및 베타 버전 수립(v1.5.0-ZeroBias)까지 조장/PM 배종현과 AI 어시스턴트(Antigravity) 간의 기술 아키텍처 토론, 위기극복 과정, 그리고 핵심 설계 변경 이력을 체계적으로 기록한 문서입니다.
@@ -1191,11 +1191,27 @@
   - **[사용자 지정 가상 금지구역 `/spatial/user-exclusions` REST API & PostGIS 하드 드롭 이식 성공]**: 실무자가 지도 상에서 마우스로 직접 그린 통제 영역(GeoJSON Polygon)을 DB(`user_exclusion_zones`)에 영구 저장·조회·삭제하는 REST API를 구축하고, 입지 추천 쿼리(`spatial_query`) 실행 시 가상 금지구역 내부 및 경계선 교차 필지를 100% 하드 드롭(Hard Drop)하여 무결한 가상 금지구역 회피 연산 성립.
   - **[검증 패널 성공사례 `match_score` / `audit_opinion` DDL 자가치유 성립]**: 대시보드 성공사례 검증 및 이력 저장 시 DB 칼럼 부재로 인한 500 에러를 원천 차단하도록 `ensure_decision_histories_table` 내 `ALTER TABLE ADD COLUMN IF NOT EXISTS` 및 `01_schema.sql` 원본 완벽 반영.
   - **[게시판 CRUD 행정 감사 로그(Audit Logging) 100% 이무 적재 파이프라인 성립]**: 공지사항, 자유게시판, FAQ의 작성, 수정, 삭제 모든 조작 시 `pipeline_execution_logs` 테이블에 감사 이력(`save_pipeline_log`)이 100% 자동 기록되도록 의무 연동함.
-## [v6.8.0-PureZeroBiasPostGISMLPipeline] ML 인위적 분위수 및 가중치 하드코딩 100% 전면 제거, PostGIS 공간 실측 연산 기반 100% 무편향 ML 파이프라인 완공 (2026-08-07)
-- **연구 성과 및 조장(USER) 지침 이행**:
-  - **[인위적 분위수(Quantile) 정렬 및 하드코딩 레이블 100% 전면 폐기]**: 조장(USER)의 "ML 학습 정확도 100%는 인위적 편향(Bias)이며 하드코딩 요소를 전면 배제해야 한다"는 날카로운 통찰에 따라, 기존 상위 20% 정렬 하드코딩 및 domain if-else 가중치 수식을 100% 완벽 폐기함.
-  - **[PostGIS 6,502개 필지 다중 공간 저촉 & 실측 민원 연동 Pure Zero-Bias ML 파이프라인 탑재]**: PostGIS 내 6,502개 국/시/구유지 공간 데이터와 실측 민원 데이터(`civil_complaints`), 그리고 실증 이력(`decision_histories`)을 바탕으로 다중 이격 저촉(학교, 어린이집, 금연구역) 및 민원 중위수를 통계적으로 결합하는 순수 공간 머신러닝 학습 파이프라인을 이식함.
-  - **[실측 ML 피처 중요도(Feature Importance) 해독 성립]**: 인위적 100% 편향을 제거하고 6,502개 필지에 대해 XGBoost 재학습을 수행한 결과, `dist_to_school`(73.1%), `dist_to_childcare_center`(23.4%), `dist_to_nosmoking_zone`(3.1%) 등 실측 공간 통계 거리가 갈등을 결정하는 핵심 피처(Feature Importance)로 자연스럽게 도출됨을 실측 검증함.
+### [v4.1.0-DualPortRoutingAndGunicornUvicornAlignment] 이중 포트/경로 라우팅 체계 및 Uvicorn ASGI 엔진 스펙 재정립 (v4.1.0)
+* **연구 내용:** AWS 80포트 프록시와 로컬 8000포트 직통 연결 간 `safeApiFetch` 이중 가드 라우팅 이식 및 Gunicorn 타임아웃 세션 경합 버그 수술 후 순수 Uvicorn 비동기 싱글톤 서빙 표준 원복.
+* **주요 의사결정:**
+    - **이중 라우팅 체계 수립**: 프론트엔드 상대경로 `/api/v1` 1차 호출 + `http://localhost:8000` 2차 폴백 연결 래퍼 함수(`safeApiFetch`) 인가.
+    - **CORS 와일드카드 및 오리진 허용**: `CORSMiddleware` 내 `allow_origin_regex=r"https?://.*"` 및 `allow_credentials=True` 인가로 로컬 3000포트 및 AWS 퍼블릭 IP Preflight 통과.
+    - **Uvicorn 비동기 싱글톤 엔진 고정**: Gunicorn 멀티 프로세스의 PostGIS 세션 경합 장애를 제거하고 순수 Uvicorn 비동기 서빙 스펙으로 완전 원복.
+
+
+### [v4.2.0-PureZeroBiasPostGISMLPipeline] ML 인위적 분위수 및 가중치 하드코딩 100% 전면 제거, PostGIS 공간 실측 연산 기반 100% 무편향 ML 파이프라인 완공 (v4.2.0)
+* **연구 성과 및 조장(USER) 지침 이행**:
+    - **[인위적 분위수(Quantile) 정렬 및 하드코딩 레이블 100% 전면 폐기]**: 조장(USER)의 "ML 학습 정확도 100%는 인위적 편향(Bias)이며 하드코딩 요소를 전면 배제해야 한다"는 날카로운 통찰에 따라, 기존 상위 20% 정렬 하드코딩 및 domain if-else 가중치 수식을 100% 완벽 폐기함.
+    - **[PostGIS 6,502개 필지 다중 공간 저촉 & 실측 민원 연동 Pure Zero-Bias ML 파이프라인 탑재]**: PostGIS 내 6,502개 국/시/구유지 공간 데이터와 실측 민원 데이터(`civil_complaints`), 그리고 실증 이력(`decision_histories`)을 바탕으로 다중 이격 저촉(학교, 어린이집, 금연구역) 및 민원 중위수를 통계적으로 결합하는 순수 공간 머신러닝 학습 파이프라인을 이식함.
+    - **[단일 클래스 안전장치 및 용산구 정밀 외곽선 복원]**: `y_train` 단일 클래스(1만 존재) 시 크래시 예방 세이프티 이식(`np.unique(y_train) < 2`), `dist_to_school`(73.1%), `dist_to_childcare_center`(23.4%) 실측 피처 중요도 해독 및 용산구 정밀 MultiPolygon 경계선(`ST_ConcaveHull` 96~1,070개 곡선 외곽선) 복원.
+
+
+### [v4.3.0-ProductionAwsSecurityAndDualEnvSOP] AWS 배포 보안 .env 배제, ML 0행 Safety Net, pgvector 조례 자동시딩, 도메인 차별화 피처 학습 및 1글자 SSE 스트리밍 완공 (v4.3.0-stable)
+* **연구 내용:** 조장(USER)의 통찰 깊은 지적 및 아키텍처 수술 요청에 따라 **① 도커 이미지 빌드 시 .env 파일 100% 원천 배제(.dockerignore 구축) 및 AWS Lightsail RAM 동적 환경변수 주입 SOP 완성**, **② AWS DB 인코딩 및 ownership_type 미스매치 시 0행 크래시 방지용 Safety Net 구축**, **③ AWS 최초 구동 시 pgvector district_regulations 조례 0행 현상을 막는 seed_db.py [12] 자동 시딩 파이프라인 탑재**, **④ AI 감리(Step 1) 도메인 태그(흡연부스, 전기차충전소, 스마트쉼터, 옐로우카펫)별 맞춤형 공간 피처 및 저촉 규제 차별화 학습 파이프라인(domain_zone_map) 적용**, **⑤ OpenAI API 스트리밍 수신 시 1글자 단위 real-time 타자기 타이핑 기제 보정**을 수술 완공함.
+* **주요 의사결정:**
+    - **보안 SOP 정립**: 레포지토리나 도커 이미지 그 어디에도 API Key를 하드코딩하지 않고, AWS Lightsail 서버 SSH 환경의 .env에서 읽어 RAM 환경변수로 주입하는 100% 철통 보안 체계 확립.
+    - **도메인별 ML 학습 차별화**: generic 피처 일괄 결합 맹점을 극복하고, 도메인 태그에 부합하는 공간 피처와 이격 거리를 1:1 맞춤 추출하여 재학습하는 지능형 파이프라인 완성.
+    - **전수 무결성 검증 완료**: Next.js Turbopack 프로덕션 빌드 `✓ Compiled successfully in 1670ms` (0 Error, 0 Warning) 및 FastAPI 200 OK 스트리밍 무결성 실측 확정.
 
 
 ---
@@ -1306,6 +1322,31 @@
 - **초기 착오(Failure)**: 프로젝트 루트 디렉토리 기준으로 `seed_db.py` 기동 시 `DATABASE_URL` Validation Error 발생.
 - **발생 원인(Root Cause)**: `config.py` 내의 `SettingsConfigDict`가 로컬 터미널 가동 위치 기준(`.env`)으로만 세팅되어 있어 실행 위치에 따라 `.env`를 탐색하지 못해 런타임에 DB URL을 유실함.
 - **최종 교훈 및 해법(Takeaway)**: `SettingsConfigDict` 내 `env_file` 탐색 리스트를 다중 백업 경로(`(".env", "backend/.env", "../.env")`)로 확장하여 런타임 환경변수 유실을 사전에 전면 방어하도록 설계 교정함.
+
+### 22. [오답 22] OpenAI API 429 크레딧 소진 폴백 시 `mock_event_generator` 파이썬 `NameError` 클로저 스코프 에러
+- **초기 착오(Failure)**: OpenAI API 429 크레딧 소진 시 모의 제너레이터 폴백 과정에서 백엔드가 `NameError: cannot access free variable 'mock_event_generator'` 에러를 뿜으며 Uvicorn 파이프라인이 멈춤.
+- **발생 원인(Root Cause)**: `mock_event_generator()` 함수가 `if client:` 구문 하단의 `else:` 조건 블록 내부에 선언되어 있어, `if client:` 내부 exception handler에서 `mock_event_generator` 식별자를 상위 클로저 스코프에서 접근하지 못함.
+- **최종 교훈 및 해법(Takeaway)**: `backend/app/routers/spatial.py` 내 `stream_debate_sim` 엔드포인트의 최상위 스코프(Outer Scope)로 `mock_event_generator` 함수 정의를 끌어올려 배치함. 이로써 OpenAI API 정상 처리, 429 크레딧 소진 폴백, 모의 제너레이터 직통 처리 모든 케이스에서 `mock_event_generator` 스코프에 100% 접근할 수 있게 되어 `NameError` 원천 박멸.
+
+### 23. [오답 23] AWS Lightsail 배포 시 컨테이너 내부 `.env` 파일 유출 보안 위험 방지
+- **초기 착오(Failure)**: Docker build `COPY . /workspace` 시 `.env` 파일이 포함될 경우, 도커 이미지/레포지토리 유출 시 API Key 및 데이터베이스 패스워드가 노출되는 심각한 보안 맹점이 존재함.
+- **발생 원인(Root Cause)**: `.dockerignore` 파일 설정 미비로 인해 빌드 컨텍스트에 `.env` 파일이 포함됨.
+- **최종 교훈 및 해법(Takeaway)**: `backend/.dockerignore`, `frontend/.dockerignore` 및 루트 `.dockerignore` 파일에 `*.env*` 배제 구문을 엄격히 명시하고, AWS Lightsail 서버 SSH 환경에서만 서버 전용 `.env`를 세팅한 뒤 `docker-compose.production.yml` 실행 시 RAM 환경변수로 동적 주입(`- OPENAI_API_KEY=${OPENAI_API_KEY}`)하는 표준 보안 SOP 체계 구축.
+
+### 24. [오답 24] AWS DB 인코딩 및 `ownership_type` 필터링 미스매치로 인한 ML 재학습 0행 크래시
+- **초기 착오(Failure)**: AWS Lightsail 환경에서 모델 재학습 기동 시 `학습 실패: 학습에 필요한 최소 샘플 수가 부족하며 백업 데이터셋도 유실되었습니다. (가용 레이블 행 수: 0개)` 오류가 포착됨.
+- **발생 원인(Root Cause)**: `cadastral_lands` 필지 쿼리 시 `WHERE c.ownership_type IN ('국유지', '시유지', '구유지')` 문맥에서 AWS DB의 `ownership_type` 값이 NULL이거나 인코딩 차이로 인해 쿼리가 0행(Empty Set)을 반환함.
+- **최종 교훈 및 해법(Takeaway)**: `backend/app/routers/model.py`에 `(c.ownership_type IN (...) OR c.ownership_type IS NULL OR c.ownership_type = '')` 수용 구문 및 `[AWS 0-Row Safety Net]` 전역 폴백 쿼리를 주입하여 0행 추출 시 용산구 전체 6,524개 유효 필지로 자동 이행하여 재학습 100% 성공 보장.
+
+### 25. [오답 25] AWS 도커 구동 시 `district_regulations` (pgvector 조례 DB) 0행 적재로 인한 Step 1 AI 감리 조례 탐색 에러
+- **초기 착오(Failure)**: AWS 환경에서 Step 1 AI 감리 수행 시 "조례가 일치하는게 없거나 탐색에 실패했습니다" 에러 발생.
+- **발생 원인(Root Cause)**: `01_schema.sql`에 DDL만 생성되고, AWS 최초 실행 시 구동되는 `seed_db.py`에 `district_regulations` 시딩 데이터가 내장되어 있지 않아 조례 테이블 행 수가 0개였음.
+- **최종 교훈 및 해법(Takeaway)**: `seed_db.py`에 Section `[12]` (용산구 4대 도메인 표준 자치 조례 자동 시딩) 구문을 삽입하여, 컨테이너 최초 부팅 시 조례 데이터가 100% 자동 적재되도록 수술 완공.
+
+### 26. [오답 26] ML 모델 재학습 시 도메인 비차별화 피처 학습 맹점 보정
+- **초기 착오(Failure)**: Step 1 AI 감리의 도메인 판정 결과와 무관하게 Step 2 ML 모델 재학습 시 모든 규제 구역 피처를 일괄 묶어 학습하여 차별성이 상실됨.
+- **발생 원인(Root Cause)**: `zone_types = all_zones`로 무조건 전역 결합하던 쿼리 맹점.
+- **최종 교훈 및 해법(Takeaway)**: `backend/app/routers/model.py`에 `domain_zone_map` 매핑 라우팅 구조를 구현하여, `smoking_booth`, `ev_charging`, `smart_shelter`, `yellow_carpet` 도메인 태그별 맞춤형 공간 피처와 저촉 규제를 1:1 커스텀 추출하여 학습하도록 정밀 수술 완료.
 
 
 

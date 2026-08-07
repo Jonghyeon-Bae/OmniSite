@@ -1,7 +1,7 @@
 {
   "domain": "smoking_booth",
   "model_filename": "smoking_booth_v1.pkl",
-  "last_trained_at": "2026-08-07 02:34:06",
+  "last_trained_at": "2026-08-07 21:08:17",
   "accuracy": 0.7986,
   "f1_score": 0.6236,
   "sample_count": 6502,

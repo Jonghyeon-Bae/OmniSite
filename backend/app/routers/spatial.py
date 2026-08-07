@@ -524,6 +524,10 @@ async def recommend_optimal_sites(
         if ref_lng is not None and not math.isnan(ref_lng) and 124.0 <= ref_lng <= 132.0:
             base_lng = ref_lng
 
+        # [Local Variable Guard] UnboundLocalError 방지를 위한 기본 스코프 초기화
+        transit_sql = ""
+        dynamic_exclusion_sql = ""
+
         # [HITL Exclusion Zone Guard] 지정한 좌표가 사용자 지정 금지구역(user_exclusion_zones) 내부에 위치하는지 사전 검증
         if ref_lat is not None and ref_lng is not None:
             exclusion_check_query = text("""
@@ -2919,6 +2923,7 @@ class UserExclusionCreateRequest(BaseModel):
 # 5. 사용자 가상 금지구역 적재 API [v4.4.1]
 @router.post("/spatial/user-exclusions")
 async def create_user_exclusion(req: UserExclusionCreateRequest, db: Session = Depends(get_db)):
+    ensure_user_exclusions_table(db)
     try:
         coords = list(req.coordinates)
         if not coords:
@@ -2955,6 +2960,7 @@ async def create_user_exclusion(req: UserExclusionCreateRequest, db: Session = D
 # 6. 사용자 가상 금지구역 조회 API (GeoJSON) [v4.4.1]
 @router.get("/spatial/user-exclusions")
 async def get_user_exclusions(db: Session = Depends(get_db)):
+    ensure_user_exclusions_table(db)
     try:
         query = text("""
             SELECT id, zone_name, ST_AsGeoJSON(geom), memo 
@@ -3115,6 +3121,8 @@ def ensure_decision_histories_table(db: Session):
         db.execute(text("ALTER TABLE verified_precedents ADD COLUMN IF NOT EXISTS match_score NUMERIC;"))
         db.execute(text("ALTER TABLE verified_precedents ADD COLUMN IF NOT EXISTS audit_opinion TEXT;"))
         db.commit()
+    except Exception as e:
+        db.rollback()
         print(f"[Decision Histories Table Init Warning] {e}")
 
 def ensure_user_exclusions_table(db: Session):
@@ -3573,62 +3581,8 @@ async def delete_decision_history(history_id: int, db: Session = Depends(get_db)
 
 
 # ========================================================
-# [User Exclusion Zones REST API Endpoints]
+# [User Exclusion Zones REST API Endpoints] (Legacy Duplicate Removed. Handlers unified at L2920 and L2956)
 # ========================================================
-class UserExclusionCreateRequest(BaseModel):
-    zone_name: str
-    coordinates: List[Dict[str, float]]
-    memo: Optional[str] = '지정 사유 없음'
-
-@router.get("/spatial/user-exclusions")
-async def get_user_exclusions(db: Session = Depends(get_db)):
-    ensure_user_exclusions_table(db)
-    try:
-        rows = db.execute(text("SELECT id, zone_name, coordinates, memo, created_at FROM user_exclusion_zones ORDER BY id DESC")).fetchall()
-        features = []
-        for r in rows:
-            coords = json.loads(r[2]) if isinstance(r[2], str) else r[2]
-            features.append({
-                "type": "Feature",
-                "properties": {
-                    "id": r[0],
-                    "zone_name": r[1],
-                    "memo": r[3],
-                    "created_at": r[4].strftime("%Y-%m-%d %H:%M") if r[4] else ""
-                },
-                "geometry": {
-                    "type": "Polygon",
-                    "coordinates": [[[pt["lng"], pt["lat"]] for pt in coords] + ([[coords[0]["lng"], coords[0]["lat"]]] if coords else [])]
-                }
-            })
-        return {
-            "type": "FeatureCollection",
-            "features": features
-        }
-    except Exception as e:
-        return {"type": "FeatureCollection", "features": []}
-
-@router.post("/spatial/user-exclusions")
-async def create_user_exclusion(req: UserExclusionCreateRequest, db: Session = Depends(get_db)):
-    ensure_user_exclusions_table(db)
-    try:
-        db.execute(text("""
-            INSERT INTO user_exclusion_zones (zone_name, coordinates, memo)
-            VALUES (:zone_name, :coordinates, :memo)
-        """), {
-            "zone_name": req.zone_name,
-            "coordinates": json.dumps(req.coordinates),
-            "memo": req.memo
-        })
-        db.commit()
-        try:
-            save_pipeline_log(db, 'SPATIAL', '[USER_EXCLUSION_CREATE]', {'zone_name': req.zone_name, 'points_count': len(req.coordinates)})
-        except Exception:
-            pass
-        return {"status": "success", "message": f"가상 금지구역 '{req.zone_name}'이(가) 성공적으로 저장되었습니다."}
-    except Exception as e:
-        db.rollback()
-        raise HTTPException(status_code=500, detail=f"가상 금지구역 저장 실패: {str(e)}")
 
 @router.delete("/spatial/user-exclusions/{exclusion_id}")
 async def delete_user_exclusion(exclusion_id: int, db: Session = Depends(get_db)):

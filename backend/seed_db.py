@@ -179,6 +179,8 @@ def seed():
                 conn.execute(text("ALTER TABLE district_regulations ALTER COLUMN embedding DROP NOT NULL;"))
             except Exception:
                 pass
+            conn.execute(text("DROP INDEX IF EXISTS idx_regulations_district_category_vector;"))
+            conn.execute(text("CREATE INDEX IF NOT EXISTS idx_regulations_district_category ON district_regulations (district_id, category);"))
             
             print("[2] Truncating target tables...")
             conn.execute(text("""

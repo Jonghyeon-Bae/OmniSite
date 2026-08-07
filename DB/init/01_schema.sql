@@ -201,7 +201,8 @@ CREATE TABLE district_regulations (
     document_name VARCHAR(255),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
-CREATE INDEX idx_regulations_district_category_vector ON district_regulations (district_id, category) INCLUDE (embedding);
+CREATE INDEX idx_regulations_district_category ON district_regulations (district_id, category);
+CREATE INDEX idx_regulations_embedding_hnsw ON district_regulations USING hnsw (embedding vector_cosine_ops);
 
 -- 17-2. 시맨틱 도메인 태그 중복 방지/병합용 메타 테이블
 CREATE TABLE registered_domain_tags (

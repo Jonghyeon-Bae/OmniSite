@@ -25,12 +25,13 @@ app.include_router(spatial_router)
 app.include_router(model_router)
 app.include_router(board_router)
 
-# Next.js 및 외부 퍼블릭 IP 연동을 위한 CORS 미들웨어 전면 개방 (Preflight OPTIONS 100% 통과)
+# Next.js (로컬 3000/3001 & AWS 퍼블릭 IP/도메인) 100% 무결성 CORS 미들웨어
+raw_origins = [o.strip() for o in settings.CORS_ORIGINS.split(",") if o.strip() and o.strip() != "*"]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_origin_regex=r".*",
-    allow_credentials=False,
+    allow_origins=raw_origins if raw_origins else ["http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_origin_regex=r"https?://.*",
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )

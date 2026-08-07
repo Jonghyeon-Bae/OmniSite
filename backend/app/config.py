@@ -6,7 +6,7 @@ class Settings(BaseSettings):
     DATABASE_URL: str
     OPENAI_API_KEY: Optional[str] = None
     
-    # CORS 허용 오리진 (콤마 구분자 문자열, AWS 배포 시 * 또는 지정 IP 적용 가능)
+    # CORS 허용 오리진 (콤마 구분자 문자열, AWS 배포 및 로컬 호환 지원)
     CORS_ORIGINS: str = "http://localhost:3000,http://127.0.0.1:3000,http://localhost:3001,http://127.0.0.1:3001,*"
     
     # JWT 인증 설정 (Phase 2 사전 연동용)

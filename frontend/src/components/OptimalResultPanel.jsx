@@ -37,7 +37,7 @@ export default function OptimalResultPanel({
       {pipelineStep === 3 && (
         <div className="flex flex-col gap-3">
           <div className="border-b border-slate-800 pb-2">
-            <h2 className="text-xs font-bold text-amber-500">Step 2. 비주얼 HITL 좌표 보정 중</h2>
+            <h2 className="text-xs font-bold text-amber-500">Step 3. 비주얼 HITL 좌표 보정 중</h2>
             <p className="text-[10px] text-slate-400 font-medium">지도의 주황색 핀을 드래그하거나 아래 좌표를 보정하세요</p>
           </div>
 

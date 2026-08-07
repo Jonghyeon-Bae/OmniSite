@@ -13,9 +13,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -32,9 +32,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -51,9 +51,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -70,9 +70,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -89,9 +89,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -108,9 +108,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -127,9 +127,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -146,9 +146,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -165,9 +165,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -184,9 +184,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -203,9 +203,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -222,9 +222,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -241,9 +241,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -260,9 +260,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -279,9 +279,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -298,9 +298,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -317,9 +317,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -336,9 +336,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -355,9 +355,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -374,9 +374,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -393,9 +393,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -412,9 +412,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -431,9 +431,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -450,9 +450,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -469,9 +469,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -488,9 +488,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -507,9 +507,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -526,9 +526,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -545,9 +545,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -564,9 +564,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -583,9 +583,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -602,9 +602,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -621,9 +621,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -640,9 +640,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -659,9 +659,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -678,9 +678,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -697,9 +697,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -716,9 +716,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -735,9 +735,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -754,9 +754,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -773,9 +773,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -792,9 +792,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -811,9 +811,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -830,9 +830,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -849,9 +849,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -868,9 +868,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -887,9 +887,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -906,9 +906,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -925,9 +925,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -944,9 +944,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -963,9 +963,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -982,9 +982,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -1001,9 +1001,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -1020,9 +1020,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -1039,9 +1039,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -1058,9 +1058,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -1077,9 +1077,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -1096,9 +1096,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -1115,9 +1115,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -1134,9 +1134,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -1153,9 +1153,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -1172,9 +1172,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -1191,9 +1191,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -1210,9 +1210,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -1229,9 +1229,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -1248,9 +1248,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -1267,9 +1267,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -1286,9 +1286,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -1305,9 +1305,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -1324,9 +1324,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -1343,9 +1343,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -1362,9 +1362,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -1381,9 +1381,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -1400,9 +1400,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -1419,9 +1419,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -1438,9 +1438,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -1457,9 +1457,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -1476,9 +1476,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -1495,9 +1495,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -1514,9 +1514,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -1533,9 +1533,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -1552,9 +1552,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -1571,9 +1571,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -1590,9 +1590,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -1609,9 +1609,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -1628,9 +1628,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -1647,9 +1647,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -1666,9 +1666,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -1685,9 +1685,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -1704,9 +1704,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -1723,9 +1723,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -1742,9 +1742,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -1761,9 +1761,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -1780,9 +1780,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -1799,9 +1799,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -1818,9 +1818,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -1837,9 +1837,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -1856,9 +1856,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -1875,9 +1875,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -1894,9 +1894,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -1913,9 +1913,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -1932,9 +1932,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -1951,9 +1951,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -1970,9 +1970,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -1989,9 +1989,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -2008,9 +2008,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -2027,9 +2027,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -2046,9 +2046,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -2065,9 +2065,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -2084,9 +2084,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -2103,9 +2103,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -2122,9 +2122,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -2141,9 +2141,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -2160,9 +2160,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -2179,9 +2179,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -2198,9 +2198,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -2217,9 +2217,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -2236,9 +2236,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -2255,9 +2255,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -2274,9 +2274,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -2293,9 +2293,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -2312,9 +2312,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -2331,9 +2331,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -2350,9 +2350,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -2369,9 +2369,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -2388,9 +2388,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -2407,9 +2407,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -2426,9 +2426,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -2445,9 +2445,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -2464,9 +2464,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -2483,9 +2483,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
@@ -2502,9 +2502,9 @@
         "zone_type": "school",
         "radius": "50.0"
       },
-      "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "domain": "smoking_zone",
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   }
 ]

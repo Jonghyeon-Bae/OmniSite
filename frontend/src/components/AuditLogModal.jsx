@@ -36,13 +36,15 @@ export default function AuditLogModal({ showModal, setShowModal, apiFetch }) {
       case 'STEP_1':
         return <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-blue-500/20 text-blue-300 border border-blue-500/30">Step 1. AI 감리</span>;
       case 'STEP_2':
-        return <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">Step 2. HITL 보정</span>;
+        return <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">Step 2. ML 학습</span>;
       case 'STEP_3':
-        return <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-purple-500/20 text-purple-300 border border-purple-500/30">Step 3. AHP 락</span>;
+        return <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">Step 3. HITL 보정</span>;
       case 'STEP_4':
-        return <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">Step 4. ISI 추천</span>;
+        return <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-purple-500/20 text-purple-300 border border-purple-500/30">Step 4. AHP 락</span>;
       case 'STEP_5':
         return <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">Step 5. AI 심의</span>;
+      case 'STEP_6':
+        return <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">Step 6. 종합 보고서</span>;
       case 'SYSTEM':
         return <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30">보안/계정 액션</span>;
       default:

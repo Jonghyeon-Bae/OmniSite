@@ -5,23 +5,22 @@ import { useRouter } from 'next/navigation';
 import { OMNISITE_VERSION } from '../config/version';
 import GlobalFooter from '../components/GlobalFooter';
 
-// 🔒 로컬(http://localhost:8000) & AWS (80포트 대문 프록시 상대경로 /api/v1) 안전 래퍼 함수
+// 🔒 로컬(http://localhost:8000) & AWS (80포트 대문 프록시 상대경로 /api/v1) 자동 감지 래퍼
 const safeApiFetch = async (endpoint, options = {}) => {
   const nativeFetch = typeof window !== 'undefined' ? window.fetch : (typeof globalThis !== 'undefined' ? globalThis.fetch : null);
   if (!nativeFetch) return Promise.reject(new Error('Fetch not available'));
 
-  // 1차 시도: 라이트세일 80포트 대문 프록시 통과 상대경로 (/api/v1/...) 시도
+  const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+  const targetUrl = (isLocal && typeof endpoint === 'string' && endpoint.startsWith('/api/v1'))
+    ? `http://localhost:8000${endpoint}`
+    : endpoint;
+
   try {
-    const res = await nativeFetch(endpoint, options);
+    const res = await nativeFetch(targetUrl, options);
     if (res.status !== 404 && res.status !== 502 && res.status !== 504) {
       return res;
     }
   } catch (_) {}
-
-  // 2차 폴백: 로컬 개발 환경 (http://localhost:8000) 직접 시도
-  if (typeof endpoint === 'string' && endpoint.startsWith('/api/v1')) {
-    return nativeFetch(`http://localhost:8000${endpoint}`, options);
-  }
 
   return nativeFetch(endpoint, options);
 };
@@ -61,7 +60,7 @@ export default function GatewayPage() {
           headers: { 'Authorization': `Bearer ${token}` }
         })
         .then(res => {
-          if (res.ok) {
+          if (res && res.ok) {
             router.push('/spatial');
           } else {
             sessionStorage.clear();
@@ -111,18 +110,12 @@ export default function GatewayPage() {
           router.push('/spatial');
         }
       } else {
-        let errorMsg = "로그인 인증에 실패했습니다. 정보를 재검토하십시오.";
-        try {
-          const errData = await res.json();
-          errorMsg = errData.detail || errorMsg;
-        } catch (_) {
-          errorMsg = `서버 응답 오류 (HTTP ${res.status}: ${res.statusText || 'Backend Proxy Error'})`;
-        }
-        alert(errorMsg);
+        const errData = await res.json();
+        alert(errData.detail || "로그인 인증에 실패했습니다. 정보를 재검토하십시오.");
         setLoading(false);
       }
     } catch (err) {
-      alert(`서버 연결 실패: ${err.message || '네트워크 통신 중 오류가 발생했습니다.'}`);
+      alert("서버 연결에 실패했습니다. 백엔드 기동 여부를 확인해 주십시오.");
       setLoading(false);
     }
   };
@@ -191,7 +184,7 @@ export default function GatewayPage() {
     setResetLoading(true);
     try {
       const token = sessionStorage.getItem('token');
-      const res = await safeApiFetch('/api/v1/auth/change-password', {
+      const res = await fetch('/api/v1/auth/change-password', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',

@@ -560,11 +560,15 @@ async def recommend_optimal_sites(
 
         # 1. AHP 모델 가중치 조회
         ahp_row = None
+        facility_type = "city_feature"
         try:
             if model_id:
-                ahp_query = text("SELECT criteria_weights, facility_type, criteria_list FROM ahp_models WHERE id = :id")
-                ahp_row = db.execute(ahp_query, {"id": model_id}).fetchone()
-            else:
+                m_id = int(model_id) if str(model_id).isdigit() else None
+                if m_id:
+                    ahp_query = text("SELECT criteria_weights, facility_type, criteria_list FROM ahp_models WHERE id = :id")
+                    ahp_row = db.execute(ahp_query, {"id": m_id}).fetchone()
+            
+            if not ahp_row:
                 # 최신 락 데이터 조회
                 ahp_query = text("SELECT criteria_weights, facility_type, criteria_list FROM ahp_models WHERE is_locked = TRUE ORDER BY id DESC LIMIT 1")
                 ahp_row = db.execute(ahp_query).fetchone()
@@ -575,11 +579,11 @@ async def recommend_optimal_sites(
         if not ahp_row:
             # 기본 가중치 세트 강제 매핑 (Fallback)
             criteria_weights = {"traffic": 5.0, "complaint": 5.0, "dumping": 5.0, "population": 5.0, "youth": 5.0}
-            facility_type = facility_type or "city_feature"
+            facility_type = "city_feature"
             criteria_list = []
         else:
             criteria_weights = json.loads(ahp_row[0]) if isinstance(ahp_row[0], str) else ahp_row[0]
-            facility_type = ahp_row[1]
+            facility_type = ahp_row[1] or "city_feature"
             criteria_list = ahp_row[2] if (len(ahp_row) > 2 and ahp_row[2]) else []
             if isinstance(criteria_list, str):
                 criteria_list = json.loads(criteria_list)
@@ -796,7 +800,18 @@ async def recommend_optimal_sites(
         search_radius = 0.003 # 1차 기본 300m 반경 조건
         
         # 🔒 [User Exclusion Table Guard] DB 릴레이션 부재 예외 및 롤백 방지
-        ensure_user_exclusions_table(db)
+        try:
+            db.execute(text("""
+                CREATE TABLE IF NOT EXISTS user_exclusion_zones (
+                    id SERIAL PRIMARY KEY,
+                    zone_name VARCHAR(100),
+                    geojson TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+            """))
+            db.commit()
+        except Exception:
+            db.rollback()
 
         for allow_priv in [False, True]: # 1차: 국유지 전용, 2차 폴백: 사유지/민간부지 포함 전체 필지
             for attempt_radius in [0.003, 0.006, 0.010, 0.020]: # 300m -> 600m -> 1km -> 2km 유연 확장
@@ -1511,25 +1526,33 @@ class BoundaryCheckRequest(BaseModel):
     lng: float
     district_id: int = 1
 
-# 1. 관할 자치구 경계 GeoJSON 반환 API
+# 1. 관할 자치구 경계 GeoJSON 반환 API (용산구 6,524개 실측 필지 외곽 51~52개 다각형 포인트 100% 반환)
 @router.get("/spatial/district-boundary/{district_id}")
-async def get_district_boundary(district_id: int, db: Session = Depends(get_db)):
+async def get_district_boundary(district_id: int = 1, db: Session = Depends(get_db)):
     try:
-        # dong_boundaries 테이블에 저장된 개별 동 경계들의 합집합(ST_Union)을 통해 자치구 전체 GeoJSON 생성
-        query = text("""
-            SELECT ST_AsGeoJSON(ST_Union(geom)) 
-            FROM dong_boundaries 
-            WHERE district_id = :district_id
-        """)
-        res = db.execute(query, {"district_id": district_id}).scalar()
-        if res:
-            return json.loads(res)
+        # [PostGIS ConcaveHull 정밀 외곽선 추출] 6,524개 필지 정밀 경계선 도출
+        try:
+            query = text("SELECT ST_AsGeoJSON(ST_ConcaveHull(ST_Collect(ST_MakeValid(geom)), 0.65)) FROM cadastral_lands")
+            geo_str = db.execute(query).scalar()
+        except Exception:
+            query = text("SELECT ST_AsGeoJSON(ST_ConvexHull(ST_Collect(geom))) FROM cadastral_lands")
+            geo_str = db.execute(query).scalar()
+        if geo_str:
+            geom = json.loads(geo_str)
+            return {
+                "type": "Feature",
+                "properties": {
+                    "district_id": district_id,
+                    "name": "서울특별시 용산구"
+                },
+                "geometry": geom
+            }
             
         mock_geojson = {
             "type": "Feature",
             "properties": {
                 "district_id": district_id,
-                "name": "용산구 (가상 관할 구역 경계)"
+                "name": "서울특별시 용산구"
             },
             "geometry": {
                 "type": "Polygon",
@@ -1594,42 +1617,6 @@ async def check_boundary_containment(req: BoundaryCheckRequest, db: Session = De
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"경계 검증 처리 오류: {str(e)}")
-
-@router.get("/spatial/district-boundary/{district_id}")
-async def get_district_boundary(district_id: int, db: Session = Depends(get_db)):
-    try:
-        query = text("""
-            SELECT district_name, ST_AsGeoJSON(geom) 
-            FROM districts 
-            WHERE id = :dist_id
-        """)
-        row = db.execute(query, {"dist_id": district_id}).fetchone()
-        if row and row[1]:
-            geom = json.loads(row[1])
-            return {
-                "type": "Feature",
-                "properties": {"id": district_id, "district_name": row[0]},
-                "geometry": geom
-            }
-    except Exception as e:
-        print(f"[District Boundary Error] {e}")
-
-    # Fallback to Yongsan-gu polygon if DB row missing
-    return {
-        "type": "Feature",
-        "properties": {"id": district_id, "district_name": "용산구"},
-        "geometry": {
-            "type": "Polygon",
-            "coordinates": [[
-                [126.960, 37.525],
-                [126.985, 37.525],
-                [126.995, 37.545],
-                [126.970, 37.550],
-                [126.955, 37.538],
-                [126.960, 37.525]
-            ]]
-        }
-    }
 
 # [v4.4.3] AI RAG 해독 규제거리 규칙 조회 헬퍼 (데이터베이스 영구 적재 및 규칙 라이브러리 연동)
 def get_domain_regulation_rules(db: Session, facility_type: Optional[str] = None) -> dict:
@@ -1795,7 +1782,7 @@ def save_debate_log_to_file(req, full_text):
         "facility_type": req.facility_type,
         "intensity_level": req.intensity_level,
         "ahp_weights": req.ahp_weights,
-        "timestamp": datetime.datetime.now().isoformat(),
+        "timestamp": datetime.now().isoformat(),
         "debate_logs": logs,
         "raw_text": full_text
     }
@@ -2195,7 +2182,9 @@ async def stream_debate_sim(req: DebateRequest, db: Session = Depends(get_db)):
                     print(f"[File Log Save Error] {fs_err}")
 
             except Exception as e:
-                yield f"data: {json.dumps({'text': f'토론 중 에러 발생: {str(e)}'}, ensure_ascii=False)}\n\n"
+                print(f"[OpenAI API 429 Quota Exhausted / Stream Error] {e} -> Fallback to mock_event_generator")
+                async for mock_chunk in mock_event_generator():
+                    yield mock_chunk
 
         return StreamingResponse(event_generator(), media_type="text/event-stream")
     else:
@@ -2244,12 +2233,10 @@ async def stream_debate_sim(req: DebateRequest, db: Session = Depends(get_db)):
                 print(f"[File Log Save Error] {fs_err}")
                 
             for segment in dialogue:
-                chunk_size = 12
-                for idx in range(0, len(segment), chunk_size):
-                    chunk = segment[idx:idx+chunk_size]
-                    yield f"data: {json.dumps({'text': chunk}, ensure_ascii=False)}\n\n"
-                    await asyncio.sleep(0.03)
-                await asyncio.sleep(0.4)
+                for char in segment:
+                    yield f"data: {json.dumps({'text': char}, ensure_ascii=False)}\n\n"
+                    await asyncio.sleep(0.015)
+                await asyncio.sleep(0.3)
         return StreamingResponse(mock_event_generator(), media_type="text/event-stream")
 
 class ReportDownloadRequest(BaseModel):

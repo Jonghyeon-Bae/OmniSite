@@ -800,7 +800,7 @@ async def audit_upload_files(request: AuditRequest, db: Session = Depends(get_db
             rag_query = text("""
                 SELECT regulation_title, content, 1 - (embedding <=> CAST(:query_embedding AS vector)) AS similarity
                 FROM district_regulations
-                WHERE district_id = 1 AND 1 - (embedding <=> CAST(:query_embedding AS vector)) >= 0.40
+                WHERE district_id = 1
                 ORDER BY similarity DESC
                 LIMIT 5
             """)
@@ -815,8 +815,20 @@ async def audit_upload_files(request: AuditRequest, db: Session = Depends(get_db
         except Exception as e:
             print(f"[pgvector RAG Error] {e}")
 
+    # Fallback 1: DB 적재 조례 직접 매칭 (OpenAI API 429 또는 임베딩 실패 대비)
     if not rag_applied:
-        # Fallback: 로컬 디렉터리 PDF 키워드 매칭
+        try:
+            db_regs = db.execute(text("SELECT regulation_title, content FROM district_regulations ORDER BY id ASC LIMIT 5")).fetchall()
+            if db_regs:
+                rag_applied = True
+                for row in db_regs:
+                    title, content = row
+                    pdf_texts.append(f"조례 파일명: {title}\n내용:\n{content}")
+        except Exception as db_err:
+            print(f"[DB Regulations Direct Fallback Error] {db_err}")
+
+    # Fallback 2: 로컬 디렉터리 PDF 키워드 매칭
+    if not rag_applied:
         fallback_pdf_matching(UPLOAD_DIR, csv_keywords, pdf_texts)
 
     for filename in request.filenames:

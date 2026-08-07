@@ -12,7 +12,7 @@
         "lng": "126.9609644",
         "facility_type": "노래연습장"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -30,7 +30,7 @@
         "lng": "126.9738476",
         "facility_type": "노래연습장"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -48,7 +48,7 @@
         "lng": "127.0061583",
         "facility_type": "노래연습장"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -66,7 +66,7 @@
         "lng": "126.9739108",
         "facility_type": "노래연습장"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -84,7 +84,7 @@
         "lng": "126.9779391",
         "facility_type": "노래연습장"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -102,7 +102,7 @@
         "lng": "126.9933848",
         "facility_type": "노래연습장"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -120,7 +120,7 @@
         "lng": "126.989592",
         "facility_type": "노래연습장"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -138,7 +138,7 @@
         "lng": "126.9728762",
         "facility_type": "노래연습장"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -156,7 +156,7 @@
         "lng": "126.9687457",
         "facility_type": "노래연습장"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -174,7 +174,7 @@
         "lng": "126.9638396",
         "facility_type": "노래연습장"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -192,7 +192,7 @@
         "lng": "126.9774136",
         "facility_type": "노래연습장"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -210,7 +210,7 @@
         "lng": "126.9984743",
         "facility_type": "노래연습장"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -228,7 +228,7 @@
         "lng": "126.9765865",
         "facility_type": "노래연습장"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -246,7 +246,7 @@
         "lng": "126.9819662",
         "facility_type": "노래연습장"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -264,7 +264,7 @@
         "lng": "127.0054781",
         "facility_type": "노래연습장"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -282,7 +282,7 @@
         "lng": "126.9644209",
         "facility_type": "노래연습장"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -300,7 +300,7 @@
         "lng": "126.9685389",
         "facility_type": "노래연습장"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -318,7 +318,7 @@
         "lng": "126.9739379",
         "facility_type": "노래연습장"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -336,7 +336,7 @@
         "lng": "126.9726497",
         "facility_type": "노래연습장"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -354,7 +354,7 @@
         "lng": "126.9585714",
         "facility_type": "노래연습장"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -372,7 +372,7 @@
         "lng": "126.9954332",
         "facility_type": "노래연습장"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -390,7 +390,7 @@
         "lng": "126.9742766",
         "facility_type": "노래연습장"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -408,7 +408,7 @@
         "lng": "126.9685391",
         "facility_type": "노래연습장"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -426,7 +426,7 @@
         "lng": "126.9719867",
         "facility_type": "노래연습장"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -444,7 +444,7 @@
         "lng": "126.9749817",
         "facility_type": "노래연습장"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -462,7 +462,7 @@
         "lng": "126.9599151",
         "facility_type": "노래연습장"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -480,7 +480,7 @@
         "lng": "126.9722006",
         "facility_type": "노래연습장"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -498,7 +498,7 @@
         "lng": "126.9663542",
         "facility_type": "노래연습장"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -516,7 +516,7 @@
         "lng": "127.005653",
         "facility_type": "노래연습장"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -534,7 +534,7 @@
         "lng": "127.0053236",
         "facility_type": "단란주점"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -552,7 +552,7 @@
         "lng": "127.0043293",
         "facility_type": "단란주점"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -570,7 +570,7 @@
         "lng": "126.9916835",
         "facility_type": "단란주점"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -588,7 +588,7 @@
         "lng": "127.0070999",
         "facility_type": "단란주점"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -606,7 +606,7 @@
         "lng": "126.9954237",
         "facility_type": "단란주점"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -624,7 +624,7 @@
         "lng": "126.9639138",
         "facility_type": "단란주점"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -642,7 +642,7 @@
         "lng": "126.9945663",
         "facility_type": "단란주점"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -660,7 +660,7 @@
         "lng": "126.9624423",
         "facility_type": "단란주점"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -678,7 +678,7 @@
         "lng": "126.9607592",
         "facility_type": "단란주점"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -696,7 +696,7 @@
         "lng": "126.9677578",
         "facility_type": "단란주점"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -714,7 +714,7 @@
         "lng": "126.9923555",
         "facility_type": "단란주점"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -732,7 +732,7 @@
         "lng": "127.0059549",
         "facility_type": "단란주점"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -750,7 +750,7 @@
         "lng": "126.9690453",
         "facility_type": "단란주점"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -768,7 +768,7 @@
         "lng": "126.9606842",
         "facility_type": "단란주점"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -786,7 +786,7 @@
         "lng": "126.9729067",
         "facility_type": "단란주점"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -804,7 +804,7 @@
         "lng": "126.9978135",
         "facility_type": "단란주점"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -822,7 +822,7 @@
         "lng": "127.0053712",
         "facility_type": "단란주점"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -840,7 +840,7 @@
         "lng": "127.0102597",
         "facility_type": "단란주점"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -858,7 +858,7 @@
         "lng": "126.9695621",
         "facility_type": "단란주점"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -876,7 +876,7 @@
         "lng": "127.0057481",
         "facility_type": "단란주점"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -894,7 +894,7 @@
         "lng": "127.005975",
         "facility_type": "단란주점"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -912,7 +912,7 @@
         "lng": "126.9993358",
         "facility_type": "단란주점"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -930,7 +930,7 @@
         "lng": "126.9733311",
         "facility_type": "단란주점"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -948,7 +948,7 @@
         "lng": "127.0018301",
         "facility_type": "단란주점"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -966,7 +966,7 @@
         "lng": "126.9956687",
         "facility_type": "단란주점"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -984,7 +984,7 @@
         "lng": "127.0101173",
         "facility_type": "단란주점"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -1002,7 +1002,7 @@
         "lng": "127.0057568",
         "facility_type": "단란주점"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -1020,7 +1020,7 @@
         "lng": "127.0061939",
         "facility_type": "단란주점"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -1038,7 +1038,7 @@
         "lng": "126.973542",
         "facility_type": "단란주점"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -1056,7 +1056,7 @@
         "lng": "127.0049504",
         "facility_type": "단란주점"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -1074,7 +1074,7 @@
         "lng": "126.9607224",
         "facility_type": "단란주점"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -1092,7 +1092,7 @@
         "lng": "126.9614411",
         "facility_type": "단란주점"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -1110,7 +1110,7 @@
         "lng": "126.9586474",
         "facility_type": "단란주점"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -1128,7 +1128,7 @@
         "lng": "126.9583374",
         "facility_type": "단란주점"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -1146,7 +1146,7 @@
         "lng": "126.9585579",
         "facility_type": "단란주점"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -1164,7 +1164,7 @@
         "lng": "126.9947076",
         "facility_type": "단란주점"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -1182,7 +1182,7 @@
         "lng": "127.0047189",
         "facility_type": "단란주점"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -1200,7 +1200,7 @@
         "lng": "126.9989834",
         "facility_type": "단란주점"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -1218,7 +1218,7 @@
         "lng": "126.9699155",
         "facility_type": "단란주점"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -1236,7 +1236,7 @@
         "lng": "126.9726828",
         "facility_type": "단란주점"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -1254,7 +1254,7 @@
         "lng": "127.009902",
         "facility_type": "단란주점"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -1272,7 +1272,7 @@
         "lng": "126.9942957",
         "facility_type": "단란주점"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -1290,7 +1290,7 @@
         "lng": "126.9743427",
         "facility_type": "단란주점"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -1308,7 +1308,7 @@
         "lng": "126.9709308",
         "facility_type": "단란주점"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -1326,7 +1326,7 @@
         "lng": "127.005814",
         "facility_type": "단란주점"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -1344,7 +1344,7 @@
         "lng": "126.9636976",
         "facility_type": "단란주점"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -1362,7 +1362,7 @@
         "lng": "126.9994274",
         "facility_type": "단란주점"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -1380,7 +1380,7 @@
         "lng": "126.970026",
         "facility_type": "단란주점"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -1398,7 +1398,7 @@
         "lng": "126.9958412",
         "facility_type": "단란주점"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -1416,7 +1416,7 @@
         "lng": "126.994769",
         "facility_type": "단란주점"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -1434,7 +1434,7 @@
         "lng": "126.96574",
         "facility_type": "단란주점"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -1452,7 +1452,7 @@
         "lng": "126.9646297",
         "facility_type": "단란주점"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -1470,7 +1470,7 @@
         "lng": "126.9723989",
         "facility_type": "단란주점"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -1488,7 +1488,7 @@
         "lng": "126.9632627",
         "facility_type": "단란주점"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -1506,7 +1506,7 @@
         "lng": "126.972301",
         "facility_type": "단란주점"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -1524,7 +1524,7 @@
         "lng": "127.0062293",
         "facility_type": "단란주점"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -1542,7 +1542,7 @@
         "lng": "127.0064698",
         "facility_type": "단란주점"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -1560,7 +1560,7 @@
         "lng": "126.9617529",
         "facility_type": "유흥주점"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -1578,7 +1578,7 @@
         "lng": "126.9725154",
         "facility_type": "유흥주점"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -1596,7 +1596,7 @@
         "lng": "126.9727659",
         "facility_type": "유흥주점"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -1614,7 +1614,7 @@
         "lng": "126.9615765",
         "facility_type": "유흥주점"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -1632,7 +1632,7 @@
         "lng": "126.9715529",
         "facility_type": "유흥주점"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -1650,7 +1650,7 @@
         "lng": "126.9694413",
         "facility_type": "유흥주점"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -1668,7 +1668,7 @@
         "lng": "126.9888318",
         "facility_type": "유흥주점"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -1686,7 +1686,7 @@
         "lng": "126.9617155",
         "facility_type": "유흥주점"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -1704,7 +1704,7 @@
         "lng": "126.99585",
         "facility_type": "유흥주점"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -1722,7 +1722,7 @@
         "lng": "126.9938628",
         "facility_type": "유흥주점"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -1740,7 +1740,7 @@
         "lng": "126.9935148",
         "facility_type": "유흥주점"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -1758,7 +1758,7 @@
         "lng": "126.9715912",
         "facility_type": "유흥주점"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -1776,7 +1776,7 @@
         "lng": "126.9935148",
         "facility_type": "유흥주점"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -1794,7 +1794,7 @@
         "lng": "126.9700762",
         "facility_type": "유흥주점"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -1812,7 +1812,7 @@
         "lng": "126.9730083",
         "facility_type": "유흥주점"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -1830,7 +1830,7 @@
         "lng": "126.9612672",
         "facility_type": "유흥주점"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -1848,7 +1848,7 @@
         "lng": "126.971569",
         "facility_type": "유흥주점"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -1866,7 +1866,7 @@
         "lng": "126.9965718",
         "facility_type": "유흥주점"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -1884,7 +1884,7 @@
         "lng": "126.9953606",
         "facility_type": "유흥주점"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }

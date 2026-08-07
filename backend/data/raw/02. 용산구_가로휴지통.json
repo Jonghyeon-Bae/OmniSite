@@ -10,7 +10,7 @@
         "경도": "126.9505507",
         "위도": "37.53274874"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -26,7 +26,7 @@
         "경도": "126.9529661",
         "위도": "37.53210615"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -42,7 +42,7 @@
         "경도": "126.9548552",
         "위도": "37.53242617"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -58,7 +58,7 @@
         "경도": "126.9581928",
         "위도": "37.53408127"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -74,7 +74,7 @@
         "경도": "126.969018",
         "위도": "37.53988408"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -90,7 +90,7 @@
         "경도": "126.9615805",
         "위도": "37.53503181"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -106,7 +106,7 @@
         "경도": "126.9617412",
         "위도": "37.5356297"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -122,7 +122,7 @@
         "경도": "126.9665355",
         "위도": "37.53828417"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -138,7 +138,7 @@
         "경도": "126.9689289",
         "위도": "37.54040957"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -154,7 +154,7 @@
         "경도": "126.9704029",
         "위도": "37.54176658"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -170,7 +170,7 @@
         "경도": "126.9663466",
         "위도": "37.53771667"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -186,7 +186,7 @@
         "경도": "126.9686207",
         "위도": "37.55374928"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -202,7 +202,7 @@
         "경도": "126.9702568",
         "위도": "37.5489554"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -218,7 +218,7 @@
         "경도": "126.9702955",
         "위도": "37.54510426"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -234,7 +234,7 @@
         "경도": "126.9708167",
         "위도": "37.54557259"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -250,7 +250,7 @@
         "경도": "126.9748112",
         "위도": "37.5458198"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -266,7 +266,7 @@
         "경도": "126.9783879",
         "위도": "37.54581862"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -282,7 +282,7 @@
         "경도": "126.9784338",
         "위도": "37.54660638"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -298,7 +298,7 @@
         "경도": "126.9776012",
         "위도": "37.54995167"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -314,7 +314,7 @@
         "경도": "126.9768985",
         "위도": "37.55092091"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -330,7 +330,7 @@
         "경도": "126.9765519",
         "위도": "37.55237757"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -346,7 +346,7 @@
         "경도": "126.977609",
         "위도": "37.54836126"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -362,7 +362,7 @@
         "경도": "126.9781017",
         "위도": "37.54810621"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -378,7 +378,7 @@
         "경도": "126.9709798",
         "위도": "37.54163345"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -394,7 +394,7 @@
         "경도": "126.9638595",
         "위도": "37.53259616"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -410,7 +410,7 @@
         "경도": "126.9565339",
         "위도": "37.53197373"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -426,7 +426,7 @@
         "경도": "126.9696455",
         "위도": "37.53746257"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -442,7 +442,7 @@
         "경도": "126.9663494",
         "위도": "37.53850133"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -458,7 +458,7 @@
         "경도": "126.961915",
         "위도": "37.53929195"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -474,7 +474,7 @@
         "경도": "126.9625667",
         "위도": "37.53882324"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -490,7 +490,7 @@
         "경도": "126.9586197",
         "위도": "37.54032126"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -506,7 +506,7 @@
         "경도": "126.9664804",
         "위도": "37.55428948"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -522,7 +522,7 @@
         "경도": "126.9808612",
         "위도": "37.51874313"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -538,7 +538,7 @@
         "경도": "126.9774682",
         "위도": "37.51923414"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -554,7 +554,7 @@
         "경도": "126.9727817",
         "위도": "37.5200482"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -570,7 +570,7 @@
         "경도": "126.9724923",
         "위도": "37.52105561"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -586,7 +586,7 @@
         "경도": "126.9698282",
         "위도": "37.52085015"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -602,7 +602,7 @@
         "경도": "126.9683998",
         "위도": "37.52170496"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -618,7 +618,7 @@
         "경도": "126.9670689",
         "위도": "37.52185225"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -634,7 +634,7 @@
         "경도": "126.9727817",
         "위도": "37.5200482"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -650,7 +650,7 @@
         "경도": "126.9547084",
         "위도": "37.52787939"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -666,7 +666,7 @@
         "경도": "126.9551287",
         "위도": "37.527647"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -682,7 +682,7 @@
         "경도": "126.9560373",
         "위도": "37.52612244"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -698,7 +698,7 @@
         "경도": "126.9597141",
         "위도": "37.52342601"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -714,7 +714,7 @@
         "경도": "126.9596495",
         "위도": "37.52393763"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -730,7 +730,7 @@
         "경도": "126.9658077",
         "위도": "37.52512979"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -746,7 +746,7 @@
         "경도": "126.9671481",
         "위도": "37.52503187"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -762,7 +762,7 @@
         "경도": "126.975694",
         "위도": "37.52212516"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -778,7 +778,7 @@
         "경도": "126.9851273",
         "위도": "37.51877614"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -794,7 +794,7 @@
         "경도": "126.9693539",
         "위도": "37.52370395"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -810,7 +810,7 @@
         "경도": "126.9785481",
         "위도": "37.52119487"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -826,7 +826,7 @@
         "경도": "126.9788482",
         "위도": "37.52287277"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -842,7 +842,7 @@
         "경도": "126.9780039",
         "위도": "37.54702349"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -858,7 +858,7 @@
         "경도": "126.9774447",
         "위도": "37.55047613"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -874,7 +874,7 @@
         "경도": "127.0121035",
         "위도": "37.53778285"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -890,7 +890,7 @@
         "경도": "126.9689366",
         "위도": "37.55333591"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -906,7 +906,7 @@
         "경도": "127.0013454",
         "위도": "37.53979106"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -922,7 +922,7 @@
         "경도": "127.0082729",
         "위도": "37.53302888"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -938,7 +938,7 @@
         "경도": "126.9920329",
         "위도": "37.52506941"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -954,7 +954,7 @@
         "경도": "126.9920061",
         "위도": "37.52584016"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -970,7 +970,7 @@
         "경도": "126.9913847",
         "위도": "37.52859089"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -986,7 +986,7 @@
         "경도": "126.9913018",
         "위도": "37.53050568"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -1002,7 +1002,7 @@
         "경도": "126.9870766",
         "위도": "37.53723911"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -1018,7 +1018,7 @@
         "경도": "126.9867583",
         "위도": "37.53642887"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -1034,7 +1034,7 @@
         "경도": "126.9886965",
         "위도": "37.54391973"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -1050,7 +1050,7 @@
         "경도": "126.9556085",
         "위도": "37.52657367"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -1066,7 +1066,7 @@
         "경도": "126.9810841",
         "위도": "37.55264501"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -1082,7 +1082,7 @@
         "경도": "126.9810841",
         "위도": "37.55264501"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -1098,7 +1098,7 @@
         "경도": "126.9841686",
         "위도": "37.54847776"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -1114,7 +1114,7 @@
         "경도": "126.9856728",
         "위도": "37.54646341"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -1130,7 +1130,7 @@
         "경도": "126.9930586",
         "위도": "37.54262841"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -1146,7 +1146,7 @@
         "경도": "126.9953126",
         "위도": "37.54281966"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -1162,7 +1162,7 @@
         "경도": "126.9974159",
         "위도": "37.54094957"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -1178,7 +1178,7 @@
         "경도": "126.9856452",
         "위도": "37.54629702"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -1194,7 +1194,7 @@
         "경도": "126.9635746",
         "위도": "37.52410587"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -1210,7 +1210,7 @@
         "경도": "126.9657475",
         "위도": "37.52801326"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -1226,7 +1226,7 @@
         "경도": "126.9711907",
         "위도": "37.53110768"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -1242,7 +1242,7 @@
         "경도": "126.9675605",
         "위도": "37.52993569"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -1258,7 +1258,7 @@
         "경도": "126.9704223",
         "위도": "37.53140463"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -1274,7 +1274,7 @@
         "경도": "126.9704617",
         "위도": "37.53223027"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -1290,7 +1290,7 @@
         "경도": "126.9709119",
         "위도": "37.5443775"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -1306,7 +1306,7 @@
         "경도": "126.9742013",
         "위도": "37.53594202"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -1322,7 +1322,7 @@
         "경도": "126.973149",
         "위도": "37.54238811"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -1338,7 +1338,7 @@
         "경도": "126.972745",
         "위도": "37.54347396"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -1354,7 +1354,7 @@
         "경도": "126.9722943",
         "위도": "37.5489445"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -1370,7 +1370,7 @@
         "경도": "126.971883",
         "위도": "37.54438466"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -1386,7 +1386,7 @@
         "경도": "126.971893",
         "위도": "37.54333367"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -1402,7 +1402,7 @@
         "경도": "126.9726668",
         "위도": "37.54177919"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -1418,7 +1418,7 @@
         "경도": "126.9740514",
         "위도": "37.55344077"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -1434,7 +1434,7 @@
         "경도": "126.9718655",
         "위도": "37.54223505"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -1450,7 +1450,7 @@
         "경도": "126.9717183",
         "위도": "37.54166351"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -1466,7 +1466,7 @@
         "경도": "126.9665057",
         "위도": "37.52804988"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -1482,7 +1482,7 @@
         "경도": "126.9638088",
         "위도": "37.52510467"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -1498,7 +1498,7 @@
         "경도": "126.9621606",
         "위도": "37.52377946"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -1514,7 +1514,7 @@
         "경도": "126.9663578",
         "위도": "37.52913271"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -1530,7 +1530,7 @@
         "경도": "126.9677933",
         "위도": "37.53021067"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -1546,7 +1546,7 @@
         "경도": "126.9646296",
         "위도": "37.52799847"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -1562,7 +1562,7 @@
         "경도": "127.0064564",
         "위도": "37.53133129"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -1578,7 +1578,7 @@
         "경도": "127.0046767",
         "위도": "37.53337152"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -1594,7 +1594,7 @@
         "경도": "126.95153",
         "위도": "37.53436278"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -1610,7 +1610,7 @@
         "경도": "127.0016188",
         "위도": "37.52542858"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -1626,7 +1626,7 @@
         "경도": "126.9691376",
         "위도": "37.52500907"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -1642,7 +1642,7 @@
         "경도": "127.0073733",
         "위도": "37.52983589"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -1658,7 +1658,7 @@
         "경도": "127.0081407",
         "위도": "37.53354296"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -1674,7 +1674,7 @@
         "경도": "126.9871066",
         "위도": "37.53813028"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -1690,7 +1690,7 @@
         "경도": "126.9871591",
         "위도": "37.53852941"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -1706,7 +1706,7 @@
         "경도": "127.0018632",
         "위도": "37.5408403"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -1722,7 +1722,7 @@
         "경도": "126.9844197",
         "위도": "37.5477846"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -1738,7 +1738,7 @@
         "경도": "126.9964825",
         "위도": "37.5304259"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -1754,7 +1754,7 @@
         "경도": "127.0032586",
         "위도": "37.5419906"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -1770,7 +1770,7 @@
         "경도": "126.9867583",
         "위도": "37.53642887"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -1786,7 +1786,7 @@
         "경도": "127.0038947",
         "위도": "37.53359832"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -1802,7 +1802,7 @@
         "경도": "127.0046767",
         "위도": "37.53337152"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -1818,7 +1818,7 @@
         "경도": "126.9545057",
         "위도": "37.53010866"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -1834,7 +1834,7 @@
         "경도": "126.968411",
         "위도": "37.52107298"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -1850,7 +1850,7 @@
         "경도": "126.9699471",
         "위도": "37.53167366"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -1866,7 +1866,7 @@
         "경도": "126.9710409",
         "위도": "37.54262459"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -1882,7 +1882,7 @@
         "경도": "126.9844197",
         "위도": "37.5477846"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -1898,7 +1898,7 @@
         "경도": "126.9875922",
         "위도": "37.53432532"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -1914,7 +1914,7 @@
         "경도": "126.9875922",
         "위도": "37.53432532"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -1930,7 +1930,7 @@
         "경도": "126.9886294",
         "위도": "37.53431034"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -1946,7 +1946,7 @@
         "경도": "126.9886294",
         "위도": "37.53431034"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -1962,7 +1962,7 @@
         "경도": "126.9900061",
         "위도": "37.53405919"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -1978,7 +1978,7 @@
         "경도": "126.9900061",
         "위도": "37.53405919"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -1994,7 +1994,7 @@
         "경도": "126.9907176",
         "위도": "37.53449301"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -2010,7 +2010,7 @@
         "경도": "126.9907176",
         "위도": "37.53449301"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -2026,7 +2026,7 @@
         "경도": "126.9905722",
         "위도": "37.53404213"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -2042,7 +2042,7 @@
         "경도": "126.9905722",
         "위도": "37.53404213"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -2058,7 +2058,7 @@
         "경도": "126.9916845",
         "위도": "37.53452342"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -2074,7 +2074,7 @@
         "경도": "126.9916845",
         "위도": "37.53452342"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -2090,7 +2090,7 @@
         "경도": "126.9920923",
         "위도": "37.53420307"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -2106,7 +2106,7 @@
         "경도": "126.9920923",
         "위도": "37.53420307"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -2122,7 +2122,7 @@
         "경도": "126.9930525",
         "위도": "37.53470098"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -2138,7 +2138,7 @@
         "경도": "126.9930525",
         "위도": "37.53470098"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -2154,7 +2154,7 @@
         "경도": "126.9938627",
         "위도": "37.53475804"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -2170,7 +2170,7 @@
         "경도": "126.9938627",
         "위도": "37.53475804"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -2186,7 +2186,7 @@
         "경도": "126.9942094",
         "위도": "37.53426822"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -2202,7 +2202,7 @@
         "경도": "126.9942094",
         "위도": "37.53426822"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -2218,7 +2218,7 @@
         "경도": "126.9952779",
         "위도": "37.53481698"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -2234,7 +2234,7 @@
         "경도": "126.9952779",
         "위도": "37.53481698"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -2250,7 +2250,7 @@
         "경도": "126.9965925",
         "위도": "37.53481918"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -2266,7 +2266,7 @@
         "경도": "126.9965925",
         "위도": "37.53481918"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -2282,7 +2282,7 @@
         "경도": "126.9988418",
         "위도": "37.53493701"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -2298,7 +2298,7 @@
         "경도": "126.9988418",
         "위도": "37.53493701"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -2314,7 +2314,7 @@
         "경도": "127.0011732",
         "위도": "37.53724143"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -2330,7 +2330,7 @@
         "경도": "127.0011732",
         "위도": "37.53724143"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -2346,7 +2346,7 @@
         "경도": "127.0012851",
         "위도": "37.53823967"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -2362,7 +2362,7 @@
         "경도": "127.0003391",
         "위도": "37.53712225"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -2378,7 +2378,7 @@
         "경도": "126.9888368",
         "위도": "37.53392083"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -2394,7 +2394,7 @@
         "경도": "126.9888368",
         "위도": "37.53392083"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -2410,7 +2410,7 @@
         "경도": "126.9901936",
         "위도": "37.53254283"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -2426,7 +2426,7 @@
         "경도": "126.9901936",
         "위도": "37.53254283"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -2442,7 +2442,7 @@
         "경도": "126.9940998",
         "위도": "37.53350188"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -2458,7 +2458,7 @@
         "경도": "126.9940998",
         "위도": "37.53350188"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -2474,7 +2474,7 @@
         "경도": "127.0026927",
         "위도": "37.54080636"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -2490,7 +2490,7 @@
         "경도": "127.0026927",
         "위도": "37.54080636"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -2506,7 +2506,7 @@
         "경도": "127.0061236",
         "위도": "37.53644919"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -2522,7 +2522,7 @@
         "경도": "127.0061236",
         "위도": "37.53644919"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -2538,7 +2538,7 @@
         "경도": "127.0055725",
         "위도": "37.53568655"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -2554,7 +2554,7 @@
         "경도": "127.0055725",
         "위도": "37.53568655"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -2570,7 +2570,7 @@
         "경도": "127.0055725",
         "위도": "37.53568655"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -2586,7 +2586,7 @@
         "경도": "127.0055725",
         "위도": "37.53568655"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -2602,7 +2602,7 @@
         "경도": "127.0054278",
         "위도": "37.53550104"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -2618,7 +2618,7 @@
         "경도": "127.0054278",
         "위도": "37.53550104"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -2634,7 +2634,7 @@
         "경도": "127.0068582",
         "위도": "37.53343323"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -2650,7 +2650,7 @@
         "경도": "127.0068582",
         "위도": "37.53343323"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -2666,7 +2666,7 @@
         "경도": "126.9627751",
         "위도": "37.52372027"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -2682,7 +2682,7 @@
         "경도": "126.9633363",
         "위도": "37.5243073"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -2698,7 +2698,7 @@
         "경도": "126.9662023",
         "위도": "37.52732051"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -2714,7 +2714,7 @@
         "경도": "126.9666739",
         "위도": "37.52783519"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -2730,7 +2730,7 @@
         "경도": "126.9666739",
         "위도": "37.52783519"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -2746,7 +2746,7 @@
         "경도": "126.973425",
         "위도": "37.5351602"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -2762,7 +2762,7 @@
         "경도": "126.9742396",
         "위도": "37.53647246"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -2778,7 +2778,7 @@
         "경도": "126.9742396",
         "위도": "37.53647246"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -2794,7 +2794,7 @@
         "경도": "126.9742396",
         "위도": "37.53647246"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -2810,7 +2810,7 @@
         "경도": "126.9727031",
         "위도": "37.542347"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -2826,7 +2826,7 @@
         "경도": "126.9723338",
         "위도": "37.54378844"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -2842,7 +2842,7 @@
         "경도": "126.9721689",
         "위도": "37.55088771"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -2858,7 +2858,7 @@
         "경도": "126.9717794",
         "위도": "37.54955537"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -2874,7 +2874,7 @@
         "경도": "126.9875944",
         "위도": "37.54100978"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -2890,7 +2890,7 @@
         "경도": "126.9875944",
         "위도": "37.54100978"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -2906,7 +2906,7 @@
         "경도": "126.9742505",
         "위도": "37.53502183"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -2922,7 +2922,7 @@
         "경도": "126.9742505",
         "위도": "37.53502183"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -2938,7 +2938,7 @@
         "경도": "126.9754551",
         "위도": "37.53440842"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -2954,7 +2954,7 @@
         "경도": "126.9754551",
         "위도": "37.53440842"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -2970,7 +2970,7 @@
         "경도": "126.9774118",
         "위도": "37.53478857"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -2986,7 +2986,7 @@
         "경도": "126.9774118",
         "위도": "37.53478857"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -3002,7 +3002,7 @@
         "경도": "126.9845242",
         "위도": "37.53501916"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -3018,7 +3018,7 @@
         "경도": "126.9845242",
         "위도": "37.53501916"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -3034,7 +3034,7 @@
         "경도": "126.9855141",
         "위도": "37.5344961"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -3050,7 +3050,7 @@
         "경도": "126.9855141",
         "위도": "37.5344961"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -3066,7 +3066,7 @@
         "경도": "126.9640254",
         "위도": "37.52958026"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -3082,7 +3082,7 @@
         "경도": "126.9640254",
         "위도": "37.52958026"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -3098,7 +3098,7 @@
         "경도": "126.9656056",
         "위도": "37.52834126"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -3114,7 +3114,7 @@
         "경도": "126.9746396",
         "위도": "37.53631075"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -3130,7 +3130,7 @@
         "경도": "126.9906036",
         "위도": "37.52051389"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -3146,7 +3146,7 @@
         "경도": "126.9898188",
         "위도": "37.52012972"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -3162,7 +3162,7 @@
         "경도": "126.9918774",
         "위도": "37.52144689"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -3178,7 +3178,7 @@
         "경도": "126.9550691",
         "위도": "37.53175405"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -3194,7 +3194,7 @@
         "경도": "126.9725855",
         "위도": "37.54430562"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -3210,7 +3210,7 @@
         "경도": "126.9721582",
         "위도": "37.54654461"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -3226,7 +3226,7 @@
         "경도": "126.9715486",
         "위도": "37.54629805"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -3242,7 +3242,7 @@
         "경도": "126.9721572",
         "위도": "37.54325708"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -3258,7 +3258,7 @@
         "경도": "126.9549837",
         "위도": "37.53561887"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -3274,7 +3274,7 @@
         "경도": "126.9618097",
         "위도": "37.53458032"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -3290,7 +3290,7 @@
         "경도": "126.9649472",
         "위도": "37.53852988"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -3306,7 +3306,7 @@
         "경도": "127.0069326",
         "위도": "37.52896727"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -3322,7 +3322,7 @@
         "경도": "127.0065871",
         "위도": "37.52870524"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -3338,7 +3338,7 @@
         "경도": "126.973707",
         "위도": "37.54071822"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -3354,7 +3354,7 @@
         "경도": "126.973707",
         "위도": "37.54071822"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -3370,7 +3370,7 @@
         "경도": "126.9724772",
         "위도": "37.54532421"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -3386,7 +3386,7 @@
         "경도": "126.9724772",
         "위도": "37.54532421"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -3402,7 +3402,7 @@
         "경도": "126.9711875",
         "위도": "37.54895589"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -3418,7 +3418,7 @@
         "경도": "126.9711875",
         "위도": "37.54895589"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -3434,7 +3434,7 @@
         "경도": "126.9723729",
         "위도": "37.54224901"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -3450,7 +3450,7 @@
         "경도": "126.9723729",
         "위도": "37.54224901"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -3466,7 +3466,7 @@
         "경도": "126.9683122",
         "위도": "37.52983397"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -3482,7 +3482,7 @@
         "경도": "126.9683122",
         "위도": "37.52983397"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -3498,7 +3498,7 @@
         "경도": "127.0030905",
         "위도": "37.54116974"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -3514,7 +3514,7 @@
         "경도": "127.0030905",
         "위도": "37.54116974"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -3530,7 +3530,7 @@
         "경도": "126.991122",
         "위도": "37.52433749"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -3546,7 +3546,7 @@
         "경도": "126.9962359",
         "위도": "37.52055417"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -3562,7 +3562,7 @@
         "경도": "126.9580884",
         "위도": "37.53303285"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -3578,7 +3578,7 @@
         "경도": "126.9506041",
         "위도": "37.53339717"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -3594,7 +3594,7 @@
         "경도": "126.9625667",
         "위도": "37.53882324"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -3610,7 +3610,7 @@
         "경도": "126.9706235",
         "위도": "37.54105091"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -3626,7 +3626,7 @@
         "경도": "126.9722929",
         "위도": "37.54493141"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -3642,7 +3642,7 @@
         "경도": "126.9854212",
         "위도": "37.51723069"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -3658,7 +3658,7 @@
         "경도": "126.970284",
         "위도": "37.53160008"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -3674,7 +3674,7 @@
         "경도": "126.970284",
         "위도": "37.53160008"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -3690,7 +3690,7 @@
         "경도": "126.970284",
         "위도": "37.53160008"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -3706,7 +3706,7 @@
         "경도": "126.970284",
         "위도": "37.53160008"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -3722,7 +3722,7 @@
         "경도": "126.9656024",
         "위도": "37.52710772"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -3738,7 +3738,7 @@
         "경도": "126.965305",
         "위도": "37.52727379"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -3754,7 +3754,7 @@
         "경도": "126.9583534",
         "위도": "37.53252807"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -3770,7 +3770,7 @@
         "경도": "126.9636015",
         "위도": "37.53295843"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -3786,7 +3786,7 @@
         "경도": "126.9674637",
         "위도": "37.53834399"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -3802,7 +3802,7 @@
         "경도": "126.9707391",
         "위도": "37.53819069"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -3818,7 +3818,7 @@
         "경도": "126.9615824",
         "위도": "37.54001151"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -3834,7 +3834,7 @@
         "경도": "126.9623165",
         "위도": "37.54165104"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -3850,7 +3850,7 @@
         "경도": "126.9633185",
         "위도": "37.54633355"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -3866,7 +3866,7 @@
         "경도": "126.9688671",
         "위도": "37.55484945"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -3882,7 +3882,7 @@
         "경도": "126.9709597",
         "위도": "37.52347017"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -3898,7 +3898,7 @@
         "경도": "126.9715662",
         "위도": "37.52301632"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -3914,7 +3914,7 @@
         "경도": "126.9910029",
         "위도": "37.52059825"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -3930,7 +3930,7 @@
         "경도": "126.9884754",
         "위도": "37.5334086"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -3946,7 +3946,7 @@
         "경도": "126.9913847",
         "위도": "37.52859089"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -3962,7 +3962,7 @@
         "경도": "126.990312",
         "위도": "37.52244134"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -3978,7 +3978,7 @@
         "경도": "126.962825",
         "위도": "37.52427671"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -3994,7 +3994,7 @@
         "경도": "126.9970558",
         "위도": "37.53453378"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -4010,7 +4010,7 @@
         "경도": "126.9981436",
         "위도": "37.53469114"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -4026,7 +4026,7 @@
         "경도": "127.0003391",
         "위도": "37.53712225"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -4042,7 +4042,7 @@
         "경도": "126.9987986",
         "위도": "37.53564632"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -4058,7 +4058,7 @@
         "경도": "126.9769641",
         "위도": "37.54590685"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -4074,7 +4074,7 @@
         "경도": "126.9542328",
         "위도": "37.52955347"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -4090,7 +4090,7 @@
         "경도": "126.9760765",
         "위도": "37.51853789"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -4106,7 +4106,7 @@
         "경도": "126.9693314",
         "위도": "37.55432367"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -4122,7 +4122,7 @@
         "경도": "126.9718792",
         "위도": "37.55118901"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -4138,7 +4138,7 @@
         "경도": "126.9956638",
         "위도": "37.53480694"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -4154,7 +4154,7 @@
         "경도": "126.9913902",
         "위도": "37.52195723"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -4170,7 +4170,7 @@
         "경도": "126.9656024",
         "위도": "37.52710772"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -4186,7 +4186,7 @@
         "경도": "126.9632398",
         "위도": "37.54686566"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -4202,7 +4202,7 @@
         "경도": "126.9867583",
         "위도": "37.53642887"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -4218,7 +4218,7 @@
         "경도": "126.993237",
         "위도": "37.53423652"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -4234,7 +4234,7 @@
         "경도": "127.0005096",
         "위도": "37.52637189"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -4250,7 +4250,7 @@
         "경도": "127.0083372",
         "위도": "37.53413075"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -4266,7 +4266,7 @@
         "경도": "127.0077151",
         "위도": "37.53033777"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -4282,7 +4282,7 @@
         "경도": "127.0023532",
         "위도": "37.54606567"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -4298,7 +4298,7 @@
         "경도": "126.9745979",
         "위도": "37.52003066"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -4314,7 +4314,7 @@
         "경도": "126.9636768",
         "위도": "37.53631297"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -4330,7 +4330,7 @@
         "경도": "126.9809565",
         "위도": "37.54681104"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -4346,7 +4346,7 @@
         "경도": "126.9732263",
         "위도": "37.54509581"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -4362,7 +4362,7 @@
         "경도": "126.9628802",
         "위도": "37.55164344"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -4378,7 +4378,7 @@
         "경도": "126.9612084",
         "위도": "37.53949978"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -4394,7 +4394,7 @@
         "경도": "126.9665894",
         "위도": "37.54483995"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -4410,7 +4410,7 @@
         "경도": "126.9697468",
         "위도": "37.53781193"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }
@@ -4426,7 +4426,7 @@
         "경도": "126.9939266",
         "위도": "37.53142391"
       },
-      "domain": "smoking_booth",
+      "domain": "smoking_zone",
       "zone_behavior": "inclusion",
       "is_exclusion": false
     }

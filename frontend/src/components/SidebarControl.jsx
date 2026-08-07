@@ -268,7 +268,7 @@ export default function SidebarControl({
       {/* ========================================================================= */}
       <div className={`flex flex-col gap-4 border-t border-slate-800/80 pt-4 transition-all duration-300 ${pipelineStep < 4 ? 'hidden' : ''} ${pipelineStep > 4 ? 'opacity-40 pointer-events-none' : ''}`}>
         <div className="flex justify-between items-center">
-          <label className="text-xs font-semibold text-slate-300">Step 3. AHP 인자별 상대 가중치</label>
+          <label className="text-xs font-semibold text-slate-300">Step 4. AHP 인자별 상대 가중치</label>
           <span className={`text-[10px] px-2 py-0.5 rounded-full font-mono font-semibold transition-all ${crValue < 0.1 ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'}`}>
             C.R. = {crValue} ({crValue < 0.1 ? '만족' : '위배'})
           </span>

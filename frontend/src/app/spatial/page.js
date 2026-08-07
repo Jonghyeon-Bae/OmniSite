@@ -437,13 +437,18 @@ export default function Home() {
     };
   }, [dragStart]);
 
-  // Step 3 진입 시 관할 경계 GeoJSON 및 규제 시설물 목록 로드
+  // 관할 경계 GeoJSON 로드 (지자체 ID 변경 또는 마운트 시 즉시 수신)
   useEffect(() => {
-    if (pipelineStep === 3) {
+    if (userDistrictId) {
       apiFetch(`/api/v1/spatial/district-boundary/${userDistrictId}`)
         .then(res => res.ok ? res.json() : null)
         .then(data => { if (data) setDistrictGeoJson(data); });
-        
+    }
+  }, [userDistrictId]);
+
+  // Step 3 진입 시 규제 시설물 및 사용자 가상 금지구역 목록 로드
+  useEffect(() => {
+    if (pipelineStep === 3) {
       apiFetch(`/api/v1/spatial/restrictions/points?facility_type=${inferredDomainTag || 'city_feature'}`)
         .then(res => res.ok ? res.json() : null)
         .then(data => { if (data) setRestrictionPoints(data.points); });
@@ -457,7 +462,7 @@ export default function Home() {
         .then(res => res.ok ? res.json() : null)
         .then(data => { if (data) setNationalPropertiesGeoJson(data); });
     }
-  }, [pipelineStep, inferredDomainTag, userDistrictId]);
+  }, [pipelineStep, inferredDomainTag]);
 
   // 컴포넌트 마운트 및 새로고침 시 백엔드 실시간 JWT 토큰 유효성 동기 검증 (/api/v1/auth/me)
   useEffect(() => {
@@ -1350,17 +1355,18 @@ export default function Home() {
     const startDebateStream = async () => {
       setSimStep(0);
       try {
+        const currentParcel = selectedParcel?.[activeTab] || selectedParcel || {};
         const payload = {
           facility_type: inferredDomainTag || "city_feature",
           inferred_purpose: inferredPurpose || "입지 분석",
-          candidate_jibun: selectedParcel[activeTab]?.jibun || "관할구역 미지정 부지",
-          candidate_css: selectedParcel[activeTab]?.css || 50,
-          candidate_lat: selectedParcel[activeTab]?.lat || 37.53,
-          candidate_lng: selectedParcel[activeTab]?.lng || 126.97,
+          candidate_jibun: currentParcel.jibun || currentParcel.address || "관할구역 미지정 부지",
+          candidate_css: parseInt(currentParcel.css || 50),
+          candidate_lat: parseFloat(currentParcel.lat || 37.53),
+          candidate_lng: parseFloat(currentParcel.lng || 126.97),
           ahp_weights: ahpWeights || {},
-          intensity_level: intensityLevel,
-          address_analysis: selectedParcel[activeTab]?.address_analysis || "",
-          selection_reason: selectedParcel[activeTab]?.reason || ""
+          intensity_level: intensityLevel || "normal",
+          address_analysis: currentParcel.address_analysis || "",
+          selection_reason: currentParcel.reason || ""
         };
 
         // Next.js BFF Proxy 및 상대 경로 동적 라우팅을 위한 backendBaseUrl 바인딩
@@ -1377,7 +1383,7 @@ export default function Home() {
             headers: fetchHeaders,
             body: JSON.stringify(payload)
           });
-          if (res.status === 404 || res.status === 502 || res.status === 504) {
+          if (!res.ok || res.status === 404 || res.status === 502 || res.status === 504) {
             res = await fetch(`http://localhost:8000/api/v1/spatial/debate`, {
               method: 'POST',
               headers: fetchHeaders,

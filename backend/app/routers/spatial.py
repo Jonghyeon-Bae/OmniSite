@@ -2992,14 +2992,18 @@ class DecisionHistoryCreate(BaseModel):
     inferred_purpose: Optional[str] = None
     ahp_weights: Dict[str, float] = {}
     selected_parcel_jibun: Optional[str] = None
+    selected_parcel_pnu: Optional[str] = None
     selected_parcel_price: Optional[int] = 0
     selected_parcel_area: Optional[float] = 0.0
     selected_parcel_css: Optional[int] = 0
     debate_logs: List[Dict[str, str]] = []
 
 def ensure_decision_histories_table(db: Session):
-    """[v4.9.40] DDL ALTER TABLE 제거: DB/init/01_schema.sql로 이미 정합성이 마운트되어 DDL 락 붕괴 방어"""
-    pass
+    try:
+        db.execute(text("ALTER TABLE decision_histories ADD COLUMN IF NOT EXISTS selected_parcel_pnu VARCHAR(50);"))
+        db.commit()
+    except Exception:
+        db.rollback()
 
 def ensure_user_exclusions_table(db: Session):
     """[v4.9.40] DDL ALTER TABLE 제거: DB/init/01_schema.sql로 이미 정합성이 마운트되어 DDL 락 붕괴 방어"""
@@ -3010,7 +3014,7 @@ async def get_decision_history(db: Session = Depends(get_db)):
     ensure_decision_histories_table(db)
     try:
         query = text("""
-            SELECT id, TO_CHAR(created_at, 'YYYY-MM-DD') as date_str, region, facility_type, infra, pnu_count, status, audit_state, audit_opinion, inferred_purpose, ahp_weights, selected_parcel_jibun, selected_parcel_price, selected_parcel_area, selected_parcel_css, debate_logs
+            SELECT id, TO_CHAR(created_at, 'YYYY-MM-DD') as date_str, region, facility_type, infra, pnu_count, status, audit_state, audit_opinion, inferred_purpose, ahp_weights, selected_parcel_jibun, selected_parcel_price, selected_parcel_area, selected_parcel_css, debate_logs, selected_parcel_pnu
             FROM decision_histories
             ORDER BY id DESC
         """)
@@ -3034,7 +3038,8 @@ async def get_decision_history(db: Session = Depends(get_db)):
                 "selectedParcelPrice": r[12],
                 "selectedParcelArea": float(r[13]) if r[13] is not None else 0.0,
                 "selectedParcelCss": r[14],
-                "debateLogs": r[15] if isinstance(r[15], list) else (json.loads(r[15]) if r[15] else [])
+                "debateLogs": r[15] if isinstance(r[15], list) else (json.loads(r[15]) if r[15] else []),
+                "selectedParcelPnu": r[16] if len(r) > 16 else None
             })
         return histories
     except Exception as e:
@@ -3045,8 +3050,8 @@ async def create_decision_history(req: DecisionHistoryCreate, db: Session = Depe
     ensure_decision_histories_table(db)
     try:
         query = text("""
-            INSERT INTO decision_histories (region, facility_type, infra, pnu_count, status, audit_state, audit_opinion, inferred_purpose, ahp_weights, selected_parcel_jibun, selected_parcel_price, selected_parcel_area, selected_parcel_css, debate_logs)
-            VALUES (:region, :facility_type, :infra, :pnu_count, :status, :audit_state, :audit_opinion, :inferred_purpose, :ahp_weights, :selected_parcel_jibun, :selected_parcel_price, :selected_parcel_area, :selected_parcel_css, :debate_logs)
+            INSERT INTO decision_histories (region, facility_type, infra, pnu_count, status, audit_state, audit_opinion, inferred_purpose, ahp_weights, selected_parcel_jibun, selected_parcel_pnu, selected_parcel_price, selected_parcel_area, selected_parcel_css, debate_logs)
+            VALUES (:region, :facility_type, :infra, :pnu_count, :status, :audit_state, :audit_opinion, :inferred_purpose, :ahp_weights, :selected_parcel_jibun, :selected_parcel_pnu, :selected_parcel_price, :selected_parcel_area, :selected_parcel_css, :debate_logs)
             RETURNING id
         """)
         
@@ -3061,6 +3066,7 @@ async def create_decision_history(req: DecisionHistoryCreate, db: Session = Depe
             "inferred_purpose": req.inferred_purpose,
             "ahp_weights": json.dumps(req.ahp_weights),
             "selected_parcel_jibun": req.selected_parcel_jibun,
+            "selected_parcel_pnu": req.selected_parcel_pnu,
             "selected_parcel_price": req.selected_parcel_price,
             "selected_parcel_area": req.selected_parcel_area,
             "selected_parcel_css": req.selected_parcel_css,

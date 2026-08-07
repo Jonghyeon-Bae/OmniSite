@@ -13,16 +13,38 @@ import GlobalFooter from '@/components/GlobalFooter';
 import { OMNISITE_DISPLAY_VERSION } from '@/config/version';
 
 // Next.js API Fetch 래퍼 (JWT 세션 자동 바인딩)
-const apiFetch = (url, options = {}) => {
+const apiFetch = async (url, options = {}) => {
   const token = typeof window !== 'undefined' 
-    ? sessionStorage.getItem('token') 
+    ? (sessionStorage.getItem('token') || sessionStorage.getItem('jwtToken'))
     : null;
   const headers = {
     ...options.headers,
     ...(token ? { 'Authorization': `Bearer ${token}` } : {})
   };
   const nativeFetch = typeof window !== 'undefined' ? window.fetch : (typeof globalThis !== 'undefined' ? globalThis.fetch : null);
-  return nativeFetch ? nativeFetch(url, { ...options, headers }) : Promise.reject(new Error('Fetch not available'));
+  if (!nativeFetch) return Promise.reject(new Error('Fetch not available'));
+
+  // 1차 시도: Nginx 80포트 대문 상대 경로 시도
+  try {
+    const res = await nativeFetch(url, { ...options, headers });
+    if (res.status !== 404 && res.status !== 502 && res.status !== 504) {
+      return res;
+    }
+  } catch (_) {}
+
+  // 2차 폴백: 호스트 동적 감지 (로컬: localhost:8000 / 라이트세일: 공인IP:8000)
+  if (typeof url === 'string' && url.startsWith('/api/v1')) {
+    if (typeof window !== 'undefined') {
+      const host = window.location.hostname;
+      const protocol = window.location.protocol;
+      if (host !== 'localhost' && host !== '127.0.0.1') {
+        return nativeFetch(`${protocol}//${host}:8000${url}`, { ...options, headers });
+      }
+    }
+    return nativeFetch(`http://localhost:8000${url}`, { ...options, headers });
+  }
+
+  return nativeFetch(url, { ...options, headers });
 };
 
 const parseJwt = (token) => {
@@ -298,6 +320,7 @@ export default function Dashboard() {
                 if (regRes.ok) {
                   showToast("✓ 성공 사례가 기존 데이터를 덮어쓰고 정상 갱신되었습니다!", "success");
                   refreshAllData();
+                  setActiveTab('precedents');
                 } else {
                   const regErr = await regRes.json();
                   showToast(`성공사례 덮어쓰기 실패: ${regErr.detail || '알 수 없는 오류'}`, "error");
@@ -331,6 +354,7 @@ export default function Dashboard() {
                 if (regRes.ok) {
                   showToast("✓ 성공 사례 및 AI 자가학습 RAG 지식 아카이브 적재가 완료되었습니다!", "success");
                   refreshAllData(); // 실시간 전체 리스트/통계 갱신
+                  setActiveTab('precedents');
                 } else {
                   const regErr = await regRes.json();
                   showToast(`성공사례 적재 실패: ${regErr.detail || '알 수 없는 오류'}`, "error");
@@ -347,6 +371,7 @@ export default function Dashboard() {
             matchScore: data.matchScore || data.match_score || 100
           });
           refreshAllData(); // 의사결정 상태 전체 갱신
+          setActiveTab('precedents');
           alert(`✓ PNU 자동 인식 매칭 성공!\n일치율: ${data.matchScore || data.match_score || 100}%\n시나리오 판정: ${data.mappedScenario}`);
         }
       } else {

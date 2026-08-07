@@ -267,6 +267,8 @@ export default function Dashboard() {
 
   const refreshAllData = async () => {
     setIsLoading(true);
+    setPagePrecedents(1);
+    setArchiveSearch('');
     await Promise.all([fetchHistory(), fetchPrecedents()]);
     setIsLoading(false);
   };

@@ -902,6 +902,12 @@ def seed():
             print("[+] Database Seeding Phase Complete. Launching Spatial Denormalization Hook...")
             optimize_spatial_relations()
 
+            try:
+                from app.routers.spatial import _district_boundary_cache
+                _district_boundary_cache.clear()
+            except Exception:
+                pass
+
             print("[+] All Coldstart Procedures (Seeding + Caching) completed successfully!")
         except Exception as e:
             print(f"[-] Error during seeding: {str(e)}")

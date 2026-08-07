@@ -2,7 +2,7 @@
   {
     "lat": 37.5381864,
     "lng": 126.9609644,
-    "dong_id": 1888,
+    "dong_id": 1981,
     "properties": {
       "address": "서울특별시 용산구 용문동 8-77 지하1층동",
       "data": {
@@ -13,14 +13,14 @@
         "facility_type": "노래연습장"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
     "lat": 37.5338863,
     "lng": 126.9738476,
-    "dong_id": 1888,
+    "dong_id": 1984,
     "properties": {
       "address": "서울특별시 용산구 한강로1가 197 2층동",
       "data": {
@@ -31,14 +31,14 @@
         "facility_type": "노래연습장"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
     "lat": 37.5334416,
     "lng": 127.0061583,
-    "dong_id": 1,
+    "dong_id": 1991,
     "properties": {
       "address": "서울특별시 용산구 한남동 634-1",
       "data": {
@@ -49,14 +49,14 @@
         "facility_type": "노래연습장"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
     "lat": 37.5343896,
     "lng": 126.9739108,
-    "dong_id": 1888,
+    "dong_id": 1984,
     "properties": {
       "address": "서울특별시 용산구 한강로1가 152-1 지층",
       "data": {
@@ -67,14 +67,14 @@
         "facility_type": "노래연습장"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
     "lat": 37.5487107,
     "lng": 126.9779391,
-    "dong_id": 1,
+    "dong_id": 1961,
     "properties": {
       "address": "서울특별시 용산구 후암동 244-11 지하1층",
       "data": {
@@ -85,14 +85,14 @@
         "facility_type": "노래연습장"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
     "lat": 37.5340916,
     "lng": 126.9933848,
-    "dong_id": 1,
+    "dong_id": 1990,
     "properties": {
       "address": "서울특별시 용산구 이태원동 128-7 지하1층",
       "data": {
@@ -103,14 +103,14 @@
         "facility_type": "노래연습장"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
     "lat": 37.5395557,
     "lng": 126.989592,
-    "dong_id": 1,
+    "dong_id": 1990,
     "properties": {
       "address": "서울특별시 용산구 이태원동 225-94",
       "data": {
@@ -121,14 +121,14 @@
         "facility_type": "노래연습장"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
     "lat": 37.5434703,
     "lng": 126.9728762,
-    "dong_id": 1,
+    "dong_id": 1965,
     "properties": {
       "address": "서울특별시 용산구 남영동 61-3 2층",
       "data": {
@@ -139,14 +139,14 @@
         "facility_type": "노래연습장"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
     "lat": 37.5544894,
     "lng": 126.9687457,
-    "dong_id": 1,
+    "dong_id": 1968,
     "properties": {
       "address": "서울특별시 용산구 서계동 220-3",
       "data": {
@@ -157,14 +157,14 @@
         "facility_type": "노래연습장"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
     "lat": 37.5256952,
     "lng": 126.9638396,
-    "dong_id": 1888,
+    "dong_id": 1988,
     "properties": {
       "address": "서울특별시 용산구 한강로3가 40-152 2층동",
       "data": {
@@ -175,14 +175,14 @@
         "facility_type": "노래연습장"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
     "lat": 37.5490833,
     "lng": 126.9774136,
-    "dong_id": 1,
+    "dong_id": 1961,
     "properties": {
       "address": "서울특별시 용산구 후암동 105-70",
       "data": {
@@ -193,14 +193,14 @@
         "facility_type": "노래연습장"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
     "lat": 37.5286196,
     "lng": 126.9984743,
-    "dong_id": 1,
+    "dong_id": 1996,
     "properties": {
       "address": "서울특별시 용산구 보광동 257-1",
       "data": {
@@ -211,14 +211,14 @@
         "facility_type": "노래연습장"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
     "lat": 37.5500263,
     "lng": 126.9765865,
-    "dong_id": 1,
+    "dong_id": 1961,
     "properties": {
       "address": "서울특별시 용산구 후암동 103-10 지층동",
       "data": {
@@ -229,14 +229,14 @@
         "facility_type": "노래연습장"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
     "lat": 37.5462926,
     "lng": 126.9819662,
-    "dong_id": 1,
+    "dong_id": 1962,
     "properties": {
       "address": "서울특별시 용산구 용산동2가 1-1418 지층동",
       "data": {
@@ -247,14 +247,14 @@
         "facility_type": "노래연습장"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
     "lat": 37.5331081,
     "lng": 127.0054781,
-    "dong_id": 1,
+    "dong_id": 1991,
     "properties": {
       "address": "서울특별시 용산구 한남동 641-3 지층",
       "data": {
@@ -265,14 +265,14 @@
         "facility_type": "노래연습장"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
     "lat": 37.525913,
     "lng": 126.9644209,
-    "dong_id": 1888,
+    "dong_id": 1988,
     "properties": {
       "address": "서울특별시 용산구 한강로3가 40-592 지층동",
       "data": {
@@ -283,14 +283,14 @@
         "facility_type": "노래연습장"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
     "lat": 37.5444534,
     "lng": 126.9685389,
-    "dong_id": 1,
+    "dong_id": 1970,
     "properties": {
       "address": "서울특별시 용산구 청파동2가 71-75",
       "data": {
@@ -301,14 +301,14 @@
         "facility_type": "노래연습장"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
     "lat": 37.534145,
     "lng": 126.9739379,
-    "dong_id": 1888,
+    "dong_id": 1984,
     "properties": {
       "address": "서울특별시 용산구 한강로1가 196-1",
       "data": {
@@ -319,14 +319,14 @@
         "facility_type": "노래연습장"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
     "lat": 37.5440882,
     "lng": 126.9726497,
-    "dong_id": 1,
+    "dong_id": 1965,
     "properties": {
       "address": "서울특별시 용산구 남영동 24-6",
       "data": {
@@ -337,14 +337,14 @@
         "facility_type": "노래연습장"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
     "lat": 37.5346959,
     "lng": 126.9585714,
-    "dong_id": 1,
+    "dong_id": 1977,
     "properties": {
       "address": "서울특별시 용산구 원효로3가 35-3 지하1층동",
       "data": {
@@ -355,14 +355,14 @@
         "facility_type": "노래연습장"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
     "lat": 37.5338801,
     "lng": 126.9954332,
-    "dong_id": 1,
+    "dong_id": 1990,
     "properties": {
       "address": "서울특별시 용산구 이태원동 132-1 3층동",
       "data": {
@@ -373,14 +373,14 @@
         "facility_type": "노래연습장"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
     "lat": 37.5204115,
     "lng": 126.9742766,
-    "dong_id": 1888,
+    "dong_id": 1989,
     "properties": {
       "address": "서울특별시 용산구 이촌동 301-139 3층동",
       "data": {
@@ -391,14 +391,14 @@
         "facility_type": "노래연습장"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
     "lat": 37.5408604,
     "lng": 126.9685391,
-    "dong_id": 1,
+    "dong_id": 1972,
     "properties": {
       "address": "서울특별시 용산구 원효로1가 12-20",
       "data": {
@@ -409,14 +409,14 @@
         "facility_type": "노래연습장"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
     "lat": 37.5516667,
     "lng": 126.9719867,
-    "dong_id": 1,
+    "dong_id": 1967,
     "properties": {
       "address": "서울특별시 용산구 동자동 43-13 2층동",
       "data": {
@@ -427,14 +427,14 @@
         "facility_type": "노래연습장"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
     "lat": 37.5505832,
     "lng": 126.9749817,
-    "dong_id": 1,
+    "dong_id": 1967,
     "properties": {
       "address": "서울특별시 용산구 동자동 19-40 지층동",
       "data": {
@@ -445,14 +445,14 @@
         "facility_type": "노래연습장"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
     "lat": 37.5365625,
     "lng": 126.9599151,
-    "dong_id": 1,
+    "dong_id": 1981,
     "properties": {
       "address": "서울특별시 용산구 용문동 41-25 2층동",
       "data": {
@@ -463,14 +463,14 @@
         "facility_type": "노래연습장"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
     "lat": 37.5431211,
     "lng": 126.9722006,
-    "dong_id": 1,
+    "dong_id": 1964,
     "properties": {
       "address": "서울특별시 용산구 갈월동 90-10 2층동",
       "data": {
@@ -481,14 +481,14 @@
         "facility_type": "노래연습장"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
     "lat": 37.5377312,
     "lng": 126.9663542,
-    "dong_id": 1888,
+    "dong_id": 1973,
     "properties": {
       "address": "서울특별시 용산구 원효로2가 1-38 2층동",
       "data": {
@@ -499,14 +499,14 @@
         "facility_type": "노래연습장"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
     "lat": 37.5324562,
     "lng": 127.005653,
-    "dong_id": 1,
+    "dong_id": 1991,
     "properties": {
       "address": "서울특별시 용산구 한남동 631-17 지층동",
       "data": {
@@ -517,14 +517,14 @@
         "facility_type": "노래연습장"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
     "lat": 37.5331559,
     "lng": 127.0053236,
-    "dong_id": 1,
+    "dong_id": 1991,
     "properties": {
       "address": "서울특별시 용산구 대사관로 66 (한남동",
       "data": {
@@ -535,14 +535,14 @@
         "facility_type": "단란주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
     "lat": 37.5331469,
     "lng": 127.0043293,
-    "dong_id": 1,
+    "dong_id": 1991,
     "properties": {
       "address": "서울특별시 용산구 대사관로24길 6 (한남동",
       "data": {
@@ -553,14 +553,14 @@
         "facility_type": "단란주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
     "lat": 37.5309437,
     "lng": 126.9916835,
-    "dong_id": 1,
+    "dong_id": 1990,
     "properties": {
       "address": "서울특별시 용산구 녹사평대로26길 24 (이태원동",
       "data": {
@@ -571,14 +571,14 @@
         "facility_type": "단란주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
     "lat": 37.5336007,
     "lng": 127.0070999,
-    "dong_id": 1,
+    "dong_id": 1991,
     "properties": {
       "address": "서울특별시 용산구 한남대로 55 (한남동",
       "data": {
@@ -589,14 +589,14 @@
         "facility_type": "단란주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
     "lat": 37.53365,
     "lng": 126.9954237,
-    "dong_id": 1,
+    "dong_id": 1990,
     "properties": {
       "address": "서울특별시 용산구 우사단로 37 (이태원동",
       "data": {
@@ -607,14 +607,14 @@
         "facility_type": "단란주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
     "lat": 37.5260851,
     "lng": 126.9639138,
-    "dong_id": 1888,
+    "dong_id": 1988,
     "properties": {
       "address": "서울특별시 용산구 한강대로15길 8-3",
       "data": {
@@ -625,14 +625,14 @@
         "facility_type": "단란주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
     "lat": 37.5348257,
     "lng": 126.9945663,
-    "dong_id": 1,
+    "dong_id": 1990,
     "properties": {
       "address": "서울특별시 용산구 이태원로 183-4",
       "data": {
@@ -643,14 +643,14 @@
         "facility_type": "단란주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
     "lat": 37.5319203,
     "lng": 126.9624423,
-    "dong_id": 1888,
+    "dong_id": 1988,
     "properties": {
       "address": "서울특별시 용산구 청파로20길 95",
       "data": {
@@ -661,14 +661,14 @@
         "facility_type": "단란주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
     "lat": 37.5354236,
     "lng": 126.9607592,
-    "dong_id": 1888,
+    "dong_id": 1973,
     "properties": {
       "address": "서울특별시 용산구 원효로41길 62 (원효로2가",
       "data": {
@@ -679,14 +679,14 @@
         "facility_type": "단란주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
     "lat": 37.5206989,
     "lng": 126.9677578,
-    "dong_id": 1888,
+    "dong_id": 1989,
     "properties": {
       "address": "서울특별시 용산구 이촌로54길 13 (이촌동",
       "data": {
@@ -697,14 +697,14 @@
         "facility_type": "단란주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
     "lat": 37.5284333,
     "lng": 126.9923555,
-    "dong_id": 1,
+    "dong_id": 1992,
     "properties": {
       "address": "서울특별시 용산구 장문로 18 (동빙고동",
       "data": {
@@ -715,14 +715,14 @@
         "facility_type": "단란주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
     "lat": 37.5320543,
     "lng": 127.0059549,
-    "dong_id": 1,
+    "dong_id": 1991,
     "properties": {
       "address": "서울특별시 용산구 대사관로34길 25 (한남동",
       "data": {
@@ -733,14 +733,14 @@
         "facility_type": "단란주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
     "lat": 37.5446862,
     "lng": 126.9690453,
-    "dong_id": 1,
+    "dong_id": 1970,
     "properties": {
       "address": "서울특별시 용산구 청파로47길 25 (청파동2가",
       "data": {
@@ -751,14 +751,14 @@
         "facility_type": "단란주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
     "lat": 37.5353856,
     "lng": 126.9606842,
-    "dong_id": 1888,
+    "dong_id": 1973,
     "properties": {
       "address": "서울특별시 용산구 원효로41길 60 (원효로2가",
       "data": {
@@ -769,14 +769,14 @@
         "facility_type": "단란주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
     "lat": 37.5428751,
     "lng": 126.9729067,
-    "dong_id": 1,
+    "dong_id": 1965,
     "properties": {
       "address": "서울특별시 용산구 한강대로 276",
       "data": {
@@ -787,14 +787,14 @@
         "facility_type": "단란주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
     "lat": 37.5395437,
     "lng": 126.9978135,
-    "dong_id": 1,
+    "dong_id": 1991,
     "properties": {
       "address": "서울특별시 용산구 소월로 322 (한남동",
       "data": {
@@ -805,14 +805,14 @@
         "facility_type": "단란주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
     "lat": 37.5323164,
     "lng": 127.0053712,
-    "dong_id": 1,
+    "dong_id": 1991,
     "properties": {
       "address": "서울특별시 용산구 대사관로24길 30 (한남동",
       "data": {
@@ -823,14 +823,14 @@
         "facility_type": "단란주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
     "lat": 37.5347635,
     "lng": 127.0102597,
-    "dong_id": 1,
+    "dong_id": 1991,
     "properties": {
       "address": "서울특별시 용산구 독서당로 89 (한남동",
       "data": {
@@ -841,14 +841,14 @@
         "facility_type": "단란주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
     "lat": 37.5444852,
     "lng": 126.9695621,
-    "dong_id": 1,
+    "dong_id": 1971,
     "properties": {
       "address": "서울특별시 용산구 청파로45길 20 (청파동3가",
       "data": {
@@ -859,14 +859,14 @@
         "facility_type": "단란주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
     "lat": 37.5340809,
     "lng": 127.0057481,
-    "dong_id": 1,
+    "dong_id": 1991,
     "properties": {
       "address": "서울특별시 용산구 대사관로31길 17 (한남동",
       "data": {
@@ -877,14 +877,14 @@
         "facility_type": "단란주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
     "lat": 37.533874,
     "lng": 127.005975,
-    "dong_id": 1,
+    "dong_id": 1991,
     "properties": {
       "address": "서울특별시 용산구 대사관로31길 12 (한남동",
       "data": {
@@ -895,14 +895,14 @@
         "facility_type": "단란주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
     "lat": 37.5276438,
     "lng": 126.9993358,
-    "dong_id": 1,
+    "dong_id": 1996,
     "properties": {
       "address": "서울특별시 용산구 보광로 39 (보광동",
       "data": {
@@ -913,14 +913,14 @@
         "facility_type": "단란주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
     "lat": 37.5414135,
     "lng": 126.9733311,
-    "dong_id": 1,
+    "dong_id": 1965,
     "properties": {
       "address": "서울특별시 용산구 한강대로 258 (남영동",
       "data": {
@@ -931,14 +931,14 @@
         "facility_type": "단란주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
     "lat": 37.5265798,
     "lng": 127.0018301,
-    "dong_id": 1,
+    "dong_id": 1996,
     "properties": {
       "address": "서울특별시 용산구 장문로 111-3 (보광동",
       "data": {
@@ -949,14 +949,14 @@
         "facility_type": "단란주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
     "lat": 37.5348252,
     "lng": 126.9956687,
-    "dong_id": 1,
+    "dong_id": 1990,
     "properties": {
       "address": "서울특별시 용산구 이태원로 195 (이태원동",
       "data": {
@@ -967,14 +967,14 @@
         "facility_type": "단란주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
     "lat": 37.5342725,
     "lng": 127.0101173,
-    "dong_id": 1,
+    "dong_id": 1991,
     "properties": {
       "address": "서울특별시 용산구 독서당로 86 (한남동",
       "data": {
@@ -985,14 +985,14 @@
         "facility_type": "단란주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
     "lat": 37.5341807,
     "lng": 127.0057568,
-    "dong_id": 1,
+    "dong_id": 1991,
     "properties": {
       "address": "서울특별시 용산구 대사관로31길 19 (한남동",
       "data": {
@@ -1003,14 +1003,14 @@
         "facility_type": "단란주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
     "lat": 37.5343419,
     "lng": 127.0061939,
-    "dong_id": 1,
+    "dong_id": 1991,
     "properties": {
       "address": "서울특별시 용산구 한남대로21길 14 (한남동",
       "data": {
@@ -1021,14 +1021,14 @@
         "facility_type": "단란주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
     "lat": 37.5342094,
     "lng": 126.973542,
-    "dong_id": 1888,
+    "dong_id": 1984,
     "properties": {
       "address": "서울특별시 용산구 한강대로62길 16 (한강로1가",
       "data": {
@@ -1039,14 +1039,14 @@
         "facility_type": "단란주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
     "lat": 37.5331907,
     "lng": 127.0049504,
-    "dong_id": 1,
+    "dong_id": 1991,
     "properties": {
       "address": "서울특별시 용산구 대사관로 62 (한남동",
       "data": {
@@ -1057,14 +1057,14 @@
         "facility_type": "단란주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
     "lat": 37.5371425,
     "lng": 126.9607224,
-    "dong_id": 1888,
+    "dong_id": 1981,
     "properties": {
       "address": "서울특별시 용산구 새창로 115 (용문동",
       "data": {
@@ -1075,14 +1075,14 @@
         "facility_type": "단란주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
     "lat": 37.5360128,
     "lng": 126.9614411,
-    "dong_id": 1888,
+    "dong_id": 1973,
     "properties": {
       "address": "서울특별시 용산구 새창로 131 (원효로2가",
       "data": {
@@ -1093,14 +1093,14 @@
         "facility_type": "단란주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
     "lat": 37.5347741,
     "lng": 126.9586474,
-    "dong_id": 1,
+    "dong_id": 1977,
     "properties": {
       "address": "서울특별시 용산구 원효로41길 21-1 (원효로3가",
       "data": {
@@ -1111,14 +1111,14 @@
         "facility_type": "단란주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
     "lat": 37.5345515,
     "lng": 126.9583374,
-    "dong_id": 1,
+    "dong_id": 1977,
     "properties": {
       "address": "서울특별시 용산구 원효로41길 15 (원효로3가",
       "data": {
@@ -1129,14 +1129,14 @@
         "facility_type": "단란주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
     "lat": 37.5344028,
     "lng": 126.9585579,
-    "dong_id": 1,
+    "dong_id": 1977,
     "properties": {
       "address": "서울특별시 용산구 원효로41길 16 (원효로3가",
       "data": {
@@ -1147,14 +1147,14 @@
         "facility_type": "단란주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
     "lat": 37.5338702,
     "lng": 126.9947076,
-    "dong_id": 1,
+    "dong_id": 1990,
     "properties": {
       "address": "서울특별시 용산구 보광로60길 10 (이태원동",
       "data": {
@@ -1165,14 +1165,14 @@
         "facility_type": "단란주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
     "lat": 37.5332519,
     "lng": 127.0047189,
-    "dong_id": 1,
+    "dong_id": 1991,
     "properties": {
       "address": "서울특별시 용산구 대사관로 60 (한남동",
       "data": {
@@ -1183,14 +1183,14 @@
         "facility_type": "단란주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
     "lat": 37.5262192,
     "lng": 126.9989834,
-    "dong_id": 1,
+    "dong_id": 1996,
     "properties": {
       "address": "서울특별시 용산구 장문로 83-1 (보광동",
       "data": {
@@ -1201,14 +1201,14 @@
         "facility_type": "단란주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
     "lat": 37.5198531,
     "lng": 126.9699155,
-    "dong_id": 1,
+    "dong_id": 1989,
     "properties": {
       "address": "서울특별시 용산구 이촌로64길 26 (이촌동",
       "data": {
@@ -1219,14 +1219,14 @@
         "facility_type": "단란주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
     "lat": 37.5337073,
     "lng": 126.9726828,
-    "dong_id": 1888,
+    "dong_id": 1984,
     "properties": {
       "address": "서울특별시 용산구 한강대로 168-2 (한강로1가",
       "data": {
@@ -1237,14 +1237,14 @@
         "facility_type": "단란주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
     "lat": 37.5341511,
     "lng": 127.009902,
-    "dong_id": 1,
+    "dong_id": 1991,
     "properties": {
       "address": "서울특별시 용산구 독서당로 84 (한남동",
       "data": {
@@ -1255,14 +1255,14 @@
         "facility_type": "단란주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
     "lat": 37.5338459,
     "lng": 126.9942957,
-    "dong_id": 1,
+    "dong_id": 1990,
     "properties": {
       "address": "서울특별시 용산구 보광로 124 (이태원동",
       "data": {
@@ -1273,14 +1273,14 @@
         "facility_type": "단란주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
     "lat": 37.5534072,
     "lng": 126.9743427,
-    "dong_id": 1,
+    "dong_id": 1967,
     "properties": {
       "address": "서울특별시 용산구 후암로 101 (동자동",
       "data": {
@@ -1291,14 +1291,14 @@
         "facility_type": "단란주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
     "lat": 37.5319327,
     "lng": 126.9709308,
-    "dong_id": 1888,
+    "dong_id": 1985,
     "properties": {
       "address": "서울특별시 용산구 한강대로 144 (한강로2가",
       "data": {
@@ -1309,14 +1309,14 @@
         "facility_type": "단란주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
     "lat": 37.53465,
     "lng": 127.005814,
-    "dong_id": 1,
+    "dong_id": 1991,
     "properties": {
       "address": "서울특별시 용산구 대사관로31길 29 (한남동",
       "data": {
@@ -1327,14 +1327,14 @@
         "facility_type": "단란주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
     "lat": 37.5349189,
     "lng": 126.9636976,
-    "dong_id": 1888,
+    "dong_id": 1983,
     "properties": {
       "address": "서울특별시 용산구 원효로58길 31 (신계동",
       "data": {
@@ -1345,14 +1345,14 @@
         "facility_type": "단란주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
     "lat": 37.5275803,
     "lng": 126.9994274,
-    "dong_id": 1,
+    "dong_id": 1996,
     "properties": {
       "address": "서울특별시 용산구 보광로 37-1 (보광동",
       "data": {
@@ -1363,14 +1363,14 @@
         "facility_type": "단란주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
     "lat": 37.5309124,
     "lng": 126.970026,
-    "dong_id": 1888,
+    "dong_id": 1985,
     "properties": {
       "address": "서울특별시 용산구 한강대로42길 3 (한강로2가",
       "data": {
@@ -1381,14 +1381,14 @@
         "facility_type": "단란주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
     "lat": 37.534227,
     "lng": 126.9958412,
-    "dong_id": 1,
+    "dong_id": 1990,
     "properties": {
       "address": "서울특별시 용산구 우사단로 46 (이태원동",
       "data": {
@@ -1399,14 +1399,14 @@
         "facility_type": "단란주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
     "lat": 37.5349548,
     "lng": 126.994769,
-    "dong_id": 1,
+    "dong_id": 1990,
     "properties": {
       "address": "서울특별시 용산구 이태원로27가길 9 (이태원동",
       "data": {
@@ -1417,14 +1417,14 @@
         "facility_type": "단란주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
     "lat": 37.537494,
     "lng": 126.96574,
-    "dong_id": 1888,
+    "dong_id": 1973,
     "properties": {
       "address": "서울특별시 용산구 원효로 214 (원효로2가",
       "data": {
@@ -1435,14 +1435,14 @@
         "facility_type": "단란주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
     "lat": 37.5261378,
     "lng": 126.9646297,
-    "dong_id": 1888,
+    "dong_id": 1988,
     "properties": {
       "address": "서울특별시 용산구 한강대로 57 (한강로3가",
       "data": {
@@ -1453,14 +1453,14 @@
         "facility_type": "단란주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
     "lat": 37.5449096,
     "lng": 126.9723989,
-    "dong_id": 1,
+    "dong_id": 1965,
     "properties": {
       "address": "서울특별시 용산구 한강대로 298 (남영동",
       "data": {
@@ -1471,14 +1471,14 @@
         "facility_type": "단란주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
     "lat": 37.5251032,
     "lng": 126.9632627,
-    "dong_id": 1888,
+    "dong_id": 1988,
     "properties": {
       "address": "서울특별시 용산구 한강대로11길 6 (한강로3가",
       "data": {
@@ -1489,14 +1489,14 @@
         "facility_type": "단란주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
     "lat": 37.5454824,
     "lng": 126.972301,
-    "dong_id": 1,
+    "dong_id": 1964,
     "properties": {
       "address": "서울특별시 용산구 한강대로 306",
       "data": {
@@ -1507,14 +1507,14 @@
         "facility_type": "단란주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
     "lat": 37.5325917,
     "lng": 127.0062293,
-    "dong_id": 1,
+    "dong_id": 1991,
     "properties": {
       "address": "서울특별시 용산구 대사관로34길 13",
       "data": {
@@ -1525,14 +1525,14 @@
         "facility_type": "단란주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
     "lat": 37.5330043,
     "lng": 127.0064698,
-    "dong_id": 1,
+    "dong_id": 1991,
     "properties": {
       "address": "서울특별시 용산구 대사관로 76",
       "data": {
@@ -1543,14 +1543,14 @@
         "facility_type": "단란주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
     "lat": 37.5356247,
     "lng": 126.9617529,
-    "dong_id": 1888,
+    "dong_id": 1973,
     "properties": {
       "address": "서울특별시 용산구 원효로 171 (원효로2가",
       "data": {
@@ -1561,14 +1561,14 @@
         "facility_type": "유흥주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
     "lat": 37.5335462,
     "lng": 126.9725154,
-    "dong_id": 1888,
+    "dong_id": 1984,
     "properties": {
       "address": "서울특별시 용산구 한강대로 166-1 (한강로1가",
       "data": {
@@ -1579,14 +1579,14 @@
         "facility_type": "유흥주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
     "lat": 37.5433931,
     "lng": 126.9727659,
-    "dong_id": 1,
+    "dong_id": 1965,
     "properties": {
       "address": "서울특별시 용산구 한강대로 280-2 (남영동",
       "data": {
@@ -1597,14 +1597,14 @@
         "facility_type": "유흥주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
     "lat": 37.5350236,
     "lng": 126.9615765,
-    "dong_id": 1888,
+    "dong_id": 1973,
     "properties": {
       "address": "서울특별시 용산구 원효로 166 (원효로2가",
       "data": {
@@ -1615,14 +1615,14 @@
         "facility_type": "유흥주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
     "lat": 37.5416242,
     "lng": 126.9715529,
-    "dong_id": 1,
+    "dong_id": 1964,
     "properties": {
       "address": "서울특별시 용산구 한강대로77길 21 (갈월동",
       "data": {
@@ -1633,14 +1633,14 @@
         "facility_type": "유흥주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
     "lat": 37.520074,
     "lng": 126.9694413,
-    "dong_id": 1888,
+    "dong_id": 1989,
     "properties": {
       "address": "서울특별시 용산구 이촌로62길 9 (이촌동",
       "data": {
@@ -1651,14 +1651,14 @@
         "facility_type": "유흥주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
     "lat": 37.533907,
     "lng": 126.9888318,
-    "dong_id": 1,
+    "dong_id": 1990,
     "properties": {
       "address": "서울특별시 용산구 이태원로 134 (이태원동",
       "data": {
@@ -1669,14 +1669,14 @@
         "facility_type": "유흥주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
     "lat": 37.5357936,
     "lng": 126.9617155,
-    "dong_id": 1888,
+    "dong_id": 1973,
     "properties": {
       "address": "서울특별시 용산구 새창로 131-6 (원효로2가",
       "data": {
@@ -1687,14 +1687,14 @@
         "facility_type": "유흥주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
     "lat": 37.5336992,
     "lng": 126.99585,
-    "dong_id": 1,
+    "dong_id": 1990,
     "properties": {
       "address": "서울특별시 용산구 우사단로 40 (이태원동",
       "data": {
@@ -1705,14 +1705,14 @@
         "facility_type": "유흥주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
     "lat": 37.5347439,
     "lng": 126.9938628,
-    "dong_id": 1,
+    "dong_id": 1990,
     "properties": {
       "address": "서울특별시 용산구 이태원로 지하 179 (이태원동",
       "data": {
@@ -1723,14 +1723,14 @@
         "facility_type": "유흥주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
     "lat": 37.5351561,
     "lng": 126.9935148,
-    "dong_id": 1,
+    "dong_id": 1990,
     "properties": {
       "address": "서울특별시 용산구 이태원로27가길 26 (이태원동",
       "data": {
@@ -1741,14 +1741,14 @@
         "facility_type": "유흥주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
     "lat": 37.5499989,
     "lng": 126.9715912,
-    "dong_id": 1,
+    "dong_id": 1967,
     "properties": {
       "address": "서울특별시 용산구 한강대로 353-4 (동자동",
       "data": {
@@ -1759,14 +1759,14 @@
         "facility_type": "유흥주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
     "lat": 37.5351561,
     "lng": 126.9935148,
-    "dong_id": 1,
+    "dong_id": 1990,
     "properties": {
       "address": "서울특별시 용산구 이태원로27가길 26 (이태원동",
       "data": {
@@ -1777,14 +1777,14 @@
         "facility_type": "유흥주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
     "lat": 37.5310738,
     "lng": 126.9700762,
-    "dong_id": 1888,
+    "dong_id": 1985,
     "properties": {
       "address": "서울특별시 용산구 한강대로 132 (한강로2가",
       "data": {
@@ -1795,14 +1795,14 @@
         "facility_type": "유흥주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
     "lat": 37.5433627,
     "lng": 126.9730083,
-    "dong_id": 1,
+    "dong_id": 1965,
     "properties": {
       "address": "서울특별시 용산구 한강대로 280-1 (남영동",
       "data": {
@@ -1813,14 +1813,14 @@
         "facility_type": "유흥주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
     "lat": 37.5356592,
     "lng": 126.9612672,
-    "dong_id": 1888,
+    "dong_id": 1973,
     "properties": {
       "address": "서울특별시 용산구 새창로 132 (원효로2가",
       "data": {
@@ -1831,14 +1831,14 @@
         "facility_type": "유흥주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
     "lat": 37.549824,
     "lng": 126.971569,
-    "dong_id": 1,
+    "dong_id": 1967,
     "properties": {
       "address": "서울특별시 용산구 한강대로 353 (동자동",
       "data": {
@@ -1849,14 +1849,14 @@
         "facility_type": "유흥주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
     "lat": 37.5340799,
     "lng": 126.9965718,
-    "dong_id": 1,
+    "dong_id": 1990,
     "properties": {
       "address": "서울특별시 용산구 우사단로14길 16 (이태원동",
       "data": {
@@ -1867,14 +1867,14 @@
         "facility_type": "유흥주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   },
   {
     "lat": 37.5343566,
     "lng": 126.9953606,
-    "dong_id": 1,
+    "dong_id": 1990,
     "properties": {
       "address": "서울특별시 용산구 이태원로 192",
       "data": {
@@ -1885,8 +1885,8 @@
         "facility_type": "유흥주점"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "exclusion",
-      "is_exclusion": true
+      "zone_behavior": "inclusion",
+      "is_exclusion": false
     }
   }
 ]

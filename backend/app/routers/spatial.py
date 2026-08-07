@@ -1520,8 +1520,11 @@ class BoundaryCheckRequest(BaseModel):
 @router.get("/spatial/district-boundary/{district_id}")
 async def get_district_boundary(district_id: int = 1, db: Session = Depends(get_db)):
     global _district_boundary_cache
+    # 사각박스 mock 캐시는 무효화하고 실제 36개 행정동 PostGIS 경계선만 캐싱 활용
     if district_id in _district_boundary_cache and _district_boundary_cache[district_id]:
-        return _district_boundary_cache[district_id]
+        cached = _district_boundary_cache[district_id]
+        if cached.get("properties", {}).get("is_mock") != True:
+            return cached
         
     try:
         geo_str = None
@@ -1551,7 +1554,8 @@ async def get_district_boundary(district_id: int = 1, db: Session = Depends(get_
                 "type": "Feature",
                 "properties": {
                     "district_id": district_id,
-                    "name": "서울특별시 용산구"
+                    "name": "서울특별시 용산구",
+                    "is_mock": False
                 },
                 "geometry": geom
             }
@@ -1562,7 +1566,8 @@ async def get_district_boundary(district_id: int = 1, db: Session = Depends(get_
             "type": "Feature",
             "properties": {
                 "district_id": district_id,
-                "name": "서울특별시 용산구"
+                "name": "서울특별시 용산구 (임시)",
+                "is_mock": True
             },
             "geometry": {
                 "type": "Polygon",
@@ -1575,28 +1580,28 @@ async def get_district_boundary(district_id: int = 1, db: Session = Depends(get_
                 ]]
             }
         }
-        _district_boundary_cache[district_id] = mock_geojson
+        # mock_geojson은 캐시에 저장하지 않아 시딩 완료 즉시 실측 36개 동 외곽선으로 자동 대체됨
         return mock_geojson
     except Exception as e:
         print(f"[Boundary API Critical Error] Using mock boundary fallback due to: {e}")
-        mock_geojson = {
+        return {
             "type": "Feature",
             "properties": {
                 "district_id": district_id,
-                "name": "서울특별시 용산구"
+                "name": "서울특별시 용산구 (임시)",
+                "is_mock": True
             },
             "geometry": {
                 "type": "Polygon",
                 "coordinates": [[
                     [126.9450, 37.5150],
-                    [126.9450, 37.5650],
-                    [127.0155, 37.5650],
                     [127.0150, 37.5150],
+                    [127.0155, 37.5650],
+                    [126.9450, 37.5650],
                     [126.9450, 37.5150]
                 ]]
             }
         }
-        return mock_geojson
 
 @router.post("/spatial/check-boundary")
 async def check_boundary_containment(req: BoundaryCheckRequest, db: Session = Depends(get_db)):
@@ -3245,25 +3250,15 @@ async def audit_history_document_auto(file: UploadFile = File(...), db: Session 
             history_query = text("SELECT id, region, facility_type, infra, ahp_weights, selected_parcel_jibun, selected_parcel_css FROM decision_histories WHERE replace(selected_parcel_jibun, ' ', '') LIKE :jibun LIMIT 1")
             history_row = db.execute(history_query, {"jibun": f"%{clean_jibun}%"}).fetchone()
             
-        if not history_row:
-            # 매칭 없음 -> 공무원에게 자가학습 참고자료 적재 여부 모달 응답 유도
-            return {
-                "status": "not_found",
-                "pnu": parsed_pnu,
-                "jibun": parsed_jibun,
-                "filename": filename,
-                "textContent": text_content,
-                "message": "모의 심의 이력이 존재하지 않는 외부 준공 고시문입니다. 성공 사례 및 자가학습 지식 데이터로 적재하시겠습니까?"
-            }
-            
-        # 매칭 이력 있음 -> 기존 RAG 일치도 계산 파이프라인 기동
-        history_id, region, facility_type, infra, ahp_weights_raw, jibun, css = history_row
-        ahp_weights = json.loads(ahp_weights_raw) if isinstance(ahp_weights_raw, str) else (ahp_weights_raw or {})
+        history_id = history_row[0] if history_row else None
+        jibun = history_row[5] if history_row else parsed_jibun
+        css = history_row[6] if history_row else 50
         
         client = get_openai_client()
         matched_regulations = []
         if client:
             try:
+                infra = history_row[3] if history_row else "스마트 인프라"
                 query_str = f"{infra} {jibun} 설치 공시 준공 고시 조례"
                 embed_res = client.embeddings.create(
                     model="text-embedding-3-small",
@@ -3292,11 +3287,13 @@ async def audit_history_document_auto(file: UploadFile = File(...), db: Session 
         summary = llm_res["summary"]
         audit_state = "검증 완료" if "A" in scenario or "B" in scenario else "불가능"
 
-        db.execute(
-            text("UPDATE decision_histories SET audit_state = :state, audit_opinion = :opinion WHERE id = :id"),
-            {"state": audit_state, "opinion": summary, "id": history_id}
-        )
+        if history_id:
+            db.execute(
+                text("UPDATE decision_histories SET audit_state = :state, audit_opinion = :opinion WHERE id = :id"),
+                {"state": audit_state, "opinion": summary, "id": history_id}
+            )
         
+        # [v4.9.42] 초기 빈 상태(0건) 업로드 시에도 verified_precedents에 즉시 100% 영구 커밋 적재 보장
         db.execute(
             text("""
                 INSERT INTO verified_precedents (conflict_simulation_id, document_title, document_ocr_text, actual_scenario, selected_parcel_pnu, match_score, audit_opinion)

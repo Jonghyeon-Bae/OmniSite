@@ -2,7 +2,7 @@
   {
     "lat": 37.553149,
     "lng": 126.968881,
-    "dong_id": 1,
+    "dong_id": 1968,
     "properties": {
       "address": "행 번호 1",
       "data": {
@@ -11,14 +11,14 @@
         "위도": "37.553149"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
     "lat": 37.55376,
     "lng": 126.969662,
-    "dong_id": 1,
+    "dong_id": 1967,
     "properties": {
       "address": "행 번호 2",
       "data": {
@@ -27,14 +27,14 @@
         "위도": "37.55376"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
     "lat": 37.528404,
     "lng": 126.965569,
-    "dong_id": 1888,
+    "dong_id": 1985,
     "properties": {
       "address": "행 번호 3",
       "data": {
@@ -43,14 +43,14 @@
         "위도": "37.528404"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
     "lat": 37.532709,
     "lng": 126.99,
-    "dong_id": 1,
+    "dong_id": 1990,
     "properties": {
       "address": "행 번호 4",
       "data": {
@@ -59,14 +59,14 @@
         "위도": "37.532709"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
     "lat": 37.532709,
     "lng": 126.99,
-    "dong_id": 1,
+    "dong_id": 1990,
     "properties": {
       "address": "행 번호 5",
       "data": {
@@ -75,14 +75,14 @@
         "위도": "37.532709"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
     "lat": 37.541169,
     "lng": 126.96765,
-    "dong_id": 1,
+    "dong_id": 1972,
     "properties": {
       "address": "행 번호 6",
       "data": {
@@ -91,14 +91,14 @@
         "위도": "37.541169"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
     "lat": 37.538716,
     "lng": 126.96589,
-    "dong_id": 1888,
+    "dong_id": 1972,
     "properties": {
       "address": "행 번호 7",
       "data": {
@@ -107,14 +107,14 @@
         "위도": "37.538716"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
     "lat": 37.534923,
     "lng": 126.974192,
-    "dong_id": 1888,
+    "dong_id": 1984,
     "properties": {
       "address": "행 번호 8",
       "data": {
@@ -123,14 +123,14 @@
         "위도": "37.534923"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
     "lat": 37.523302,
     "lng": 126.96868,
-    "dong_id": 1888,
+    "dong_id": 1988,
     "properties": {
       "address": "행 번호 9",
       "data": {
@@ -139,14 +139,14 @@
         "위도": "37.523302"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
     "lat": 37.533237,
     "lng": 126.97859,
-    "dong_id": 1888,
+    "dong_id": 1986,
     "properties": {
       "address": "행 번호 10",
       "data": {
@@ -155,14 +155,14 @@
         "위도": "37.533237"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
     "lat": 37.534466,
     "lng": 127.004585,
-    "dong_id": 1,
+    "dong_id": 1991,
     "properties": {
       "address": "행 번호 11",
       "data": {
@@ -171,14 +171,14 @@
         "위도": "37.534466"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
     "lat": 37.534009,
     "lng": 127.004334,
-    "dong_id": 1,
+    "dong_id": 1991,
     "properties": {
       "address": "행 번호 12",
       "data": {
@@ -187,14 +187,14 @@
         "위도": "37.534009"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
     "lat": 37.539372,
     "lng": 126.997264,
-    "dong_id": 1,
+    "dong_id": 1991,
     "properties": {
       "address": "행 번호 13",
       "data": {
@@ -203,14 +203,14 @@
         "위도": "37.539372"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
     "lat": 37.529492,
     "lng": 126.964318,
-    "dong_id": 1888,
+    "dong_id": 1988,
     "properties": {
       "address": "행 번호 14",
       "data": {
@@ -219,14 +219,14 @@
         "위도": "37.529492"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
     "lat": 37.529492,
     "lng": 126.964318,
-    "dong_id": 1888,
+    "dong_id": 1988,
     "properties": {
       "address": "행 번호 15",
       "data": {
@@ -235,14 +235,14 @@
         "위도": "37.529492"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
     "lat": 37.529492,
     "lng": 126.964318,
-    "dong_id": 1888,
+    "dong_id": 1988,
     "properties": {
       "address": "행 번호 16",
       "data": {
@@ -251,14 +251,14 @@
         "위도": "37.529492"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
     "lat": 37.533068,
     "lng": 126.963521,
-    "dong_id": 1888,
+    "dong_id": 1988,
     "properties": {
       "address": "행 번호 17",
       "data": {
@@ -267,14 +267,14 @@
         "위도": "37.533068"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
     "lat": 37.533068,
     "lng": 126.963521,
-    "dong_id": 1888,
+    "dong_id": 1988,
     "properties": {
       "address": "행 번호 18",
       "data": {
@@ -283,14 +283,14 @@
         "위도": "37.533068"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
     "lat": 37.533417,
     "lng": 126.96736,
-    "dong_id": 1888,
+    "dong_id": 1985,
     "properties": {
       "address": "행 번호 19",
       "data": {
@@ -299,14 +299,14 @@
         "위도": "37.533417"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
     "lat": 37.532818,
     "lng": 126.958895,
-    "dong_id": 1,
+    "dong_id": 1988,
     "properties": {
       "address": "행 번호 20",
       "data": {
@@ -315,14 +315,14 @@
         "위도": "37.532818"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
     "lat": 37.52911,
     "lng": 126.968532,
-    "dong_id": 1888,
+    "dong_id": 1985,
     "properties": {
       "address": "행 번호 21",
       "data": {
@@ -331,14 +331,14 @@
         "위도": "37.52911"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
     "lat": 37.535103,
     "lng": 126.998616,
-    "dong_id": 1,
+    "dong_id": 1991,
     "properties": {
       "address": "행 번호 22",
       "data": {
@@ -347,14 +347,14 @@
         "위도": "37.535103"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
     "lat": 37.536678,
     "lng": 126.961147,
-    "dong_id": 1888,
+    "dong_id": 1981,
     "properties": {
       "address": "행 번호 23",
       "data": {
@@ -363,14 +363,14 @@
         "위도": "37.536678"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
     "lat": 37.538329,
     "lng": 126.959979,
-    "dong_id": 1,
+    "dong_id": 1981,
     "properties": {
       "address": "행 번호 24",
       "data": {
@@ -379,14 +379,14 @@
         "위도": "37.538329"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
     "lat": 37.533234,
     "lng": 126.957656,
-    "dong_id": 1,
+    "dong_id": 1977,
     "properties": {
       "address": "행 번호 25",
       "data": {
@@ -395,14 +395,14 @@
         "위도": "37.533234"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
     "lat": 37.534626,
     "lng": 126.959002,
-    "dong_id": 1,
+    "dong_id": 1977,
     "properties": {
       "address": "행 번호 26",
       "data": {
@@ -411,14 +411,14 @@
         "위도": "37.534626"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
     "lat": 37.533918,
     "lng": 126.95763,
-    "dong_id": 1,
+    "dong_id": 1977,
     "properties": {
       "address": "행 번호 27",
       "data": {
@@ -427,14 +427,14 @@
         "위도": "37.533918"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
     "lat": 37.531999,
     "lng": 126.953751,
-    "dong_id": 1,
+    "dong_id": 1978,
     "properties": {
       "address": "행 번호 28",
       "data": {
@@ -443,14 +443,14 @@
         "위도": "37.531999"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
     "lat": 37.53461,
     "lng": 126.966177,
-    "dong_id": 1888,
+    "dong_id": 1983,
     "properties": {
       "address": "행 번호 29",
       "data": {
@@ -459,14 +459,14 @@
         "위도": "37.53461"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
     "lat": 37.538839,
     "lng": 126.968402,
-    "dong_id": 1888,
+    "dong_id": 1972,
     "properties": {
       "address": "행 번호 30",
       "data": {
@@ -475,14 +475,14 @@
         "위도": "37.538839"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
     "lat": 37.538839,
     "lng": 126.968402,
-    "dong_id": 1888,
+    "dong_id": 1972,
     "properties": {
       "address": "행 번호 31",
       "data": {
@@ -491,14 +491,14 @@
         "위도": "37.538839"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
     "lat": 37.536223,
     "lng": 126.963549,
-    "dong_id": 1888,
+    "dong_id": 1973,
     "properties": {
       "address": "행 번호 32",
       "data": {
@@ -507,14 +507,14 @@
         "위도": "37.536223"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
     "lat": 37.534709,
     "lng": 126.960734,
-    "dong_id": 1888,
+    "dong_id": 1973,
     "properties": {
       "address": "행 번호 33",
       "data": {
@@ -523,14 +523,14 @@
         "위도": "37.534709"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
     "lat": 37.535767,
     "lng": 126.969873,
-    "dong_id": 1888,
+    "dong_id": 1982,
     "properties": {
       "address": "행 번호 34",
       "data": {
@@ -539,14 +539,14 @@
         "위도": "37.535767"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
     "lat": 37.536202,
     "lng": 126.969268,
-    "dong_id": 1888,
+    "dong_id": 1982,
     "properties": {
       "address": "행 번호 35",
       "data": {
@@ -555,14 +555,14 @@
         "위도": "37.536202"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
     "lat": 37.534231,
     "lng": 126.961404,
-    "dong_id": 1888,
+    "dong_id": 1983,
     "properties": {
       "address": "행 번호 36",
       "data": {
@@ -571,14 +571,14 @@
         "위도": "37.534231"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
     "lat": 37.531685,
     "lng": 126.970651,
-    "dong_id": 1888,
+    "dong_id": 1985,
     "properties": {
       "address": "행 번호 37",
       "data": {
@@ -587,14 +587,14 @@
         "위도": "37.531685"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
     "lat": 37.534144,
     "lng": 126.964859,
-    "dong_id": 1888,
+    "dong_id": 1985,
     "properties": {
       "address": "행 번호 38",
       "data": {
@@ -603,14 +603,14 @@
         "위도": "37.534144"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
     "lat": 37.531399,
     "lng": 126.955431,
-    "dong_id": 1,
+    "dong_id": 1988,
     "properties": {
       "address": "행 번호 39",
       "data": {
@@ -619,14 +619,14 @@
         "위도": "37.531399"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
     "lat": 37.531222,
     "lng": 126.955055,
-    "dong_id": 1,
+    "dong_id": 1988,
     "properties": {
       "address": "행 번호 40",
       "data": {
@@ -635,14 +635,14 @@
         "위도": "37.531222"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
     "lat": 37.532207,
     "lng": 126.956792,
-    "dong_id": 1,
+    "dong_id": 1988,
     "properties": {
       "address": "행 번호 41",
       "data": {
@@ -651,14 +651,14 @@
         "위도": "37.532207"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
     "lat": 37.533197,
     "lng": 126.964645,
-    "dong_id": 1888,
+    "dong_id": 1985,
     "properties": {
       "address": "행 번호 42",
       "data": {
@@ -667,14 +667,14 @@
         "위도": "37.533197"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
     "lat": 37.531695,
     "lng": 126.968805,
-    "dong_id": 1888,
+    "dong_id": 1985,
     "properties": {
       "address": "행 번호 43",
       "data": {
@@ -683,14 +683,14 @@
         "위도": "37.531695"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
     "lat": 37.538001,
     "lng": 126.967147,
-    "dong_id": 1888,
+    "dong_id": 1972,
     "properties": {
       "address": "행 번호 44",
       "data": {
@@ -699,14 +699,14 @@
         "위도": "37.538001"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
     "lat": 37.535201,
     "lng": 126.963618,
-    "dong_id": 1888,
+    "dong_id": 1973,
     "properties": {
       "address": "행 번호 45",
       "data": {
@@ -715,14 +715,14 @@
         "위도": "37.535201"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
     "lat": 37.535109,
     "lng": 127.011499,
-    "dong_id": 1,
+    "dong_id": 1991,
     "properties": {
       "address": "행 번호 46",
       "data": {
@@ -731,14 +731,14 @@
         "위도": "37.535109"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
     "lat": 37.540322,
     "lng": 126.989802,
-    "dong_id": 1,
+    "dong_id": 1990,
     "properties": {
       "address": "행 번호 47",
       "data": {
@@ -747,14 +747,14 @@
         "위도": "37.540322"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
     "lat": 37.535022,
     "lng": 126.997224,
-    "dong_id": 1,
+    "dong_id": 1991,
     "properties": {
       "address": "행 번호 48",
       "data": {
@@ -763,14 +763,14 @@
         "위도": "37.535022"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
     "lat": 37.528894,
     "lng": 126.964038,
-    "dong_id": 1888,
+    "dong_id": 1988,
     "properties": {
       "address": "행 번호 49",
       "data": {
@@ -779,14 +779,14 @@
         "위도": "37.528894"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
     "lat": 37.55492,
     "lng": 126.968415,
-    "dong_id": 1,
+    "dong_id": 1968,
     "properties": {
       "address": "행 번호 50",
       "data": {
@@ -795,14 +795,14 @@
         "위도": "37.55492"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
     "lat": 37.553965,
     "lng": 126.965964,
-    "dong_id": 1,
+    "dong_id": 1968,
     "properties": {
       "address": "행 번호 51",
       "data": {
@@ -811,14 +811,14 @@
         "위도": "37.553965"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
     "lat": 37.552032,
     "lng": 126.968943,
-    "dong_id": 1,
+    "dong_id": 1968,
     "properties": {
       "address": "행 번호 52",
       "data": {
@@ -827,14 +827,14 @@
         "위도": "37.552032"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
     "lat": 37.551185,
     "lng": 126.96922,
-    "dong_id": 1,
+    "dong_id": 1968,
     "properties": {
       "address": "행 번호 53",
       "data": {
@@ -843,14 +843,14 @@
         "위도": "37.551185"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
     "lat": 37.54175,
     "lng": 126.970388,
-    "dong_id": 1,
+    "dong_id": 1971,
     "properties": {
       "address": "행 번호 54",
       "data": {
@@ -859,14 +859,14 @@
         "위도": "37.54175"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
     "lat": 37.540529,
     "lng": 126.972721,
-    "dong_id": 1,
+    "dong_id": 1964,
     "properties": {
       "address": "행 번호 55",
       "data": {
@@ -875,14 +875,14 @@
         "위도": "37.540529"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
     "lat": 37.548507,
     "lng": 126.972205,
-    "dong_id": 1,
+    "dong_id": 1964,
     "properties": {
       "address": "행 번호 56",
       "data": {
@@ -891,14 +891,14 @@
         "위도": "37.548507"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
     "lat": 37.543561,
     "lng": 126.971505,
-    "dong_id": 1,
+    "dong_id": 1964,
     "properties": {
       "address": "행 번호 57",
       "data": {
@@ -907,14 +907,14 @@
         "위도": "37.543561"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
     "lat": 37.542611,
     "lng": 126.972137,
-    "dong_id": 1,
+    "dong_id": 1964,
     "properties": {
       "address": "행 번호 58",
       "data": {
@@ -923,14 +923,14 @@
         "위도": "37.542611"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
     "lat": 37.541424,
     "lng": 126.972679,
-    "dong_id": 1,
+    "dong_id": 1964,
     "properties": {
       "address": "행 번호 59",
       "data": {
@@ -939,14 +939,14 @@
         "위도": "37.541424"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
     "lat": 37.54154,
     "lng": 126.971791,
-    "dong_id": 1,
+    "dong_id": 1964,
     "properties": {
       "address": "행 번호 60",
       "data": {
@@ -955,14 +955,14 @@
         "위도": "37.54154"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
     "lat": 37.544739,
     "lng": 126.973179,
-    "dong_id": 1,
+    "dong_id": 1965,
     "properties": {
       "address": "행 번호 61",
       "data": {
@@ -971,14 +971,14 @@
         "위도": "37.544739"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
     "lat": 37.532824,
     "lng": 126.970666,
-    "dong_id": 1888,
+    "dong_id": 1985,
     "properties": {
       "address": "행 번호 62",
       "data": {
@@ -987,14 +987,14 @@
         "위도": "37.532824"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
     "lat": 37.54096,
     "lng": 126.973516,
-    "dong_id": 1,
+    "dong_id": 1965,
     "properties": {
       "address": "행 번호 63",
       "data": {
@@ -1003,14 +1003,14 @@
         "위도": "37.54096"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
     "lat": 37.541995,
     "lng": 126.973179,
-    "dong_id": 1,
+    "dong_id": 1965,
     "properties": {
       "address": "행 번호 64",
       "data": {
@@ -1019,14 +1019,14 @@
         "위도": "37.541995"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
     "lat": 37.5485,
     "lng": 126.977574,
-    "dong_id": 1,
+    "dong_id": 1961,
     "properties": {
       "address": "행 번호 65",
       "data": {
@@ -1035,14 +1035,14 @@
         "위도": "37.5485"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
     "lat": 37.54589,
     "lng": 126.976959,
-    "dong_id": 1,
+    "dong_id": 1961,
     "properties": {
       "address": "행 번호 66",
       "data": {
@@ -1051,14 +1051,14 @@
         "위도": "37.54589"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
     "lat": 37.528002,
     "lng": 126.967632,
-    "dong_id": 1888,
+    "dong_id": 1985,
     "properties": {
       "address": "행 번호 67",
       "data": {
@@ -1067,14 +1067,14 @@
         "위도": "37.528002"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
     "lat": 37.540259,
     "lng": 126.969626,
-    "dong_id": 1,
+    "dong_id": 1972,
     "properties": {
       "address": "행 번호 68",
       "data": {
@@ -1083,14 +1083,14 @@
         "위도": "37.540259"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
     "lat": 37.529136,
     "lng": 126.996483,
-    "dong_id": 1,
+    "dong_id": 1996,
     "properties": {
       "address": "행 번호 69",
       "data": {
@@ -1099,14 +1099,14 @@
         "위도": "37.529136"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
     "lat": 37.52871,
     "lng": 126.996226,
-    "dong_id": 1,
+    "dong_id": 1996,
     "properties": {
       "address": "행 번호 70",
       "data": {
@@ -1115,14 +1115,14 @@
         "위도": "37.52871"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
     "lat": 37.529323,
     "lng": 126.995976,
-    "dong_id": 1,
+    "dong_id": 1996,
     "properties": {
       "address": "행 번호 71",
       "data": {
@@ -1131,14 +1131,14 @@
         "위도": "37.529323"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
     "lat": 37.529799,
     "lng": 126.996498,
-    "dong_id": 1,
+    "dong_id": 1996,
     "properties": {
       "address": "행 번호 72",
       "data": {
@@ -1147,14 +1147,14 @@
         "위도": "37.529799"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
     "lat": 37.527798,
     "lng": 126.967138,
-    "dong_id": 1888,
+    "dong_id": 1985,
     "properties": {
       "address": "행 번호 73",
       "data": {
@@ -1163,14 +1163,14 @@
         "위도": "37.527798"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
     "lat": 37.532293,
     "lng": 126.964512,
-    "dong_id": 1888,
+    "dong_id": 1988,
     "properties": {
       "address": "행 번호 74",
       "data": {
@@ -1179,14 +1179,14 @@
         "위도": "37.532293"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
     "lat": 37.532324,
     "lng": 126.964955,
-    "dong_id": 1888,
+    "dong_id": 1988,
     "properties": {
       "address": "행 번호 75",
       "data": {
@@ -1195,14 +1195,14 @@
         "위도": "37.532324"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   },
   {
     "lat": 37.553105,
     "lng": 126.97281,
-    "dong_id": 1,
+    "dong_id": 1967,
     "properties": {
       "address": "행 번호 76",
       "data": {
@@ -1211,8 +1211,8 @@
         "위도": "37.553105"
       },
       "domain": "smoking_booth",
-      "zone_behavior": "inclusion",
-      "is_exclusion": false
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
     }
   }
 ]

@@ -1428,13 +1428,13 @@
   3) **`restricted_zones` 17만 건 조치**: 전국 교량/터널 SHP 파일(`N3A_A0070000.shp`) 적재 시 용산구 영역 바운딩 박스(`ST_MakeEnvelope(126.93, 37.51, 127.02, 37.56, 4326)`) `ST_Intersects` 교집합 필터를 적용하여 타 지역 17만 건 오적재를 원천 차단함.
   4) `python -c "import app.main"` 및 `npm run build` 모두 **0 Error** 프로덕션 무결성 확보.
 
-### 52. [오답 52] 행정 감사 로그 DB 적재 무결성 검증 및 대시보드 동적 IP:8000 폴백 수술
+### 54. [오답 54] 빈 데이터베이스 상태(0건) 준공 문서 업로드 즉시 자동 커밋 이식 완공
 - **현상 및 요구사항**:
-  - AWS Lightsail 환경에서 행정 감사 로그(Audit Logs)가 저장 및 조회되지 않는 현상 발생에 따른 원인 규명 및 제거 요청.
+  - 데이터베이스가 비어있는 초기 상태(0건)에서 준공 공문서를 업로드하면 "적재완료" 메세지가 표출되어도 실증 준공사례 리스트가 여전히 빈값으로 표출되었던 문제 제보.
 - **발생 원인(Root Cause) 및 최종 해법(Takeaway)**:
-  1) **DB 저장 무결성 확인**: 백엔드 `save_pipeline_log` 함수는 PostgreSQL `pipeline_execution_logs` 테이블에 **1,007건 이상의 SHA-256 암호학적 해시 체인 감사 로그**를 실시간 정상 적재 중임을 검증함. (로그를 삭제할 이유가 없으며 공공 행정 위변조 방지 핵심 기능으로 유지).
-  2) **대시보드 Fetch 래퍼 통로 수술**: `frontend/src/app/dashboard/page.js`의 `apiFetch` 래퍼에 Nginx 80포트 통과 실패 시 동적 호스트 공인 IP:8000으로 우회 연결하는 2차 폴백 로직이 누락되어 조회가 블로킹되었던 문제 해결.
-  3) `python -c "import app.main"` 및 `npm run build` 모듈/터보팩 빌드 **0 Error** 무결성 검증 통과.
+  - 기존 백엔드 `audit_history_document_auto`(`POST /api/v1/spatial/history/audit-auto`)에서 과거 모의 심의 이력(`decision_histories`)이 비어있는 상태일 때 `status: "not_found"`만을 반환하고, 프론트엔드의 컨펌 모달 응답이 처리되기 전까지 `verified_precedents`에 DB 커밋(INSERT)을 집행하지 않았던 맹점 포착.
+  - 모의 심의 이력 유무와 관계없이, 준공 공문서 업로드 즉시 `verified_precedents` 테이블에 `100% 즉시 영구 커밋(INSERT & COMMIT)`되도록 백엔드 로직을 전면 개개함.
+  - `python -c "import app.main"` 및 `npm run build` 모듈/터보팩 빌드 **0 Error** 무결성 검증 통과.
 
 
 

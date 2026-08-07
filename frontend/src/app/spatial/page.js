@@ -1387,8 +1387,9 @@ export default function Home() {
           selection_reason: currentParcel.reason || ""
         };
 
-        // [v4.9.38] AWS Lightsail Docker 및 로컬 개발 환경 호스트 동적 감지 (SSE 스트림 8000 직통 통로)
-        let primaryUrl = '/api/v1/spatial/debate';
+        // [v4.9.41] AWS Lightsail Docker & Local Environment Host & Env Var Detection for 10ms SSE Typewriter Streaming
+        const envApiUrl = (process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_BACKEND_API_URL || '').replace(/\/$/, '');
+        let primaryUrl = envApiUrl ? `${envApiUrl}/api/v1/spatial/debate` : '/api/v1/spatial/debate';
         let fallbackUrl = '/api/v1/spatial/debate';
         
         if (typeof window !== 'undefined') {
@@ -1399,9 +1400,9 @@ export default function Home() {
             primaryUrl = 'http://localhost:8000/api/v1/spatial/debate';
             fallbackUrl = '/api/v1/spatial/debate';
           } else {
-            // AWS 라이트세일 도커 환경: 80포트 상대 경로 1차, 실패 시 호스트 공인 IP:8000 직통 폴백
-            primaryUrl = '/api/v1/spatial/debate';
-            fallbackUrl = `${protocol}//${host}:8000/api/v1/spatial/debate`;
+            // AWS 라이트세일 도커 환경: 8000번 포트 직통 통로를 우선 적용하여 Nginx 80포트 버퍼링 우회 (10ms 타자기 실시간 SSE 스트리밍 보장)
+            primaryUrl = envApiUrl ? `${envApiUrl}/api/v1/spatial/debate` : `${protocol}//${host}:8000/api/v1/spatial/debate`;
+            fallbackUrl = '/api/v1/spatial/debate';
           }
         }
 

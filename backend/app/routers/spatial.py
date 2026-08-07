@@ -308,6 +308,7 @@ model_registry = ModelRegistry(registry_path)
 # [PEP8 Inline Import Cleaned]
 
 _file_cache = {}
+_district_boundary_cache = {}
 
 def get_cached_file_data(filename: str) -> Optional[List[Dict[str, Any]]]:
     global _file_cache
@@ -1529,17 +1530,23 @@ class BoundaryCheckRequest(BaseModel):
 # 1. 관할 자치구 경계 GeoJSON 반환 API (용산구 6,524개 실측 필지 외곽 51~52개 다각형 포인트 100% 반환)
 @router.get("/spatial/district-boundary/{district_id}")
 async def get_district_boundary(district_id: int = 1, db: Session = Depends(get_db)):
+    global _district_boundary_cache
+    if district_id in _district_boundary_cache:
+        return _district_boundary_cache[district_id]
+        
     try:
         # [PostGIS ConcaveHull 정밀 외곽선 추출] 6,524개 필지 정밀 경계선 도출
         try:
             query = text("SELECT ST_AsGeoJSON(ST_ConcaveHull(ST_Collect(ST_MakeValid(geom)), 0.65)) FROM cadastral_lands")
             geo_str = db.execute(query).scalar()
-        except Exception:
+        except Exception as hull_err:
+            print(f"[Boundary API Warning] ConcaveHull fail: {hull_err}")
             query = text("SELECT ST_AsGeoJSON(ST_ConvexHull(ST_Collect(geom))) FROM cadastral_lands")
             geo_str = db.execute(query).scalar()
+        
         if geo_str:
             geom = json.loads(geo_str)
-            return {
+            res_geojson = {
                 "type": "Feature",
                 "properties": {
                     "district_id": district_id,
@@ -1547,6 +1554,8 @@ async def get_district_boundary(district_id: int = 1, db: Session = Depends(get_
                 },
                 "geometry": geom
             }
+            _district_boundary_cache[district_id] = res_geojson
+            return res_geojson
             
         mock_geojson = {
             "type": "Feature",
@@ -1565,9 +1574,28 @@ async def get_district_boundary(district_id: int = 1, db: Session = Depends(get_
                 ]]
             }
         }
+        _district_boundary_cache[district_id] = mock_geojson
         return mock_geojson
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"자치구 경계 조회 오류: {str(e)}")
+        print(f"[Boundary API Critical Error] Using mock boundary fallback due to: {e}")
+        mock_geojson = {
+            "type": "Feature",
+            "properties": {
+                "district_id": district_id,
+                "name": "서울특별시 용산구"
+            },
+            "geometry": {
+                "type": "Polygon",
+                "coordinates": [[
+                    [126.9450, 37.5150],
+                    [126.9450, 37.5650],
+                    [127.0155, 37.5650],
+                    [127.0150, 37.5150],
+                    [126.9450, 37.5150]
+                ]]
+            }
+        }
+        return mock_geojson
 
 @router.post("/spatial/check-boundary")
 async def check_boundary_containment(req: BoundaryCheckRequest, db: Session = Depends(get_db)):

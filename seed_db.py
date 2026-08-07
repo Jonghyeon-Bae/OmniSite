@@ -321,6 +321,39 @@ def seed():
                     except Exception:
                         pass
                 print(f"    Seeded {parcel_count} cadastral land parcels.")
+                
+                # [5.2] Update ownership_type using national_property CSV
+                print("[5.2] Updating cadastral_lands ownership using national_property...")
+                try:
+                    np_headers, np_rows = load_csv_data(sources["national_property"])
+                    addr_idx = np_headers.index("소재지")
+                    national_jibuns = set()
+                    for r in np_rows:
+                        if len(r) > addr_idx:
+                            addr = r[addr_idx].strip()
+                            clean_addr = addr.replace("서울특별시 용산구 ", "").strip()
+                            if clean_addr:
+                                national_jibuns.add(clean_addr)
+                    
+                    national_jibuns_list = list(national_jibuns)
+                    print(f"    Loaded {len(national_jibuns_list)} unique national property addresses.")
+                    
+                    chunk_size = 500
+                    total_updated = 0
+                    for i in range(0, len(national_jibuns_list), chunk_size):
+                        chunk = national_jibuns_list[i:i+chunk_size]
+                        if not chunk:
+                            continue
+                        update_query = text("""
+                            UPDATE cadastral_lands
+                            SET ownership_type = '국유지'
+                            WHERE jibun IN :jibuns;
+                        """)
+                        res = conn.execute(update_query, {"jibuns": tuple(chunk)})
+                        total_updated += res.rowcount
+                    print(f"    Updated {total_updated} parcels as '국유지' from national property data.")
+                except Exception as np_err:
+                    print(f"    [Warning] Failed to update ownership with national properties: {np_err}")
             except Exception as e:
                 print(f"    [Skipped] cadastral_lands seeding skipped: {e}")
 

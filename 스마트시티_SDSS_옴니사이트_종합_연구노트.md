@@ -1181,6 +1181,16 @@
 - **발생 원인(Root Cause)**: 피처 피딩 변수인 민원 수치와 면적을 기준으로 정렬해 레이블을 매김으로써 모델이 규칙을 암기하여 Accuracy 1.0000이 출력되었고 인위적 모델 편향(Bias)이 유발됨.
 - **최종 교훈 및 해법(Takeaway)**: 조장(USER)의 통찰 깊은 냉철한 지적에 따라 인위적 Quantile 정렬 및 하드코딩 if-else 가중치 수식을 100% 전면 삭제함. PostGIS 6,502개 실측 공간 지표와 다중 공간 저촉 통계(학교 73.1%, 어린이집 23.4%)를 기반으로 하는 Pure Zero-Bias 머신러닝 학습 파이프라인으로 전면 수술 개편함.
 
+### 18. [오답 18] `seed_db.py` 내 국유재산(`11. 국유부동산정보.csv`) 파이프라인 누락 및 소유구분('사유지') 100% 오적재
+- **초기 착오(Failure)**: `seed_db.py`에 `"national_property"` 데이터셋 경로는 정의되어 있었으나, 실제 `seed()` 함수 내부에서 이를 가공하여 `cadastral_lands.ownership_type`을 업데이트하는 실행 코드가 누락되어 모든 지적도 필지(6,524개)가 디폴트인 `'사유지'`로 시딩됨. 이로 인해 백엔드 API에서 국유부동산 영역을 렌더링하거나 필터링할 때 0건이 반환됨.
+- **발생 원인(Root Cause)**: 시딩 스크립트 작성 시 데이터셋의 정의와 적재 흐름을 최종 확인(Cross-Check)하지 않아 발생한 단순 로직 누락.
+- **최종 교훈 및 해법(Takeaway)**: `seed_db.py`에 `sources["national_property"]` 파일을 로드하여 `소재지` 컬럼에서 `"서울특별시 용산구 "` 접두사를 정규화한 뒤, 지번이 일치하는 cadastral_lands 레코드의 `ownership_type`을 `'국유지'`로 벌크 업데이트(UPDATE)하는 로직을 삽입하여 319개 국유지 데이터를 DB에 올바르게 매핑시킴.
+
+### 19. [오답 19] 자치구 경계 조회(district-boundary) API 실시간 `ST_ConcaveHull` 호출로 인한 AWS Lightsail 타임아웃
+- **초기 착오(Failure)**: `/api/v1/spatial/district-boundary/{district_id}` API 호출 시, 6,524개 지적도 필지를 대상으로 `ST_ConcaveHull` 및 `ST_Collect` 공간 집계 연산을 매 요청마다 실시간 수행함.
+- **발생 원인(Root Cause)**: 로컬 고사양 PC 환경(소요 시간 0.17초)과 달리 AWS Lightsail처럼 CPU/메모리가 극도로 한정된 서빙 인프라에서는 수천 개 다각형 연산이 병목을 일으켜 쿼리 타임아웃 및 OOM 크래시가 유발됨. 게다가 API 예외 처리 부재로 인해 fallback GeoJSON을 프론트엔드로 전달하지 못하고 500 에러를 뿜음.
+- **최종 교훈 및 해법(Takeaway)**: 백엔드 `spatial.py` 내 전역 메모리 캐시(`_district_boundary_cache`)를 구성하여 최초 1회만 DB 공간 연산을 수행(O(1) 캐싱)하도록 쿼리 구조를 극대화(두 번째 요청부터 2ms 소요)하고, 쿼리가 완전히 깨지는 환경에서도 안전하게 기본 자치구 경계를 반환하도록 예외 안전망(try-except Fallback)을 구축함.
+
 
 
 

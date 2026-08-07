@@ -37,8 +37,15 @@ const apiFetch = async (url, options = {}) => {
     }
   } catch (_) {}
 
-  // 2차 폴백: 로컬 개발 환경 (http://localhost:8000) 직접 시도
+  // 2차 폴백: 호스트 동적 감지 (로컬: localhost:8000 / 라이트세일: 공인IP:8000)
   if (typeof url === 'string' && url.startsWith('/api/v1')) {
+    if (typeof window !== 'undefined') {
+      const host = window.location.hostname;
+      const protocol = window.location.protocol;
+      if (host !== 'localhost' && host !== '127.0.0.1') {
+        return nativeFetch(`${protocol}//${host}:8000${url}`, { ...options, headers });
+      }
+    }
     return nativeFetch(`http://localhost:8000${url}`, { ...options, headers });
   }
 
@@ -1380,20 +1387,21 @@ export default function Home() {
           selection_reason: currentParcel.reason || ""
         };
 
-        // [v4.9.35] AWS Lightsail Docker 및 로컬 개발 환경 호스트 동적 감지
-        let primaryUrl = process.env.NEXT_PUBLIC_BACKEND_API_URL || '';
-        let fallbackUrl = 'http://localhost:8000/api/v1/spatial/debate';
+        // [v4.9.38] AWS Lightsail Docker 및 로컬 개발 환경 호스트 동적 감지 (SSE 스트림 8000 직통 통로)
+        let primaryUrl = '/api/v1/spatial/debate';
+        let fallbackUrl = '/api/v1/spatial/debate';
         
         if (typeof window !== 'undefined') {
           const host = window.location.hostname;
+          const protocol = window.location.protocol;
           if (host === 'localhost' || host === '127.0.0.1') {
             // 로컬 환경: Next.js 프록시 버퍼링을 우회하여 10ms 타자기 실시간 스트리밍을 위해 8000 직통 시도
             primaryUrl = 'http://localhost:8000/api/v1/spatial/debate';
             fallbackUrl = '/api/v1/spatial/debate';
           } else {
-            // AWS 라이트세일 도커 환경: Nginx 80포트 대문 프록시 상대 경로 우선 사용
+            // AWS 라이트세일 도커 환경: 80포트 상대 경로 1차, 실패 시 호스트 공인 IP:8000 직통 폴백
             primaryUrl = '/api/v1/spatial/debate';
-            fallbackUrl = process.env.NEXT_PUBLIC_BACKEND_API_URL ? `${process.env.NEXT_PUBLIC_BACKEND_API_URL}/api/v1/spatial/debate` : '/api/v1/spatial/debate';
+            fallbackUrl = `${protocol}//${host}:8000/api/v1/spatial/debate`;
           }
         }
 

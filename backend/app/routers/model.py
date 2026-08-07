@@ -395,19 +395,24 @@ def background_model_train(domain="city_feature"):
                 ('cat', categorical_transformer, categorical_features)
             ])
             
+        # 5. [v6.8.0 Pure Zero-Bias Dynamic Sample Training] 동적 클래스 불균형 scale_pos_weight 자동 산출 (Zero Hardcoding)
+        pos_cnt = float((y_train == 1).sum())
+        neg_cnt = float((y_train == 0).sum())
+        scale_pos = (neg_cnt / pos_cnt) if pos_cnt > 0 else 1.0
+        print(f"[ML Process] Fitting final XGBoost pipeline with dynamic scale_pos_weight: {scale_pos:.4f} (Pos: {pos_cnt}, Neg: {neg_cnt})")
+
         pipeline = Pipeline(steps=[
             ('preprocessor', preprocessor),
             ('classifier', XGBClassifier(
                 n_estimators=100,
                 max_depth=5,
                 learning_rate=0.1,
+                scale_pos_weight=scale_pos,
                 random_state=42,
                 eval_metric='logloss'
             ))
         ])
-        
-        # 5. [v6.8.0 Pure Zero-Bias Dynamic Sample Training] 하드코딩 편향 가중치 전면 제거
-        print("[ML Process] Fitting final Pure Zero-Bias PostGIS XGBoost model pipeline...")
+
         pipeline.fit(X_train, y_train)
         
         # 6. Evaluation

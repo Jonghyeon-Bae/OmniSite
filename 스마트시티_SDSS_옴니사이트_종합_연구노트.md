@@ -1428,6 +1428,25 @@
   3) **`restricted_zones` 17만 건 조치**: 전국 교량/터널 SHP 파일(`N3A_A0070000.shp`) 적재 시 용산구 영역 바운딩 박스(`ST_MakeEnvelope(126.93, 37.51, 127.02, 37.56, 4326)`) `ST_Intersects` 교집합 필터를 적용하여 타 지역 17만 건 오적재를 원천 차단함.
   4) `python -c "import app.main"` 및 `npm run build` 모두 **0 Error** 프로덕션 무결성 확보.
 
+### 50. [오답 50] 대시보드 실증 준공사례 JOIN 조인 수술 및 1:1 매칭 데이터 반환 완공
+- **현상 및 요구사항**:
+  - 대시보드의 AI 검증패널을 통해 준공 공문서를 업로드하여 실증 성공사례로 등록하였으나, 실증 준공사례 리스트(`/spatial/precedents`)에 PNU/지번이 미표출되거나 누락되어 보이는 현상 제보.
+- **발생 원인(Root Cause) 및 최종 해법(Takeaway)**:
+  - 기존 `GET /api/v1/spatial/precedents` 조회가 `verified_precedents` 단일 테이블만 조회하며 `document_ocr_text` 정규식 파싱에만 의존했던 문제 포착.
+  - PDF 텍스트 본문에 PNU(19자리)나 지번 표기가 정형화되어 있지 않으면 `"미추출"`로 표출되는 맹점을 제거하기 위해, `verified_precedents` 테이블을 `decision_histories` 및 `cadastral_lands` 테이블과 `LEFT JOIN` 연결함:
+    ```sql
+    SELECT 
+        vp.id, vp.document_title, vp.document_ocr_text, vp.actual_scenario, 
+        TO_CHAR(vp.verified_at, 'YYYY-MM-DD HH24:MI'), vp.match_score, vp.audit_opinion,
+        COALESCE(vp.selected_parcel_pnu, dh.selected_parcel_pnu, '미추출') AS pnu,
+        COALESCE(dh.selected_parcel_jibun, cl.jibun, '용산구 대지') AS jibun
+    FROM verified_precedents vp
+    LEFT JOIN decision_histories dh ON vp.conflict_simulation_id = dh.id
+    LEFT JOIN cadastral_lands cl ON vp.selected_parcel_pnu = cl.pnu
+    ORDER BY vp.id DESC
+    ```
+  - `python -c "import app.main"` 및 `npm run build` 모듈/터보팩 빌드 **0 Error** 무결성 검증 통과.
+
 
 
 

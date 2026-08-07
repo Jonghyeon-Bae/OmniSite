@@ -3391,7 +3391,7 @@ async def get_verified_precedents(db: Session = Depends(get_db)):
                 vp.document_title, 
                 vp.document_ocr_text, 
                 vp.actual_scenario, 
-                TO_CHAR(COALESCE(vp.created_at, CURRENT_TIMESTAMP), 'YYYY-MM-DD HH24:MI'), 
+                TO_CHAR(COALESCE(vp.verified_at, dh.created_at, CURRENT_TIMESTAMP), 'YYYY-MM-DD HH24:MI'), 
                 vp.match_score, 
                 vp.audit_opinion,
                 COALESCE(vp.selected_parcel_pnu, dh.selected_parcel_pnu, '미추출') AS pnu,

@@ -8,12 +8,34 @@ export default function AuditLogModal({ showModal, setShowModal, apiFetch }) {
   const fetchLogs = async () => {
     setLoading(true);
     try {
-      const res = await apiFetch('/api/v1/spatial/logs?limit=50');
-      if (res.ok) {
+      let res = null;
+      if (typeof apiFetch === 'function') {
+        try {
+          res = await apiFetch('/api/v1/spatial/logs?limit=50');
+        } catch (_) {}
+      }
+
+      // 2차 직통 우회 폴백 (Nginx/Next.js 500/404 오류 발생 시 공인 IP:8000 포트 직접 통신)
+      if (!res || !res.ok) {
+        if (typeof window !== 'undefined') {
+          const host = window.location.hostname;
+          const protocol = window.location.protocol;
+          const envApiUrl = (process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_BACKEND_API_URL || '').replace(/\/$/, '');
+          const directUrl = envApiUrl ? `${envApiUrl}/api/v1/spatial/logs?limit=50` : `${protocol}//${host}:8000/api/v1/spatial/logs?limit=50`;
+          try {
+            res = await fetch(directUrl);
+          } catch (directErr) {
+            console.error("Direct audit log fetch error:", directErr);
+          }
+        }
+      }
+
+      if (res && res.ok) {
         const data = await res.json();
-        setLogs(data.logs || []);
-        if (data.logs && data.logs.length > 0) {
-          setSelectedLog(data.logs[0]);
+        const rawLogs = data.logs || (Array.isArray(data) ? data : []);
+        setLogs(rawLogs);
+        if (rawLogs && rawLogs.length > 0) {
+          setSelectedLog(rawLogs[0]);
         }
       }
     } catch (err) {

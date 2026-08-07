@@ -77,26 +77,6 @@ def get_kst_now():
 # === [AUDIT LOG HELPER & ENDPOINT] ===
 def save_pipeline_log(db, step_number: str, action_type: str, detail_dict: dict, session_id: str = 'SESSION_ADMIN'):
     try:
-        try:
-            db.rollback()
-        except Exception:
-            pass
-        db.execute(text("""
-            CREATE TABLE IF NOT EXISTS pipeline_execution_logs (
-                id SERIAL PRIMARY KEY,
-                session_id VARCHAR(100) DEFAULT 'SESSION_DEFAULT',
-                step_number VARCHAR(20) NOT NULL,
-                action_type VARCHAR(50) NOT NULL,
-                detail_json JSONB,
-                created_at TIMESTAMP DEFAULT (CURRENT_TIMESTAMP AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Seoul'),
-                current_hash VARCHAR(64),
-                prev_hash VARCHAR(64)
-            );
-        """))
-        db.execute(text("ALTER TABLE pipeline_execution_logs ADD COLUMN IF NOT EXISTS current_hash VARCHAR(64);"))
-        db.execute(text("ALTER TABLE pipeline_execution_logs ADD COLUMN IF NOT EXISTS prev_hash VARCHAR(64);"))
-        db.commit()
-
         # [SHA-256 Hash Chain] 이전 해시값 인출 및 통일된 연산 수행
         last_row = db.execute(text("SELECT current_hash FROM pipeline_execution_logs ORDER BY id DESC LIMIT 1")).fetchone()
         prev_hash = last_row[0] if (last_row and last_row[0]) else ("0" * 64)
@@ -3006,75 +2986,12 @@ class DecisionHistoryCreate(BaseModel):
     debate_logs: List[Dict[str, str]] = []
 
 def ensure_decision_histories_table(db: Session):
-    try:
-        db.execute(text("""
-            CREATE TABLE IF NOT EXISTS decision_histories (
-                id SERIAL PRIMARY KEY,
-                region VARCHAR(100),
-                facility_type VARCHAR(50),
-                infra VARCHAR(100),
-                pnu_count INT DEFAULT 0,
-                status VARCHAR(50) DEFAULT '진행중',
-                audit_state VARCHAR(50) DEFAULT '대기중',
-                audit_opinion TEXT,
-                inferred_purpose VARCHAR(150),
-                ahp_weights JSONB,
-                selected_parcel_pnu VARCHAR(50),
-                selected_parcel_jibun VARCHAR(250),
-                selected_parcel_price NUMERIC,
-                selected_parcel_area NUMERIC,
-                selected_parcel_css NUMERIC,
-                debate_logs JSONB,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            );
-        """))
-        db.execute(text("ALTER TABLE decision_histories ADD COLUMN IF NOT EXISTS selected_parcel_pnu VARCHAR(50);"))
-        db.execute(text("ALTER TABLE decision_histories ADD COLUMN IF NOT EXISTS selected_parcel_jibun VARCHAR(250);"))
-        db.execute(text("ALTER TABLE decision_histories ADD COLUMN IF NOT EXISTS selected_parcel_price NUMERIC;"))
-        db.execute(text("ALTER TABLE decision_histories ADD COLUMN IF NOT EXISTS selected_parcel_area NUMERIC;"))
-        db.execute(text("ALTER TABLE decision_histories ADD COLUMN IF NOT EXISTS selected_parcel_css NUMERIC;"))
-        db.execute(text("ALTER TABLE decision_histories ADD COLUMN IF NOT EXISTS debate_logs JSONB;"))
-
-        db.execute(text("""
-            CREATE TABLE IF NOT EXISTS verified_precedents (
-                id SERIAL PRIMARY KEY,
-                conflict_simulation_id INT,
-                document_title VARCHAR(250),
-                document_ocr_text TEXT,
-                actual_scenario VARCHAR(250),
-                selected_parcel_pnu VARCHAR(50),
-                match_score NUMERIC,
-                audit_opinion TEXT,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            );
-        """))
-        db.execute(text("ALTER TABLE verified_precedents ADD COLUMN IF NOT EXISTS selected_parcel_pnu VARCHAR(50);"))
-        db.execute(text("ALTER TABLE verified_precedents ADD COLUMN IF NOT EXISTS match_score NUMERIC;"))
-        db.execute(text("ALTER TABLE verified_precedents ADD COLUMN IF NOT EXISTS audit_opinion TEXT;"))
-        db.commit()
-    except Exception as e:
-        db.rollback()
-        print(f"[Decision Histories Table Init Warning] {e}")
+    """[v4.9.40] DDL ALTER TABLE 제거: DB/init/01_schema.sql로 이미 정합성이 마운트되어 DDL 락 붕괴 방어"""
+    pass
 
 def ensure_user_exclusions_table(db: Session):
-    try:
-        db.execute(text("""
-            CREATE TABLE IF NOT EXISTS user_exclusion_zones (
-                id SERIAL PRIMARY KEY,
-                zone_name VARCHAR(150),
-                coordinates JSONB,
-                geom GEOMETRY(Geometry, 4326),
-                memo TEXT,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            );
-        """))
-        db.execute(text("ALTER TABLE user_exclusion_zones ADD COLUMN IF NOT EXISTS coordinates JSONB;"))
-        db.execute(text("ALTER TABLE user_exclusion_zones ADD COLUMN IF NOT EXISTS geom GEOMETRY(Geometry, 4326);"))
-        db.execute(text("ALTER TABLE user_exclusion_zones ADD COLUMN IF NOT EXISTS memo TEXT;"))
-        db.commit()
-    except Exception as e:
-        db.rollback()
-        print(f"[User Exclusion Zones Table Init Warning] {e}")
+    """[v4.9.40] DDL ALTER TABLE 제거: DB/init/01_schema.sql로 이미 정합성이 마운트되어 DDL 락 붕괴 방어"""
+    pass
 
 @router.get("/spatial/history")
 async def get_decision_history(db: Session = Depends(get_db)):

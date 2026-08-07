@@ -1354,6 +1354,26 @@
   3) **[PostGIS / pgvector 이관 무결성]**: `DB/Dockerfile` 내 `postgresql-15-pgvector` 패키지 자동 설치로 DB 확장 모듈 붕괴 100% 방지.
   4) **CLI & 프로덕션 빌드**: `python -c "import app.main"` 및 `npm run build` 모두 **0 Error** 무결성 확보.
 
+### 41. [오답 41] 대시보드 상태 변경/전환 클릭 시 DB DDL 락 붕괴(Deadlock) 및 백엔드 크래시 원천 척출
+- **현상 및 요구사항**: 대시보드 아카이브 리스트에서 심의 상태 변경('실증 실패', '토론 완료') 클릭 시 백엔드 트랜잭션이 멈추거나 500 에러/크래시가 발생하는 결함 제보.
+- **발생 원인(Root Cause)**:
+  1) `spatial.py` 내 `ensure_decision_histories_table` 및 `save_pipeline_log` 함수에서 매 HTTP 요청마다 `ALTER TABLE ... ADD COLUMN IF NOT EXISTS` DDL 쿼리를 지속적으로 실행함.
+  2) PostgreSQL에서 `ALTER TABLE` 구문은 대상 테이블 전체에 `AccessExclusiveLock`을 요구하므로, 대시보드 다중 API 조회(`GET /spatial/history`, `GET /spatial/precedents`)와 충돌하여 **DB 커넥션 풀 전체가 블로킹(Deadlock)**되어 서버가 붕괴되었음.
+- **최종 교훈 및 해법(Takeaway)**:
+  1) 이미 `01_schema.sql`로 100% 생성·마운트되어 있는 테이블에 대해, runtime API 렌더링 시 매번 불필요하게 실행되던 `ALTER TABLE` DDL 구문들을 `spatial.py`에서 완전 척출 제거함.
+  2) `test_toggle_status.py` 실측 CLI 스크립트 실행으로 0ms 즉시 성공 확인.
+  3) `python -c "import app.main"` 및 `npm run build` 모두 **0 Error** 무결성 입증 완공.
+
+### 42. [오답 42] 고아 Node.exe 프로세스 점유 정리 및 대시보드 API(`history`/`precedents`) 200 OK 무결성 회복
+- **현상 및 요구사항**: 대시보드 페이지(`/dashboard`) 접속 시 페이지 접속 불통 현상 제보.
+- **발생 원인(Root Cause)**:
+  1) 이전 세션 프로세스 교체 과정에서 백엔드 `uvicorn`이 다운되고 고아 `Node.exe`(PID 43124)가 3000 포트를 독점 점유하여 백엔드 프록시 타격 시 `ECONNRESET` / `socket hang up` 발생.
+  2) `spatial.py` DDL 척출 수술 반영 후 백엔드와 프론트엔드가 동시 정방향 기동되지 않아 접속 끊김 유발.
+- **최종 교훈 및 해법(Takeaway)**:
+  1) 고아 Node 프로세스를 척출 정리하고 백엔드(`uvicorn`:8000) 및 프론트엔드(`Next.js`:3000)를 독립 배경 기동함.
+  2) HTTP 실측 검증: `http://localhost:3000/dashboard` (200 OK - 19,841 Bytes), `http://localhost:8000/api/v1/spatial/history` (200 OK - 310,015 Bytes - 61건), `http://localhost:8000/api/v1/spatial/precedents` (200 OK - 369 Bytes).
+  3) `python -c "import app.main"` 및 `npm run build` 모두 **0 Error** 프로덕션 무결성 완공.
+
 
 
 

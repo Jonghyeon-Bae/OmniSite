@@ -113,7 +113,10 @@ try:
         
         print(f"Class distribution - Eligible (1): {len(df_pos)}, Ineligible (0): {len(df_neg)}")
         
-        if len(df_pos) > 10 and len(df_neg) > len(df_pos):
+        if len(df_pos) < 10:
+            print(f"Warning: Eligible positive samples ({len(df_pos)}) is too small. Forcing fallback to static CSV.")
+            use_fallback = True
+        elif len(df_neg) > len(df_pos):
             # 1:1.5 비율로 다운샘플링하여 훈련 세트 밸런싱
             sample_size = min(len(df_neg), int(len(df_pos) * 1.5))
             df_neg_sampled = df_neg.sample(n=sample_size, random_state=42)
@@ -155,7 +158,11 @@ X['dist_to_school'] = X['dist_to_school'].fillna(MAX_EFFECTIVE_DISTANCE).clip(up
 X['dist_to_childcare'] = X['dist_to_childcare'].fillna(MAX_EFFECTIVE_DISTANCE).clip(upper=MAX_EFFECTIVE_DISTANCE)
 
 # 3. Train-Test Split (80% Train, 20% Test)
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
+try:
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
+except Exception as split_err:
+    print(f"Warning: Stratified split failed ({split_err}). Falling back to non-stratified split...")
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 print(f"Training set: {X_train.shape}, Test set: {X_test.shape}")
 
 # 4. Define Preprocessing Pipeline

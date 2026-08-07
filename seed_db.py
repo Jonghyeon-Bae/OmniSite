@@ -63,7 +63,29 @@ def resolve_path(key, default_fallback):
 
     return default_fallback
 
-datasets_base_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "Datasets")
+def get_datasets_base():
+    # 윈도우 한글 경로 깨짐(빅프 -> ) 우회를 위해 상대 경로를 절대경로보다 최우선 순위로 리졸브
+    candidates = [
+        "Datasets",
+        "../Datasets",
+        "/workspace/Datasets",
+    ]
+    for c in candidates:
+        if os.path.exists(c) and os.path.exists(os.path.join(c, "1_boundaries")):
+            return c
+            
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    candidates_abs = [
+        os.path.join(base_dir, "Datasets"),
+        os.path.join(base_dir, "..", "Datasets"),
+    ]
+    for c in candidates_abs:
+        if os.path.exists(c) and os.path.exists(os.path.join(c, "1_boundaries")):
+            return c
+    return "Datasets"
+
+datasets_base_dir = get_datasets_base()
+print(f"Datasets Base Directory resolved to: {datasets_base_dir}")
 
 sources = {
     "dong_mapping": resolve_path("dong_mapping", os.path.join(datasets_base_dir, "1_boundaries", "용산구_법정동_행정동_연계매핑.csv")),
@@ -81,7 +103,7 @@ sources = {
 
 def load_csv_data(path, encodings=None):
     if not encodings:
-        encodings = ["cp949", "utf-8-sig", "utf-8", "euc-kr"]
+        encodings = ["utf-8-sig", "utf-8", "cp949", "euc-kr"]
     for enc in encodings:
         try:
             with open(path, "r", encoding=enc) as f:
@@ -185,7 +207,7 @@ def seed():
             dong_centroids = {}
 
             try:
-                datasets_base = os.path.join(os.path.dirname(os.path.abspath(__file__)), "Datasets")
+                datasets_base = datasets_base_dir
                 extracted_dir = os.path.join(datasets_base, "1_boundaries", "extracted")
                 zip_path = os.path.join(datasets_base, "1_boundaries", "읍면동.zip")
                 if not os.path.exists(os.path.join(extracted_dir, "emd.shp")) and os.path.exists(zip_path):

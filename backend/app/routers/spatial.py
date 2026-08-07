@@ -3631,3 +3631,41 @@ async def reheal_hash_chain_endpoint(req: RehealRequest, db: Session = Depends(g
     if not res.get("rehealed", False):
         raise HTTPException(status_code=403, detail=res.get("message", "마스터 보안 승인 실패"))
     return res
+
+@router.get("/spatial/db-check")
+async def db_check(db: Session = Depends(get_db)):
+    try:
+        def get_count(table_name):
+            try:
+                res = db.execute(text(f"SELECT COUNT(*) FROM {table_name}")).scalar()
+                return int(res) if res is not None else 0
+            except Exception:
+                db.rollback()
+                return -1
+
+        counts = {
+            "districts": get_count("districts"),
+            "dong_boundaries": get_count("dong_boundaries"),
+            "cadastral_lands": get_count("cadastral_lands"),
+            "restricted_zones": get_count("restricted_zones"),
+            "commercial_shops": get_count("commercial_shops"),
+            "transit_stations": get_count("transit_stations"),
+            "illegal_dumping_zones": get_count("illegal_dumping_zones")
+        }
+
+        # Datasets 폴더 존재 여부 확인 (컨테이너/로컬 다중 경로 탐색)
+        base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        datasets_bases = [
+            os.path.join(base_dir, "Datasets"),
+            "/workspace/Datasets",
+            "Datasets"
+        ]
+        datasets_exist = any(os.path.exists(dbase) for dbase in datasets_bases)
+
+        return {
+            "status": "success",
+            "datasets_exist": datasets_exist,
+            "counts": counts
+        }
+    except Exception as e:
+        return {"status": "error", "detail": str(e)}

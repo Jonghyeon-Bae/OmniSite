@@ -44,5 +44,8 @@ def test_api():
     # 5. Test recommend optimal sites
     safe_request("recommend optimal sites", f"{base_url}/recommend?district_id=1&ref_lat=37.5302&ref_lng=126.9724&limit=3")
 
+    # 6. Test DB Self-check Diagnostic API
+    safe_request("db-check (Data Audit Diagnostic)", f"{base_url}/db-check")
+
 if __name__ == "__main__":
     test_api()

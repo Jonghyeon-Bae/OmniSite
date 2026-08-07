@@ -157,6 +157,29 @@ def seed():
             conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255);"))
             conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS is_approved BOOLEAN DEFAULT TRUE;"))
             
+            print("[1-3] Ensuring district_regulations schema and columns integrity...")
+            conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS district_regulations (
+                    id SERIAL PRIMARY KEY,
+                    district_id INT DEFAULT 1,
+                    regulation_title VARCHAR(255) NOT NULL,
+                    clause_number VARCHAR(50),
+                    content TEXT NOT NULL,
+                    category VARCHAR(100) DEFAULT 'general',
+                    version_tag VARCHAR(30) DEFAULT 'v1.0',
+                    effective_date VARCHAR(20),
+                    document_name VARCHAR(255),
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+            """))
+            conn.execute(text("ALTER TABLE district_regulations ADD COLUMN IF NOT EXISTS version_tag VARCHAR(30) DEFAULT 'v1.0';"))
+            conn.execute(text("ALTER TABLE district_regulations ADD COLUMN IF NOT EXISTS effective_date VARCHAR(20);"))
+            conn.execute(text("ALTER TABLE district_regulations ADD COLUMN IF NOT EXISTS document_name VARCHAR(255);"))
+            try:
+                conn.execute(text("ALTER TABLE district_regulations ALTER COLUMN embedding DROP NOT NULL;"))
+            except Exception:
+                pass
+            
             print("[2] Truncating target tables...")
             conn.execute(text("""
                 TRUNCATE TABLE 

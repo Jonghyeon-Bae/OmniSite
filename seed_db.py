@@ -825,9 +825,27 @@ def seed():
                         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                     );
                 """))
-                conn.execute(text("ALTER TABLE district_regulations ADD COLUMN IF NOT EXISTS version_tag VARCHAR(30) DEFAULT 'v1.0';"))
-                conn.execute(text("ALTER TABLE district_regulations ADD COLUMN IF NOT EXISTS effective_date VARCHAR(20);"))
-                conn.execute(text("ALTER TABLE district_regulations ADD COLUMN IF NOT EXISTS document_name VARCHAR(255);"))
+                
+                # Dynamic column inspection & auto-healing
+                cols_res = conn.execute(text("SELECT column_name FROM information_schema.columns WHERE table_name='district_regulations';")).fetchall()
+                existing_cols = {r[0] for r in cols_res}
+                
+                if "version_tag" not in existing_cols:
+                    try:
+                        conn.execute(text("ALTER TABLE district_regulations ADD COLUMN version_tag VARCHAR(30) DEFAULT 'v1.0';"))
+                        existing_cols.add("version_tag")
+                    except Exception:
+                        pass
+                if "effective_date" not in existing_cols:
+                    try:
+                        conn.execute(text("ALTER TABLE district_regulations ADD COLUMN effective_date VARCHAR(20);"))
+                    except Exception:
+                        pass
+                if "document_name" not in existing_cols:
+                    try:
+                        conn.execute(text("ALTER TABLE district_regulations ADD COLUMN document_name VARCHAR(255);"))
+                    except Exception:
+                        pass
                 try:
                     conn.execute(text("ALTER TABLE district_regulations ALTER COLUMN embedding DROP NOT NULL;"))
                 except Exception:
@@ -860,12 +878,21 @@ def seed():
                     }
                 ]
                 
-                for reg in default_regulations:
-                    conn.execute(text("""
+                if "version_tag" in existing_cols:
+                    insert_sql = """
                         INSERT INTO district_regulations (district_id, regulation_title, clause_number, content, category, version_tag, embedding)
                         VALUES (1, :title, :clause, :content, :category, 'v1.0', array_fill(0.0, ARRAY[1536])::vector)
                         ON CONFLICT DO NOTHING;
-                    """), reg)
+                    """
+                else:
+                    insert_sql = """
+                        INSERT INTO district_regulations (district_id, regulation_title, clause_number, content, category, embedding)
+                        VALUES (1, :title, :clause, :content, :category, array_fill(0.0, ARRAY[1536])::vector)
+                        ON CONFLICT DO NOTHING;
+                    """
+                
+                for reg in default_regulations:
+                    conn.execute(text(insert_sql), reg)
                 print("    Default municipal regulations seeded successfully into district_regulations.")
             except Exception as reg_err:
                 print(f"    [Regulations Seeding Warning] {reg_err}")

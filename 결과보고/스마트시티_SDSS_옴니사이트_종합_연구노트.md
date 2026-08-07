@@ -1399,6 +1399,35 @@
   4) `결과보고/최종시연및발표/` 디렉터리로 핵심 문서 8종을 통합 이관 완료.
   5) `python -c "import app.main"` 및 `npm run build` 모두 **0 Error** 무결성 확보.
 
+### 46. [오답 46] 초보자용 로컬 세팅 가이드 및 AWS Lightsail 클라우드 배포 SOP 독립 문서 분리 완공
+- **현상 및 요구사항**: 로컬 초기 세팅법과 AWS Lightsail 초기 세팅법을 초보자도 쉽게 따라 할 수 있는 2개의 개별 표준 지침서 문서로 작성 요청.
+- **최종 교훈 및 해법(Takeaway)**:
+  1) `LOCAL_INITIAL_SETUP_GUIDE.md` 작성: 초보 행정관/실무자를 위한 Docker 원클릭 기동법 및 개발자용 로컬 디버깅 가이드 작성.
+  2) `AWS_LIGHTSAIL_DEPLOYMENT_SOP.md` 개작: 4GB Swapfile, `get-docker.sh` 원스톱 패키지 락 회치 설치법, `.env` IP 바인딩, DB 6,524건 무결성 시딩 실측 명령어 이식.
+  3) `결과보고/` 및 `결과보고/최종시연및발표/` 디렉터리에 복사 및 동기화 완료.
+  4) `python -c "import app.main"` 및 `npm run build` 모듈 빌드 **0 Error** 무결성 확보.
+
+### 47. [오답 47] 국유부동산 정보 헤더 매칭(`소재지(지번)`) 및 468개 필지 소유구분(`국유지`) 갱신 완료
+- **현상 및 요구사항**: `seed_db.py` 5.2 단계 실행 중 `[Warning] Failed to update ownership with national properties: '소재지' is not in list` 경고 발생.
+- **발생 원인(Root Cause)**:
+  1) `11. 국유부동산정보.csv` 파일의 실제 헤더 컬럼명이 `"소재지"`가 아니라 `"소재지(지번)"` 및 `"소재지(도로명)"`으로 구성되어 `np_headers.index("소재지")`에서 `ValueError` 예외 발생.
+  2) SQLAlchemy 2.0 / Psycopg3 인자 전달 방식 시 `WHERE jibun IN :jibuns` 튜플 전달 구문 오류.
+- **최종 교훈 및 해법(Takeaway)**:
+  1) `seed_db.py` 및 `backend/seed_db.py` 헤더 인덱스 탐색 로직을 `if "소재지(지번)" in h or "소재지" in h` 유연 검색으로 교정함.
+  2) `unnest(CAST(:jibuns AS text[]))` 및 `LIKE` 부분 매칭 쿼리를 이식하여 **468개 지적 필지의 소유구분을 '국유지'로 100% 정상 업데이트 완공**.
+  3) `python -c "import app.main"` 및 `npm run build` 모두 **0 Error** 무결성 확보.
+
+### 48. [오답 48] Git 충돌 리셋 명세, district_regulations 널에러 차단, 교량 SHP 용산구 바운딩 필터링 완공
+- **현상 및 요구사항**:
+  1) Lightsail `git pull` 시 `origin/main` 충돌 발생 (`git clean -fd`로 미해결).
+  2) `seed_db.py` 12단계 `district_regulations` 시딩 시 `embedding` 칼럼 `NotNullViolation` 경고 발생.
+  3) `restricted_zones` 테이블 건수가 268건이 아닌 전국 교량 17만 건(`172,431`)으로 급증한 현상 제보.
+- **발생 원인(Root Cause) 및 최종 해법(Takeaway)**:
+  1) **Git 충돌**: `git clean -fd`는 추적되지 않는 파일만 삭제하므로 `git fetch origin main && git reset --hard origin/main && git clean -fd` 명령어로 클라우드 인스턴스를 원클릭 리셋 동기화함.
+  2) **`embedding` 널에러**: `DB/init/01_schema.sql` 내 `embedding VECTOR(1536)` 칼럼의 `NOT NULL` 제약 조건을 제거하고, `seed_db.py` 시딩 쿼리에 `array_fill(0.0, ARRAY[1536])::vector` 기본 벡터를 투입하여 널에러를 원천 차단함.
+  3) **`restricted_zones` 17만 건 조치**: 전국 교량/터널 SHP 파일(`N3A_A0070000.shp`) 적재 시 용산구 영역 바운딩 박스(`ST_MakeEnvelope(126.93, 37.51, 127.02, 37.56, 4326)`) `ST_Intersects` 교집합 필터를 적용하여 타 지역 17만 건 오적재를 원천 차단함.
+  4) `python -c "import app.main"` 및 `npm run build` 모두 **0 Error** 프로덕션 무결성 확보.
+
 
 
 

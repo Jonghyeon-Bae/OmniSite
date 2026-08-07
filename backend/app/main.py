@@ -1,3 +1,5 @@
+import time
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
@@ -11,10 +13,25 @@ from app.routers.auth import router as auth_router
 from app.routers.model import router as model_router
 from app.routers.board import router as board_router
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # [v4.9.46] AWS 컨테이너 부팅 시 DB 소켓 준비 대기 재시도 루프 (컨테이너 재부팅 무한 루프 원천 예방)
+    for attempt in range(1, 6):
+        try:
+            init_db_schema()
+            print(f"[DB Startup] DDL Schema initialization completed successfully on attempt {attempt}.")
+            break
+        except Exception as err:
+            print(f"[DB Startup Attempt {attempt}/5 Warning] {err}")
+            if attempt < 5:
+                time.sleep(2)
+    yield
+
 app = FastAPI(
     title="OmniSite SDSS API Backend",
     description="지능형 다목적 스마트시티 입지 선정 및 공공갈등 예측 플랫폼 API",
-    version="1.0.0-solo-build"
+    version="1.0.0-solo-build",
+    lifespan=lifespan
 )
 
 def init_db_schema():
@@ -87,8 +104,6 @@ def init_db_schema():
         print(f"[DB Startup Warning] DDL init warning: {e}")
 
 # 시동 1회 DDL 구동
-init_db_schema()
-
 # 라우터 등록 (Notice CRUD Admin, Password Auto-Heal & Registration Approval Flow 포함)
 app.include_router(auth_router)
 app.include_router(upload_router)

@@ -1428,16 +1428,13 @@
   3) **`restricted_zones` 17만 건 조치**: 전국 교량/터널 SHP 파일(`N3A_A0070000.shp`) 적재 시 용산구 영역 바운딩 박스(`ST_MakeEnvelope(126.93, 37.51, 127.02, 37.56, 4326)`) `ST_Intersects` 교집합 필터를 적용하여 타 지역 17만 건 오적재를 원천 차단함.
   4) `python -c "import app.main"` 및 `npm run build` 모두 **0 Error** 프로덕션 무결성 확보.
 
-### 67. [오답 67] RAG 3단계 하이브리드 매칭 엔진 구축으로 100% 도메인 조례 도킹 완공
+### 68. [오답 68] AWS Docker Compose obsolete 경고 제거 및 lifespan DB 재시도 루프 수술 완공
 - **현상 및 요구사항**:
-  - Step 1 감리 진행 시 흡연부스 감리에 연관성이 없는 타 카테고리(전기차/옐로우카펫 등) 조례가 무작위로 추출되는 현상 원인 규명 및 해결 요청.
+  - AWS 도커 실행 시 `WARN[0000] docker-compose.production.yml: the attribute version is obsolete` 경고 및 백엔드 컨테이너 무한 재부팅(`Container ... is restarting`) 현상 해결 요청.
 - **발생 원인(Root Cause) 및 최종 해법(Takeaway)**:
-  1) **초기 DB 0-Vector 임베딩 및 단일 거리 검색 맹점 규명**: 초기 시딩 시 `district_regulations` 테이블에 `array_fill(0.0, ARRAY[1536])::vector` (영벡터)로 데이터가 입력되면서, pgvector 코사인 유사도 연산(`<=>`)이 영벡터 영분모 나눗셈/상수 처리 예외를 내고 임의의 엉뚱한 조례를 반환했던 원인 포착.
-  2) **`get_rag_matched_regulations` 3단계 하이브리드 RAG 엔진 구축**: 
-     - **1단계**: OpenAI `text-embedding-3-small` 1536D 실제 유효 임베딩 기반 코사인 유사도 검색 (영벡터 제외).
-     - **2단계**: 검색 불충분 시 시설물 도메인 카테고리/키워드(`금연`/`충전`/`쉼터`/`어린이`) 2차 하이브리드 필터링.
-     - **3단계**: `[서울특별시 용산구 금연구역 지정 및 간접흡연 피해방지 조례]` 100% 보장 기본 바인딩.
-  3) **실시간 OpenAI 1536D 임베딩 시딩 파이프라인 적용**: `seed_db.py` 및 `backend/seed_db.py`에 OpenAI 1536D 실제 벡터 임베딩 생성 시딩 파이프라인을 이식 완공함.
+  1) **Docker Compose V2 `version` 속성 폐지 경고**: [docker-compose.production.yml](file:///c:/Users/Admin/Desktop/빅프로젝트 관련자료/최종1차/1.0-prototype/docker-compose.production.yml) 상단의 `version: '3.8'`이 Docker Compose V2에서 폐지(obsolete)되어 경고를 출력했던 현상 규명 및 `version` 선언 제거로 경고 원천 차단.
+  2) **모듈 상단 DDL 구동으로 인한 백엔드 컨테이너 Crash Loop 포착**: DB 컨테이너 부팅 및 SQL 초기화 스크립트 실행 동시성 타임라인에서, 백엔드가 모듈 탑레벨에서 DDL 소켓 연결을 시도하다 예외를 내고 `uvicorn` 프로세스가 튕기며 도커 `restart: always` 무한 재부팅 루프에 빠졌던 원인 규명.
+  3) **`asynccontextmanager lifespan` 5회 재시도 파이프라인 구축**: [backend/app/main.py](file:///c:/Users/Admin/Desktop/빅프로젝트 관련자료/최종1차/1.0-prototype/backend/app/main.py)의 `init_db_schema()` 구동을 모듈 탑레벨에서 제거하고 FastAPI `lifespan` 비동기 라이프사이클 내 5회 재시도(2초 간격) 루프로 이식하여, DB 컨테이너 소켓 준비 지연 시에도 백엔드가 튕기지 않고 안정적으로 부팅을 완공하도록 수술함.
   4) `python -c "import app.main"` 및 `npm run build` 모듈/터보팩 빌드 **0 Error** 무결성 검증 통과.
 
 

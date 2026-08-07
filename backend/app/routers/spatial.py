@@ -805,11 +805,16 @@ async def recommend_optimal_sites(
             db.execute(text("""
                 CREATE TABLE IF NOT EXISTS user_exclusion_zones (
                     id SERIAL PRIMARY KEY,
-                    zone_name VARCHAR(100),
-                    geojson TEXT,
+                    zone_name VARCHAR(150),
+                    coordinates JSONB,
+                    geom GEOMETRY(Geometry, 4326),
+                    memo TEXT,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 );
             """))
+            db.execute(text("ALTER TABLE user_exclusion_zones ADD COLUMN IF NOT EXISTS coordinates JSONB;"))
+            db.execute(text("ALTER TABLE user_exclusion_zones ADD COLUMN IF NOT EXISTS geom GEOMETRY(Geometry, 4326);"))
+            db.execute(text("ALTER TABLE user_exclusion_zones ADD COLUMN IF NOT EXISTS memo TEXT;"))
             db.commit()
         except Exception:
             db.rollback()
@@ -3110,9 +3115,27 @@ def ensure_decision_histories_table(db: Session):
         db.execute(text("ALTER TABLE verified_precedents ADD COLUMN IF NOT EXISTS match_score NUMERIC;"))
         db.execute(text("ALTER TABLE verified_precedents ADD COLUMN IF NOT EXISTS audit_opinion TEXT;"))
         db.commit()
+        print(f"[Decision Histories Table Init Warning] {e}")
+
+def ensure_user_exclusions_table(db: Session):
+    try:
+        db.execute(text("""
+            CREATE TABLE IF NOT EXISTS user_exclusion_zones (
+                id SERIAL PRIMARY KEY,
+                zone_name VARCHAR(150),
+                coordinates JSONB,
+                geom GEOMETRY(Geometry, 4326),
+                memo TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        """))
+        db.execute(text("ALTER TABLE user_exclusion_zones ADD COLUMN IF NOT EXISTS coordinates JSONB;"))
+        db.execute(text("ALTER TABLE user_exclusion_zones ADD COLUMN IF NOT EXISTS geom GEOMETRY(Geometry, 4326);"))
+        db.execute(text("ALTER TABLE user_exclusion_zones ADD COLUMN IF NOT EXISTS memo TEXT;"))
+        db.commit()
     except Exception as e:
         db.rollback()
-        print(f"[Decision Histories Table Init Warning] {e}")
+        print(f"[User Exclusion Zones Table Init Warning] {e}")
 
 @router.get("/spatial/history")
 async def get_decision_history(db: Session = Depends(get_db)):

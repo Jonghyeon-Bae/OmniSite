@@ -328,6 +328,7 @@ CREATE TABLE IF NOT EXISTS user_exclusion_zones (
     id SERIAL PRIMARY KEY,
     zone_name VARCHAR(150),
     coordinates JSONB,
+    geom GEOMETRY(Geometry, 4326),
     memo TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

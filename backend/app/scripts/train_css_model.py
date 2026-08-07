@@ -37,7 +37,7 @@ if not os.path.exists(dataset_path):
 
 # 1. Load Dataset
 print(f"Loading training dataset: {dataset_path}")
-df = pd.read_sql = pd.read_csv(dataset_path)
+df = pd.read_csv(dataset_path, encoding='utf-8-sig')
 
 # Drop redundant identifiers
 X = df[['land_use_code', 'ownership_type', 'area', 'dist_to_school', 'dist_to_childcare']].copy()

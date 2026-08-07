@@ -1297,6 +1297,16 @@
 - **발생 원인(Root Cause)**: 로컬 고사양 PC 환경(소요 시간 0.17초)과 달리 AWS Lightsail처럼 CPU/메모리가 극도로 한정된 서빙 인프라에서는 수천 개 다각형 연산이 병목을 일으켜 쿼리 타임아웃 및 OOM 크래시가 유발됨. 게다가 API 예외 처리 부재로 인해 fallback GeoJSON을 프론트엔드로 전달하지 못하고 500 에러를 뿜음.
 - **최종 교훈 및 해법(Takeaway)**: 백엔드 `spatial.py` 내 전역 메모리 캐시(`_district_boundary_cache`)를 구성하여 최초 1회만 DB 공간 연산을 수행(O(1) 캐싱)하도록 쿼리 구조를 극대화(두 번째 요청부터 2ms 소요)하고, 쿼리가 완전히 깨지는 환경에서도 안전하게 기본 자치구 경계를 반환하도록 예외 안전망(try-except Fallback)을 구축함.
 
+### 20. [오답 20] `user_exclusion_zones` 테이블 `geom`/`memo` 누락 및 `NameError`로 인한 입지 추천 API 크래시
+- **초기 착오(Failure)**: AWS 배포 환경에서 부지선정 및 통제구역 지정 실행 시 500 에러를 뿜으며 부지가 표출되지 않음.
+- **발생 원인(Root Cause)**: 원본 스키마 DDL(`01_schema.sql`)에 `geom`과 `memo` 컬럼이 누락되어 있었고, API 내부에서 동적 구조를 보장하는 자가치유 헬퍼 함수 `ensure_user_exclusions_table`이 백엔드 전역 소스코드에 정의조차 되지 않아 `NameError` 및 `UndefinedColumn` 크래시를 유발함.
+- **최종 교훈 및 해법(Takeaway)**: `01_schema.sql`에 `geom` 및 `memo` 정의를 복구하고, `spatial.py` 내부에 `ensure_user_exclusions_table(db)` 자가치유 헬퍼 함수를 구현 이식하여 로컬 및 AWS 도커 배포 환경 양쪽 모두에서 100% 무결 가동(부지선정 0.222초 내 반환)되도록 완공함.
+
+### 21. [오답 21] `config.py` 내 단일 `.env` 상대 경로 매핑으로 인한 Pydantic Settings 환경변수 누락
+- **초기 착오(Failure)**: 프로젝트 루트 디렉토리 기준으로 `seed_db.py` 기동 시 `DATABASE_URL` Validation Error 발생.
+- **발생 원인(Root Cause)**: `config.py` 내의 `SettingsConfigDict`가 로컬 터미널 가동 위치 기준(`.env`)으로만 세팅되어 있어 실행 위치에 따라 `.env`를 탐색하지 못해 런타임에 DB URL을 유실함.
+- **최종 교훈 및 해법(Takeaway)**: `SettingsConfigDict` 내 `env_file` 탐색 리스트를 다중 백업 경로(`(".env", "backend/.env", "../.env")`)로 확장하여 런타임 환경변수 유실을 사전에 전면 방어하도록 설계 교정함.
+
 
 
 

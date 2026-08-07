@@ -16,7 +16,7 @@ class Settings(BaseSettings):
 
     # Pydantic v2 스타일의 설정 정의
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=(".env", "backend/.env", "../.env"),
         env_file_encoding="utf-8",
         extra="ignore"
     )

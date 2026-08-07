@@ -12,7 +12,7 @@ import BoardModal from '@/components/BoardModal';
 import GlobalFooter from '@/components/GlobalFooter';
 import { OMNISITE_DISPLAY_VERSION } from '@/config/version';
 
-// Next.js API Fetch 래퍼 (JWT 세션 자동 바인딩)
+// Next.js API Fetch 래퍼 (JWT 세션 자동 바인딩 및 8000 직통 포트 무결성 폴백)
 const apiFetch = async (url, options = {}) => {
   const token = typeof window !== 'undefined' 
     ? (sessionStorage.getItem('token') || sessionStorage.getItem('jwtToken'))
@@ -24,24 +24,28 @@ const apiFetch = async (url, options = {}) => {
   const nativeFetch = typeof window !== 'undefined' ? window.fetch : (typeof globalThis !== 'undefined' ? globalThis.fetch : null);
   if (!nativeFetch) return Promise.reject(new Error('Fetch not available'));
 
-  // 1차 시도: Nginx 80포트 대문 상대 경로 시도
+  // 1차 시도: 상대 경로 통신
   try {
     const res = await nativeFetch(url, { ...options, headers });
-    if (res.status !== 404 && res.status !== 502 && res.status !== 504) {
+    if (res.ok) {
       return res;
     }
   } catch (_) {}
 
-  // 2차 폴백: 호스트 동적 감지 (로컬: localhost:8000 / 라이트세일: 공인IP:8000)
+  // 2차 폴백: 호스트 동적 감지 (AWS IP:8000 또는 localhost:8000 직통 포트 직접 호출)
   if (typeof url === 'string' && url.startsWith('/api/v1')) {
     if (typeof window !== 'undefined') {
       const host = window.location.hostname;
       const protocol = window.location.protocol;
-      if (host !== 'localhost' && host !== '127.0.0.1') {
-        return nativeFetch(`${protocol}//${host}:8000${url}`, { ...options, headers });
+      const envApiUrl = (process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_BACKEND_API_URL || '').replace(/\/$/, '');
+      const targetUrl = envApiUrl ? `${envApiUrl}${url}` : `${protocol}//${host}:8000${url}`;
+      try {
+        const directRes = await nativeFetch(targetUrl, { ...options, headers });
+        return directRes;
+      } catch (err) {
+        console.error("Direct port 8000 fetch error:", err);
       }
     }
-    return nativeFetch(`http://localhost:8000${url}`, { ...options, headers });
   }
 
   return nativeFetch(url, { ...options, headers });

@@ -1428,13 +1428,13 @@
   3) **`restricted_zones` 17만 건 조치**: 전국 교량/터널 SHP 파일(`N3A_A0070000.shp`) 적재 시 용산구 영역 바운딩 박스(`ST_MakeEnvelope(126.93, 37.51, 127.02, 37.56, 4326)`) `ST_Intersects` 교집합 필터를 적용하여 타 지역 17만 건 오적재를 원천 차단함.
   4) `python -c "import app.main"` 및 `npm run build` 모두 **0 Error** 프로덕션 무결성 확보.
 
-### 54. [오답 54] 빈 데이터베이스 상태(0건) 준공 문서 업로드 즉시 자동 커밋 이식 완공
+### 55. [오답 55] vp.verified_at 컬럼 500 에러 교정 및 res.ok 기반 8000번 포트 우회 완공
 - **현상 및 요구사항**:
-  - 데이터베이스가 비어있는 초기 상태(0건)에서 준공 공문서를 업로드하면 "적재완료" 메세지가 표출되어도 실증 준공사례 리스트가 여전히 빈값으로 표출되었던 문제 제보.
+  - AWS Lightsail 환경에서 도커 빌드를 재집행하여도 실증 준공 사례 리스트 및 행정 감사 로그가 표출되지 않는 문제 제보.
 - **발생 원인(Root Cause) 및 최종 해법(Takeaway)**:
-  - 기존 백엔드 `audit_history_document_auto`(`POST /api/v1/spatial/history/audit-auto`)에서 과거 모의 심의 이력(`decision_histories`)이 비어있는 상태일 때 `status: "not_found"`만을 반환하고, 프론트엔드의 컨펌 모달 응답이 처리되기 전까지 `verified_precedents`에 DB 커밋(INSERT)을 집행하지 않았던 맹점 포착.
-  - 모의 심의 이력 유무와 관계없이, 준공 공문서 업로드 즉시 `verified_precedents` 테이블에 `100% 즉시 영구 커밋(INSERT & COMMIT)`되도록 백엔드 로직을 전면 개개함.
-  - `python -c "import app.main"` 및 `npm run build` 모듈/터보팩 빌드 **0 Error** 무결성 검증 통과.
+  1) **UndefinedColumn 500 에러 교정**: `backend/app/routers/spatial.py`의 `get_verified_precedents` SQL문에서 `verified_precedents` 테이블에 존재하지 않는 `vp.verified_at` 컬럼을 조회하려 하여 PostgreSQL가 `UndefinedColumn` 예외(HTTP 500 Internal Server Error)를 발생시켰던 치명적 결함 포착 ➔ `TO_CHAR(COALESCE(vp.created_at, CURRENT_TIMESTAMP), 'YYYY-MM-DD HH24:MI')`로 교정 완료.
+  2) **`apiFetch` 래퍼 `res.ok` 검증 및 8000번 직통 폴백 강제**: 프론트엔드의 `apiFetch`에서 Nginx/Rewrite 응답 상태가 HTTP 200/201 OK가 아닌 모든 에러(500, 502, 404 등) 상황 발생 시, 자동으로 **AWS 공인 IP:8000번 직통 백엔드 포트로 강제 우회 호출**하도록 이식 완료.
+  3) `python -c "import app.main"` 및 `npm run build` 모듈/터보팩 빌드 **0 Error** 무결성 검증 통과.
 
 
 

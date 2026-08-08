@@ -618,11 +618,23 @@ async def recommend_optimal_sites(
                         else:
                             continue
                             
-                        # [v6.8.0 Full Dynamic & Hard Exclusion Engine for Overpass, Tunnel, School, Childcare, etc.]
+                        # [v7.2.0 PostGIS Geography Exact Meter Hard Exclusion Engine]
                         if z_type in ['school', 'school_ev']:
-                            exclusion_conditions.append(f"c.dist_to_school_m <= {parsed_dist}")
+                            exclusion_conditions.append(f"""
+                                (c.dist_to_school_m <= {parsed_dist} OR EXISTS (
+                                    SELECT 1 FROM restricted_zones rz_gen 
+                                    WHERE (rz_gen.zone_type LIKE '%school%' OR rz_gen.zone_type LIKE '%학교%' OR rz_gen.zone_type LIKE '%유치원%')
+                                      AND ST_DWithin(c.geom::geography, rz_gen.geom::geography, {parsed_dist})
+                                ))
+                            """)
                         elif z_type == 'childcare_center':
-                            exclusion_conditions.append(f"c.dist_to_childcare_m <= {parsed_dist}")
+                            exclusion_conditions.append(f"""
+                                (c.dist_to_childcare_m <= {parsed_dist} OR EXISTS (
+                                    SELECT 1 FROM restricted_zones rz_gen 
+                                    WHERE (rz_gen.zone_type LIKE '%childcare%' OR rz_gen.zone_type LIKE '%어린이집%')
+                                      AND ST_DWithin(c.geom::geography, rz_gen.geom::geography, {parsed_dist})
+                                ))
+                            """)
                         elif z_type == 'overpass':
                             exclusion_conditions.append(f"c.dist_to_overpass_m <= {parsed_dist}")
                         elif z_type == 'tunnel':
@@ -632,7 +644,7 @@ async def recommend_optimal_sites(
                                 EXISTS (
                                     SELECT 1 FROM restricted_zones rz_gen 
                                     WHERE rz_gen.zone_type = '{z_type}' 
-                                      AND ST_DWithin(c.geom, rz_gen.geom, {parsed_dist * 0.00001})
+                                      AND ST_DWithin(c.geom::geography, rz_gen.geom::geography, {parsed_dist})
                                 )
                             """)
                         

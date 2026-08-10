@@ -30,28 +30,31 @@ def compute_sha256_hash(prev_hash: str, payload_data: dict) -> str:
 
 def verify_log_chain(logs: list) -> tuple[bool, int, str]:
     """
-    Verifies single-chain SHA-256 integrity across log entries.
+    Verifies SHA-256 integrity across log entries (partitioned per session_id).
     Returns (is_valid, corrupted_index, detail_msg)
     """
-    prev_hash = "0" * 64
+    session_prev_map = {}
     for idx, log in enumerate(logs):
+        session_id = str(log.get("session_id") or 'SESSION_DEFAULT')
+        prev_hash = session_prev_map.get(session_id, "0" * 64)
+        
         expected_prev = log.get("prev_hash") or ("0" * 64)
         current_hash = log.get("current_hash")
         
-        if idx > 0 and expected_prev != prev_hash:
-            return False, idx, f"Prev hash mismatch at index {idx} (Expected: {prev_hash[:12]}..., Got: {expected_prev[:12]}...)"
+        if expected_prev != prev_hash:
+            return False, idx, f"Prev hash mismatch at index {idx} for session '{session_id}' (Expected: {prev_hash[:12]}..., Got: {expected_prev[:12]}...)"
             
         payload = {
-            "session_id": log.get("session_id"),
+            "session_id": session_id,
             "step_number": log.get("step_number"),
             "action_type": log.get("action_type"),
             "detail_json": log.get("detail_json")
         }
         recalculated = compute_sha256_hash(expected_prev, payload)
         if current_hash and current_hash != recalculated:
-            return False, idx, f"Current hash tampered at index {idx} (Recorded: {current_hash[:12]}..., Calc: {recalculated[:12]}...)"
+            return False, idx, f"Current hash tampered at index {idx} for session '{session_id}' (Recorded: {current_hash[:12]}..., Calc: {recalculated[:12]}...)"
             
-        prev_hash = current_hash or recalculated
+        session_prev_map[session_id] = current_hash or recalculated
         
     return True, -1, "SHA-256 Hash Chain 100% Verified"
 

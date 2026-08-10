@@ -2,11 +2,12 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
 from app.config import settings
 
-# SQLAlchemy DB 커넥션 풀 설정
+# SQLAlchemy DB 커넥션 풀 설정 (다중 접속 동시성 보강)
 engine = create_engine(
     settings.DATABASE_URL,
-    pool_size=10,
-    max_overflow=20,
+    pool_size=20,
+    max_overflow=30,
+    pool_timeout=30,
     pool_recycle=3600,
     pool_pre_ping=True
 )

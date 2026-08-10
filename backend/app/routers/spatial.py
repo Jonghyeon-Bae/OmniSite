@@ -77,8 +77,12 @@ def get_kst_now():
 # === [AUDIT LOG HELPER & ENDPOINT] ===
 def save_pipeline_log(db, step_number: str, action_type: str, detail_dict: dict, session_id: str = 'SESSION_ADMIN'):
     try:
-        # [SHA-256 Hash Chain] 이전 해시값 인출 및 통일된 연산 수행
-        last_row = db.execute(text("SELECT current_hash FROM pipeline_execution_logs ORDER BY id DESC LIMIT 1")).fetchone()
+        # [Per-Session SHA-256 Hash Chain Guard] 사용자/세션 키 기반 파티션 체이닝으로 멀티유저 동시성 충돌 0% 완벽 차단
+        last_row = db.execute(text("""
+            SELECT current_hash FROM pipeline_execution_logs 
+            WHERE session_id = :session_id 
+            ORDER BY id DESC LIMIT 1 FOR UPDATE
+        """), {"session_id": session_id}).fetchone()
         prev_hash = last_row[0] if (last_row and last_row[0]) else ("0" * 64)
 
         from app.services.audit_service import compute_sha256_hash

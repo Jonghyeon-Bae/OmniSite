@@ -144,22 +144,9 @@ async def login(req: UserLoginRequest, db: Session = Depends(get_db)):
                 detail="관리자 승인 대기 중인 계정입니다. 스마트도시과 최고관리자의 승인 후 로그인하실 수 있습니다."
             )
 
-        # 🔒 [중복 로그인 안내 가드] 이미 다른 기기에서 활성 접속 중이고 force != True 인 경우 409 Conflict 표출
-        try:
-            from app.routers.spatial import is_user_currently_active
-            if not req.force and is_user_currently_active(user[1]):
-                raise HTTPException(
-                    status_code=status.HTTP_409_CONFLICT,
-                    detail=f"⚠️ [중복 로그인 감지 경고]\n계정 '{user[1]}'님은 현재 다른 PC/브라우저에서 로그인 중입니다.\n\n기존 세션을 강제 종료하고 현재 기기에서 새로 로그인하시겠습니까?\n(승인 시 다른 기기의 접속이 즉시 해제됩니다.)"
-                )
-        except HTTPException:
-            raise
-        except Exception as check_err:
-            print(f"[Active Session Check Error] {check_err}")
-            
         access_token = create_access_token(data={"sub": user[1]})
         
-        # 🔒 실시간 단일 세션 보장: 로그인 성공 시 기존 세션 토큰을 새로 온디맨드 갱신
+        # 🔒 실시간 단일 세션 보장: 올바른 계정 정보로 로그인 시 이전 선점 세션을 100% 무조건 덮어쓰고 소거
         try:
             from app.routers.spatial import set_active_user_session
             set_active_user_session(user[1], access_token, user[3])
@@ -406,8 +393,27 @@ async def refresh_session_token(db: Session = Depends(get_db), current_user: dic
     }
 
 # --- 10. me API ---
+from fastapi import Request
+
 @router.get("/me")
-async def get_me(current_user: dict = Depends(get_current_user)):
+async def get_me(request: Request, current_user: dict = Depends(get_current_user)):
+    # 🔒 단일 세션 검증: 낡은 세션 토큰으로 /me 요청 시 401 Unauthorized 반환하여 메인 리다이렉트 루프 차단
+    try:
+        auth_header = request.headers.get("Authorization", "")
+        token = auth_header.replace("Bearer ", "").strip() if auth_header.startswith("Bearer ") else None
+        if token:
+            from app.routers.spatial import ACTIVE_USER_SESSION_TOKENS
+            active_token = ACTIVE_USER_SESSION_TOKENS.get(current_user["username"])
+            if active_token and active_token != token:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="이미 다른 기기/브라우저에서 로그인되어 현재 세션이 해제되었습니다."
+                )
+    except HTTPException:
+        raise
+    except Exception:
+        pass
+
     return {
         "id": current_user["id"],
         "username": current_user["username"],

@@ -145,6 +145,13 @@ async def login(req: UserLoginRequest, db: Session = Depends(get_db)):
             
         access_token = create_access_token(data={"sub": user[1]})
         
+        # 🔒 실시간 단일 세션 보장: 로그인 성공 시 기존 세션 토큰을 새로 온디맨드 갱신
+        try:
+            from app.routers.spatial import set_active_user_session
+            set_active_user_session(user[1], access_token, user[3])
+        except Exception as sess_err:
+            print(f"[Auth Session Register Warning] {sess_err}")
+
         require_password_change = False
         if user[1] == "admin" and user[2] and verify_password("admin1234", user[2]):
             require_password_change = True

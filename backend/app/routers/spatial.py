@@ -192,6 +192,24 @@ def verify_hash_chain(db: Session = Depends(get_db)):
 ACTIVE_USER_HEARTBEATS = {}  # {token: {"username": ..., "role": ..., "last_seen": timestamp}}
 ACTIVE_USER_SESSION_TOKENS = {}  # {username: token}
 
+def set_active_user_session(username: str, token: str, role: str = 'user'):
+    """로그인 성공 시 백엔드 단에서 직접 해당 계정의 단일 선점 토큰을 갱신"""
+    import time
+    if not username or not token:
+        return
+    ACTIVE_USER_SESSION_TOKENS[username] = token
+    
+    # 해당 username의 기존 오래된 낡은 하트비트 세션 소거
+    old_keys = [k for k, v in ACTIVE_USER_HEARTBEATS.items() if v.get("username") == username and k != token]
+    for k in old_keys:
+        ACTIVE_USER_HEARTBEATS.pop(k, None)
+        
+    ACTIVE_USER_HEARTBEATS[token] = {
+        "username": username,
+        "role": role,
+        "last_seen": time.time()
+    }
+
 class HeartbeatRequest(BaseModel):
     token: Optional[str] = Field(None, description="세션 토큰")
     username: Optional[str] = Field("공무원", description="사용자명")
@@ -202,12 +220,7 @@ async def register_user_session(req: HeartbeatRequest):
     """신규 로그인 시 해당 계정의 단일 세션 토큰 선점 등록 API"""
     import time
     session_token = req.token or f"tok_{req.username}_{time.time()}"
-    ACTIVE_USER_SESSION_TOKENS[req.username] = session_token
-    ACTIVE_USER_HEARTBEATS[session_token] = {
-        "username": req.username,
-        "role": req.role,
-        "last_seen": time.time()
-    }
+    set_active_user_session(req.username, session_token, req.role)
     return {"status": "success", "session_token": session_token, "message": f"계정 '{req.username}' 세션이 새로 선점되었습니다."}
 
 @router.post("/system/heartbeat")
@@ -230,12 +243,14 @@ async def system_user_heartbeat(req: HeartbeatRequest):
         "last_seen": now
     }
 
-    # 3. 전 유저(일반/관리자 공통) 단일 세션 선점 검증
-    # 해당 계정의 등록된 세션 토큰이 없으면 현재 토큰을 최초 등록
-    if username not in ACTIVE_USER_SESSION_TOKENS:
-        ACTIVE_USER_SESSION_TOKENS[username] = session_token
-
+    # 3. 단일 세션 검증: 해당 계정의 활성 선점 토큰과 요청 토큰을 비교
     registered_token = ACTIVE_USER_SESSION_TOKENS.get(username)
+    
+    # 등록된 선점 토큰이 없으면 현재 토큰을 최초 등록
+    if not registered_token:
+        ACTIVE_USER_SESSION_TOKENS[username] = session_token
+        registered_token = session_token
+
     is_session_valid = (registered_token == session_token)
 
     return {

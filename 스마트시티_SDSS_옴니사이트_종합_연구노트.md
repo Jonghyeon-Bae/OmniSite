@@ -1555,3 +1555,16 @@
      - 3초 주기 하트비트 검증 시 기존 세션의 토큰이 달라지면 `is_session_valid = False`를 반환.
      - 프론트엔드는 즉시 `sessionStorage.clear()`, 알림 창 표출 후 `window.location.href = '/'`로 즉시 강제 튕김 처리 완료.
   3) `python -c "import app.main"` 및 `npm run build` 모듈/터보팩 빌드 **0 Error** 프로덕션 무결성 최종 통과.
+
+### 59. [오답 59] 2개 탭 동시 중복 로그인 시 세션 무효화 교차 붕괴 버그 및 리다이렉트 루프 핫픽스
+- **현상 및 요구사항**:
+  - 동일 브라우저 2개 탭에서 로그인 시 두 탭이 동시에 튕기거나, 재로그인 시 "이미 로그인 상태" 루프가 발생하는 버그 핫픽스 요청.
+- **발생 원인(Root Cause) 및 최종 해법(Takeaway)**:
+  1) **원인**:
+     - 기존 `system_user_heartbeat` 로직에서 정식 로그인 전 전송된 익명 `anon_` 토큰을 `ACTIVE_USER_SESSION_TOKENS`에 자동 등록하는 맹점이 존재함.
+     - 이로 인해 재로그인 성공 후 발급된 진짜 JWT 토큰이 백엔드의 `registered_token`과 매칭되지 않아 새로 로그인하자마자 튕기는 루프 발생.
+  2) **수술 내역**:
+     - `auth.py`: `/api/v1/auth/login` 성공 시 백엔드 단에서 `set_active_user_session(user, access_token)`을 즉시 실행하여 신규 선점 토큰을 100% 온디맨드 직통 업데이트.
+     - `spatial.py`: `system_user_heartbeat`에서 `anon_` 익명 토큰을 무단 선점 토큰으로 오버라이드하지 못하도록 방어 수술 완료.
+     - `set_active_user_session` 헬퍼 함수를 구축하여 로그인 성공 시 동일 계정의 기존 오래된 낡은 하트비트 세션을 100% 완전 소거.
+  3) `python -c "import app.main"` 및 `npm run build` 모듈/터보팩 빌드 **0 Error** 프로덕션 무결성 최종 통과.

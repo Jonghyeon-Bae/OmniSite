@@ -1,0 +1,50 @@
+name: OmniSite AWS Lightsail Auto-Deployment (CI/CD)
+
+on:
+  push:
+    branches:
+      - main
+      - master
+
+jobs:
+  deploy:
+    name: Deploy to AWS Lightsail
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Execute Remote SSH Commands for Auto-Deploy
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.LIGHTSAIL_HOST }}
+          username: ${{ secrets.LIGHTSAIL_USERNAME }}
+          key: ${{ secrets.LIGHTSAIL_SSH_KEY }}
+          port: 22
+          script: |
+            echo "🚀 [CI/CD] Starting automated deployment on AWS Lightsail..."
+            
+            # 1. Navigate to project directory
+            if [ -d "/home/ubuntu/omnisite" ]; then
+              cd /home/ubuntu/omnisite
+            elif [ -d "/home/ubuntu/1.0-prototype" ]; then
+              cd /home/ubuntu/1.0-prototype
+            else
+              cd ~/
+            fi
+            
+            # 2. Hard sync with latest main branch
+            echo "📥 [CI/CD] Pulling latest code from origin main..."
+            git fetch origin main && git reset --hard origin/main && git clean -fd
+            
+            # 3. Rebuild and restart docker compose production containers
+            echo "🐳 [CI/CD] Building & launching Docker Compose production containers..."
+            docker compose -f docker-compose.production.yml up -d --build
+            
+            # 4. Reload Nginx reverse proxy if running
+            if command -v systemctl >/dev/null 2>&1 && systemctl is-active --quiet nginx; then
+              echo "🔄 [CI/CD] Reloading Nginx reverse proxy..."
+              sudo systemctl reload nginx
+            fi
+            
+            echo "✅ [CI/CD] Automated Deployment Completed Successfully!"

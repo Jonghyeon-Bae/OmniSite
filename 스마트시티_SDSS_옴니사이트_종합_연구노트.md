@@ -1588,3 +1588,15 @@
        - **FE Repo**: **AWS Amplify / Vercel** (서버리스 글로벌 CDN, Git Push 시 자동 CI/CD, 월 $0~무료)
        - **BE/DB Repo**: **AWS Lightsail (또는 EC2 1 인스턴스)** (Docker Compose 무중단 가동, 고정 IP, Nginx Reverse Proxy, 월 $10)
   4) `python -c "import app.main"` 및 `npm run build` 모듈/터보팩 빌드 **0 Error** 프로덕션 무결성 최종 통과.
+
+### 61. [오답 61] 무효화된 하트비트 세션 잔존 버그 및 멀티 탭 영구 락인(409 Conflict) 수술 완공
+- **현상 및 요구사항**:
+  - 중복 로그인 후 튕겨나간 이전 탭이 계속 하트비트를 날려 `ACTIVE_USER_HEARTBEATS`를 만료되지 않게 갱신하는 바람에 `is_user_currently_active`가 영구 True가 되어 재로그인 시 무한 409 Conflict 오류가 발생하는 현상 핫픽스.
+- **발생 원인(Root Cause) 및 최종 해법(Takeaway)**:
+  1) **원인**:
+     - 기존 `system_user_heartbeat` 로직에서 요청된 토큰이 선점 토큰과 다른 낡은/무효 토큰(`EXPIRED_OR_SUPERSEDED`)이어도 `ACTIVE_USER_HEARTBEATS[session_token]`의 `last_seen`을 무조건 갱신하는 치명적 맹점 존재.
+  2) **수술 내역**:
+     - `spatial.py`: `registered_token != session_token`인 경우, `ACTIVE_USER_HEARTBEATS.pop(session_token, None)`으로 낡은 무효 토큰을 하트비트 테이블에서 **즉시 소거(Purge)**하고 `last_seen` 갱신을 전면 차단.
+     - `is_user_currently_active`: 선점 토큰의 `last_seen`이 15초 이상 없으면 즉시 활성 세션에서 해제(`pop`)하여 락인 현상 근본 차단.
+     - `unregister-session` API 신설: 로그아웃 또는 세션 파기 시 백엔드 선점 세션 테이블을 100% 완전 소거.
+  3) `python -c "import app.main"` 및 `npm run build` 모듈/터보팩 빌드 **0 Error** 프로덕션 무결성 최종 통과.

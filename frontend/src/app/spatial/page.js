@@ -543,14 +543,24 @@ export default function Home() {
 
 
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      const token = sessionStorage.getItem('token');
+      const username = sessionStorage.getItem('username') || municipalId;
+      await apiFetch('/api/v1/system/unregister-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token, username })
+      });
+    } catch (_) {}
     if (typeof window !== 'undefined') {
       sessionStorage.clear();
       setIsLoggedIn(false);
+      setIsTokenValid(false);
       setUserRole('user');
       setMunicipalId('');
       alert("정상적으로 행정 세션이 로그아웃(휘발 소거)되었습니다.");
-      router.push('/');
+      window.location.href = '/';
     }
   };
 

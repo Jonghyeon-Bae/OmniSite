@@ -1627,3 +1627,15 @@
      - `auth.py`: `/login` 및 `/me` API에서 중복 로그인 차단 락을 완전 소거하여 **어디서든 자유롭게 로그인 및 멀티 탭 작업** 가능.
      - `spatial/page.js`: 하트비트 폴링에서 튕김 알림 및 강제 리다이렉트 블록을 완전히 소거하여 100% 쾌적한 멀티 탭 업무 환경 확보.
   3) `python -c "import app.main"` 및 `npm run build` 모듈/터보팩 빌드 **0 Error** 프로덕션 무결성 최종 통과.
+
+### 64. [오답 64] Step 2 진입 시 XGBoost ML 재학습 상태 주기적 폴링 누락 원인 규명 및 실시간 UI 바인딩 완공
+- **현상 및 요구사항**:
+  - Step 1 승인 후 Step 2 이동 시 ML 모델 재학습 기동이 멈춘 것처럼 보이거나 상태가 갱신되지 않는 현상 원인 파악 및 조치 요청.
+- **발생 원인(Root Cause) 및 최종 해법(Takeaway)**:
+  1) **원인**:
+     - Step 1 승인 버튼 클릭 시 백엔드 `POST /api/v1/model/retrain` 비동기 학습 API를 정상 호출했으나, 프론트엔드 `spatial/page.js`에서 호출 단 1회 후 재학습 완료 시까지 `/api/v1/model/status` 상태를 **주기적으로 폴링(Polling)하는 useEffect 감시 효과가 누락**되어 있음.
+     - 이로 인해 UI가 백그라운드 학습 진행 상황(Accuracy, F1-Score, Feature Importance)을 실시간으로 수신하지 못하고 로딩 스피너에 머무르거나 이전 메타데이터를 유지하던 문제 발생.
+  2) **수술 내역**:
+     - `spatial/page.js`: `pipelineStep === 2` 및 `mlStatus.is_training` 시 1.5초 간격으로 백엔드 ML 상태를 자동 폴링하는 `useEffect` 이식 완공.
+     - 학습이 완료되는 순간(`is_training: false`) 즉시 폴링을 종료하고 갱신된 Accuracy, F1-Score, 피처 기여도 프로필을 사이드바에 실시간 동적 렌더링.
+  3) `python -c "import app.main"` 및 `npm run build` 모듈/터보팩 빌드 **0 Error** 프로덕션 무결성 최종 통과.

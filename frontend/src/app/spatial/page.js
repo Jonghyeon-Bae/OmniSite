@@ -292,10 +292,29 @@ export default function Home() {
     return null;
   };
   
+  // 🤖 Step 2 및 ML 재학습 상태 실시간 폴링 (is_training 시 1.5초 간격 감시)
+  useEffect(() => {
+    let interval = null;
+    if (pipelineStep === 2 || (mlStatus && mlStatus.is_training)) {
+      fetchMlStatus();
+      interval = setInterval(() => {
+        fetchMlStatus().then(status => {
+          if (status && !status.is_training) {
+            clearInterval(interval);
+          }
+        });
+      }, 1500);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [pipelineStep, mlStatus?.is_training]);
+
   // Step 1 승인(Approve) 시 ML 재학습 자동 기동 및 Step 2 이동 핸들러
   const handleApproveStep1 = async () => {
     try {
       const finalDomain = inferredDomainTag || 'city_feature';
+      setMlStatus(prev => ({ ...prev, is_training: true }));
       const res = await apiFetch(`/api/v1/model/retrain?domain=${finalDomain}`, {
         method: 'POST'
       });
@@ -303,11 +322,13 @@ export default function Home() {
         showToast(`🤖 ${finalDomain} 기반 XGBoost 모델 재학습이 기동되었습니다.`, 'info');
       } else {
         console.error('모델 재학습 API 호출 실패');
+        setMlStatus(prev => ({ ...prev, is_training: false }));
       }
       setPipelineStep(2);
       fetchMlStatus();
     } catch (err) {
       console.error('Step 1 승인 및 재학습 트리거 에러:', err);
+      setMlStatus(prev => ({ ...prev, is_training: false }));
       setPipelineStep(2);
     }
   };

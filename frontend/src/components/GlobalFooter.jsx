@@ -15,7 +15,7 @@ export default function GlobalFooter() {
                 Omnisite SDSS
               </span>
               <span className="bg-indigo-900/80 text-indigo-300 text-[10px] font-semibold px-2 py-0.5 rounded border border-indigo-700/50">
-                v1.5.0 / Root.B
+                v1.0.0-Production / Root.B
               </span>
               <span className="text-slate-500">|</span>
               <span className="text-slate-300">지자체 공공 입지분석 지원 플랫폼</span>
@@ -86,7 +86,7 @@ export default function GlobalFooter() {
               <section className="bg-slate-800/60 p-3 rounded border border-slate-700/50">
                 <h4 className="font-bold text-slate-100 mb-1 text-sm">제4조 (시스템 제공자 정보 및 연락처)</h4>
                 <ul className="list-disc pl-4 space-y-1 text-slate-300">
-                  <li><strong>프로그램명</strong>: Omnisite SDSS v1.5.0 (Root.B)</li>
+                  <li><strong>프로그램명</strong>: Omnisite SDSS v1.0.0-Production (Root.B)</li>
                   <li><strong>개발팀 / 제공자</strong>: KT Aivle 9기 2반 4조</li>
                   <li><strong>대표 문의 담당자</strong>: 배종현 (KT Aivle 9기 2반 4조)</li>
                   <li><strong>기술 문의</strong>: 지자체 공공 공간 데이터셋 추가 및 서버 구축 요청 지원</li>

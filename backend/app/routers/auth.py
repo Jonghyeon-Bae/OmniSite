@@ -393,27 +393,8 @@ async def refresh_session_token(db: Session = Depends(get_db), current_user: dic
     }
 
 # --- 10. me API ---
-from fastapi import Request
-
 @router.get("/me")
-async def get_me(request: Request, current_user: dict = Depends(get_current_user)):
-    # 🔒 단일 세션 검증: 낡은 세션 토큰으로 /me 요청 시 401 Unauthorized 반환하여 메인 리다이렉트 루프 차단
-    try:
-        auth_header = request.headers.get("Authorization", "")
-        token = auth_header.replace("Bearer ", "").strip() if auth_header.startswith("Bearer ") else None
-        if token:
-            from app.routers.spatial import ACTIVE_USER_SESSION_TOKENS
-            active_token = ACTIVE_USER_SESSION_TOKENS.get(current_user["username"])
-            if active_token and active_token != token:
-                raise HTTPException(
-                    status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail="이미 다른 기기/브라우저에서 로그인되어 현재 세션이 해제되었습니다."
-                )
-    except HTTPException:
-        raise
-    except Exception:
-        pass
-
+async def get_me(current_user: dict = Depends(get_current_user)):
     return {
         "id": current_user["id"],
         "username": current_user["username"],

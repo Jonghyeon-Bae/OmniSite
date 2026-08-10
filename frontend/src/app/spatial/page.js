@@ -123,7 +123,7 @@ export default function Home() {
       });
   }, [router]);
 
-  // 🟢 실시간 행정 접속자 수 및 전 유저 단일 세션 실시간 강제 종료 감지 폴링 (3초 주기)
+  // 🟢 실시간 행정 접속자 수 모니터링 폴링 (10초 주기)
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
@@ -132,8 +132,6 @@ export default function Home() {
         const token = sessionStorage.getItem('token') || sessionStorage.getItem('jwtToken');
         const username = sessionStorage.getItem('username') || municipalId || '공무원';
         const role = sessionStorage.getItem('role') || userRole || 'user';
-
-        if (!token) return;
 
         const res = await apiFetch('/api/v1/system/heartbeat', {
           method: 'POST',
@@ -146,16 +144,6 @@ export default function Home() {
           if (data.active_count) {
             setActiveUserCount(data.active_count);
           }
-          // 🔒 전 유저(일반/관리자 공통) 단일 세션 무효화 시 즉시 로그아웃 및 로그인 페이지 튕김 처리
-          if (data.is_session_valid === false) {
-            sessionStorage.clear();
-            setIsLoggedIn(false);
-            setIsTokenValid(false);
-            alert("🔒 [중복 로그인 감지] 다른 PC/장치에서 해당 계정으로 신규 로그인(세션 선점 승인)이 승인되어 현재 기기의 접속이 해제되었습니다.\n로그인 페이지로 이동합니다.");
-            if (typeof window !== 'undefined') {
-              window.location.href = '/';
-            }
-          }
         }
       } catch (err) {
         console.warn("[Heartbeat Ping Fail]", err);
@@ -163,9 +151,9 @@ export default function Home() {
     };
 
     sendHeartbeat();
-    const interval = setInterval(sendHeartbeat, 3000);
+    const interval = setInterval(sendHeartbeat, 10000);
     return () => clearInterval(interval);
-  }, [municipalId, userRole, router]);
+  }, [municipalId, userRole]);
 
   // 1초 간격 실시간 토큰 남은 시간 카운트다운
   useEffect(() => {

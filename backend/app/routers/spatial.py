@@ -188,39 +188,23 @@ def verify_hash_chain(db: Session = Depends(get_db)):
     except Exception as e:
         return {"status": "ERROR", "tampered": True, "message": f"검증 중 오류 발생: {str(e)}"}
 
-# === [REAL-TIME ACTIVE USERS & ALL USER SINGLE SESSION GUARD] ===
+# === [REAL-TIME ACTIVE USERS MONITORING] ===
 ACTIVE_USER_HEARTBEATS = {}  # {token: {"username": ..., "role": ..., "last_seen": timestamp}}
-ACTIVE_USER_SESSION_TOKENS = {}  # {username: token}
 
 def is_user_currently_active(username: str) -> bool:
-    """해당 계정이 현재 다른 기기에서 15초 내 활성 접속 중인지 여부 판정"""
+    """해당 계정이 현재 다른 기기에서 30초 내 활성 접속 중인지 여부 판정"""
     import time
     now = time.time()
-    registered_token = ACTIVE_USER_SESSION_TOKENS.get(username)
-    if not registered_token:
-        return False
-    heartbeat_info = ACTIVE_USER_HEARTBEATS.get(registered_token)
-    if heartbeat_info and (now - heartbeat_info.get("last_seen", 0) <= 15):
-        return True
-    
-    # 15초 초과 시 오래된 만료 세션으로 간주하여 선점 테이블에서 소거
-    ACTIVE_USER_SESSION_TOKENS.pop(username, None)
-    if registered_token:
-        ACTIVE_USER_HEARTBEATS.pop(registered_token, None)
+    for k, v in ACTIVE_USER_HEARTBEATS.items():
+        if v.get("username") == username and (now - v.get("last_seen", 0) <= 30):
+            return True
     return False
 
 def set_active_user_session(username: str, token: str, role: str = 'user'):
-    """로그인 성공 시 백엔드 단에서 직접 해당 계정의 단일 선점 토큰을 갱신"""
+    """로그인 성공 시 실시간 접속자 테이블 갱신"""
     import time
     if not username or not token:
         return
-    ACTIVE_USER_SESSION_TOKENS[username] = token
-    
-    # 해당 username의 기존 오래된 낡은 하트비트 세션 소거
-    old_keys = [k for k, v in ACTIVE_USER_HEARTBEATS.items() if v.get("username") == username and k != token]
-    for k in old_keys:
-        ACTIVE_USER_HEARTBEATS.pop(k, None)
-        
     ACTIVE_USER_HEARTBEATS[token] = {
         "username": username,
         "role": role,
@@ -234,58 +218,32 @@ class HeartbeatRequest(BaseModel):
 
 @router.post("/system/register-session")
 async def register_user_session(req: HeartbeatRequest):
-    """신규 로그인 시 해당 계정의 단일 세션 토큰 선점 등록 API"""
+    """신규 로그인 시 세션 등록 API"""
     import time
     session_token = req.token or f"tok_{req.username}_{time.time()}"
     set_active_user_session(req.username, session_token, req.role)
-    return {"status": "success", "session_token": session_token, "message": f"계정 '{req.username}' 세션이 새로 선점되었습니다."}
+    return {"status": "success", "session_token": session_token}
 
 @router.post("/system/unregister-session")
 async def unregister_user_session(req: HeartbeatRequest):
-    """로그아웃 또는 세션 파기 시 백엔드 선점 세션 소거 API"""
-    username = req.username or "공무원"
+    """로그아웃 시 세션 해제 API"""
     token = req.token
-    if username in ACTIVE_USER_SESSION_TOKENS:
-        ACTIVE_USER_SESSION_TOKENS.pop(username, None)
     if token and token in ACTIVE_USER_HEARTBEATS:
         ACTIVE_USER_HEARTBEATS.pop(token, None)
-    return {"status": "success", "message": f"계정 '{username}' 세션이 해제되었습니다."}
+    return {"status": "success"}
 
 @router.post("/system/heartbeat")
 async def system_user_heartbeat(req: HeartbeatRequest):
-    """실시간 행정 접속자 및 일반/관리자 전 유저 단일 세션 보장 하트비트 API"""
+    """실시간 행정 접속자 모니터링 하트비트 API (강제 로그아웃 락 전면 제거)"""
     import time
     now = time.time()
-    session_token = req.token
+    session_token = req.token or f"anon_{req.username}_{now}"
     username = req.username or "공무원"
 
-    # 토큰이 유효하지 않으면 튕김 처리
-    if not session_token:
-        return {"status": "success", "active_count": len(ACTIVE_USER_HEARTBEATS), "is_session_valid": False}
-
-    # 1. 20초 경과한 만료 세션 정리
-    expired_keys = [k for k, v in ACTIVE_USER_HEARTBEATS.items() if now - v["last_seen"] > 20]
+    # 30초 경과한 만료 세션 정리
+    expired_keys = [k for k, v in ACTIVE_USER_HEARTBEATS.items() if now - v["last_seen"] > 30]
     for k in expired_keys:
         ACTIVE_USER_HEARTBEATS.pop(k, None)
-
-    registered_token = ACTIVE_USER_SESSION_TOKENS.get(username)
-
-    # 2. 검증: 등록된 선점 토큰과 요청된 토큰 대조
-    if registered_token and registered_token != session_token:
-        # ⚠️ 무효화된 낡은 토큰임! 하트비트 테이블에서 즉시 제거하고 False 반환! (이전 토큰이 하트비트를 갱신하지 못하도록 차단)
-        ACTIVE_USER_HEARTBEATS.pop(session_token, None)
-        return {
-            "status": "success",
-            "active_count": max(1, len(ACTIVE_USER_HEARTBEATS)),
-            "is_session_valid": False,
-            "is_admin_valid": False,
-            "reason": "EXPIRED_OR_SUPERSEDED"
-        }
-
-    # 선점 토큰이 없거나 본인 토큰과 일치하면 등록/갱신
-    if not registered_token:
-        ACTIVE_USER_SESSION_TOKENS[username] = session_token
-        registered_token = session_token
 
     ACTIVE_USER_HEARTBEATS[session_token] = {
         "username": username,

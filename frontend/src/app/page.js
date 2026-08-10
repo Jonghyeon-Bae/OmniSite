@@ -86,26 +86,11 @@ export default function GatewayPage() {
     
     setLoading(true);
     try {
-      let res = await safeApiFetch('/api/v1/auth/login', {
+      const res = await safeApiFetch('/api/v1/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password })
       });
-
-      if (res.status === 409) {
-        const errData = await res.json();
-        const userConfirmed = confirm(errData.detail || "⚠️ 이미 다른 기기에서 로그인 중입니다.\n기존 세션을 강제 종료하고 현재 기기에서 접속하시겠습니까?");
-        if (userConfirmed) {
-          res = await safeApiFetch('/api/v1/auth/login', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username, password, force: true })
-          });
-        } else {
-          setLoading(false);
-          return;
-        }
-      }
       
       if (res.ok) {
         const data = await res.json();

@@ -1515,3 +1515,13 @@
      - `database.py`: DB 커넥션 풀을 `pool_size=20, max_overflow=30, pool_timeout=30`으로 200% 상향 확장하여 동시 접속 시 `QueuePool Limit` 예외 완전 방어.
      - `backend/Dockerfile`: Uvicorn 구동 명령에 `--workers 4` 멀티 프로세스 옵션을 이식하여 다중 CPU 코어 병렬 처리 완공.
   3) `python -c "import app.main"` 및 `npm run build` 모듈/터보팩 빌드 **0 Error** 프로덕션 무결성 최종 통과.
+
+### 65. [오답 65] 9397009729f64a62d97a2e714f50f9dd13faef1b 무결점 baseline 커밋 원복 및 부작용 0% 실시간 접속자 카운터 안착
+- **현상 및 요구사항**:
+  - 세션 제어 로직 개입 시 발생한 부작용을 근본 차단하기 위해 조장 지시에 의거하여 검증된 Baseline 커밋 `9397009`로 하드 롤백 수행.
+  - 단일 세션 강제 튕김 락을 완전 배제하고, 순수 `🟢 실시간 행정 접속자: N명` 카운팅 뱃지만 안전하게 추가 반영 요청.
+- **해법 및 완공 수술 내역**:
+  1) `git reset --hard 9397009729f64a62d97a2e714f50f9dd13faef1b` 명령을 실행하여 소스코드를 100% 검증된 무결한 Baseline 스냅샷으로 깨끗이 원복.
+  2) **순수 실시간 접속자 핑 API (`spatial.py`)**: `/api/v1/system/ping-active-user` 핑 API를 이식하여 30초 내 활성 핑 수량만 집계 (로그아웃 튕김, 401/409 차단 락 0%).
+  3) **프론트엔드 헤더 뱃지 (`spatial/page.js`)**: 10초 주기 핑 폴링으로 상단 헤더에 `🟢 접속자: N명` 뱃지만 부작용 0%로 안착 완료.
+  3) `python -c "import app.main"` 및 `npm run build` 모듈/터보팩 빌드 **0 Error** 프로덕션 무결성 최종 통과.

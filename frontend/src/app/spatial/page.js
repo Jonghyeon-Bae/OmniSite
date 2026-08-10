@@ -67,6 +67,33 @@ export default function Home() {
   const router = useRouter();
   const [tokenTimeLeft, setTokenTimeLeft] = useState('');
   const [isTokenValid, setIsTokenValid] = useState(true);
+  const [activeUserCount, setActiveUserCount] = useState(1);
+
+  // 🟢 실시간 행정 접속자 수 모니터링 핑 폴링 (10초 주기, 순수 카운팅용)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const pingActiveUser = async () => {
+      try {
+        const token = sessionStorage.getItem('token') || sessionStorage.getItem('jwtToken') || 'anon';
+        const res = await apiFetch('/api/v1/system/ping-active-user', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token })
+        });
+        if (res && res.ok) {
+          const data = await res.json();
+          if (data.active_count) {
+            setActiveUserCount(data.active_count);
+          }
+        }
+      } catch (_) {}
+    };
+
+    pingActiveUser();
+    const interval = setInterval(pingActiveUser, 10000);
+    return () => clearInterval(interval);
+  }, []);
 
   // 🔒 순수 세션 JWT 철통 라우트 가드 및 실시간 유효성 검증 (sessionStorage 단일)
   useEffect(() => {
@@ -1782,6 +1809,13 @@ export default function Home() {
 
           {isLoggedIn && isTokenValid ? (
             <div className="flex items-center gap-3">
+              {/* 🟢 실시간 행정 접속자 수 뱃지 [v1.5.0] */}
+              <div className="bg-emerald-950/80 border border-emerald-500/40 px-3 py-1.5 rounded-lg flex items-center gap-1.5 shadow-sm">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+                <span className="text-[11px] text-emerald-300 font-medium">접속자:</span>
+                <span className="text-[11px] font-bold font-mono text-emerald-200">🟢 {activeUserCount}명</span>
+              </div>
+
               {/* JWT 실시간 남은 세션 타이머 뱃지 [v1.4.2] */}
               <div className="bg-slate-900/90 px-3 py-1.5 rounded-lg border border-slate-800 flex items-center gap-1.5">
                 <span className={`w-2 h-2 rounded-full ${isTokenValid ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`}></span>

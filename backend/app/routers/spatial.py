@@ -188,6 +188,43 @@ def verify_hash_chain(db: Session = Depends(get_db)):
     except Exception as e:
         return {"status": "ERROR", "tampered": True, "message": f"검증 중 오류 발생: {str(e)}"}
 
+# === [REAL-TIME ACTIVE ONLINE USERS MONITORING] ===
+ACTIVE_USER_PING_MAP = {}  # {token/session_id: timestamp}
+
+class ActivePingRequest(BaseModel):
+    token: Optional[str] = None
+
+@router.post("/system/ping-active-user")
+async def ping_active_user(req: ActivePingRequest):
+    """실시간 행정 접속자 수 모니터링 핑 API (순수 카운팅용, 부작용 0%)"""
+    import time
+    now = time.time()
+    ping_id = req.token or f"anon_{now}"
+    
+    # 30초 경과 세션 정리
+    expired = [k for k, v in ACTIVE_USER_PING_MAP.items() if now - v > 30]
+    for k in expired:
+        ACTIVE_USER_PING_MAP.pop(k, None)
+        
+    ACTIVE_USER_PING_MAP[ping_id] = now
+    return {
+        "status": "success",
+        "active_count": max(1, len(ACTIVE_USER_PING_MAP))
+    }
+
+@router.get("/system/active-users")
+async def get_active_users():
+    """실시간 접속자 수 인출 API"""
+    import time
+    now = time.time()
+    expired = [k for k, v in ACTIVE_USER_PING_MAP.items() if now - v > 30]
+    for k in expired:
+        ACTIVE_USER_PING_MAP.pop(k, None)
+    return {
+        "status": "success",
+        "active_count": max(1, len(ACTIVE_USER_PING_MAP))
+    }
+
 @router.post("/spatial/regulations/diff")
 async def compare_regulation_versions(req: RegulationDiffRequest, db: Session = Depends(get_db)):
     """[Option 2] RAG 조례/규정 개정 전후 Diff 비교 분석 API"""

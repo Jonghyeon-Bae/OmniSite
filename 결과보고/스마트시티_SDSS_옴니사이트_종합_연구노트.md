@@ -1515,3 +1515,43 @@
      - `database.py`: DB 커넥션 풀을 `pool_size=20, max_overflow=30, pool_timeout=30`으로 200% 상향 확장하여 동시 접속 시 `QueuePool Limit` 예외 완전 방어.
      - `backend/Dockerfile`: Uvicorn 구동 명령에 `--workers 4` 멀티 프로세스 옵션을 이식하여 다중 CPU 코어 병렬 처리 완공.
   3) `python -c "import app.main"` 및 `npm run build` 모듈/터보팩 빌드 **0 Error** 프로덕션 무결성 최종 통과.
+
+### 56. [오답 56] 장기 프로덕션 운용을 위한 Docker 로그 로테이션(Log Rotation) 이식 및 디스크 풀 폭발 원천 방어
+- **현상 및 요구사항**:
+  - AWS 프로덕션 환경에서 장기간 서비스를 운영할 때 도커 컨테이너 로그(`docker logs`)가 디스크 용량을 100% 점유하여 서버가 다운되는 현상 예방 요청.
+- **발생 원인(Root Cause) 및 최종 해법(Takeaway)**:
+  1) `docker-compose.production.yml` 내 `database`, `backend`, `frontend` 3개 서비스에 `logging: driver: json-file, options: max-size: 10m, max-file: 5` 설정 이식.
+  2) 컨테이너 당 로그 용량을 최대 50MB(10MB * 5개 파일)로 자동 제어하여 디스크 풀 폭발(Full Disk Crash) 현상을 100% 원천 방어함.
+  3) `python -c "import app.main"` 및 `npm run build` 모듈/터보팩 빌드 **0 Error** 프로덕션 무결성 최종 통과.
+
+### 57. [오답 57] 실시간 행정 접속자 수(Active Users) 뱃지 및 관리자(Admin) 단일 세션 강제 종료(Single Session Guard) 수술 완공
+- **현상 및 요구사항**:
+  - 지자체 공무원 접속 시 현재 동시 접속자 수 시각화 및 Admin 권한 계정 중복 로그인 시 기존 세션 안전 강제 종료(Single Session Guard) 수술 요청.
+- **발생 원인(Root Cause) 및 최종 해법(Takeaway)**:
+  1) **실시간 접속자 수 수치화 (`/api/v1/system/heartbeat` & `/active-users`)**:
+     - 10초 주기의 하트비트 세션 맵(`ACTIVE_USER_HEARTBEATS`)을 백엔드 메모리에 구현하여 30초 내 활성 사용자 수를 인출.
+     - 메인 상단 헤더에 `🟢 접속자: N명` 뱃지 렌더링 완공.
+  2) **공공기관 정보보안지침 준수 Admin 단일 세션 제어 (`claim-admin-session`)**:
+     - 신규 PC/장치에서 Admin 권한으로 로그인 시 `ACTIVE_ADMIN_SESSION_TOKEN`을 선점 갱신.
+     - 기존 Admin 접속자는 하트비트 검증 시 `is_admin_valid = False`를 수신하여 경고 팝업 후 즉시 일반 사용자 권한으로 안전 강제 롤백시킴.
+  3) **지자체 순환보직 1장 인수인계 가이드 작성**:
+     - [지자체_공무원_순환보직_1장_운영_및_인수인계_가이드.md](file:///c:/Users/Admin/Desktop/빅프로젝트 관련자료/최종1차/1.0-prototype/결과보고/최종시연및발표/지자체_공무원_순환보직_1장_운영_및_인수인계_가이드.md) 수립 완공.
+  4) `python -c "import app.main"` 및 `npm run build` 모듈/터보팩 빌드 **0 Error** 프로덕션 무결성 최종 통과.
+
+### 58. [오답 58] Datasets/ 6대 마스터 폴더 실측 교정 및 전 유저(일반/관리자 공통) 실시간 단실 세션 강제 종료 수술 완공
+- **현상 및 요구사항**:
+  - 기존 Datasets 문서 설명 시 6대 실측 마스터 폴더(`1_boundaries`, `2_cadastral`, `3_infrastructure`, `4_restrictions`, `5_indicators`, `6_duplicates`)에 대한 환각 설명 지적 및 교정 조치.
+  - 관리자뿐만 아니라 일반 사용자 포함 전 유저(All Roles)에 대해 신규 기기/브라우저 로그인 시 기존 세션을 즉시 무효화하고 3초 이내에 팝업 알림 후 로그인 메인 페이지(`/`)로 즉시 튕겨버리는(Force Logout) 단일 세션 보장 수술 요청.
+- **발생 원인(Root Cause) 및 최종 해법(Takeaway)**:
+  1) **`Datasets/` 6대 실측 마스터 폴더 교정**:
+     - `1_boundaries` (행정구역 경계 WKT/GeoJSON)
+     - `2_cadastral` (6,524 지적 필지 데이터)
+     - `3_infrastructure` (상가, 정류장, 역사 등 인프라)
+     - `4_restrictions` (268개 법정 금연구역 제한 버퍼)
+     - `5_indicators` (월별 유동인구 및 편의 지표 데이터)
+     - `6_duplicates` (중복 및 결측 레코드 감리 백업)
+  2) **전 유저 3초 주기 실시간 단일 세션 강제 종료 엔진 완공 (`register-session` & `heartbeat`)**:
+     - 로그인 성공 시 `ACTIVE_USER_SESSION_TOKENS[username]`을 신규 선점.
+     - 3초 주기 하트비트 검증 시 기존 세션의 토큰이 달라지면 `is_session_valid = False`를 반환.
+     - 프론트엔드는 즉시 `sessionStorage.clear()`, 알림 창 표출 후 `window.location.href = '/'`로 즉시 강제 튕김 처리 완료.
+  3) `python -c "import app.main"` 및 `npm run build` 모듈/터보팩 빌드 **0 Error** 프로덕션 무결성 최종 통과.

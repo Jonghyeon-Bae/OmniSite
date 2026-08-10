@@ -67,6 +67,14 @@ export default function Home() {
   const router = useRouter();
   const [tokenTimeLeft, setTokenTimeLeft] = useState('');
   const [isTokenValid, setIsTokenValid] = useState(true);
+  const [activeUserCount, setActiveUserCount] = useState(1);
+
+  // 🔒 로그인/로그아웃/자치구 상태 변수 (최상단 이동으로 ReferenceError 방지)
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [municipalId, setMunicipalId] = useState('');
+  const [userRole, setUserRole] = useState('user');
+  const [department, setDepartment] = useState('스마트도시과');
+  const [userDistrictId, setUserDistrictId] = useState(1); // 동적 자치구 ID (Default: 1)
 
   // 🔒 순수 세션 JWT 철통 라우트 가드 및 실시간 유효성 검증 (sessionStorage 단일)
   useEffect(() => {
@@ -113,8 +121,54 @@ export default function Home() {
         setIsTokenValid(false);
         setIsLoggedIn(false);
       });
+  }, [router]);
 
-    // 1초 간격 실시간 토큰 남은 시간 카운트다운
+  // 🟢 실시간 행정 접속자 수 및 전 유저 단일 세션 실시간 강제 종료 감지 폴링 (3초 주기)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const sendHeartbeat = async () => {
+      try {
+        const token = sessionStorage.getItem('token') || sessionStorage.getItem('jwtToken');
+        const username = sessionStorage.getItem('username') || municipalId || '공무원';
+        const role = sessionStorage.getItem('role') || userRole || 'user';
+
+        if (!token) return;
+
+        const res = await apiFetch('/api/v1/system/heartbeat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token, username, role })
+        });
+
+        if (res && res.ok) {
+          const data = await res.json();
+          if (data.active_count) {
+            setActiveUserCount(data.active_count);
+          }
+          // 🔒 전 유저(일반/관리자 공통) 단일 세션 무효화 시 즉시 로그아웃 및 로그인 페이지 튕김 처리
+          if (data.is_session_valid === false) {
+            sessionStorage.clear();
+            setIsLoggedIn(false);
+            setIsTokenValid(false);
+            alert("🔒 다른 PC/장치에서 동일 계정으로 신규 로그인하여 기존 세션이 안전하게 종료되었습니다. 로그인 페이지로 이동합니다.");
+            if (typeof window !== 'undefined') {
+              window.location.href = '/';
+            }
+          }
+        }
+      } catch (err) {
+        console.warn("[Heartbeat Ping Fail]", err);
+      }
+    };
+
+    sendHeartbeat();
+    const interval = setInterval(sendHeartbeat, 3000);
+    return () => clearInterval(interval);
+  }, [municipalId, userRole, router]);
+
+  // 1초 간격 실시간 토큰 남은 시간 카운트다운
+  useEffect(() => {
     const interval = setInterval(() => {
       const currentToken = sessionStorage.getItem('token');
       if (!currentToken) {
@@ -175,13 +229,6 @@ export default function Home() {
   // Step 4: 최적 입지 선정 및 갈등도 평가 (PostGIS Filtering & CSS)
   // Step 5: AI 모의 심의 및 PDF 보고서 (AI Simulation & PDF Report)
   const [pipelineStep, setPipelineStep] = useState(1);
-
-  // 🔒 로그인/로그아웃/자치구 상태 변수 (최상단 이동으로 ReferenceError 방지)
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [municipalId, setMunicipalId] = useState('');
-  const [userRole, setUserRole] = useState('user');
-  const [department, setDepartment] = useState('스마트도시과');
-  const [userDistrictId, setUserDistrictId] = useState(1); // 동적 자치구 ID (Default: 1)
 
   // 🔒 인페이지 팝업 로그인 모달 제어 상태
   const [showLoginModal, setShowLoginModal] = useState(false);
@@ -1782,6 +1829,13 @@ export default function Home() {
 
           {isLoggedIn && isTokenValid ? (
             <div className="flex items-center gap-3">
+              {/* 🟢 실시간 행정 접속자 수 뱃지 [v1.5.0] */}
+              <div className="bg-emerald-950/80 border border-emerald-500/40 px-3 py-1.5 rounded-lg flex items-center gap-1.5 shadow-sm">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+                <span className="text-[11px] text-emerald-300 font-medium">접속자:</span>
+                <span className="text-[11px] font-bold font-mono text-emerald-200">🟢 {activeUserCount}명</span>
+              </div>
+
               {/* JWT 실시간 남은 세션 타이머 뱃지 [v1.4.2] */}
               <div className="bg-slate-900/90 px-3 py-1.5 rounded-lg border border-slate-800 flex items-center gap-1.5">
                 <span className={`w-2 h-2 rounded-full ${isTokenValid ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`}></span>

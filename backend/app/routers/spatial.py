@@ -22,7 +22,7 @@ from reportlab.pdfbase.ttfonts import TTFont
 from typing import List, Dict, Any, Optional
 from fastapi import APIRouter, HTTPException, Depends
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from fastapi import UploadFile, File
@@ -187,6 +187,77 @@ def verify_hash_chain(db: Session = Depends(get_db)):
         }
     except Exception as e:
         return {"status": "ERROR", "tampered": True, "message": f"검증 중 오류 발생: {str(e)}"}
+
+# === [REAL-TIME ACTIVE USERS & ALL USER SINGLE SESSION GUARD] ===
+ACTIVE_USER_HEARTBEATS = {}  # {token: {"username": ..., "role": ..., "last_seen": timestamp}}
+ACTIVE_USER_SESSION_TOKENS = {}  # {username: token}
+
+class HeartbeatRequest(BaseModel):
+    token: Optional[str] = Field(None, description="세션 토큰")
+    username: Optional[str] = Field("공무원", description="사용자명")
+    role: Optional[str] = Field("user", description="권한 (user | admin)")
+
+@router.post("/system/register-session")
+async def register_user_session(req: HeartbeatRequest):
+    """신규 로그인 시 해당 계정의 단일 세션 토큰 선점 등록 API"""
+    import time
+    session_token = req.token or f"tok_{req.username}_{time.time()}"
+    ACTIVE_USER_SESSION_TOKENS[req.username] = session_token
+    ACTIVE_USER_HEARTBEATS[session_token] = {
+        "username": req.username,
+        "role": req.role,
+        "last_seen": time.time()
+    }
+    return {"status": "success", "session_token": session_token, "message": f"계정 '{req.username}' 세션이 새로 선점되었습니다."}
+
+@router.post("/system/heartbeat")
+async def system_user_heartbeat(req: HeartbeatRequest):
+    """실시간 행정 접속자 및 일반/관리자 전 유저 단일 세션 보장 하트비트 API"""
+    import time
+    now = time.time()
+    session_token = req.token or f"anon_{req.username}_{now}"
+    username = req.username or "공무원"
+    
+    # 1. 30초 경과한 만료 세션 정리
+    expired_keys = [k for k, v in ACTIVE_USER_HEARTBEATS.items() if now - v["last_seen"] > 30]
+    for k in expired_keys:
+        ACTIVE_USER_HEARTBEATS.pop(k, None)
+        
+    # 2. 현재 하트비트 세션 갱신
+    ACTIVE_USER_HEARTBEATS[session_token] = {
+        "username": username,
+        "role": req.role,
+        "last_seen": now
+    }
+
+    # 3. 전 유저(일반/관리자 공통) 단일 세션 선점 검증
+    # 해당 계정의 등록된 세션 토큰이 없으면 현재 토큰을 최초 등록
+    if username not in ACTIVE_USER_SESSION_TOKENS:
+        ACTIVE_USER_SESSION_TOKENS[username] = session_token
+
+    registered_token = ACTIVE_USER_SESSION_TOKENS.get(username)
+    is_session_valid = (registered_token == session_token)
+
+    return {
+        "status": "success",
+        "active_count": max(1, len(ACTIVE_USER_HEARTBEATS)),
+        "is_session_valid": is_session_valid,
+        "is_admin_valid": is_session_valid,
+        "session_token": session_token
+    }
+
+@router.get("/system/active-users")
+async def get_active_users():
+    """실시간 접속자 수 조회 API"""
+    import time
+    now = time.time()
+    expired_keys = [k for k, v in ACTIVE_USER_HEARTBEATS.items() if now - v["last_seen"] > 30]
+    for k in expired_keys:
+        ACTIVE_USER_HEARTBEATS.pop(k, None)
+    return {
+        "status": "success",
+        "active_count": max(1, len(ACTIVE_USER_HEARTBEATS))
+    }
 
 @router.post("/spatial/regulations/diff")
 async def compare_regulation_versions(req: RegulationDiffRequest, db: Session = Depends(get_db)):

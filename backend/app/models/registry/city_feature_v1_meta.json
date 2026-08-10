@@ -1,0 +1,21 @@
+{
+  "domain": "city_feature",
+  "model_filename": "city_feature_v1.pkl",
+  "last_trained_at": "2026-08-10 17:08:10",
+  "accuracy": 0.7673,
+  "f1_score": 0.4881,
+  "sample_count": 7390,
+  "feature_importances": {
+    "area": 0.07378018647432327,
+    "dist_to_school": 0.2670292258262634,
+    "dist_to_nosmoking_zone": 0.1334979385137558,
+    "dist_to_childcare_center": 0.18170809745788574,
+    "dist_to_tunnel": 0.11401175707578659,
+    "dist_to_overpass": 0.09230472147464752,
+    "land_use_code_대": 0.0,
+    "land_use_code_도": 0.08854960650205612,
+    "land_use_code_잡": 0.049118418246507645,
+    "ownership_type_국유지": 0.0,
+    "building_use_미지정": 0.0
+  }
+}

@@ -61,6 +61,7 @@ router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 class UserLoginRequest(BaseModel):
     username: str = Field(..., description="사용자 아이디")
     password: str = Field(..., description="비밀번호")
+    force: Optional[bool] = Field(False, description="중복 로그인 강제 승인 여부")
 
 class UserRegisterRequest(BaseModel):
     username: str = Field(..., description="사용자 아이디")
@@ -142,9 +143,16 @@ async def login(req: UserLoginRequest, db: Session = Depends(get_db)):
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="관리자 승인 대기 중인 계정입니다. 스마트도시과 최고관리자의 승인 후 로그인하실 수 있습니다."
             )
-            
+
         access_token = create_access_token(data={"sub": user[1]})
         
+        # 🔒 실시간 단일 세션 보장: 올바른 계정 정보로 로그인 시 이전 선점 세션을 100% 무조건 덮어쓰고 소거
+        try:
+            from app.routers.spatial import set_active_user_session
+            set_active_user_session(user[1], access_token, user[3])
+        except Exception as sess_err:
+            print(f"[Auth Session Register Warning] {sess_err}")
+
         require_password_change = False
         if user[1] == "admin" and user[2] and verify_password("admin1234", user[2]):
             require_password_change = True

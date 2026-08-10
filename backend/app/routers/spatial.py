@@ -22,7 +22,7 @@ from reportlab.pdfbase.ttfonts import TTFont
 from typing import List, Dict, Any, Optional
 from fastapi import APIRouter, HTTPException, Depends
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from fastapi import UploadFile, File

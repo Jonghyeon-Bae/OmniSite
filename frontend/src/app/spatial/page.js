@@ -140,8 +140,42 @@ export default function Home() {
         setIsTokenValid(false);
         setIsLoggedIn(false);
       });
+  }, [router]);
 
-    // 1초 간격 실시간 토큰 남은 시간 카운트다운
+  // 🟢 실시간 행정 접속자 수 모니터링 폴링 (10초 주기)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const sendHeartbeat = async () => {
+      try {
+        const token = sessionStorage.getItem('token') || sessionStorage.getItem('jwtToken');
+        const username = sessionStorage.getItem('username') || municipalId || '공무원';
+        const role = sessionStorage.getItem('role') || userRole || 'user';
+
+        const res = await apiFetch('/api/v1/system/heartbeat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token, username, role })
+        });
+
+        if (res && res.ok) {
+          const data = await res.json();
+          if (data.active_count) {
+            setActiveUserCount(data.active_count);
+          }
+        }
+      } catch (err) {
+        console.warn("[Heartbeat Ping Fail]", err);
+      }
+    };
+
+    sendHeartbeat();
+    const interval = setInterval(sendHeartbeat, 10000);
+    return () => clearInterval(interval);
+  }, [municipalId, userRole]);
+
+  // 1초 간격 실시간 토큰 남은 시간 카운트다운
+  useEffect(() => {
     const interval = setInterval(() => {
       const currentToken = sessionStorage.getItem('token');
       if (!currentToken) {
@@ -202,13 +236,6 @@ export default function Home() {
   // Step 4: 최적 입지 선정 및 갈등도 평가 (PostGIS Filtering & CSS)
   // Step 5: AI 모의 심의 및 PDF 보고서 (AI Simulation & PDF Report)
   const [pipelineStep, setPipelineStep] = useState(1);
-
-  // 🔒 로그인/로그아웃/자치구 상태 변수 (최상단 이동으로 ReferenceError 방지)
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [municipalId, setMunicipalId] = useState('');
-  const [userRole, setUserRole] = useState('user');
-  const [department, setDepartment] = useState('스마트도시과');
-  const [userDistrictId, setUserDistrictId] = useState(1); // 동적 자치구 ID (Default: 1)
 
   // 🔒 인페이지 팝업 로그인 모달 제어 상태
   const [showLoginModal, setShowLoginModal] = useState(false);
@@ -284,10 +311,29 @@ export default function Home() {
     return null;
   };
   
+  // 🤖 Step 2 및 ML 재학습 상태 실시간 폴링 (is_training 시 1.5초 간격 감시)
+  useEffect(() => {
+    let interval = null;
+    if (pipelineStep === 2 || (mlStatus && mlStatus.is_training)) {
+      fetchMlStatus();
+      interval = setInterval(() => {
+        fetchMlStatus().then(status => {
+          if (status && !status.is_training) {
+            clearInterval(interval);
+          }
+        });
+      }, 1500);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [pipelineStep, mlStatus?.is_training]);
+
   // Step 1 승인(Approve) 시 ML 재학습 자동 기동 및 Step 2 이동 핸들러
   const handleApproveStep1 = async () => {
     try {
       const finalDomain = inferredDomainTag || 'city_feature';
+      setMlStatus(prev => ({ ...prev, is_training: true }));
       const res = await apiFetch(`/api/v1/model/retrain?domain=${finalDomain}`, {
         method: 'POST'
       });
@@ -295,11 +341,13 @@ export default function Home() {
         showToast(`🤖 ${finalDomain} 기반 XGBoost 모델 재학습이 기동되었습니다.`, 'info');
       } else {
         console.error('모델 재학습 API 호출 실패');
+        setMlStatus(prev => ({ ...prev, is_training: false }));
       }
       setPipelineStep(2);
       fetchMlStatus();
     } catch (err) {
       console.error('Step 1 승인 및 재학습 트리거 에러:', err);
+      setMlStatus(prev => ({ ...prev, is_training: false }));
       setPipelineStep(2);
     }
   };
@@ -523,14 +571,24 @@ export default function Home() {
 
 
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      const token = sessionStorage.getItem('token');
+      const username = sessionStorage.getItem('username') || municipalId;
+      await apiFetch('/api/v1/system/unregister-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token, username })
+      });
+    } catch (_) {}
     if (typeof window !== 'undefined') {
       sessionStorage.clear();
       setIsLoggedIn(false);
+      setIsTokenValid(false);
       setUserRole('user');
       setMunicipalId('');
       alert("정상적으로 행정 세션이 로그아웃(휘발 소거)되었습니다.");
-      router.push('/');
+      window.location.href = '/';
     }
   };
 
@@ -1809,6 +1867,13 @@ export default function Home() {
 
           {isLoggedIn && isTokenValid ? (
             <div className="flex items-center gap-3">
+              {/* 🟢 실시간 행정 접속자 수 뱃지 [v1.5.0] */}
+              <div className="bg-emerald-950/80 border border-emerald-500/40 px-3 py-1.5 rounded-lg flex items-center gap-1.5 shadow-sm">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+                <span className="text-[11px] text-emerald-300 font-medium">접속자:</span>
+                <span className="text-[11px] font-bold font-mono text-emerald-200">🟢 {activeUserCount}명</span>
+              </div>
+
               {/* 🟢 실시간 행정 접속자 수 뱃지 [v1.5.0] */}
               <div className="bg-emerald-950/80 border border-emerald-500/40 px-3 py-1.5 rounded-lg flex items-center gap-1.5 shadow-sm">
                 <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>

@@ -1467,3 +1467,16 @@
      - [.github/workflows/deploy.yml](file:///c:/Users/Admin/Desktop/빅프로젝트 관련자료/최종1차/1.0-prototype/.github/workflows/deploy.yml) 워크플로우를 신규 수립하여 `main` 브랜치 `git push` 시 `appleboy/ssh-action`으로 AWS Lightsail 인스턴스에 자동 접속.
      - `git fetch origin main && git reset --hard origin/main && git clean -fd` ➔ `docker compose -f docker-compose.production.yml up -d --build` 원클릭 30초 무중단 배포 및 Nginx 핫리로드 구축 완공.
   3) `python -c "import app.main"` 및 `npm run build` 모듈/터보팩 빌드 **0 Error** 프로덕션 무결성 최종 통과.
+
+### 52. [오답 52] 행정 통합 게시판 멀티 첨부파일(Multiple Attachments) 기능 완공 및 DDL 하위호환성 유지
+- **현상 및 요구사항**:
+  - 기존 단일 첨부파일(`attachment_name`, `attachment_url`) 구조에서 공문서, 증빙 사진, 데이터셋 복수 파일을 한 번에 첨부하고자 하는 행정 실무 요청 반영.
+- **발생 원인(Root Cause) 및 최종 해법(Takeaway)**:
+  1) **멀티 업로드 파이프라인 수립**: 백엔드 `POST /api/v1/board/upload-attachments` API를 신규 수립하여 `List[UploadFile]` 멀티 업로드 처리 완공.
+  2) **DB 스키마 하위호환 유지 (`attachments TEXT`)**:
+     - `system_notices` 및 `community_posts` 테이블에 `attachments TEXT` 칼럼을 추가하고, JSON 포맷 `[{"attachment_name": "...", "attachment_url": "..."}, ...]`으로 직렬화 보존.
+     - 기존 단일 첨부파일 레코드도 `parse_attachments_json` 헬퍼 함수를 통해 자동 파싱 렌더링되도록 100% 하위호환성 검증 통과.
+  3) **프론트엔드 React 멀티 파일 렌더링 (`BoardModal.jsx`)**:
+     - `<input type="file" multiple ... />` 이식 및 파일 개별 삭제(`✕`) UI 탑재.
+     - 공지사항 및 자유게시판 카드에 모든 첨부파일을 뱃지 형태로 바인딩하여 1개 클릭 시 각 첨부 문서가 별도 탭으로 100% 다운로드되도록 완공.
+  4) `python -c "import app.main"` 및 `npm run build` 모듈/터보팩 빌드 **0 Error** 프로덕션 무결성 최종 통과.

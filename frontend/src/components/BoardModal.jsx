@@ -38,41 +38,51 @@ export default function BoardModal({ show, onClose, apiFetch, showToast }) {
   const [faqSearch, setFaqSearch] = useState('');
   const [openFaqId, setOpenFaqId] = useState(null);
 
-  // 공지사항 첨부파일 상태
-  const [noticeAttachmentName, setNoticeAttachmentName] = useState('');
-  const [noticeAttachmentUrl, setNoticeAttachmentUrl] = useState('');
+  // 공지사항 첨부파일 상태 (멀티 지원)
+  const [noticeAttachments, setNoticeAttachments] = useState([]);
   const [noticeUploading, setNoticeUploading] = useState(false);
 
-  // 자유게시판 첨부파일 상태
-  const [postAttachmentName, setPostAttachmentName] = useState('');
-  const [postAttachmentUrl, setPostAttachmentUrl] = useState('');
+  // 자유게시판 첨부파일 상태 (멀티 지원)
+  const [postAttachments, setPostAttachments] = useState([]);
   const [postUploading, setPostUploading] = useState(false);
 
-  // 첨부파일 업로드 처리 핸들러
-  const handleFileUpload = async (file, targetType) => {
-    if (!file) return;
+  // 복수(멀티) 첨부파일 업로드 처리 핸들러
+  const handleFileUpload = async (files, targetType) => {
+    if (!files || files.length === 0) return;
     const formData = new FormData();
-    formData.append('file', file);
+    const isMultiple = files.length > 1;
+
+    if (isMultiple) {
+      Array.from(files).forEach((f) => formData.append('files', f));
+    } else {
+      formData.append('file', files[0]);
+    }
     
     if (targetType === 'notice') setNoticeUploading(true);
     else setPostUploading(true);
 
     try {
       const fetchFn = apiFetch || fetch;
-      const res = await fetchFn('/api/v1/board/upload-attachment', {
+      const endpoint = isMultiple ? '/api/v1/board/upload-attachments' : '/api/v1/board/upload-attachment';
+      const res = await fetchFn(endpoint, {
         method: 'POST',
         body: formData
       });
       if (res.ok) {
         const data = await res.json();
-        if (targetType === 'notice') {
-          setNoticeAttachmentName(data.attachment_name);
-          setNoticeAttachmentUrl(data.attachment_url);
-        } else {
-          setPostAttachmentName(data.attachment_name);
-          setPostAttachmentUrl(data.attachment_url);
+        let newItems = [];
+        if (data.attachments && Array.isArray(data.attachments)) {
+          newItems = data.attachments;
+        } else if (data.attachment_name && data.attachment_url) {
+          newItems = [{ attachment_name: data.attachment_name, attachment_url: data.attachment_url }];
         }
-        if (showToast) showToast(`📎 첨부파일 '${data.attachment_name}'이 업로드되었습니다.`, 'success');
+        
+        if (targetType === 'notice') {
+          setNoticeAttachments((prev) => [...prev, ...newItems]);
+        } else {
+          setPostAttachments((prev) => [...prev, ...newItems]);
+        }
+        if (showToast) showToast(`📎 첨부파일 ${newItems.length}개가 업로드되었습니다.`, 'success');
       } else {
         if (showToast) showToast('첨부파일 업로드에 실패했습니다.', 'error');
       }
@@ -83,6 +93,14 @@ export default function BoardModal({ show, onClose, apiFetch, showToast }) {
       if (targetType === 'notice') setNoticeUploading(false);
       else setPostUploading(false);
     }
+  };
+
+  const handleRemoveNoticeAttachment = (index) => {
+    setNoticeAttachments((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleRemovePostAttachment = (index) => {
+    setPostAttachments((prev) => prev.filter((_, i) => i !== index));
   };
 
   useEffect(() => {
@@ -150,8 +168,9 @@ export default function BoardModal({ show, onClose, apiFetch, showToast }) {
           title: noticeTitle,
           content: noticeContent,
           is_pinned: noticePinned,
-          attachment_name: noticeAttachmentName,
-          attachment_url: noticeAttachmentUrl
+          attachment_name: noticeAttachments[0]?.attachment_name || '',
+          attachment_url: noticeAttachments[0]?.attachment_url || '',
+          attachments: noticeAttachments
         })
       });
 
@@ -160,8 +179,7 @@ export default function BoardModal({ show, onClose, apiFetch, showToast }) {
         setNoticeTitle('');
         setNoticeContent('');
         setNoticePinned(false);
-        setNoticeAttachmentName('');
-        setNoticeAttachmentUrl('');
+        setNoticeAttachments([]);
         setEditingNoticeId(null);
         setShowNoticeForm(false);
         fetchBoardData('notices');
@@ -181,8 +199,13 @@ export default function BoardModal({ show, onClose, apiFetch, showToast }) {
     setNoticeTitle(n.title);
     setNoticeContent(n.content);
     setNoticePinned(n.is_pinned);
-    setNoticeAttachmentName(n.attachment_name || '');
-    setNoticeAttachmentUrl(n.attachment_url || '');
+    if (n.attachments && n.attachments.length > 0) {
+      setNoticeAttachments(n.attachments);
+    } else if (n.attachment_url) {
+      setNoticeAttachments([{ attachment_name: n.attachment_name, attachment_url: n.attachment_url }]);
+    } else {
+      setNoticeAttachments([]);
+    }
     setShowNoticeForm(true);
   };
 
@@ -287,16 +310,16 @@ export default function BoardModal({ show, onClose, apiFetch, showToast }) {
           content: newContent,
           author_name: newAuthor,
           department: newDept,
-          attachment_name: postAttachmentName,
-          attachment_url: postAttachmentUrl
+          attachment_name: postAttachments[0]?.attachment_name || '',
+          attachment_url: postAttachments[0]?.attachment_url || '',
+          attachments: postAttachments
         })
       });
       if (res.ok) {
         if (showToast) showToast('게시글이 정상 등록되었습니다.', 'success');
         setNewTitle('');
         setNewContent('');
-        setPostAttachmentName('');
-        setPostAttachmentUrl('');
+        setPostAttachments([]);
         setShowWriteForm(false);
         fetchBoardData('community');
       } else {
@@ -484,21 +507,26 @@ export default function BoardModal({ show, onClose, apiFetch, showToast }) {
                         <div className="flex items-center gap-3 bg-slate-900/90 border border-slate-700 rounded-lg p-2.5">
                           <input
                             type="file"
-                            onChange={(e) => handleFileUpload(e.target.files[0], 'notice')}
+                            multiple
+                            onChange={(e) => handleFileUpload(e.target.files, 'notice')}
                             className="text-xs text-slate-300 file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-bold file:bg-indigo-600 file:text-white hover:file:bg-indigo-500 cursor-pointer"
                             disabled={noticeUploading}
                           />
                           {noticeUploading && <span className="text-xs text-indigo-400 animate-pulse font-semibold">⏳ 업로드 중...</span>}
-                          {noticeAttachmentName && !noticeUploading && (
-                            <div className="flex items-center gap-2 bg-indigo-950/80 text-indigo-300 px-3 py-1 rounded border border-indigo-500/50 text-xs font-semibold">
-                              <span>📄 {noticeAttachmentName}</span>
-                              <button
-                                type="button"
-                                onClick={() => { setNoticeAttachmentName(''); setNoticeAttachmentUrl(''); }}
-                                className="text-rose-400 hover:text-rose-200 font-bold ml-1 cursor-pointer"
-                              >
-                                ✕
-                              </button>
+                          {noticeAttachments.length > 0 && !noticeUploading && (
+                            <div className="flex flex-wrap items-center gap-2">
+                              {noticeAttachments.map((att, idx) => (
+                                <div key={`notice-att-item-${idx}`} className="flex items-center gap-1.5 bg-indigo-950/80 text-indigo-300 px-2.5 py-1 rounded border border-indigo-500/50 text-xs font-semibold">
+                                  <span>📄 {att.attachment_name}</span>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRemoveNoticeAttachment(idx)}
+                                    className="text-rose-400 hover:text-rose-200 font-bold ml-1 cursor-pointer"
+                                  >
+                                    ✕
+                                  </button>
+                                </div>
+                              ))}
                             </div>
                           )}
                         </div>
@@ -547,18 +575,24 @@ export default function BoardModal({ show, onClose, apiFetch, showToast }) {
                         <p className="text-xs text-slate-300 whitespace-pre-wrap leading-relaxed my-3 bg-slate-950/40 p-3.5 rounded-lg border border-slate-800">
                           {n.content}
                         </p>
-                        {n.attachment_url && (
-                          <div className="mb-3 flex items-center">
-                            <a
-                              href={n.attachment_url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center gap-2 bg-indigo-950/70 hover:bg-indigo-900/90 text-indigo-300 hover:text-white text-xs px-3.5 py-1.5 rounded-lg border border-indigo-500/40 transition-all font-semibold shadow-sm"
-                            >
-                              <span>📎 첨부파일:</span>
-                              <span className="font-bold underline decoration-indigo-400/50">{n.attachment_name || '첨부 문서 다운로드'}</span>
-                              <span>📥</span>
-                            </a>
+                        {((n.attachments && n.attachments.length > 0) || n.attachment_url) && (
+                          <div className="mb-3 flex flex-wrap items-center gap-2">
+                            {(n.attachments && n.attachments.length > 0 
+                              ? n.attachments 
+                              : [{ attachment_name: n.attachment_name, attachment_url: n.attachment_url }]
+                            ).map((att, idx) => (
+                              <a
+                                key={`notice-att-link-${n.id}-${idx}`}
+                                href={att.attachment_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1.5 bg-indigo-950/70 hover:bg-indigo-900/90 text-indigo-300 hover:text-white text-xs px-3 py-1.5 rounded-lg border border-indigo-500/40 transition-all font-semibold shadow-sm"
+                              >
+                                <span>📎</span>
+                                <span className="font-bold underline decoration-indigo-400/50">{att.attachment_name || '첨부 문서 다운로드'}</span>
+                                <span>📥</span>
+                              </a>
+                            ))}
                           </div>
                         )}
                         <div className="flex items-center justify-between text-[11px] text-slate-400 border-t border-slate-700/40 pt-2">
@@ -654,21 +688,26 @@ export default function BoardModal({ show, onClose, apiFetch, showToast }) {
                         <div className="flex items-center gap-3 bg-slate-900/90 border border-slate-700 rounded-lg p-2.5">
                           <input
                             type="file"
-                            onChange={(e) => handleFileUpload(e.target.files[0], 'post')}
+                            multiple
+                            onChange={(e) => handleFileUpload(e.target.files, 'post')}
                             className="text-xs text-slate-300 file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-bold file:bg-indigo-600 file:text-white hover:file:bg-indigo-500 cursor-pointer"
                             disabled={postUploading}
                           />
                           {postUploading && <span className="text-xs text-indigo-400 animate-pulse font-semibold">⏳ 업로드 중...</span>}
-                          {postAttachmentName && !postUploading && (
-                            <div className="flex items-center gap-2 bg-indigo-950/80 text-indigo-300 px-3 py-1 rounded border border-indigo-500/50 text-xs font-semibold">
-                              <span>📄 {postAttachmentName}</span>
-                              <button
-                                type="button"
-                                onClick={() => { setPostAttachmentName(''); setPostAttachmentUrl(''); }}
-                                className="text-rose-400 hover:text-rose-200 font-bold ml-1 cursor-pointer"
-                              >
-                                ✕
-                              </button>
+                          {postAttachments.length > 0 && !postUploading && (
+                            <div className="flex flex-wrap items-center gap-2">
+                              {postAttachments.map((att, idx) => (
+                                <div key={`post-att-item-${idx}`} className="flex items-center gap-1.5 bg-indigo-950/80 text-indigo-300 px-2.5 py-1 rounded border border-indigo-500/50 text-xs font-semibold">
+                                  <span>📄 {att.attachment_name}</span>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRemovePostAttachment(idx)}
+                                    className="text-rose-400 hover:text-rose-200 font-bold ml-1 cursor-pointer"
+                                  >
+                                    ✕
+                                  </button>
+                                </div>
+                              ))}
                             </div>
                           )}
                         </div>
@@ -703,18 +742,24 @@ export default function BoardModal({ show, onClose, apiFetch, showToast }) {
                         <p className="text-xs text-slate-300 whitespace-pre-wrap leading-relaxed my-3 bg-slate-950/40 p-3.5 rounded-lg border border-slate-800">
                           {p.content}
                         </p>
-                        {p.attachment_url && (
-                          <div className="mb-3 flex items-center">
-                            <a
-                              href={p.attachment_url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center gap-2 bg-indigo-950/70 hover:bg-indigo-900/90 text-indigo-300 hover:text-white text-xs px-3.5 py-1.5 rounded-lg border border-indigo-500/40 transition-all font-semibold shadow-sm"
-                            >
-                              <span>📎 첨부파일:</span>
-                              <span className="font-bold underline decoration-indigo-400/50">{p.attachment_name || '첨부 문서 다운로드'}</span>
-                              <span>📥</span>
-                            </a>
+                        {((p.attachments && p.attachments.length > 0) || p.attachment_url) && (
+                          <div className="mb-3 flex flex-wrap items-center gap-2">
+                            {(p.attachments && p.attachments.length > 0 
+                              ? p.attachments 
+                              : [{ attachment_name: p.attachment_name, attachment_url: p.attachment_url }]
+                            ).map((att, idx) => (
+                              <a
+                                key={`post-att-link-${p.id}-${idx}`}
+                                href={att.attachment_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1.5 bg-indigo-950/70 hover:bg-indigo-900/90 text-indigo-300 hover:text-white text-xs px-3 py-1.5 rounded-lg border border-indigo-500/40 transition-all font-semibold shadow-sm"
+                              >
+                                <span>📎</span>
+                                <span className="font-bold underline decoration-indigo-400/50">{att.attachment_name || '첨부 문서 다운로드'}</span>
+                                <span>📥</span>
+                              </a>
+                            ))}
                           </div>
                         )}
                         <div className="flex items-center justify-between text-[11px] text-slate-400 border-t border-slate-700/40 pt-2">

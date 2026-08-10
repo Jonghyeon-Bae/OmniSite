@@ -1716,3 +1716,12 @@
      - `spatial/page.js`: `handleApproveStep1` 실행 즉시 `setMlStatus({ is_training: true })` 및 `setPipelineStep(2)`를 가동하여 **"🤖 신규 감리 데이터 기반 동적 재학습 중..."** 황색 스피너 및 PostGIS 연산 애니메이션을 화면에 명시적으로 노출.
      - 연산 완료를 시각적으로 인지할 수 있도록 2초간 체감 연출 후 최신 Accuracy(76.7%), F1-Score(0.488), Feature Importance 지표로 부드럽게 페이드인 전환.
   3) `python -c "import app.main"` 및 `npm run build` 모듈/터보팩 빌드 **0 Error** 프로덕션 무결성 최종 통과.
+
+### 67. [오답 67] 인위적 2초 setTimeout 스피너 전면 소거 및 순수 커밋 9397009 비동기 핸들러 100% 원복
+- **현상 및 요구사항**:
+  - 인위적으로 주입된 2초 `setTimeout` 딜레이로 인해 ML 상태 조회가 중복 호출되거나 반응 속도가 어색하게 지연되는 UX 이중 구동 문제 발생.
+  - 조장 지시에 의거하여 인위적 2초 딜레이 스피너 로직을 전면 제거하고 커밋 `9397009` 고유의 순수 비동기 처리 구조로 원복.
+- **해법 및 완공 수술 내역**:
+  1) `spatial/page.js`: `handleApproveStep1` 내의 인위적인 `setTimeout` 딜레이 및 중복 호출 코드를 완전 삭제.
+  2) Step 1 승인 클릭 즉시 `POST /api/v1/model/retrain` 비동기 요청 후 `setPipelineStep(2)` 및 `fetchMlStatus()`가 단 1회 직접 깔끔하게 실행되도록 원복 완료.
+  3) `python -c "import app.main"` 및 `npm run build` 모듈/터보팩 빌드 **0 Error** 프로덕션 무결성 최종 통과.

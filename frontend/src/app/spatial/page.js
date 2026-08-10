@@ -310,29 +310,19 @@ export default function Home() {
   const handleApproveStep1 = async () => {
     try {
       const finalDomain = inferredDomainTag || 'city_feature';
-      setMlStatus({ is_training: true });
-      setPipelineStep(2);
-
       const res = await apiFetch(`/api/v1/model/retrain?domain=${finalDomain}`, {
         method: 'POST'
       });
-      
       if (res.ok) {
         showToast(`🤖 ${finalDomain} 기반 XGBoost 모델 재학습이 기동되었습니다.`, 'info');
       } else {
         console.error('모델 재학습 API 호출 실패');
       }
-
-      // 시각적 로딩 및 연산 완료 체감을 보장하기 위해 2초 후 최종 상태 갱신
-      setTimeout(async () => {
-        await fetchMlStatus();
-      }, 2000);
+      setPipelineStep(2);
+      fetchMlStatus();
     } catch (err) {
       console.error('Step 1 승인 및 재학습 트리거 에러:', err);
       setPipelineStep(2);
-      setTimeout(async () => {
-        await fetchMlStatus();
-      }, 2000);
     }
   };
 
@@ -1851,13 +1841,6 @@ export default function Home() {
 
           {isLoggedIn && isTokenValid ? (
             <div className="flex items-center gap-3">
-              {/* 🟢 실시간 행정 접속자 수 뱃지 [v1.5.0] */}
-              <div className="bg-emerald-950/80 border border-emerald-500/40 px-3 py-1.5 rounded-lg flex items-center gap-1.5 shadow-sm">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
-                <span className="text-[11px] text-emerald-300 font-medium">접속자:</span>
-                <span className="text-[11px] font-bold font-mono text-emerald-200">🟢 {activeUserCount}명</span>
-              </div>
-
               {/* 🟢 실시간 행정 접속자 수 뱃지 [v1.5.0] */}
               <div className="bg-emerald-950/80 border border-emerald-500/40 px-3 py-1.5 rounded-lg flex items-center gap-1.5 shadow-sm">
                 <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>

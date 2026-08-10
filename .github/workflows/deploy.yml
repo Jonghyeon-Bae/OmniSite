@@ -23,7 +23,7 @@ jobs:
           port: 22
           script: |
             echo "🚀 [CI/CD] Starting automated deployment on AWS Lightsail..."
-            
+
             # 1. Navigate to project directory
             if [ -d "/home/ubuntu/omnisite" ]; then
               cd /home/ubuntu/omnisite
@@ -32,19 +32,20 @@ jobs:
             else
               cd ~/
             fi
-            
+
             # 2. Hard sync with latest main branch
             echo "📥 [CI/CD] Pulling latest code from origin main..."
             git fetch origin main && git reset --hard origin/main && git clean -fd
-            
+
             # 3. Rebuild and restart docker compose production containers
             echo "🐳 [CI/CD] Building & launching Docker Compose production containers..."
+            docker compose -f docker-compose.production.yml down
             docker compose -f docker-compose.production.yml up -d --build
-            
+
             # 4. Reload Nginx reverse proxy if running
             if command -v systemctl >/dev/null 2>&1 && systemctl is-active --quiet nginx; then
               echo "🔄 [CI/CD] Reloading Nginx reverse proxy..."
               sudo systemctl reload nginx
             fi
-            
+
             echo "✅ [CI/CD] Automated Deployment Completed Successfully!"

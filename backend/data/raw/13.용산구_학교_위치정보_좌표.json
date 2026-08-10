@@ -1,0 +1,2510 @@
+[
+  {
+    "lat": 37.5232472,
+    "lng": 126.993452,
+    "dong_id": 2209,
+    "properties": {
+      "address": "서울특별시 용산구 녹사평대로 73",
+      "data": {
+        "﻿school_name": "한강중학교",
+        "address": "서울특별시 용산구 녹사평대로 73",
+        "lat": "37.5232472",
+        "lng": "126.993452",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.5467113,
+    "lng": 126.980669,
+    "dong_id": 2177,
+    "properties": {
+      "address": "서울특별시 용산구 두텁바위로 74",
+      "data": {
+        "﻿school_name": "용산중학교",
+        "address": "서울특별시 용산구 두텁바위로 74",
+        "lat": "37.5467113",
+        "lng": "126.980669",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.5220893,
+    "lng": 126.9739482,
+    "dong_id": 2203,
+    "properties": {
+      "address": "서울특별시 용산구 이촌로65가길 91",
+      "data": {
+        "﻿school_name": "용강중학교",
+        "address": "서울특별시 용산구 이촌로65가길 91",
+        "lat": "37.5220893",
+        "lng": "126.9739482",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.5253768,
+    "lng": 126.9979886,
+    "dong_id": 2212,
+    "properties": {
+      "address": "서울특별시 용산구 보광로7길 17",
+      "data": {
+        "﻿school_name": "오산중학교",
+        "address": "서울특별시 용산구 보광로7길 17",
+        "lat": "37.5253768",
+        "lng": "126.9979886",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.5332307,
+    "lng": 126.960586,
+    "dong_id": 2204,
+    "properties": {
+      "address": "서울특별시 용산구 청파로 263",
+      "data": {
+        "﻿school_name": "신광여자중학교",
+        "address": "서울특별시 용산구 청파로 263",
+        "lat": "37.5332307",
+        "lng": "126.960586",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.539300000000004,
+    "lng": 126.98129999999999,
+    "dong_id": 2178,
+    "properties": {
+      "address": "서울특별시 용산구 원효로19길 49 , 성심여자중학교",
+      "data": {
+        "﻿school_name": "성심여자중학교",
+        "address": "서울특별시 용산구 원효로19길 49 , 성심여자중학교",
+        "lat": "37.539300000000004",
+        "lng": "126.98129999999999",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.5425019,
+    "lng": 126.9672188,
+    "dong_id": 2187,
+    "properties": {
+      "address": "서울특별시 용산구 원효로97길 33-4",
+      "data": {
+        "﻿school_name": "선린중학교",
+        "address": "서울특별시 용산구 원효로97길 33-4",
+        "lat": "37.5425019",
+        "lng": "126.9672188",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.5415685,
+    "lng": 126.9844661,
+    "dong_id": 2178,
+    "properties": {
+      "address": "서울특별시 용산구 신흥로3가길 66",
+      "data": {
+        "﻿school_name": "보성여자중학교",
+        "address": "서울특별시 용산구 신흥로3가길 66",
+        "lat": "37.5415685",
+        "lng": "126.9844661",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.5366,
+    "lng": 126.9786,
+    "dong_id": 2182,
+    "properties": {
+      "address": "서울특별시 용산구 효창원로 258 , 배문중학교",
+      "data": {
+        "﻿school_name": "배문중학교",
+        "address": "서울특별시 용산구 효창원로 258 , 배문중학교",
+        "lat": "37.5366",
+        "lng": "126.9786",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.5441,
+    "lng": 126.9861,
+    "dong_id": 2178,
+    "properties": {
+      "address": "서울특별시 용산구 청파로 263 , 신광초등학교 청파동 3가 100",
+      "data": {
+        "﻿school_name": "신광초등학교",
+        "address": "서울특별시 용산구 청파로 263 , 신광초등학교 청파동 3가 100",
+        "lat": "37.5441",
+        "lng": "126.9861",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.5474,
+    "lng": 126.98939999999999,
+    "dong_id": 2178,
+    "properties": {
+      "address": "서울특별시 용산구 두텁바위로 140 , 서울후암초등학교",
+      "data": {
+        "﻿school_name": "서울후암초등학교",
+        "address": "서울특별시 용산구 두텁바위로 140 , 서울후암초등학교",
+        "lat": "37.5474",
+        "lng": "126.98939999999999",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.546800000000005,
+    "lng": 126.9888,
+    "dong_id": 2178,
+    "properties": {
+      "address": "서울특별시 용산구 한남대로 112 , 서울한남초등학교",
+      "data": {
+        "﻿school_name": "서울한남초등학교",
+        "address": "서울특별시 용산구 한남대로 112 , 서울한남초등학교",
+        "lat": "37.546800000000005",
+        "lng": "126.9888",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.5405,
+    "lng": 126.98249999999999,
+    "dong_id": 2178,
+    "properties": {
+      "address": "서울특별시 용산구 한강대로14길 9 , 서울한강초등학교",
+      "data": {
+        "﻿school_name": "서울한강초등학교",
+        "address": "서울특별시 용산구 한강대로14길 9 , 서울한강초등학교",
+        "lat": "37.5405",
+        "lng": "126.98249999999999",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.5411,
+    "lng": 126.9831,
+    "dong_id": 2178,
+    "properties": {
+      "address": "서울특별시 용산구 효창원로 228 , 서울청파초등학교",
+      "data": {
+        "﻿school_name": "서울청파초등학교",
+        "address": "서울특별시 용산구 효창원로 228 , 서울청파초등학교",
+        "lat": "37.5411",
+        "lng": "126.9831",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.5362114,
+    "lng": 126.9882042,
+    "dong_id": 2206,
+    "properties": {
+      "address": "서울특별시 용산구 녹사평대로40길 19",
+      "data": {
+        "﻿school_name": "서울이태원초등학교",
+        "address": "서울특별시 용산구 녹사평대로40길 19",
+        "lat": "37.5362114",
+        "lng": "126.9882042",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.533,
+    "lng": 126.975,
+    "dong_id": 2200,
+    "properties": {
+      "address": "서울특별시 용산구 효창원로13길 38 , 서울원효초등학교",
+      "data": {
+        "﻿school_name": "서울원효초등학교",
+        "address": "서울특별시 용산구 효창원로13길 38 , 서울원효초등학교",
+        "lat": "37.533",
+        "lng": "126.975",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.5443615,
+    "lng": 126.9896272,
+    "dong_id": 2206,
+    "properties": {
+      "address": "서울특별시 용산구 녹사평대로60길 39",
+      "data": {
+        "﻿school_name": "서울용암초등학교",
+        "address": "서울특별시 용산구 녹사평대로60길 39",
+        "lat": "37.5443615",
+        "lng": "126.9896272",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.5349891,
+    "lng": 126.9726979,
+    "dong_id": 2200,
+    "properties": {
+      "address": "서울 용산구 한강대로57길 33",
+      "data": {
+        "﻿school_name": "서울용산초등학교",
+        "address": "서울 용산구 한강대로57길 33",
+        "lat": "37.5349891",
+        "lng": "126.9726979",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.5255,
+    "lng": 126.9675,
+    "dong_id": 2204,
+    "properties": {
+      "address": "서울특별시 용산구 이촌로 255 , 301-75번지",
+      "data": {
+        "﻿school_name": "서울신용산초등학교",
+        "address": "서울특별시 용산구 이촌로 255 , 301-75번지",
+        "lat": "37.5255",
+        "lng": "126.9675",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.5399,
+    "lng": 126.9819,
+    "dong_id": 2178,
+    "properties": {
+      "address": "서울특별시 용산구 서빙고로51길 14 , 서울서빙고초등학교",
+      "data": {
+        "﻿school_name": "서울서빙고초등학교",
+        "address": "서울특별시 용산구 서빙고로51길 14 , 서울서빙고초등학교",
+        "lat": "37.5399",
+        "lng": "126.9819",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.5471,
+    "lng": 126.9891,
+    "dong_id": 2178,
+    "properties": {
+      "address": "서울특별시 용산구 두텁바위로1나길 19 , 서울삼광초등학교",
+      "data": {
+        "﻿school_name": "서울삼광초등학교",
+        "address": "서울특별시 용산구 두텁바위로1나길 19 , 서울삼광초등학교",
+        "lat": "37.5471",
+        "lng": "126.9891",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.5417,
+    "lng": 126.9837,
+    "dong_id": 2178,
+    "properties": {
+      "address": "서울특별시 용산구 우사단로 20",
+      "data": {
+        "﻿school_name": "서울보광초등학교",
+        "address": "서울특별시 용산구 우사단로 20",
+        "lat": "37.5417",
+        "lng": "126.9837",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.5471,
+    "lng": 126.9891,
+    "dong_id": 2178,
+    "properties": {
+      "address": "서울특별시 용산구 원효로64길 17-10 , 서울남정초등학교",
+      "data": {
+        "﻿school_name": "서울남정초등학교",
+        "address": "서울특별시 용산구 원효로64길 17-10 , 서울남정초등학교",
+        "lat": "37.5471",
+        "lng": "126.9891",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.542300000000004,
+    "lng": 126.98429999999999,
+    "dong_id": 2178,
+    "properties": {
+      "address": "서울특별시 용산구 효창원로 137 , 서울금양초등학교",
+      "data": {
+        "﻿school_name": "서울금양초등학교",
+        "address": "서울특별시 용산구 효창원로 137 , 서울금양초등학교",
+        "lat": "37.542300000000004",
+        "lng": "126.98429999999999",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.533300000000004,
+    "lng": 126.97529999999999,
+    "dong_id": 2200,
+    "properties": {
+      "address": "서울특별시 용산구 서빙고로 24",
+      "data": {
+        "﻿school_name": "용산철도고등학교",
+        "address": "서울특별시 용산구 서빙고로 24",
+        "lat": "37.533300000000004",
+        "lng": "126.97529999999999",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.533300000000004,
+    "lng": 126.97529999999999,
+    "dong_id": 2200,
+    "properties": {
+      "address": "서울특별시 용산구 서빙고로 24",
+      "data": {
+        "﻿school_name": "용산철도고등학교",
+        "address": "서울특별시 용산구 서빙고로 24",
+        "lat": "37.533300000000004",
+        "lng": "126.97529999999999",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.533300000000004,
+    "lng": 126.97529999999999,
+    "dong_id": 2200,
+    "properties": {
+      "address": "서울특별시 용산구 서빙고로 24",
+      "data": {
+        "﻿school_name": "용산철도고등학교",
+        "address": "서울특별시 용산구 서빙고로 24",
+        "lat": "37.533300000000004",
+        "lng": "126.97529999999999",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.533300000000004,
+    "lng": 126.97529999999999,
+    "dong_id": 2200,
+    "properties": {
+      "address": "서울특별시 용산구 서빙고로 24",
+      "data": {
+        "﻿school_name": "용산철도고등학교",
+        "address": "서울특별시 용산구 서빙고로 24",
+        "lat": "37.533300000000004",
+        "lng": "126.97529999999999",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.533300000000004,
+    "lng": 126.97529999999999,
+    "dong_id": 2200,
+    "properties": {
+      "address": "서울특별시 용산구 서빙고로 24",
+      "data": {
+        "﻿school_name": "용산철도고등학교",
+        "address": "서울특별시 용산구 서빙고로 24",
+        "lat": "37.533300000000004",
+        "lng": "126.97529999999999",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.533300000000004,
+    "lng": 126.97529999999999,
+    "dong_id": 2200,
+    "properties": {
+      "address": "서울특별시 용산구 서빙고로 24",
+      "data": {
+        "﻿school_name": "용산철도고등학교",
+        "address": "서울특별시 용산구 서빙고로 24",
+        "lat": "37.533300000000004",
+        "lng": "126.97529999999999",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.533300000000004,
+    "lng": 126.97529999999999,
+    "dong_id": 2200,
+    "properties": {
+      "address": "서울특별시 용산구 서빙고로 24",
+      "data": {
+        "﻿school_name": "용산철도고등학교",
+        "address": "서울특별시 용산구 서빙고로 24",
+        "lat": "37.533300000000004",
+        "lng": "126.97529999999999",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.533300000000004,
+    "lng": 126.97529999999999,
+    "dong_id": 2200,
+    "properties": {
+      "address": "서울특별시 용산구 서빙고로 24",
+      "data": {
+        "﻿school_name": "용산철도고등학교",
+        "address": "서울특별시 용산구 서빙고로 24",
+        "lat": "37.533300000000004",
+        "lng": "126.97529999999999",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.533300000000004,
+    "lng": 126.97529999999999,
+    "dong_id": 2200,
+    "properties": {
+      "address": "서울특별시 용산구 서빙고로 24",
+      "data": {
+        "﻿school_name": "용산철도고등학교",
+        "address": "서울특별시 용산구 서빙고로 24",
+        "lat": "37.533300000000004",
+        "lng": "126.97529999999999",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.533300000000004,
+    "lng": 126.97529999999999,
+    "dong_id": 2200,
+    "properties": {
+      "address": "서울특별시 용산구 서빙고로 24",
+      "data": {
+        "﻿school_name": "용산철도고등학교",
+        "address": "서울특별시 용산구 서빙고로 24",
+        "lat": "37.533300000000004",
+        "lng": "126.97529999999999",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.533300000000004,
+    "lng": 126.97529999999999,
+    "dong_id": 2200,
+    "properties": {
+      "address": "서울특별시 용산구 서빙고로 24",
+      "data": {
+        "﻿school_name": "용산철도고등학교",
+        "address": "서울특별시 용산구 서빙고로 24",
+        "lat": "37.533300000000004",
+        "lng": "126.97529999999999",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.533300000000004,
+    "lng": 126.97529999999999,
+    "dong_id": 2200,
+    "properties": {
+      "address": "서울특별시 용산구 서빙고로 24",
+      "data": {
+        "﻿school_name": "용산철도고등학교",
+        "address": "서울특별시 용산구 서빙고로 24",
+        "lat": "37.533300000000004",
+        "lng": "126.97529999999999",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.533300000000004,
+    "lng": 126.97529999999999,
+    "dong_id": 2200,
+    "properties": {
+      "address": "서울특별시 용산구 서빙고로 24",
+      "data": {
+        "﻿school_name": "용산철도고등학교",
+        "address": "서울특별시 용산구 서빙고로 24",
+        "lat": "37.533300000000004",
+        "lng": "126.97529999999999",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.533300000000004,
+    "lng": 126.97529999999999,
+    "dong_id": 2200,
+    "properties": {
+      "address": "서울특별시 용산구 서빙고로 24",
+      "data": {
+        "﻿school_name": "용산철도고등학교",
+        "address": "서울특별시 용산구 서빙고로 24",
+        "lat": "37.533300000000004",
+        "lng": "126.97529999999999",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.533300000000004,
+    "lng": 126.97529999999999,
+    "dong_id": 2200,
+    "properties": {
+      "address": "서울특별시 용산구 서빙고로 24",
+      "data": {
+        "﻿school_name": "용산철도고등학교",
+        "address": "서울특별시 용산구 서빙고로 24",
+        "lat": "37.533300000000004",
+        "lng": "126.97529999999999",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.533300000000004,
+    "lng": 126.97529999999999,
+    "dong_id": 2200,
+    "properties": {
+      "address": "서울특별시 용산구 서빙고로 24",
+      "data": {
+        "﻿school_name": "용산철도고등학교",
+        "address": "서울특별시 용산구 서빙고로 24",
+        "lat": "37.533300000000004",
+        "lng": "126.97529999999999",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.533300000000004,
+    "lng": 126.97529999999999,
+    "dong_id": 2200,
+    "properties": {
+      "address": "서울특별시 용산구 서빙고로 24",
+      "data": {
+        "﻿school_name": "용산철도고등학교",
+        "address": "서울특별시 용산구 서빙고로 24",
+        "lat": "37.533300000000004",
+        "lng": "126.97529999999999",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.533300000000004,
+    "lng": 126.97529999999999,
+    "dong_id": 2200,
+    "properties": {
+      "address": "서울특별시 용산구 서빙고로 24",
+      "data": {
+        "﻿school_name": "용산철도고등학교",
+        "address": "서울특별시 용산구 서빙고로 24",
+        "lat": "37.533300000000004",
+        "lng": "126.97529999999999",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.533300000000004,
+    "lng": 126.97529999999999,
+    "dong_id": 2200,
+    "properties": {
+      "address": "서울특별시 용산구 서빙고로 24",
+      "data": {
+        "﻿school_name": "용산철도고등학교",
+        "address": "서울특별시 용산구 서빙고로 24",
+        "lat": "37.533300000000004",
+        "lng": "126.97529999999999",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.533300000000004,
+    "lng": 126.97529999999999,
+    "dong_id": 2200,
+    "properties": {
+      "address": "서울특별시 용산구 서빙고로 24",
+      "data": {
+        "﻿school_name": "용산철도고등학교",
+        "address": "서울특별시 용산구 서빙고로 24",
+        "lat": "37.533300000000004",
+        "lng": "126.97529999999999",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.533300000000004,
+    "lng": 126.97529999999999,
+    "dong_id": 2200,
+    "properties": {
+      "address": "서울특별시 용산구 서빙고로 24",
+      "data": {
+        "﻿school_name": "용산철도고등학교",
+        "address": "서울특별시 용산구 서빙고로 24",
+        "lat": "37.533300000000004",
+        "lng": "126.97529999999999",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.533300000000004,
+    "lng": 126.97529999999999,
+    "dong_id": 2200,
+    "properties": {
+      "address": "서울특별시 용산구 서빙고로 24",
+      "data": {
+        "﻿school_name": "용산철도고등학교",
+        "address": "서울특별시 용산구 서빙고로 24",
+        "lat": "37.533300000000004",
+        "lng": "126.97529999999999",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.533300000000004,
+    "lng": 126.97529999999999,
+    "dong_id": 2200,
+    "properties": {
+      "address": "서울특별시 용산구 서빙고로 24",
+      "data": {
+        "﻿school_name": "용산철도고등학교",
+        "address": "서울특별시 용산구 서빙고로 24",
+        "lat": "37.533300000000004",
+        "lng": "126.97529999999999",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.533300000000004,
+    "lng": 126.97529999999999,
+    "dong_id": 2200,
+    "properties": {
+      "address": "서울특별시 용산구 서빙고로 24",
+      "data": {
+        "﻿school_name": "용산철도고등학교",
+        "address": "서울특별시 용산구 서빙고로 24",
+        "lat": "37.533300000000004",
+        "lng": "126.97529999999999",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.533300000000004,
+    "lng": 126.97529999999999,
+    "dong_id": 2200,
+    "properties": {
+      "address": "서울특별시 용산구 서빙고로 24",
+      "data": {
+        "﻿school_name": "용산철도고등학교",
+        "address": "서울특별시 용산구 서빙고로 24",
+        "lat": "37.533300000000004",
+        "lng": "126.97529999999999",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.533300000000004,
+    "lng": 126.97529999999999,
+    "dong_id": 2200,
+    "properties": {
+      "address": "서울특별시 용산구 서빙고로 24",
+      "data": {
+        "﻿school_name": "용산철도고등학교",
+        "address": "서울특별시 용산구 서빙고로 24",
+        "lat": "37.533300000000004",
+        "lng": "126.97529999999999",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.533300000000004,
+    "lng": 126.97529999999999,
+    "dong_id": 2200,
+    "properties": {
+      "address": "서울특별시 용산구 서빙고로 24",
+      "data": {
+        "﻿school_name": "용산철도고등학교",
+        "address": "서울특별시 용산구 서빙고로 24",
+        "lat": "37.533300000000004",
+        "lng": "126.97529999999999",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.533300000000004,
+    "lng": 126.97529999999999,
+    "dong_id": 2200,
+    "properties": {
+      "address": "서울특별시 용산구 서빙고로 24",
+      "data": {
+        "﻿school_name": "용산철도고등학교",
+        "address": "서울특별시 용산구 서빙고로 24",
+        "lat": "37.533300000000004",
+        "lng": "126.97529999999999",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.5444,
+    "lng": 126.98639999999999,
+    "dong_id": 2178,
+    "properties": {
+      "address": "서울특별시 용산구 백범로45길 15",
+      "data": {
+        "﻿school_name": "학력인정 서울자동차고등학교",
+        "address": "서울특별시 용산구 백범로45길 15",
+        "lat": "37.5444",
+        "lng": "126.98639999999999",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.5444,
+    "lng": 126.98639999999999,
+    "dong_id": 2178,
+    "properties": {
+      "address": "서울특별시 용산구 백범로45길 15",
+      "data": {
+        "﻿school_name": "학력인정 서울자동차고등학교",
+        "address": "서울특별시 용산구 백범로45길 15",
+        "lat": "37.5444",
+        "lng": "126.98639999999999",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.5444,
+    "lng": 126.98639999999999,
+    "dong_id": 2178,
+    "properties": {
+      "address": "서울특별시 용산구 백범로45길 15",
+      "data": {
+        "﻿school_name": "학력인정 서울자동차고등학교",
+        "address": "서울특별시 용산구 백범로45길 15",
+        "lat": "37.5444",
+        "lng": "126.98639999999999",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.5444,
+    "lng": 126.98639999999999,
+    "dong_id": 2178,
+    "properties": {
+      "address": "서울특별시 용산구 백범로45길 15",
+      "data": {
+        "﻿school_name": "학력인정 서울자동차고등학교",
+        "address": "서울특별시 용산구 백범로45길 15",
+        "lat": "37.5444",
+        "lng": "126.98639999999999",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.5339,
+    "lng": 126.9759,
+    "dong_id": 2202,
+    "properties": {
+      "address": "서울특별시 용산구 독서당로 115",
+      "data": {
+        "﻿school_name": "지구촌기독외국인학교",
+        "address": "서울특별시 용산구 독서당로 115",
+        "lat": "37.5339",
+        "lng": "126.9759",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.5426,
+    "lng": 126.9846,
+    "dong_id": 2178,
+    "properties": {
+      "address": "서울특별시 용산구 독서당로 123-6",
+      "data": {
+        "﻿school_name": "서울독일학교",
+        "address": "서울특별시 용산구 독서당로 123-6",
+        "lat": "37.5426",
+        "lng": "126.9846",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.5339,
+    "lng": 126.9759,
+    "dong_id": 2202,
+    "properties": {
+      "address": "서울특별시 용산구 이태원로 285",
+      "data": {
+        "﻿school_name": "서울용산국제학교",
+        "address": "서울특별시 용산구 이태원로 285",
+        "lat": "37.5339",
+        "lng": "126.9759",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.5345,
+    "lng": 126.97649999999999,
+    "dong_id": 2202,
+    "properties": {
+      "address": "서울특별시 용산구 회나무로12길 27",
+      "data": {
+        "﻿school_name": "서울디지텍고등학교",
+        "address": "서울특별시 용산구 회나무로12길 27",
+        "lat": "37.5345",
+        "lng": "126.97649999999999",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.5345,
+    "lng": 126.97649999999999,
+    "dong_id": 2202,
+    "properties": {
+      "address": "서울특별시 용산구 회나무로12길 27",
+      "data": {
+        "﻿school_name": "서울디지텍고등학교",
+        "address": "서울특별시 용산구 회나무로12길 27",
+        "lat": "37.5345",
+        "lng": "126.97649999999999",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.5345,
+    "lng": 126.97649999999999,
+    "dong_id": 2202,
+    "properties": {
+      "address": "서울특별시 용산구 회나무로12길 27",
+      "data": {
+        "﻿school_name": "서울디지텍고등학교",
+        "address": "서울특별시 용산구 회나무로12길 27",
+        "lat": "37.5345",
+        "lng": "126.97649999999999",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.5345,
+    "lng": 126.97649999999999,
+    "dong_id": 2202,
+    "properties": {
+      "address": "서울특별시 용산구 회나무로12길 27",
+      "data": {
+        "﻿school_name": "서울디지텍고등학교",
+        "address": "서울특별시 용산구 회나무로12길 27",
+        "lat": "37.5345",
+        "lng": "126.97649999999999",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.5345,
+    "lng": 126.97649999999999,
+    "dong_id": 2202,
+    "properties": {
+      "address": "서울특별시 용산구 회나무로12길 27",
+      "data": {
+        "﻿school_name": "서울디지텍고등학교",
+        "address": "서울특별시 용산구 회나무로12길 27",
+        "lat": "37.5345",
+        "lng": "126.97649999999999",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.5345,
+    "lng": 126.97649999999999,
+    "dong_id": 2202,
+    "properties": {
+      "address": "서울특별시 용산구 회나무로12길 27",
+      "data": {
+        "﻿school_name": "서울디지텍고등학교",
+        "address": "서울특별시 용산구 회나무로12길 27",
+        "lat": "37.5345",
+        "lng": "126.97649999999999",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.5345,
+    "lng": 126.97649999999999,
+    "dong_id": 2202,
+    "properties": {
+      "address": "서울특별시 용산구 회나무로12길 27",
+      "data": {
+        "﻿school_name": "서울디지텍고등학교",
+        "address": "서울특별시 용산구 회나무로12길 27",
+        "lat": "37.5345",
+        "lng": "126.97649999999999",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.5345,
+    "lng": 126.97649999999999,
+    "dong_id": 2202,
+    "properties": {
+      "address": "서울특별시 용산구 회나무로12길 27",
+      "data": {
+        "﻿school_name": "서울디지텍고등학교",
+        "address": "서울특별시 용산구 회나무로12길 27",
+        "lat": "37.5345",
+        "lng": "126.97649999999999",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.5345,
+    "lng": 126.97649999999999,
+    "dong_id": 2202,
+    "properties": {
+      "address": "서울특별시 용산구 회나무로12길 27",
+      "data": {
+        "﻿school_name": "서울디지텍고등학교",
+        "address": "서울특별시 용산구 회나무로12길 27",
+        "lat": "37.5345",
+        "lng": "126.97649999999999",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.5345,
+    "lng": 126.97649999999999,
+    "dong_id": 2202,
+    "properties": {
+      "address": "서울특별시 용산구 회나무로12길 27",
+      "data": {
+        "﻿school_name": "서울디지텍고등학교",
+        "address": "서울특별시 용산구 회나무로12길 27",
+        "lat": "37.5345",
+        "lng": "126.97649999999999",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.5345,
+    "lng": 126.97649999999999,
+    "dong_id": 2202,
+    "properties": {
+      "address": "서울특별시 용산구 회나무로12길 27",
+      "data": {
+        "﻿school_name": "서울디지텍고등학교",
+        "address": "서울특별시 용산구 회나무로12길 27",
+        "lat": "37.5345",
+        "lng": "126.97649999999999",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.5345,
+    "lng": 126.97649999999999,
+    "dong_id": 2202,
+    "properties": {
+      "address": "서울특별시 용산구 회나무로12길 27",
+      "data": {
+        "﻿school_name": "서울디지텍고등학교",
+        "address": "서울특별시 용산구 회나무로12길 27",
+        "lat": "37.5345",
+        "lng": "126.97649999999999",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.5345,
+    "lng": 126.97649999999999,
+    "dong_id": 2202,
+    "properties": {
+      "address": "서울특별시 용산구 회나무로12길 27",
+      "data": {
+        "﻿school_name": "서울디지텍고등학교",
+        "address": "서울특별시 용산구 회나무로12길 27",
+        "lat": "37.5345",
+        "lng": "126.97649999999999",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.5345,
+    "lng": 126.97649999999999,
+    "dong_id": 2202,
+    "properties": {
+      "address": "서울특별시 용산구 회나무로12길 27",
+      "data": {
+        "﻿school_name": "서울디지텍고등학교",
+        "address": "서울특별시 용산구 회나무로12길 27",
+        "lat": "37.5345",
+        "lng": "126.97649999999999",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.5345,
+    "lng": 126.97649999999999,
+    "dong_id": 2202,
+    "properties": {
+      "address": "서울특별시 용산구 회나무로12길 27",
+      "data": {
+        "﻿school_name": "서울디지텍고등학교",
+        "address": "서울특별시 용산구 회나무로12길 27",
+        "lat": "37.5345",
+        "lng": "126.97649999999999",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.5345,
+    "lng": 126.97649999999999,
+    "dong_id": 2202,
+    "properties": {
+      "address": "서울특별시 용산구 회나무로12길 27",
+      "data": {
+        "﻿school_name": "서울디지텍고등학교",
+        "address": "서울특별시 용산구 회나무로12길 27",
+        "lat": "37.5345",
+        "lng": "126.97649999999999",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.5345,
+    "lng": 126.97649999999999,
+    "dong_id": 2202,
+    "properties": {
+      "address": "서울특별시 용산구 회나무로12길 27",
+      "data": {
+        "﻿school_name": "서울디지텍고등학교",
+        "address": "서울특별시 용산구 회나무로12길 27",
+        "lat": "37.5345",
+        "lng": "126.97649999999999",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.5345,
+    "lng": 126.97649999999999,
+    "dong_id": 2202,
+    "properties": {
+      "address": "서울특별시 용산구 회나무로12길 27",
+      "data": {
+        "﻿school_name": "서울디지텍고등학교",
+        "address": "서울특별시 용산구 회나무로12길 27",
+        "lat": "37.5345",
+        "lng": "126.97649999999999",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.5345,
+    "lng": 126.97649999999999,
+    "dong_id": 2202,
+    "properties": {
+      "address": "서울특별시 용산구 회나무로12길 27",
+      "data": {
+        "﻿school_name": "서울디지텍고등학교",
+        "address": "서울특별시 용산구 회나무로12길 27",
+        "lat": "37.5345",
+        "lng": "126.97649999999999",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.5345,
+    "lng": 126.97649999999999,
+    "dong_id": 2202,
+    "properties": {
+      "address": "서울특별시 용산구 회나무로12길 27",
+      "data": {
+        "﻿school_name": "서울디지텍고등학교",
+        "address": "서울특별시 용산구 회나무로12길 27",
+        "lat": "37.5345",
+        "lng": "126.97649999999999",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.5345,
+    "lng": 126.97649999999999,
+    "dong_id": 2202,
+    "properties": {
+      "address": "서울특별시 용산구 회나무로12길 27",
+      "data": {
+        "﻿school_name": "서울디지텍고등학교",
+        "address": "서울특별시 용산구 회나무로12길 27",
+        "lat": "37.5345",
+        "lng": "126.97649999999999",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.5345,
+    "lng": 126.97649999999999,
+    "dong_id": 2202,
+    "properties": {
+      "address": "서울특별시 용산구 회나무로12길 27",
+      "data": {
+        "﻿school_name": "서울디지텍고등학교",
+        "address": "서울특별시 용산구 회나무로12길 27",
+        "lat": "37.5345",
+        "lng": "126.97649999999999",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.5345,
+    "lng": 126.97649999999999,
+    "dong_id": 2202,
+    "properties": {
+      "address": "서울특별시 용산구 회나무로12길 27",
+      "data": {
+        "﻿school_name": "서울디지텍고등학교",
+        "address": "서울특별시 용산구 회나무로12길 27",
+        "lat": "37.5345",
+        "lng": "126.97649999999999",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.5345,
+    "lng": 126.97649999999999,
+    "dong_id": 2202,
+    "properties": {
+      "address": "서울특별시 용산구 회나무로12길 27",
+      "data": {
+        "﻿school_name": "서울디지텍고등학교",
+        "address": "서울특별시 용산구 회나무로12길 27",
+        "lat": "37.5345",
+        "lng": "126.97649999999999",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.5345,
+    "lng": 126.97649999999999,
+    "dong_id": 2202,
+    "properties": {
+      "address": "서울특별시 용산구 회나무로12길 27",
+      "data": {
+        "﻿school_name": "서울디지텍고등학교",
+        "address": "서울특별시 용산구 회나무로12길 27",
+        "lat": "37.5345",
+        "lng": "126.97649999999999",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.5345,
+    "lng": 126.97649999999999,
+    "dong_id": 2202,
+    "properties": {
+      "address": "서울특별시 용산구 회나무로12길 27",
+      "data": {
+        "﻿school_name": "서울디지텍고등학교",
+        "address": "서울특별시 용산구 회나무로12길 27",
+        "lat": "37.5345",
+        "lng": "126.97649999999999",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.5345,
+    "lng": 126.97649999999999,
+    "dong_id": 2202,
+    "properties": {
+      "address": "서울특별시 용산구 회나무로12길 27",
+      "data": {
+        "﻿school_name": "서울디지텍고등학교",
+        "address": "서울특별시 용산구 회나무로12길 27",
+        "lat": "37.5345",
+        "lng": "126.97649999999999",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.5345,
+    "lng": 126.97649999999999,
+    "dong_id": 2202,
+    "properties": {
+      "address": "서울특별시 용산구 회나무로12길 27",
+      "data": {
+        "﻿school_name": "서울디지텍고등학교",
+        "address": "서울특별시 용산구 회나무로12길 27",
+        "lat": "37.5345",
+        "lng": "126.97649999999999",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.541,
+    "lng": 126.966,
+    "dong_id": 2188,
+    "properties": {
+      "address": "서울특별시 용산구 원효로97길 33-4",
+      "data": {
+        "﻿school_name": "선린인터넷고등학교",
+        "address": "서울특별시 용산구 원효로97길 33-4",
+        "lat": "37.541",
+        "lng": "126.966",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.541,
+    "lng": 126.966,
+    "dong_id": 2188,
+    "properties": {
+      "address": "서울특별시 용산구 원효로97길 33-4",
+      "data": {
+        "﻿school_name": "선린인터넷고등학교",
+        "address": "서울특별시 용산구 원효로97길 33-4",
+        "lat": "37.541",
+        "lng": "126.966",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.541,
+    "lng": 126.966,
+    "dong_id": 2188,
+    "properties": {
+      "address": "서울특별시 용산구 원효로97길 33-4",
+      "data": {
+        "﻿school_name": "선린인터넷고등학교",
+        "address": "서울특별시 용산구 원효로97길 33-4",
+        "lat": "37.541",
+        "lng": "126.966",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.541,
+    "lng": 126.966,
+    "dong_id": 2188,
+    "properties": {
+      "address": "서울특별시 용산구 원효로97길 33-4",
+      "data": {
+        "﻿school_name": "선린인터넷고등학교",
+        "address": "서울특별시 용산구 원효로97길 33-4",
+        "lat": "37.541",
+        "lng": "126.966",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.541,
+    "lng": 126.966,
+    "dong_id": 2188,
+    "properties": {
+      "address": "서울특별시 용산구 원효로97길 33-4",
+      "data": {
+        "﻿school_name": "선린인터넷고등학교",
+        "address": "서울특별시 용산구 원효로97길 33-4",
+        "lat": "37.541",
+        "lng": "126.966",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.541,
+    "lng": 126.966,
+    "dong_id": 2188,
+    "properties": {
+      "address": "서울특별시 용산구 원효로97길 33-4",
+      "data": {
+        "﻿school_name": "선린인터넷고등학교",
+        "address": "서울특별시 용산구 원효로97길 33-4",
+        "lat": "37.541",
+        "lng": "126.966",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.541,
+    "lng": 126.966,
+    "dong_id": 2188,
+    "properties": {
+      "address": "서울특별시 용산구 원효로97길 33-4",
+      "data": {
+        "﻿school_name": "선린인터넷고등학교",
+        "address": "서울특별시 용산구 원효로97길 33-4",
+        "lat": "37.541",
+        "lng": "126.966",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.541,
+    "lng": 126.966,
+    "dong_id": 2188,
+    "properties": {
+      "address": "서울특별시 용산구 원효로97길 33-4",
+      "data": {
+        "﻿school_name": "선린인터넷고등학교",
+        "address": "서울특별시 용산구 원효로97길 33-4",
+        "lat": "37.541",
+        "lng": "126.966",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.541,
+    "lng": 126.966,
+    "dong_id": 2188,
+    "properties": {
+      "address": "서울특별시 용산구 원효로97길 33-4",
+      "data": {
+        "﻿school_name": "선린인터넷고등학교",
+        "address": "서울특별시 용산구 원효로97길 33-4",
+        "lat": "37.541",
+        "lng": "126.966",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.541,
+    "lng": 126.966,
+    "dong_id": 2188,
+    "properties": {
+      "address": "서울특별시 용산구 원효로97길 33-4",
+      "data": {
+        "﻿school_name": "선린인터넷고등학교",
+        "address": "서울특별시 용산구 원효로97길 33-4",
+        "lat": "37.541",
+        "lng": "126.966",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.541,
+    "lng": 126.966,
+    "dong_id": 2188,
+    "properties": {
+      "address": "서울특별시 용산구 원효로97길 33-4",
+      "data": {
+        "﻿school_name": "선린인터넷고등학교",
+        "address": "서울특별시 용산구 원효로97길 33-4",
+        "lat": "37.541",
+        "lng": "126.966",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.541,
+    "lng": 126.966,
+    "dong_id": 2188,
+    "properties": {
+      "address": "서울특별시 용산구 원효로97길 33-4",
+      "data": {
+        "﻿school_name": "선린인터넷고등학교",
+        "address": "서울특별시 용산구 원효로97길 33-4",
+        "lat": "37.541",
+        "lng": "126.966",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.541,
+    "lng": 126.966,
+    "dong_id": 2188,
+    "properties": {
+      "address": "서울특별시 용산구 원효로97길 33-4",
+      "data": {
+        "﻿school_name": "선린인터넷고등학교",
+        "address": "서울특별시 용산구 원효로97길 33-4",
+        "lat": "37.541",
+        "lng": "126.966",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.541,
+    "lng": 126.966,
+    "dong_id": 2188,
+    "properties": {
+      "address": "서울특별시 용산구 원효로97길 33-4",
+      "data": {
+        "﻿school_name": "선린인터넷고등학교",
+        "address": "서울특별시 용산구 원효로97길 33-4",
+        "lat": "37.541",
+        "lng": "126.966",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.526,
+    "lng": 126.998,
+    "dong_id": 2212,
+    "properties": {
+      "address": "서울특별시 용산구 보광로7길 17",
+      "data": {
+        "﻿school_name": "오산고등학교",
+        "address": "서울특별시 용산구 보광로7길 17",
+        "lat": "37.526",
+        "lng": "126.998",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.526,
+    "lng": 126.998,
+    "dong_id": 2212,
+    "properties": {
+      "address": "서울특별시 용산구 보광로7길 17",
+      "data": {
+        "﻿school_name": "오산고등학교",
+        "address": "서울특별시 용산구 보광로7길 17",
+        "lat": "37.526",
+        "lng": "126.998",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.526,
+    "lng": 126.998,
+    "dong_id": 2212,
+    "properties": {
+      "address": "서울특별시 용산구 보광로7길 17",
+      "data": {
+        "﻿school_name": "오산고등학교",
+        "address": "서울특별시 용산구 보광로7길 17",
+        "lat": "37.526",
+        "lng": "126.998",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.526,
+    "lng": 126.998,
+    "dong_id": 2212,
+    "properties": {
+      "address": "서울특별시 용산구 보광로7길 17",
+      "data": {
+        "﻿school_name": "오산고등학교",
+        "address": "서울특별시 용산구 보광로7길 17",
+        "lat": "37.526",
+        "lng": "126.998",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.536300000000004,
+    "lng": 126.97829999999999,
+    "dong_id": 2182,
+    "properties": {
+      "address": "서울특별시 용산구 청파로 263 , 신광여자고등학교",
+      "data": {
+        "﻿school_name": "신광여자고등학교",
+        "address": "서울특별시 용산구 청파로 263 , 신광여자고등학교",
+        "lat": "37.536300000000004",
+        "lng": "126.97829999999999",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.536300000000004,
+    "lng": 126.97829999999999,
+    "dong_id": 2182,
+    "properties": {
+      "address": "서울특별시 용산구 청파로 263 , 신광여자고등학교",
+      "data": {
+        "﻿school_name": "신광여자고등학교",
+        "address": "서울특별시 용산구 청파로 263 , 신광여자고등학교",
+        "lat": "37.536300000000004",
+        "lng": "126.97829999999999",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.536300000000004,
+    "lng": 126.97829999999999,
+    "dong_id": 2182,
+    "properties": {
+      "address": "서울특별시 용산구 청파로 263 , 신광여자고등학교",
+      "data": {
+        "﻿school_name": "신광여자고등학교",
+        "address": "서울특별시 용산구 청파로 263 , 신광여자고등학교",
+        "lat": "37.536300000000004",
+        "lng": "126.97829999999999",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.536300000000004,
+    "lng": 126.97829999999999,
+    "dong_id": 2182,
+    "properties": {
+      "address": "서울특별시 용산구 청파로 263 , 신광여자고등학교",
+      "data": {
+        "﻿school_name": "신광여자고등학교",
+        "address": "서울특별시 용산구 청파로 263 , 신광여자고등학교",
+        "lat": "37.536300000000004",
+        "lng": "126.97829999999999",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.534,
+    "lng": 126.958,
+    "dong_id": 2193,
+    "properties": {
+      "address": "서울특별시 용산구 원효로19길 49 , 성심여자고등학교",
+      "data": {
+        "﻿school_name": "성심여자고등학교",
+        "address": "서울특별시 용산구 원효로19길 49 , 성심여자고등학교",
+        "lat": "37.534",
+        "lng": "126.958",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.534,
+    "lng": 126.958,
+    "dong_id": 2193,
+    "properties": {
+      "address": "서울특별시 용산구 원효로19길 49 , 성심여자고등학교",
+      "data": {
+        "﻿school_name": "성심여자고등학교",
+        "address": "서울특별시 용산구 원효로19길 49 , 성심여자고등학교",
+        "lat": "37.534",
+        "lng": "126.958",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.534,
+    "lng": 126.958,
+    "dong_id": 2193,
+    "properties": {
+      "address": "서울특별시 용산구 원효로19길 49 , 성심여자고등학교",
+      "data": {
+        "﻿school_name": "성심여자고등학교",
+        "address": "서울특별시 용산구 원효로19길 49 , 성심여자고등학교",
+        "lat": "37.534",
+        "lng": "126.958",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.534,
+    "lng": 126.958,
+    "dong_id": 2193,
+    "properties": {
+      "address": "서울특별시 용산구 원효로19길 49 , 성심여자고등학교",
+      "data": {
+        "﻿school_name": "성심여자고등학교",
+        "address": "서울특별시 용산구 원효로19길 49 , 성심여자고등학교",
+        "lat": "37.534",
+        "lng": "126.958",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.542,
+    "lng": 126.988,
+    "dong_id": 2206,
+    "properties": {
+      "address": "서울특별시 용산구 신흥로3가길 66 , 보성여자고등학교",
+      "data": {
+        "﻿school_name": "보성여자고등학교",
+        "address": "서울특별시 용산구 신흥로3가길 66 , 보성여자고등학교",
+        "lat": "37.542",
+        "lng": "126.988",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.542,
+    "lng": 126.988,
+    "dong_id": 2206,
+    "properties": {
+      "address": "서울특별시 용산구 신흥로3가길 66 , 보성여자고등학교",
+      "data": {
+        "﻿school_name": "보성여자고등학교",
+        "address": "서울특별시 용산구 신흥로3가길 66 , 보성여자고등학교",
+        "lat": "37.542",
+        "lng": "126.988",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.542,
+    "lng": 126.988,
+    "dong_id": 2206,
+    "properties": {
+      "address": "서울특별시 용산구 신흥로3가길 66 , 보성여자고등학교",
+      "data": {
+        "﻿school_name": "보성여자고등학교",
+        "address": "서울특별시 용산구 신흥로3가길 66 , 보성여자고등학교",
+        "lat": "37.542",
+        "lng": "126.988",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.542,
+    "lng": 126.988,
+    "dong_id": 2206,
+    "properties": {
+      "address": "서울특별시 용산구 신흥로3가길 66 , 보성여자고등학교",
+      "data": {
+        "﻿school_name": "보성여자고등학교",
+        "address": "서울특별시 용산구 신흥로3가길 66 , 보성여자고등학교",
+        "lat": "37.542",
+        "lng": "126.988",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.547,
+    "lng": 126.963,
+    "dong_id": 2195,
+    "properties": {
+      "address": "서울특별시 용산구 효창원로 258",
+      "data": {
+        "﻿school_name": "배문고등학교",
+        "address": "서울특별시 용산구 효창원로 258",
+        "lat": "37.547",
+        "lng": "126.963",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.547,
+    "lng": 126.963,
+    "dong_id": 2195,
+    "properties": {
+      "address": "서울특별시 용산구 효창원로 258",
+      "data": {
+        "﻿school_name": "배문고등학교",
+        "address": "서울특별시 용산구 효창원로 258",
+        "lat": "37.547",
+        "lng": "126.963",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.547,
+    "lng": 126.963,
+    "dong_id": 2195,
+    "properties": {
+      "address": "서울특별시 용산구 효창원로 258",
+      "data": {
+        "﻿school_name": "배문고등학교",
+        "address": "서울특별시 용산구 효창원로 258",
+        "lat": "37.547",
+        "lng": "126.963",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.547,
+    "lng": 126.963,
+    "dong_id": 2195,
+    "properties": {
+      "address": "서울특별시 용산구 효창원로 258",
+      "data": {
+        "﻿school_name": "배문고등학교",
+        "address": "서울특별시 용산구 효창원로 258",
+        "lat": "37.547",
+        "lng": "126.963",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.547,
+    "lng": 126.963,
+    "dong_id": 2195,
+    "properties": {
+      "address": "서울특별시 용산구 효창원로 258",
+      "data": {
+        "﻿school_name": "배문고등학교",
+        "address": "서울특별시 용산구 효창원로 258",
+        "lat": "37.547",
+        "lng": "126.963",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.534800000000004,
+    "lng": 126.9768,
+    "dong_id": 2182,
+    "properties": {
+      "address": "서울특별시 용산구 이촌로84길 34",
+      "data": {
+        "﻿school_name": "중경고등학교",
+        "address": "서울특별시 용산구 이촌로84길 34",
+        "lat": "37.534800000000004",
+        "lng": "126.9768",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.534800000000004,
+    "lng": 126.9768,
+    "dong_id": 2182,
+    "properties": {
+      "address": "서울특별시 용산구 이촌로84길 34",
+      "data": {
+        "﻿school_name": "중경고등학교",
+        "address": "서울특별시 용산구 이촌로84길 34",
+        "lat": "37.534800000000004",
+        "lng": "126.9768",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.534800000000004,
+    "lng": 126.9768,
+    "dong_id": 2182,
+    "properties": {
+      "address": "서울특별시 용산구 이촌로84길 34",
+      "data": {
+        "﻿school_name": "중경고등학교",
+        "address": "서울특별시 용산구 이촌로84길 34",
+        "lat": "37.534800000000004",
+        "lng": "126.9768",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.534800000000004,
+    "lng": 126.9768,
+    "dong_id": 2182,
+    "properties": {
+      "address": "서울특별시 용산구 이촌로84길 34",
+      "data": {
+        "﻿school_name": "중경고등학교",
+        "address": "서울특별시 용산구 이촌로84길 34",
+        "lat": "37.534800000000004",
+        "lng": "126.9768",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.534800000000004,
+    "lng": 126.9768,
+    "dong_id": 2182,
+    "properties": {
+      "address": "서울특별시 용산구 이촌로84길 34",
+      "data": {
+        "﻿school_name": "중경고등학교",
+        "address": "서울특별시 용산구 이촌로84길 34",
+        "lat": "37.534800000000004",
+        "lng": "126.9768",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.545,
+    "lng": 126.9805,
+    "dong_id": 2178,
+    "properties": {
+      "address": "서울특별시 용산구 두텁바위로 60",
+      "data": {
+        "﻿school_name": "용산고등학교",
+        "address": "서울특별시 용산구 두텁바위로 60",
+        "lat": "37.545",
+        "lng": "126.9805",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.545,
+    "lng": 126.9805,
+    "dong_id": 2178,
+    "properties": {
+      "address": "서울특별시 용산구 두텁바위로 60",
+      "data": {
+        "﻿school_name": "용산고등학교",
+        "address": "서울특별시 용산구 두텁바위로 60",
+        "lat": "37.545",
+        "lng": "126.9805",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.545,
+    "lng": 126.9805,
+    "dong_id": 2178,
+    "properties": {
+      "address": "서울특별시 용산구 두텁바위로 60",
+      "data": {
+        "﻿school_name": "용산고등학교",
+        "address": "서울특별시 용산구 두텁바위로 60",
+        "lat": "37.545",
+        "lng": "126.9805",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.545,
+    "lng": 126.9805,
+    "dong_id": 2178,
+    "properties": {
+      "address": "서울특별시 용산구 두텁바위로 60",
+      "data": {
+        "﻿school_name": "용산고등학교",
+        "address": "서울특별시 용산구 두텁바위로 60",
+        "lat": "37.545",
+        "lng": "126.9805",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  },
+  {
+    "lat": 37.545,
+    "lng": 126.9805,
+    "dong_id": 2178,
+    "properties": {
+      "address": "서울특별시 용산구 두텁바위로 60",
+      "data": {
+        "﻿school_name": "용산고등학교",
+        "address": "서울특별시 용산구 두텁바위로 60",
+        "lat": "37.545",
+        "lng": "126.9805",
+        "zone_type": "school",
+        "radius": "50.0"
+      },
+      "domain": "smoking_zone",
+      "zone_behavior": "exclusion",
+      "is_exclusion": true
+    }
+  }
+]

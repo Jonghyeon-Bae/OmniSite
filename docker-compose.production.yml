@@ -48,7 +48,7 @@ services:
     container_name: omnisite_prod_fe
     restart: always
     ports:
-      - "80:3000" # 80포트 대문 개방 (AWS Lightsail 기본 80포트 접속)
+      - "3000:3000" # Nginx 80/443 포트 점유를 위해 프론트엔드 포트를 3000으로 지정
     environment:
       - BACKEND_API_URL=http://backend:8000
       - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-}

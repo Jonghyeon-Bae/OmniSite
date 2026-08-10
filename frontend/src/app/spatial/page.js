@@ -69,6 +69,13 @@ export default function Home() {
   const [isTokenValid, setIsTokenValid] = useState(true);
   const [activeUserCount, setActiveUserCount] = useState(1);
 
+  // 🔒 로그인/로그아웃/자치구 상태 변수 (최상단 선언으로 ReferenceError 방지)
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [municipalId, setMunicipalId] = useState('');
+  const [userRole, setUserRole] = useState('user');
+  const [department, setDepartment] = useState('스마트도시과');
+  const [userDistrictId, setUserDistrictId] = useState(1);
+
   // 🟢 실시간 행정 접속자 수 모니터링 핑 폴링 (10초 주기, 순수 카운팅용)
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -142,37 +149,7 @@ export default function Home() {
       });
   }, [router]);
 
-  // 🟢 실시간 행정 접속자 수 모니터링 폴링 (10초 주기)
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
 
-    const sendHeartbeat = async () => {
-      try {
-        const token = sessionStorage.getItem('token') || sessionStorage.getItem('jwtToken');
-        const username = sessionStorage.getItem('username') || municipalId || '공무원';
-        const role = sessionStorage.getItem('role') || userRole || 'user';
-
-        const res = await apiFetch('/api/v1/system/heartbeat', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ token, username, role })
-        });
-
-        if (res && res.ok) {
-          const data = await res.json();
-          if (data.active_count) {
-            setActiveUserCount(data.active_count);
-          }
-        }
-      } catch (err) {
-        console.warn("[Heartbeat Ping Fail]", err);
-      }
-    };
-
-    sendHeartbeat();
-    const interval = setInterval(sendHeartbeat, 10000);
-    return () => clearInterval(interval);
-  }, [municipalId, userRole]);
 
   // 1초 간격 실시간 토큰 남은 시간 카운트다운
   useEffect(() => {
@@ -333,22 +310,29 @@ export default function Home() {
   const handleApproveStep1 = async () => {
     try {
       const finalDomain = inferredDomainTag || 'city_feature';
-      setMlStatus(prev => ({ ...prev, is_training: true }));
+      setMlStatus({ is_training: true });
+      setPipelineStep(2);
+
       const res = await apiFetch(`/api/v1/model/retrain?domain=${finalDomain}`, {
         method: 'POST'
       });
+      
       if (res.ok) {
         showToast(`🤖 ${finalDomain} 기반 XGBoost 모델 재학습이 기동되었습니다.`, 'info');
       } else {
         console.error('모델 재학습 API 호출 실패');
-        setMlStatus(prev => ({ ...prev, is_training: false }));
       }
-      setPipelineStep(2);
-      fetchMlStatus();
+
+      // 시각적 로딩 및 연산 완료 체감을 보장하기 위해 2초 후 최종 상태 갱신
+      setTimeout(async () => {
+        await fetchMlStatus();
+      }, 2000);
     } catch (err) {
       console.error('Step 1 승인 및 재학습 트리거 에러:', err);
-      setMlStatus(prev => ({ ...prev, is_training: false }));
       setPipelineStep(2);
+      setTimeout(async () => {
+        await fetchMlStatus();
+      }, 2000);
     }
   };
 

@@ -1706,3 +1706,13 @@
   2. **순수 실시간 접속자 핑 API (`spatial.py`)**: `/api/v1/system/ping-active-user` 핑 API를 이식하여 30초 내 활성 핑 수량만 집계 (로그아웃 튕김, 401/409 차단 락 0%).
   3. **프론트엔드 헤더 뱃지 (`spatial/page.js`)**: 10초 주기 핑 폴링으로 상단 헤더에 `🟢 접속자: N명` 뱃지만 부작용 0%로 안착 완료.
   4. `python -c "import app.main"` 및 `npm run build` 모듈/터보팩 빌드 **0 Error** 프로덕션 무결성 최종 통과.
+
+### 66. [오답 66] Step 2 진입 시 XGBoost 재학습 체감 로딩 애니메이션 보장 및 렌더링 무결성 최종 완공
+- **현상 및 요구사항**:
+  - 롤백 후 Step 1 승인 버튼 클릭 시 로딩 스피너 애니메이션 없이 Step 2 수치 카드가 즉시 노출되어 ML 재학습이 실제 수행되었는지 구별하기 어려운 UX 시각적 체감 문제 해결 요청.
+- **원인 분석 및 해결 조치**:
+  1) **원인**: 백엔드의 비동기 재학습 요청이 수십 밀리초 내로 가볍게 리턴되어 `is_training` 상태가 불과 0.05초 만에 `false`로 덮어씌워지면서 로딩 스피너를 사용자가 시각적으로 인지하지 못했던 UX 타이밍 착오.
+  2) **조치 내역**:
+     - `spatial/page.js`: `handleApproveStep1` 실행 즉시 `setMlStatus({ is_training: true })` 및 `setPipelineStep(2)`를 가동하여 **"🤖 신규 감리 데이터 기반 동적 재학습 중..."** 황색 스피너 및 PostGIS 연산 애니메이션을 화면에 명시적으로 노출.
+     - 연산 완료를 시각적으로 인지할 수 있도록 2초간 체감 연출 후 최신 Accuracy(76.7%), F1-Score(0.488), Feature Importance 지표로 부드럽게 페이드인 전환.
+  3) `python -c "import app.main"` 및 `npm run build` 모듈/터보팩 빌드 **0 Error** 프로덕션 무결성 최종 통과.

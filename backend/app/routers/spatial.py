@@ -192,6 +192,18 @@ def verify_hash_chain(db: Session = Depends(get_db)):
 ACTIVE_USER_HEARTBEATS = {}  # {token: {"username": ..., "role": ..., "last_seen": timestamp}}
 ACTIVE_USER_SESSION_TOKENS = {}  # {username: token}
 
+def is_user_currently_active(username: str) -> bool:
+    """해당 계정이 현재 다른 기기에서 30초 내 활성 접속 중인지 여부 판정"""
+    import time
+    now = time.time()
+    registered_token = ACTIVE_USER_SESSION_TOKENS.get(username)
+    if not registered_token:
+        return False
+    heartbeat_info = ACTIVE_USER_HEARTBEATS.get(registered_token)
+    if heartbeat_info and (now - heartbeat_info.get("last_seen", 0) <= 30):
+        return True
+    return False
+
 def set_active_user_session(username: str, token: str, role: str = 'user'):
     """로그인 성공 시 백엔드 단에서 직접 해당 계정의 단일 선점 토큰을 갱신"""
     import time

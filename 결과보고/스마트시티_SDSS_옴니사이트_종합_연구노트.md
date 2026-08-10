@@ -1568,3 +1568,23 @@
      - `spatial.py`: `system_user_heartbeat`에서 `anon_` 익명 토큰을 무단 선점 토큰으로 오버라이드하지 못하도록 방어 수술 완료.
      - `set_active_user_session` 헬퍼 함수를 구축하여 로그인 성공 시 동일 계정의 기존 오래된 낡은 하트비트 세션을 100% 완전 소거.
   3) `python -c "import app.main"` 및 `npm run build` 모듈/터보팩 빌드 **0 Error** 프로덕션 무결성 최종 통과.
+
+### 60. [오답 60] 중복 로그인 409 Conflict 승인 팝업 및 인프라 아키텍처(Lightsail vs EC2 vs EKS) 비교 평가
+- **현상 및 요구사항**:
+  - 중복 로그인 시도 시 무조건 튕겨버리지 않고 "이미 로그인 상태입니다. 강제 로그아웃 후 접속하시겠습니까?" 팝업 confirm 승인 구조 요구.
+  - 주니어 개발자들의 프론트/백엔드 2-Git 분리 환경에서 EKS, EC2 2-인스턴스, Lightsail, Serverless CDN 대비 최적의 합리적 인프라 구성안 제안 요청.
+- **발생 원인(Root Cause) 및 최종 해법(Takeaway)**:
+  1) **인터랙티브 confirm 중복 로그인 세션 선점 인터셉트 구축 (`HTTP 409 Conflict`)**:
+     - 타 기기 활성 접속 중 로그인 시도 시 백엔드 409 CONFLICT 반환.
+     - 프론트엔드가 브라우저 `confirm()` 팝업을 표출:
+       "⚠️ 계정 'admin'님은 현재 다른 PC/브라우저에서 로그인 중입니다. 기존 세션을 강제 종료하고 현재 기기에서 새로 로그인하시겠습니까?"
+     - **[확인] 클릭 시**: `force: true`를 포함하여 로그인 재요청 ➔ 기존 세션 즉시 파기 선점.
+     - **[취소] 클릭 시**: 로그인 시도 안전 취소.
+  2) **해제된 기기 표출 메시지 정교화**:
+     - "🔒 [중복 로그인 감지] 다른 PC/장치에서 해당 계정으로 신규 로그인(세션 선점 승인)이 승인되어 현재 기기의 접속이 해제되었습니다. 로그인 페이지로 이동합니다."
+  3) **인프라 아키텍처 객관적 비교 및 최적안 수립**:
+     - **EKS**: 소규모 지자체 SDSS 인프라에는 컨트롤 플레인 월 $73+ 비용 및 K8s 과도한 오버엔지니어링으로 **비추천**.
+     - **최적안 (Option C - 2 Git 분리 완벽 수용)**:
+       - **FE Repo**: **AWS Amplify / Vercel** (서버리스 글로벌 CDN, Git Push 시 자동 CI/CD, 월 $0~무료)
+       - **BE/DB Repo**: **AWS Lightsail (또는 EC2 1 인스턴스)** (Docker Compose 무중단 가동, 고정 IP, Nginx Reverse Proxy, 월 $10)
+  4) `python -c "import app.main"` 및 `npm run build` 모듈/터보팩 빌드 **0 Error** 프로덕션 무결성 최종 통과.

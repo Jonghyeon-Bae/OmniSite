@@ -151,7 +151,7 @@ export default function Home() {
             sessionStorage.clear();
             setIsLoggedIn(false);
             setIsTokenValid(false);
-            alert("🔒 다른 PC/장치에서 동일 계정으로 신규 로그인하여 기존 세션이 안전하게 종료되었습니다. 로그인 페이지로 이동합니다.");
+            alert("🔒 [중복 로그인 감지] 다른 PC/장치에서 해당 계정으로 신규 로그인(세션 선점 승인)이 승인되어 현재 기기의 접속이 해제되었습니다.\n로그인 페이지로 이동합니다.");
             if (typeof window !== 'undefined') {
               window.location.href = '/';
             }

@@ -61,6 +61,7 @@ router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 class UserLoginRequest(BaseModel):
     username: str = Field(..., description="사용자 아이디")
     password: str = Field(..., description="비밀번호")
+    force: Optional[bool] = Field(False, description="중복 로그인 강제 승인 여부")
 
 class UserRegisterRequest(BaseModel):
     username: str = Field(..., description="사용자 아이디")
@@ -142,6 +143,19 @@ async def login(req: UserLoginRequest, db: Session = Depends(get_db)):
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="관리자 승인 대기 중인 계정입니다. 스마트도시과 최고관리자의 승인 후 로그인하실 수 있습니다."
             )
+
+        # 🔒 [중복 로그인 안내 가드] 이미 다른 기기에서 활성 접속 중이고 force != True 인 경우 409 Conflict 표출
+        try:
+            from app.routers.spatial import is_user_currently_active
+            if not req.force and is_user_currently_active(user[1]):
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail=f"⚠️ [중복 로그인 감지 경고]\n계정 '{user[1]}'님은 현재 다른 PC/브라우저에서 로그인 중입니다.\n\n기존 세션을 강제 종료하고 현재 기기에서 새로 로그인하시겠습니까?\n(승인 시 다른 기기의 접속이 즉시 해제됩니다.)"
+                )
+        except HTTPException:
+            raise
+        except Exception as check_err:
+            print(f"[Active Session Check Error] {check_err}")
             
         access_token = create_access_token(data={"sub": user[1]})
         

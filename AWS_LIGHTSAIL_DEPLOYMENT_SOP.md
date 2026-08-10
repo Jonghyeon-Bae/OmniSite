@@ -1,4 +1,4 @@
-# ☁️ OmniSite SDSS AWS Lightsail 클라우드 배포 및 초기 세팅 SOP (v2.0.0)
+# ☁️ OmniSite SDSS AWS Lightsail 클라우드 배포 및 초기 세팅 SOP (v1.0.0-Production)
 
 본 지침서는 **AWS Lightsail 인스턴스(4GB RAM, 2 vCPU, 80GB SSD)** 환경 상에서 OmniSite SDSS 플랫폼을 단 한 번의 오류도 없이 1:1 완벽 복제 배포하고, 우분투 패키지 락 충돌 및 메로리 부족 멈춤을 100% 방지하기 위한 초보자용 표준 운영 절차서(SOP)입니다.
 

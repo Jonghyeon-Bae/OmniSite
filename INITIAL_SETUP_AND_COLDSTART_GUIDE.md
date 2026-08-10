@@ -107,5 +107,5 @@ AWS Lightsail 클라우드 인스턴스(Ubuntu 22.04) 상에서 Docker 및 Docke
 ---
 
 **작성일**: 2026-08-06  
-**시스템 버전**: `v1.5.0-stable-AWS-Certified`  
+**시스템 버전**: `v1.0.0-Production`  
 **관리자**: 스마트시티 SDSS 옴니사이트(OmniSite) 개발팀

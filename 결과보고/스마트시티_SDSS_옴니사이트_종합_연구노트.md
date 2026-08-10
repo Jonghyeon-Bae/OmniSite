@@ -1,4 +1,4 @@
-# [연구노트] 지능형 다목적 스마트시티 입지 선정 및 공공갈등 예측 플랫폼 'OmniSite' 연구개발노트 (v4.3.0-stable)
+# [연구노트] 지능형 다목적 스마트시티 입지 선정 및 공공갈등 예측 플랫폼 'OmniSite' 연구개발노트 (v1.0.0-Production Release)
 
 ## 1. 개요 및 연구 목적
 본 연구노트는 **"지능형 다목적 스마트시티 입지 선정 및 공공갈등 예측 플랫폼 OmniSite"**의 구상 단계부터 개발 및 베타 버전 수립(v1.2.0-beta)까지 조장/PM 배종현과 AI 어시스턴트(Antigravity) 간의 기술 아키텍처 토론, 위기극복 과정, 그리고 핵심 설계 변경 이력을 체계적으로 기록한 문서입니다.
@@ -1446,3 +1446,14 @@
 
 
 
+
+### 77. [오답 77] AWS Lightsail 내도메인.한국 연동 및 Certbot Let's Encrypt SSL HTTPS 무결성 완공
+- **현상 및 요구사항**:
+  - AWS Lightsail 프로덕션 배포 마무리 단계에서 내도메인.한국(무료 DNS 서비스: `.kro.kr`, `.p-e.kr` 등) 연동 방법, 80 포트 점유 충돌(`bind() to 0.0.0.0:80 failed (98)`) 원인 규명, `NXDOMAIN` DNS 미등록 해결 및 Certbot SSL(HTTPS) 구축 표준 절차 문서화 요청.
+- **발생 원인(Root Cause) 및 최종 해법(Takeaway)**:
+  1) **`bind() to 0.0.0.0:80 failed (98)` 원인**: 기존 `docker-compose.production.yml`에서 프론트엔드 도커 컨테이너(`omnisite_prod_fe`)가 호스트 80 포트를 점유하고 있어, Certbot이 Nginx를 부팅할 때 80 포트 중복 충돌을 일으켰음. 호스트 80 포트를 Nginx 전용으로 이관하고 프론트엔드 도커 포트를 `3000:3000`으로 수정하여 충돌을 100% 원천 해결함.
+  2) **`NXDOMAIN` DNS 바인딩 맹점 규명**: 내도메인.한국 콘솔에서 서브도메인 입력란에 `www`만 입력하고 기본 `IP연결(A)` 항목을 비워둘 경우, `omnisite.p-e.kr` (루트 도메인)에 대한 DNS 레코드가 존재하지 않아 Certbot 인증이 중단되는 맹점을 명확히 밝히고 기본 `IP연결(A)` 매핑 표준 가이드를 완공함.
+  3) **Nginx + Certbot HTTPS 프로덕션 연동 완성**:
+     - `/etc/nginx/sites-available/default` 프록시 구성: `location /` ➔ `http://127.0.0.1:3000` (Next.js), `location /api/` ➔ `http://127.0.0.1:8000` (FastAPI).
+     - `sudo certbot --nginx -d omnisite.p-e.kr -d www.omnisite.p-e.kr` 명령어로 Let's Encrypt 90일 자동 갱신 SSL 인증서 100% 정상 발급 완공.
+  4) `python -c "import app.main"` 및 `npm run build` 모듈/터보팩 빌드 **0 Error** 프로덕션 무결성 최종 통과.

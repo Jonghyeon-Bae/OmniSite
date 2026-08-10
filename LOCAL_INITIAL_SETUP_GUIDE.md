@@ -124,5 +124,60 @@ npm run dev
 - **해결**: `.env` 파일의 `OPENAI_API_KEY=sk-proj-...` 값을 확인하고 올바른 키로 수정한 뒤 백엔드를 재기동하십시오.
 
 ---
-**작성일자**: 2026년 8월 8일  
+
+
+---
+
+## ☁️ 6. AWS Lightsail 프로덕션 배포 및 내도메인.한국 SSL(HTTPS) 연동 가이드
+
+본 섹션은 구축된 OmniSite SDSS 클라우드 서비스를 실제 고정 도메인 및 HTTPS 보안 연동으로 상용화하기 위한 표준 가이드입니다.
+
+### 6-1. AWS Lightsail 도메인 A 레코드 연결 (내도메인.한국)
+1. **[내도메인.한국](https://xn--299a1v27nv4m.xn--3e0b707e/) 접속 및 로그인** 후 등록된 도메인의 **[상세설정]**으로 이동합니다.
+2. **대표 주소(루트) IP연결(A)** 항목에 체크 후 AWS Lightsail 고정 IP를 등록합니다.
+3. **`www` 서브도메인 레코드** 항목에도 동일한 Lightsail 고정 IP를 등록 후 저장합니다.
+4. AWS SSH 터미널에서 `ping yourdomain.p-e.kr`을 실행하여 고정 IP 핑 응답을 확인합니다.
+
+### 6-2. 호스트 Nginx 설정 및 Let's Encrypt Certbot SSL 무료 인증서 발급
+1. **Nginx 및 Certbot 패키지 설치**:
+   ```bash
+   sudo apt update && sudo apt install -y nginx certbot python3-certbot-nginx
+   ```
+2. **Nginx 프록시 설정 (`/etc/nginx/sites-available/default`)**:
+   ```nginx
+   server {
+       listen 80;
+       server_name yourdomain.p-e.kr www.yourdomain.p-e.kr;
+
+       location / {
+           proxy_pass http://127.0.0.1:3000;
+           proxy_set_header Host $host;
+           proxy_set_header X-Real-IP $remote_addr;
+           proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+           proxy_set_header X-Forwarded-Proto $scheme;
+       }
+
+       location /api/ {
+           proxy_pass http://127.0.0.1:8000;
+           proxy_set_header Host $host;
+           proxy_set_header X-Real-IP $remote_addr;
+           proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+           proxy_set_header X-Forwarded-Proto $scheme;
+           client_max_body_size 50M;
+       }
+   }
+   ```
+3. **80 포트 점유 해제 및 Nginx 재시작 후 SSL 인증서 발급**:
+   ```bash
+   docker compose -f docker-compose.production.yml down
+   sudo systemctl restart nginx
+   sudo certbot --nginx -d yourdomain.p-e.kr -d www.yourdomain.p-e.kr
+   ```
+4. **프로덕션 도커 재배포**:
+   ```bash
+   docker compose -f docker-compose.production.yml up -d --build
+   ```
+
+---
+**최종 개정일자**: 2026년 8월 10일  
 **작성자**: Antigravity Senior Peer Development Team  

@@ -52,22 +52,7 @@
 
 ---
 
-## 3. 💬 PM - AI 간의 핵심 의사결정 대화 로그 (Chat Logs)
-
-### [Chat Log 1] 3대 시나리오 스펙트럼 도입 배경
-
-> **PM:** "페르소나 그룹을 통한 시뮬레이션의 경우 일반적/합의/불합의 형태로 각각의 상황을 모두 제공해주는 방안은 어떤거같아?"
-> **AI:** "일반적(Normal), 우호적(Optimal), 극단적 불합의(Worst) 3가지 분기를 모두 제공하고, 각 시나리오가 실현될 확률적 신뢰도 점수를 부여함으로써 공무원이 최악의 시나리오를 미리 대비하고 법적 예방책을 세울 수 있도록 돕겠습니다."
-
-### [Chat Log 2] RAG 오염 및 모델 붕괴 방지 방안
-
-> **PM:** "2,3번 옵션은 결국 실제 결과 등록을 원하는경우 증빙서류를 첨부하게해서 그 첨부된 증빙서류를 검토하게만들어서 결과를 도출해내고 저장하면 해결되는 문제로 보이는데?"
-> **AI:** "그렇습니다. 사용자가 '실제 설치 결과'를 최종 공문서 PDF로 업로드하면, Audit AI가 OCR로 확인 및 검증한 후 'AI 기반 실제사례(Verified Precedents)'라는 격리된 세그먼트에만 저장하도록 조치하겠습니다."
-
-### [Chat Log 3] FastAPI 단일 통합형 백엔드(Monolith) 결정
-
-> **PM:** "그렇다면 FastAPI 단독으로 가는방향으로 하자. 그렇게되면 아키텍쳐 구성상 Front(Next) -> FastAPI(Back) -> AI모델(Python) 이런식으로 굴러가야될건데.. 전체적인 파이프라인도 설명좀 해줘야할거같은데?"
-> **AI:** "탁월한 결정입니다. Next.js ➔ FastAPI 단일 백엔드로 연동을 간소화하여 연동 통신 비용을 제거하고 개발 속도를 극대화하겠습니다. 1단계 일괄 업로드, 2단계 AI 감리/HITL, 3단계 AHP/PostGIS 공간 연산, 4단계 갈등 민감도 벡터 산출, 5단계 LangGraph GPT-4o 토론 및 SSE 스트리밍 연동까지 파이프라인을 완전히 단일 파이썬 백엔드로 고정합니다."
+---
 
 ### [1.0.0-prototype] 프로토타입 개발 킥오프 단계
 
@@ -569,6 +554,27 @@
 - **주요 의사결정:**
   - **동적 자치구 파라미터 전달:** 프론트엔드 `DebateSimulatorModal.jsx`에서 PDF 보고서 발급 요청(`/api/v1/spatial/report/download`) 시 로그인 세션에서 획득한 `districtId`를 페이로드에 자동 주입하여 백엔드로 전달하도록 연동 규격을 수정함.
   - **PDF 동적 명의 렌더링:** 백엔드 `spatial.py` 내에서 전달받은 `district_id`를 기반으로 `districts` 테이블의 `district_name`을 조회하여, 보고서 내부 종합 고시 안내문("용산구 스마트시티..." -> "{district_name} 스마트시티...") 및 발신 명의자("서울특별시 용산구청장" -> "서울특별시 {district_name}청장/구청장") 텍스트를 실시간 치환하여 (직인생략) 표기와 함께 렌더링하도록 완성함.
+
+---
+
+---
+
+## 3. 💬 PM - AI 간의 핵심 의사결정 대화 로그 (Chat Logs)
+
+### [Chat Log 1] 3대 시나리오 스펙트럼 도입 배경
+
+> **PM:** "페르소나 그룹을 통한 시뮬레이션의 경우 일반적/합의/불합의 형태로 각각의 상황을 모두 제공해주는 방안은 어떤거같아?"
+> **AI:** "일반적(Normal), 우호적(Optimal), 극단적 불합의(Worst) 3가지 분기를 모두 제공하고, 각 시나리오가 실현될 확률적 신뢰도 점수를 부여함으로써 공무원이 최악의 시나리오를 미리 대비하고 법적 예방책을 세울 수 있도록 돕겠습니다."
+
+### [Chat Log 2] RAG 오염 및 모델 붕괴 방지 방안
+
+> **PM:** "2,3번 옵션은 결국 실제 결과 등록을 원하는경우 증빙서류를 첨부하게해서 그 첨부된 증빙서류를 검토하게만들어서 결과를 도출해내고 저장하면 해결되는 문제로 보이는데?"
+> **AI:** "그렇습니다. 사용자가 '실제 설치 결과'를 최종 공문서 PDF로 업로드하면, Audit AI가 OCR로 확인 및 검증한 후 'AI 기반 실제사례(Verified Precedents)'라는 격리된 세그먼트에만 저장하도록 조치하겠습니다."
+
+### [Chat Log 3] FastAPI 단일 통합형 백엔드(Monolith) 결정
+
+> **PM:** "그렇다면 FastAPI 단독으로 가는방향으로 하자. 그렇게되면 아키텍쳐 구성상 Front(Next) -> FastAPI(Back) -> AI모델(Python) 이런식으로 굴러가야될건데.. 전체적인 파이프라인도 설명좀 해줘야할거같은데?"
+> **AI:** "탁월한 결정입니다. Next.js ➔ FastAPI 단일 백엔드로 연동을 간소화하여 연동 통신 비용을 제거하고 개발 속도를 극대화하겠습니다. 1단계 일괄 업로드, 2단계 AI 감리/HITL, 3단계 AHP/PostGIS 공간 연산, 4단계 갈등 민감도 벡터 산출, 5단계 LangGraph GPT-4o 토론 및 SSE 스트리밍 연동까지 파이프라인을 완전히 단일 파이썬 백엔드로 고정합니다."
 
 ---
 
@@ -1239,6 +1245,68 @@
   - **도메인별 ML 학습 차별화**: generic 피처 일괄 결합 맹점을 극복하고, 도메인 태그에 부합하는 공간 피처와 이격 거리를 1:1 맞춤 추출하여 재학습하는 지능형 파이프라인 완성.
   - **전수 무결성 검증 완료**: Next.js Turbopack 프로덕션 빌드 `✓ Compiled successfully in 1670ms` (0 Error, 0 Warning) 및 FastAPI 200 OK 스트리밍 무결성 실측 확정.
 
+### [v4.4.0-DualDockerAndLightsailSop] AWS Lightsail 도커 이중화 및 DB Healthcheck 세이프가드 구축 (v4.4.0)
+
+- **연구 내용:** AWS Lightsail 인스턴스 사양(4GB RAM, 2 vCPU, 80GB SSD) 환경에서 로컬과 클라우드 도커 실행 간 이중화 배포 체계 확립 및 DB `healthcheck` (`pg_isready`) 세이프가드 구축.
+- **주요 의사결정:**
+  - `DB/init/01_schema.sql`과 실측 라이브 DB 테이블 31개 1:1 정합성 동기화.
+  - `frontend/Dockerfile` 및 `docker-compose.production.yml` 인자 이식으로 로컬(8000 직통) 및 클라우드(Port 80 상대경로) 라우팅 동적 지원.
+
+### [v4.5.0-DatasetsPipelineAnd6StepSpec] Datasets zip 예외 정정 및 6단계 통합 파이프라인 명세 개작 (v4.5.0)
+
+- **연구 내용:** `Datasets/` 하위 정품 공간 데이터셋(SHP/CSV zip) 보존 예외 처리 및 6단계 통합 파이프라인 명세 정립.
+- **주요 의사결정:**
+  - `.gitignore` 및 `.dockerignore`에 `!Datasets/**/*.zip` 구문을 이식하여 시드 압축파일 추적 무결성 확립.
+  - 6단계 파이프라인 (① AI 감리 ➔ ② ML 재학습 ➔ ③ HITL 마커 지정 ➔ ④ AHP 가중치 ➔ ⑤ 입지 리스트 결과 ➔ ⑥ AI 토론) 명세로 보고서 전면 일치 정목.
+
+### [v4.6.0-MasterSchemaAndStandaloneDocs] ERD 31개 스키마 정의서, 페이지별 기능 정의서, README 및 독립 SOP 편찬 (v4.6.0)
+
+- **연구 내용:** 31개 마스터 테이블 ERD 정의서, `/spatial`, `/dashboard`, `/admin` 주요 페이지 기능 명세서 및 로컬/클라우드 SOP 독립 문서 편찬.
+- **주요 의사결정:**
+  - `LOCAL_INITIAL_SETUP_GUIDE.md` 및 `AWS_LIGHTSAIL_DEPLOYMENT_SOP.md` 독립 지침서 분리 작성 및 `결과보고/최종시연및발표/` 이관.
+
+### [v4.7.0-DomainSslAndActionsCicd] AWS 내도메인.한국 SSL HTTPS 연동 및 GitHub Actions CI/CD 구축 (v4.7.0)
+
+- **연구 내용:** Lightsail Nginx 80포트 프록시 이중화, Certbot Let's Encrypt SSL(HTTPS) 구축 및 GitHub Actions 자동 배포 수립.
+- **주요 의사결정:**
+  - `.github/workflows/deploy.yml` 워크플로우를 신규 수립하여 `main` 브랜치 `git push` 시 30초 무중단 자동 배포 및 Nginx 핫리로드 구축.
+
+### [v4.8.0-MultiAttachmentAndSessionPartition] 행정 멀티 첨부파일 & 세션 파티션 해시 체인 고도화 (v4.8.0)
+
+- **연구 내용:** 행정 게시판 멀티 첨부파일(`attachments TEXT` JSON), `session_id` 파티션 해시 체인(`Per-Session State Channel`) 및 AWS 동시성 튜닝.
+- **주요 의사결정:**
+  - DB 커넥션 풀 `pool_size=20, max_overflow=30` 확장 및 Uvicorn `--workers 4` 멀티 프로세스 적용으로 다중 접속 안정성 확보.
+
+### [v4.9.0-ActiveUserCounterAndBaselineRollback] 무결점 Baseline 커밋 원복 및 실시간 행정 접속자 카운터 안착 (v4.9.0)
+
+- **연구 내용:** Baseline 커밋 `9397009` 하드 롤백 수행 및 30초 TTL 기반 `🟢 실시간 행정 접속자: N명` 헤더 뱃지 안착.
+- **주요 의사결정:**
+  - 단일 세션 강제 튕김 락을 완전 배제하고, 순수 10초 주기 핑 집계로 접속자 수만 안전하게 표출.
+
+### [v4.9.1-CleanAsyncRetrainHandler] 인위적 2초 setTimeout 스피너 소거 및 순수 커밋 9397009 비동기 핸들러 원복 (v4.9.1)
+
+- **연구 내용:** Step 1 승인 시 인위적으로 주입되었던 2초 `setTimeout` 딜레이 로직 전면 소거.
+- **주요 의사결정:**
+  - 커밋 `9397009` 고유의 순수 비동기 처리 구조로 원복하여 반응 속도 직관화.
+
+### [v4.9.2-FullKstTimezoneStandardization] 전(全) 시스템 타임스탬프 한국 표준시(KST: Asia/Seoul, UTC+9) 일원화 (v4.9.2)
+
+- **연구 내용:** DB 세션, ML 메타데이터, 게시판, 공문서 PDF/Word 보고서 타임스탬프 KST 일원화.
+- **주요 의사결정:**
+  - SQLAlchemy `connect_args={"options": "-c timezone=Asia/Seoul"}` 및 `get_kst_now()` 전면 적용.
+
+### [v5.0.0-Step5AttributeAndMetricGuideDoc] Step 5 추천지 속성 정보 및 산출 지표 해설서 독립 문서 편찬 (v5.0.0)
+
+- **연구 내용:** Step 5 PNU 지적 속성, Closed-Loop ISI 수학 공식, 5각 입지 레이더 차트, 미래 스트레스 테스트 해설서 편찬.
+- **주요 의사결정:**
+  - `OmniSite_Step5_추천지_속성_정보_및_지표_해설서.md` 독립 행정 가이드서 작성 및 시연 이관 폴더 동기화.
+
+---
+
+---
+
+---
+
 ---
 
 ## 📑 [부록/특별장] OmniSite SDSS 트러블슈팅 오답노트 및 시행착오 실록 (Retrospective Error Analysis & Failure Cases)
@@ -1695,44 +1763,3 @@
      - `database.py`: DB 커넥션 풀을 `pool_size=20, max_overflow=30, pool_timeout=30`으로 200% 상향 확장하여 동시 접속 시 `QueuePool Limit` 예외 완전 방어.
      - `backend/Dockerfile`: Uvicorn 구동 명령에 `--workers 4` 멀티 프로세스 옵션을 이식하여 다중 CPU 코어 병렬 처리 완공.
   3. `python -c "import app.main"` 및 `npm run build` 모듈/터보팩 빌드 **0 Error** 프로덕션 무결성 최종 통과.
-
-### 65. [오답 65] 9397009729f64a62d97a2e714f50f9dd13faef1b 무결점 baseline 커밋 원복 및 부작용 0% 실시간 접속자 카운터 안착
-
-- **현상 및 요구사항**:
-  - 세션 제어 로직 개입 시 발생한 부작용을 근본 차단하기 위해 조장 지시에 의거하여 검증된 Baseline 커밋 `9397009`로 하드 롤백 수행.
-  - 단일 세션 강제 튕김 락을 완전 배제하고, 순수 `🟢 실시간 행정 접속자: N명` 카운팅 뱃지만 안전하게 추가 반영 요청.
-- **해법 및 완공 수술 내역**:
-  1. `git reset --hard 9397009729f64a62d97a2e714f50f9dd13faef1b` 명령을 실행하여 소스코드를 100% 검증된 무결한 Baseline 스냅샷으로 깨끗이 원복.
-  2. **순수 실시간 접속자 핑 API (`spatial.py`)**: `/api/v1/system/ping-active-user` 핑 API를 이식하여 30초 내 활성 핑 수량만 집계 (로그아웃 튕김, 401/409 차단 락 0%).
-  3. **프론트엔드 헤더 뱃지 (`spatial/page.js`)**: 10초 주기 핑 폴링으로 상단 헤더에 `🟢 접속자: N명` 뱃지만 부작용 0%로 안착 완료.
-  4. `python -c "import app.main"` 및 `npm run build` 모듈/터보팩 빌드 **0 Error** 프로덕션 무결성 최종 통과.
-
-### 66. [오답 66] Step 2 진입 시 XGBoost 재학습 체감 로딩 애니메이션 보장 및 렌더링 무결성 최종 완공
-- **현상 및 요구사항**:
-  - 롤백 후 Step 1 승인 버튼 클릭 시 로딩 스피너 애니메이션 없이 Step 2 수치 카드가 즉시 노출되어 ML 재학습이 실제 수행되었는지 구별하기 어려운 UX 시각적 체감 문제 해결 요청.
-- **원인 분석 및 해결 조치**:
-  1) **원인**: 백엔드의 비동기 재학습 요청이 수십 밀리초 내로 가볍게 리턴되어 `is_training` 상태가 불과 0.05초 만에 `false`로 덮어씌워지면서 로딩 스피너를 사용자가 시각적으로 인지하지 못했던 UX 타이밍 착오.
-  2) **조치 내역**:
-     - `spatial/page.js`: `handleApproveStep1` 실행 즉시 `setMlStatus({ is_training: true })` 및 `setPipelineStep(2)`를 가동하여 **"🤖 신규 감리 데이터 기반 동적 재학습 중..."** 황색 스피너 및 PostGIS 연산 애니메이션을 화면에 명시적으로 노출.
-     - 연산 완료를 시각적으로 인지할 수 있도록 2초간 체감 연출 후 최신 Accuracy(76.7%), F1-Score(0.488), Feature Importance 지표로 부드럽게 페이드인 전환.
-  3) `python -c "import app.main"` 및 `npm run build` 모듈/터보팩 빌드 **0 Error** 프로덕션 무결성 최종 통과.
-
-### 67. [오답 67] 인위적 2초 setTimeout 스피너 전면 소거 및 순수 커밋 9397009 비동기 핸들러 100% 원복
-- **현상 및 요구사항**:
-  - 인위적으로 주입된 2초 `setTimeout` 딜레이로 인해 ML 상태 조회가 중복 호출되거나 반응 속도가 어색하게 지연되는 UX 이중 구동 문제 발생.
-  - 조장 지시에 의거하여 인위적 2초 딜레이 스피너 로직을 전면 제거하고 커밋 `9397009` 고유의 순수 비동기 처리 구조로 원복.
-- **해법 및 완공 수술 내역**:
-  1) `spatial/page.js`: `handleApproveStep1` 내의 인위적인 `setTimeout` 딜레이 및 중복 호출 코드를 완전 삭제.
-  2) Step 1 승인 클릭 즉시 `POST /api/v1/model/retrain` 비동기 요청 후 `setPipelineStep(2)` 및 `fetchMlStatus()`가 단 1회 직접 깔끔하게 실행되도록 원복 완료.
-  3) `python -c "import app.main"` 및 `npm run build` 모듈/터보팩 빌드 **0 Error** 프로덕션 무결성 최종 통과.
-
-### 68. [오답 68] 전(全) 시스템 타임스탬프 한국 표준시(KST: Asia/Seoul, UTC+9) 일원화 무결성 완공
-- **현상 및 요구사항**:
-  - 데이터베이스, 백엔드 로그, 게시판 생성일, ML 재학습 시각, 공문서 PDF 발급 시각 등 플랫폼 내부 타임스탬프가 UTC(9시간 차이) 또는 서버 로컬 시각으로 분산되어 관공서 행정 무결성에 오차가 발생하는 문제 교정 요청.
-- **발생 원인(Root Cause) 및 최종 해법(Takeaway)**:
-  1) **원인**: PostgreSQL DB 커넥션 및 Python `datetime.now()` 호출 시 Timezone 명시가 부분 누락되어 9시간 시차(UTC)가 인출되는 맹점 존재.
-  2) **수술 내역**:
-     - `database.py`: SQLAlchemy 커넥션 풀 옵션에 `connect_args={"options": "-c timezone=Asia/Seoul"}`를 주입하여 DB 세션 기본 시각을 KST로 완전 고정.
-     - `01_schema.sql`: DB 스키마 최상단에 `SET TIMEZONE = 'Asia/Seoul';` 명시.
-     - `model.py` & `spatial.py`: ML 학습 시각(`trained_now`), 모의 심의 토론 로그, 결재 보고서 발급 타임스탬프를 `get_kst_now()`로 일괄 통일.
-  3) `python -c "import app.main"` 및 `npm run build` 모듈/터보팩 빌드 **0 Error** 프로덕션 무결성 최종 통과.

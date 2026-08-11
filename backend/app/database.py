@@ -9,7 +9,8 @@ engine = create_engine(
     max_overflow=30,
     pool_timeout=30,
     pool_recycle=3600,
-    pool_pre_ping=True
+    pool_pre_ping=True,
+    connect_args={"options": "-c timezone=Asia/Seoul"}
 )
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

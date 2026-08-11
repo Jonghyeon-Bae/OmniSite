@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import text
 from app.database import get_db, SessionLocal, engine
 from app.utils.auth import get_current_admin, get_current_user, get_optional_current_user
+from app.utils.helpers import get_kst_now
 from app.routers.spatial import model_registry, registry_path
 
 # 프로젝트 백엔드 루트 디렉토리 설정
@@ -437,7 +438,7 @@ def background_model_train(domain="city_feature"):
         # 8-1. 메타데이터 JSON 파일 영구 저장 (레지스트리 감사 대시보드 연동용)
         meta_filename = f"{domain}_v1_meta.json"
         meta_path = os.path.join(registry_path, meta_filename)
-        trained_now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        trained_now = get_kst_now().strftime("%Y-%m-%d %H:%M:%S")
         meta_info = {
             "domain": domain,
             "model_filename": model_filename,

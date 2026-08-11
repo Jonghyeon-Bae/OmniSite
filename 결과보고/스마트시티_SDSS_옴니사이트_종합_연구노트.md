@@ -1725,3 +1725,14 @@
   1) `spatial/page.js`: `handleApproveStep1` 내의 인위적인 `setTimeout` 딜레이 및 중복 호출 코드를 완전 삭제.
   2) Step 1 승인 클릭 즉시 `POST /api/v1/model/retrain` 비동기 요청 후 `setPipelineStep(2)` 및 `fetchMlStatus()`가 단 1회 직접 깔끔하게 실행되도록 원복 완료.
   3) `python -c "import app.main"` 및 `npm run build` 모듈/터보팩 빌드 **0 Error** 프로덕션 무결성 최종 통과.
+
+### 68. [오답 68] 전(全) 시스템 타임스탬프 한국 표준시(KST: Asia/Seoul, UTC+9) 일원화 무결성 완공
+- **현상 및 요구사항**:
+  - 데이터베이스, 백엔드 로그, 게시판 생성일, ML 재학습 시각, 공문서 PDF 발급 시각 등 플랫폼 내부 타임스탬프가 UTC(9시간 차이) 또는 서버 로컬 시각으로 분산되어 관공서 행정 무결성에 오차가 발생하는 문제 교정 요청.
+- **발생 원인(Root Cause) 및 최종 해법(Takeaway)**:
+  1) **원인**: PostgreSQL DB 커넥션 및 Python `datetime.now()` 호출 시 Timezone 명시가 부분 누락되어 9시간 시차(UTC)가 인출되는 맹점 존재.
+  2) **수술 내역**:
+     - `database.py`: SQLAlchemy 커넥션 풀 옵션에 `connect_args={"options": "-c timezone=Asia/Seoul"}`를 주입하여 DB 세션 기본 시각을 KST로 완전 고정.
+     - `01_schema.sql`: DB 스키마 최상단에 `SET TIMEZONE = 'Asia/Seoul';` 명시.
+     - `model.py` & `spatial.py`: ML 학습 시각(`trained_now`), 모의 심의 토론 로그, 결재 보고서 발급 타임스탬프를 `get_kst_now()`로 일괄 통일.
+  3) `python -c "import app.main"` 및 `npm run build` 모듈/터보팩 빌드 **0 Error** 프로덕션 무결성 최종 통과.

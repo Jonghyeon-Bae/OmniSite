@@ -1,3 +1,6 @@
+-- PostgreSQL KST (Asia/Seoul: UTC+9) 기본 시각 고정
+SET TIMEZONE = 'Asia/Seoul';
+
 -- Extensions 활성화
 CREATE EXTENSION IF NOT EXISTS postgis;
 CREATE EXTENSION IF NOT EXISTS vector;

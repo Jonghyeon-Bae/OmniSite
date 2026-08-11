@@ -1853,7 +1853,7 @@ def save_debate_log_to_file(req, full_text):
         "facility_type": req.facility_type,
         "intensity_level": req.intensity_level,
         "ahp_weights": req.ahp_weights,
-        "timestamp": datetime.now().isoformat(),
+        "timestamp": get_kst_now().isoformat(),
         "debate_logs": logs,
         "raw_text": full_text
     }
@@ -2814,7 +2814,7 @@ async def download_report_docx(req: ReportDownloadRequest, db: Session = Depends
         # 부제목 / 발급 정보
         p_sub = doc.add_paragraph()
         p_sub.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        run_sub = p_sub.add_run(f"문서번호: OMNISITE-REPORT-{datetime.datetime.now().strftime('%Y%m%d%H%M')} | 소관지자체: {district_name} 스마트도시과")
+        run_sub = p_sub.add_run(f"문서번호: OMNISITE-REPORT-{get_kst_now().strftime('%Y%m%d%H%M')} | 소관지자체: {district_name} 스마트도시과")
         set_docx_font(run_sub, font_name="맑은 고딕", size_pt=9, color_rgb=RGBColor(100, 116, 139))
         
         doc.add_paragraph() # Spacer
@@ -2928,7 +2928,7 @@ async def download_report_docx(req: ReportDownloadRequest, db: Session = Depends
         buffer.seek(0)
 
         import urllib.parse
-        ascii_filename = f"OmniSite_Report_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.docx"
+        ascii_filename = f"OmniSite_Report_{get_kst_now().strftime('%Y%m%d_%H%M%S')}.docx"
         jibun_clean = (req.candidate_jibun or '용산구').replace(' ', '_')
         utf8_filename = urllib.parse.quote(f"OmniSite_모의심의보고서_{jibun_clean}.docx")
         

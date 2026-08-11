@@ -15,8 +15,11 @@ export const metadata = {
   title: "OmniSite SDSS - 지자체 공간 의사결정지원시스템 v1.0.0-Final-Release",
   description: "지자체 공공 인프라 입지 선정 및 공공갈등 시뮬레이션 B2G 스마트시티 플랫폼",
   icons: {
-    icon: "/icon.png",
-    shortcut: "/icon.png",
+    icon: [
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/icon.png", type: "image/png" }
+    ],
+    shortcut: "/favicon.ico",
     apple: "/omnisite_logo.png",
   },
 };

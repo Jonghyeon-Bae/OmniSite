@@ -419,7 +419,7 @@ def background_model_train(domain="city_feature"):
         # 6. Evaluation
         y_pred = pipeline.predict(X_test)
         acc = float(accuracy_score(y_test, y_pred))
-        f1 = float(f1_score(y_test, y_pred))
+        f1 = float(f1_score(y_test, y_pred, average='weighted', zero_division=0))
         
         # 7. Extract Feature Importance
         classifier = pipeline.named_steps['classifier']

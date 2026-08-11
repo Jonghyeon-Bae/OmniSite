@@ -12,19 +12,19 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata = {
-  title: "OmniSite",
-  description: "Spatial Intelligence Platform",
+  title: "OmniSite SDSS - 지자체 공간 의사결정지원시스템 v1.0.0-Final-Release",
+  description: "지자체 공공 인프라 입지 선정 및 공공갈등 시뮬레이션 B2G 스마트시티 플랫폼",
   icons: {
-    icon: "/favicon.ico",
-    "apple-touch-icon": "/apple-touch-icon.png",
-    "mask-icon": "/mask-icon.svg",
+    icon: "/icon.png",
+    shortcut: "/icon.png",
+    apple: "/omnisite_logo.png",
   },
 };
 
 export default function RootLayout({ children }) {
   return (
     <html
-      lang="en"
+      lang="ko"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">{children}</body>

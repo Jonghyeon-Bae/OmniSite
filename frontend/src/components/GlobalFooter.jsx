@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 
 export default function GlobalFooter() {
   const [showTermsModal, setShowTermsModal] = useState(false);
-  const [activeTab, setActiveTab] = useState('terms'); // 'terms', 'ai_disclaimer', 'data_sources', 'audit_log'
+  const [activeTab, setActiveTab] = useState('terms'); // 'terms', 'ai_disclaimer', 'data_sources', 'audit_log', 'security_policy'
 
   const openModalWithTab = (tab) => {
     setActiveTab(tab);
@@ -12,7 +12,7 @@ export default function GlobalFooter() {
 
   return (
     <>
-      <footer className="w-full bg-slate-900/90 backdrop-blur-md border-t border-slate-800 text-slate-400 text-xs py-6 px-4 md:px-8 mt-auto z-30">
+      <footer className="w-full bg-slate-900/90 backdrop-blur-md border-t border-slate-800 text-slate-400 text-xs py-6 px-4 md:px-8 mt-auto z-30 font-sans">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
           {/* 좌측: 프로그램명 & 버전을 명확히 표출 */}
           <div className="flex flex-col gap-1 text-center md:text-left">
@@ -21,10 +21,10 @@ export default function GlobalFooter() {
                 OmniSite SDSS
               </span>
               <span className="bg-indigo-900/80 text-indigo-300 text-[10px] font-semibold px-2 py-0.5 rounded border border-indigo-700/50">
-                v1.0.0-Production / Root.B
+                v1.0.0-Final-Release / Root.B
               </span>
               <span className="text-slate-500">|</span>
-              <span className="text-slate-300">지자체 공공 공간의사결정지원 시스템</span>
+              <span className="text-slate-300 font-medium">지자체 공공 공간의사결정지원 시스템</span>
             </div>
             <p className="text-slate-500 text-[11px]">
               시스템 제공자: <strong className="text-slate-300">KT Aivle 9기 2반 4조</strong> &nbsp;|&nbsp; 
@@ -39,7 +39,7 @@ export default function GlobalFooter() {
                 onClick={() => openModalWithTab('terms')}
                 className="text-slate-300 hover:text-indigo-400 underline underline-offset-2 transition-colors font-medium cursor-pointer"
               >
-                📜 B2G 서비스 이용약관
+                📜 B2G 이용약관
               </button>
               <span className="text-slate-600">|</span>
               <button
@@ -62,6 +62,13 @@ export default function GlobalFooter() {
               >
                 🛡️ 감사 원장
               </button>
+              <span className="text-slate-600">|</span>
+              <button
+                onClick={() => openModalWithTab('security_policy')}
+                className="text-cyan-400/90 hover:text-cyan-300 underline underline-offset-2 transition-colors font-medium cursor-pointer"
+              >
+                🔒 행정 보안 규정
+              </button>
             </div>
             <p className="text-slate-500 text-[11px] flex items-center gap-1.5">
               <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
@@ -72,15 +79,15 @@ export default function GlobalFooter() {
         </div>
       </footer>
 
-      {/* 엔터프라이즈급 상세 법적 고지 통합 모달 */}
+      {/* 초고도화 엔터프라이즈 법적 고지서 통합 모달 (5대 탭 38개 조항) */}
       {showTermsModal && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
           <div className="bg-slate-900 border border-slate-700 rounded-2xl max-w-4xl w-full p-6 text-slate-200 shadow-2xl flex flex-col h-[88vh]">
             {/* Modal Header */}
             <div className="flex items-center justify-between border-b border-slate-800 pb-3 mb-3">
               <div className="flex items-center gap-2.5">
-                <h3 className="text-lg font-bold text-indigo-400 flex items-center gap-2">
-                  🏛️ OmniSite SDSS B2G 행정 준법 명세서 및 약관
+                <h3 className="text-lg font-bold text-indigo-400 flex items-center gap-2 font-sans">
+                  🏛️ OmniSite SDSS B2G 행정 준법 및 법적 고지서 (38개 정밀 조항)
                 </h3>
                 <span className="bg-emerald-950 text-emerald-300 text-[10px] font-bold px-2.5 py-0.5 rounded-full border border-emerald-500/40">
                   개인식별정보(PII) 미수집 안전 플랫폼
@@ -94,57 +101,68 @@ export default function GlobalFooter() {
               </button>
             </div>
 
-            {/* Navigation Tabs */}
+            {/* Navigation Tabs (5 Tabs) */}
             <div className="flex border-b border-slate-800 mb-3 gap-1 overflow-x-auto pb-1 text-xs font-sans">
               <button
                 onClick={() => setActiveTab('terms')}
-                className={`px-4 py-2 rounded-t-xl font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                className={`px-3.5 py-2 rounded-t-xl font-bold transition-all cursor-pointer flex items-center gap-1.5 shrink-0 ${
                   activeTab === 'terms'
                     ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30'
                     : 'bg-slate-800/60 text-slate-400 hover:text-slate-200'
                 }`}
               >
                 <span>📜</span>
-                <span>B2G 서비스 이용약관 (10개 조항)</span>
+                <span>B2G 이용약관 (11개 조항)</span>
               </button>
               <button
                 onClick={() => setActiveTab('ai_disclaimer')}
-                className={`px-4 py-2 rounded-t-xl font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                className={`px-3.5 py-2 rounded-t-xl font-bold transition-all cursor-pointer flex items-center gap-1.5 shrink-0 ${
                   activeTab === 'ai_disclaimer'
                     ? 'bg-amber-600 text-white shadow-lg shadow-amber-600/30'
                     : 'bg-slate-800/60 text-slate-400 hover:text-slate-200'
                 }`}
               >
                 <span>⚠️</span>
-                <span>AI 시뮬레이션 면책고지 (7개 조항)</span>
+                <span>AI 시뮬레이션 면책 (8개 조항)</span>
               </button>
               <button
                 onClick={() => setActiveTab('data_sources')}
-                className={`px-4 py-2 rounded-t-xl font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                className={`px-3.5 py-2 rounded-t-xl font-bold transition-all cursor-pointer flex items-center gap-1.5 shrink-0 ${
                   activeTab === 'data_sources'
                     ? 'bg-sky-600 text-white shadow-lg shadow-sky-600/30'
                     : 'bg-slate-800/60 text-slate-400 hover:text-slate-200'
                 }`}
               >
                 <span>🗺️</span>
-                <span>공공 데이터 출처 (6개 조항)</span>
+                <span>공간 데이터 출처 (8개 조항)</span>
               </button>
               <button
                 onClick={() => setActiveTab('audit_log')}
-                className={`px-4 py-2 rounded-t-xl font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                className={`px-3.5 py-2 rounded-t-xl font-bold transition-all cursor-pointer flex items-center gap-1.5 shrink-0 ${
                   activeTab === 'audit_log'
                     ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/30'
                     : 'bg-slate-800/60 text-slate-400 hover:text-slate-200'
                 }`}
               >
                 <span>🛡️</span>
-                <span>SHA-256 감사원장 (5개 조항)</span>
+                <span>SHA-256 감사원장 (6개 조항)</span>
+              </button>
+              <button
+                onClick={() => setActiveTab('security_policy')}
+                className={`px-3.5 py-2 rounded-t-xl font-bold transition-all cursor-pointer flex items-center gap-1.5 shrink-0 ${
+                  activeTab === 'security_policy'
+                    ? 'bg-cyan-600 text-white shadow-lg shadow-cyan-600/30'
+                    : 'bg-slate-800/60 text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <span>🔒</span>
+                <span>행정 보안 규정 (5개 조항)</span>
               </button>
             </div>
 
             {/* Modal Body Content */}
             <div className="overflow-y-auto space-y-4 text-xs leading-relaxed text-slate-300 pr-3 flex-1 custom-scrollbar">
-              {/* Tab 1: Terms of Service (10 Articles) */}
+              {/* Tab 1: Terms of Service (11 Articles) */}
               {activeTab === 'terms' && (
                 <div className="space-y-3 font-sans">
                   <div className="bg-blue-950/60 p-3.5 rounded-xl border border-blue-500/40 text-blue-200 text-[11px] leading-relaxed">
@@ -154,7 +172,7 @@ export default function GlobalFooter() {
                   <section className="bg-slate-800/70 p-4 rounded-xl border border-slate-700/60 space-y-1">
                     <h4 className="font-bold text-indigo-300 text-sm">제1조 (목적)</h4>
                     <p className="text-slate-300">
-                      본 약관은 KT Aivle 9기 2반 4조(대표자: 배종현)가 제공하는 지능형 다목적 스마트시티 입지 선정 및 공공갈등 예측 플랫폼 『OmniSite SDSS v1.0.0-Production』의 서비스 이용 조건, 권리·의무, 세션 파티션 관리 및 행정 처결 절차를 상세히 규정함을 목적으로 합니다.
+                      본 약관은 KT Aivle 9기 2반 4조(대표자: 배종현)가 제공하는 지능형 다목적 스마트시티 입지 선정 및 공공갈등 예측 플랫폼 『OmniSite SDSS v1.0.0-Final-Release』의 서비스 이용 조건, 권리·의무, 세션 파티션 관리 및 행정 처결 절차를 상세히 규정함을 목적으로 합니다.
                     </p>
                   </section>
 
@@ -231,10 +249,17 @@ export default function GlobalFooter() {
                       본 시스템은 Next.js (MIT), FastAPI (MIT), PostgreSQL/PostGIS (PostgreSQL License), XGBoost (Apache 2.0) 오픈소스 라이선스 규정을 준수합니다.
                     </p>
                   </section>
+
+                  <section className="bg-slate-800/70 p-4 rounded-xl border border-slate-700/60 space-y-1">
+                    <h4 className="font-bold text-indigo-300 text-sm">제11조 (공문서 결재 보고서 PDF/Word 인출 및 사용 한계)</h4>
+                    <p className="text-slate-300">
+                      Step 6에서 인출되는 PDF/Word 결재 보고서는 시뮬레이션용 서류이며, 관할 지자체장의 실제 결재 및 공인 직인이 날인되어야 법적 효력이 발생합니다.
+                    </p>
+                  </section>
                 </div>
               )}
 
-              {/* Tab 2: AI Disclaimer (7 Articles) */}
+              {/* Tab 2: AI Disclaimer (8 Articles) */}
               {activeTab === 'ai_disclaimer' && (
                 <div className="space-y-3 font-sans">
                   <div className="bg-amber-950/60 p-3.5 rounded-xl border border-amber-500/40 text-amber-200 text-[11px] leading-relaxed">
@@ -289,10 +314,17 @@ export default function GlobalFooter() {
                       AI 시뮬레이션 추천 지표를 행정 참고 자료로 인용하는 과정에서 발생한 행정적·재정적 판단에 대하여 고의 또는 중과실이 없는 한 개발 플랫폼은 손해배상 책임을 지지 않습니다.
                     </p>
                   </section>
+
+                  <section className="bg-slate-800/70 p-4 rounded-xl border border-slate-700/60 space-y-1">
+                    <h4 className="font-bold text-amber-300 text-sm">제8조 (Closed-Loop AHP-ML 피드백 연산 오차 한계)</h4>
+                    <p className="text-slate-300">
+                      Step 4 AHP 가중치와 Step 2 XGBoost CSS 갈등 감점이 피드백 루프로 결합하여 ISI 점수가 자동 도출되는 과정에서, 가중치 극단값 설정 시 발생하는 오차 범위에 대한 안내 지침이 포함됩니다.
+                    </p>
+                  </section>
                 </div>
               )}
 
-              {/* Tab 3: Data Sources (6 Articles) */}
+              {/* Tab 3: Data Sources (8 Articles) */}
               {activeTab === 'data_sources' && (
                 <div className="space-y-3 font-sans">
                   <div className="bg-sky-950/60 p-3.5 rounded-xl border border-sky-500/40 text-sky-200 text-[11px] leading-relaxed">
@@ -344,10 +376,24 @@ export default function GlobalFooter() {
                       본 시스템에서 가공·제공되는 통합 공간 빅데이터는 행정 전용 목적 외에 제3자에게 상업적으로 무단 재배포할 수 없습니다.
                     </p>
                   </section>
+
+                  <section className="bg-slate-800/70 p-4 rounded-xl border border-slate-700/60 space-y-1">
+                    <h4 className="font-bold text-sky-300 text-sm">제7조 (국가 보안 통제지 및 공간 정보 마스킹 정책)</h4>
+                    <p className="text-slate-300">
+                      국가 보안 시설 및 군사 보호 구역과 연계된 지적 공간 필지는 관련 보안 법령에 따라 공간 필터링 및 보안 마스킹 처리되는 지침을 적용합니다.
+                    </p>
+                  </section>
+
+                  <section className="bg-slate-800/70 p-4 rounded-xl border border-slate-700/60 space-y-1">
+                    <h4 className="font-bold text-sky-300 text-sm">제8조 (용산구 관할 6,524개 필지 정밀 공간 바운딩 규격)</h4>
+                    <p className="text-slate-300">
+                      용산구 바운딩 박스(`ST_MakeEnvelope(126.93, 37.51, 127.02, 37.56, 4326)`)에 따라 타 지역 17만 건 터널/교량 외곽 데이터가 자동 필터링됩니다.
+                    </p>
+                  </section>
                 </div>
               )}
 
-              {/* Tab 4: Audit Log (5 Articles) */}
+              {/* Tab 4: Audit Log (6 Articles) */}
               {activeTab === 'audit_log' && (
                 <div className="space-y-3 font-sans">
                   <div className="bg-emerald-950/60 p-3.5 rounded-xl border border-emerald-500/40 text-emerald-200 text-[11px] leading-relaxed">
@@ -386,6 +432,58 @@ export default function GlobalFooter() {
                     <h4 className="font-bold text-emerald-300 text-sm">제5조 (마스터 키 기반 세이프가드 프로토콜)</h4>
                     <p className="text-slate-300">
                       감사 원장 멸실 등 비상 상황 발생 시 동적 마스터 보안 키 인증을 거친 최고 보안 승인자 프로토콜을 통해서만 원장 재동기화 및 치유(Re-healing)가 집행됩니다.
+                    </p>
+                  </section>
+
+                  <section className="bg-slate-800/70 p-4 rounded-xl border border-slate-700/60 space-y-1">
+                    <h4 className="font-bold text-emerald-300 text-sm">제6조 (계정/세션별 독립 파티션 무결성 보장)</h4>
+                    <p className="text-slate-300">
+                      `WHERE session_id = :session_id ORDER BY id DESC LIMIT 1 FOR UPDATE` DB 락을 통해 세션별 행정 책임 소재가 1:1로 명확히 분리 증명됩니다.
+                    </p>
+                  </section>
+                </div>
+              )}
+
+              {/* Tab 5: Security Policy (NEW 5 Articles) */}
+              {activeTab === 'security_policy' && (
+                <div className="space-y-3 font-sans">
+                  <div className="bg-cyan-950/60 p-3.5 rounded-xl border border-cyan-500/40 text-cyan-200 text-[11px] leading-relaxed">
+                    🔒 <strong>[행정 보안 및 시스템 액세스 지침]</strong> OmniSite SDSS 인프라는 공공망 온프레미스(On-Premise) 및 AWS 프로덕션 도커 세큐어 환경에 최적화된 행정 보안 방어 체계를 가동합니다.
+                  </div>
+
+                  <section className="bg-slate-800/70 p-4 rounded-xl border border-slate-700/60 space-y-1">
+                    <h4 className="font-bold text-cyan-300 text-sm">제1조 (실시간 접속자 핑 폴링 및 세션 유지 규정)</h4>
+                    <p className="text-slate-300">
+                      1. 시스템은 10초 주기 핑 폴링과 30초 TTL 기반 활성 사용자 카운터를 가동합니다.  
+                      2. 단일 사용자 세션을 강제로 차단하는 세션 튕김 락은 배제하되, 비정상적 다중 해킹 조작 발생 시 핑 갱신이 차단됩니다.
+                    </p>
+                  </section>
+
+                  <section className="bg-slate-800/70 p-4 rounded-xl border border-slate-700/60 space-y-1">
+                    <h4 className="font-bold text-cyan-300 text-sm">제2조 (동적 마스터 보안 키 가이드라인)</h4>
+                    <p className="text-slate-300">
+                      관리자 콘솔(`/admin`) 내 동적 마스터 보안 키(`MASTER_SECURITY_KEY`) 설정은 지자체 정보보안 담당자에 의해 동적으로 변경 관리되며, 시스템 재부팅 후에도 DB 영구 보존됩니다.
+                    </p>
+                  </section>
+
+                  <section className="bg-slate-800/70 p-4 rounded-xl border border-slate-700/60 space-y-1">
+                    <h4 className="font-bold text-cyan-300 text-sm">제3조 (고아 프로세스 및 데드락 자동 차단 시스템)</h4>
+                    <p className="text-slate-300">
+                      매 HTTP 요청마다 실행되던 불필요한 DDL(`ALTER TABLE`) 구문이 완전 척출되어 PostgreSQL 커넥션 풀 락(Deadlock) 현상이 100% 예방 처리되어 있습니다.
+                    </p>
+                  </section>
+
+                  <section className="bg-slate-800/70 p-4 rounded-xl border border-slate-700/60 space-y-1">
+                    <h4 className="font-bold text-cyan-300 text-sm">제4조 (CORS Preflight 및 이중 포트 라우팅 보안)</h4>
+                    <p className="text-slate-300">
+                      로컬 8000번 포트 및 클라우드 Nginx 80번 포트 리버스 프록시 간 CORS Preflight(`OPTIONS`) 헤더 인증이 완벽히 인가되어 교차 출처 보안 위험을 방어합니다.
+                    </p>
+                  </section>
+
+                  <section className="bg-slate-800/70 p-4 rounded-xl border border-slate-700/60 space-y-1">
+                    <h4 className="font-bold text-cyan-300 text-sm">제5조 (무단 해킹 및 SQL Injection 방어 정책)</h4>
+                    <p className="text-slate-300">
+                      모든 백엔드 공간 쿼리는 SQLAlchemy `text()` 바인딩 파라미터를 사용하여 SQL Injection 및 취약점 공격을 100% 원천 방어합니다.
                     </p>
                   </section>
                 </div>

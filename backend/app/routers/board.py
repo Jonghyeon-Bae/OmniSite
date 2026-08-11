@@ -241,7 +241,7 @@ async def get_notices(db: Session = Depends(get_db)):
             db.execute(text("""
                 INSERT INTO system_notices (title, content, is_pinned, author)
                 VALUES 
-                ('[공지] OmniSite SDSS v1.0.0-Production Release 시스템 릴리즈 안내', '스마트시티 공공 입지분석 지원 플랫폼 OmniSite SDSS v1.0.0-Production Release 버전이 가동되었습니다. 100%% 무편향 멀티 도메인 수술 및 교량/터널 배제 공간 연산이 탑재되어 있습니다.', true, '시스템 관리자'),
+                ('[공지] OmniSite SDSS v1.0.0-Final-Release 시스템 릴리즈 안내', '스마트시티 공공 입지분석 지원 플랫폼 OmniSite SDSS v1.0.0-Final-Release 버전이 가동되었습니다. 100%% 무편향 멀티 도메인 수술 및 교량/터널 배제 공간 연산이 탑재되어 있습니다.', true, '시스템 관리자'),
                 ('[안내] 2026년 5월 용산구 최신 유동인구 및 상가 업소 데이터셋 반영 완료', '용산구 관내 6,524개 지적 필지, 6,509개 상가, 338개 버스정류장, 76개 지하철 역사 및 월별 승하차 통계 데이터셋이 데이터베이스에 정밀 갱신되었습니다.', false, '시스템 관리자'),
                 ('[안내] 공문서 규격 PDF 결재 보고서 동적 발행 기능 연동 안내', '분석 완료 후 우측 상단 결재란과 구청장 발신 명의가 도출되는 A4 PDF 공문서를 다운로드하여 관공서 내부 결재용으로 즉시 사용하실 수 있습니다.', false, '시스템 관리자')
             """))

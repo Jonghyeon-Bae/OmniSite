@@ -377,7 +377,7 @@ export default function BoardModal({ show, onClose, apiFetch, showToast }) {
               <div className="flex items-center gap-2">
                 <h2 className="text-2xl font-extrabold text-slate-100 tracking-tight">OmniSite 행정 통합 게시판</h2>
                 <span className="bg-indigo-900/80 text-indigo-300 text-[10px] font-bold px-2.5 py-0.5 rounded-full border border-indigo-700/60">
-                  v1.0.0-Production Public SDSS Suite
+                  v1.0.0-Final-Release Public SDSS Suite
                 </span>
               </div>
               <p className="text-xs text-slate-400 mt-0.5">

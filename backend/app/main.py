@@ -30,7 +30,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="OmniSite SDSS API Backend",
     description="지능형 다목적 스마트시티 입지 선정 및 공공갈등 예측 플랫폼 API",
-    version="1.0.0-Production",
+    version="1.0.0-Final-Release",
     lifespan=lifespan
 )
 
@@ -154,7 +154,7 @@ async def health_check(db: Session = Depends(get_db)):
 
     return {
         "status": "alive",
-        "version": "1.0.0-Production",
+        "version": "1.0.0-Final-Release",
         "database": db_status
     }
 

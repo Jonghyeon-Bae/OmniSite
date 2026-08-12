@@ -1916,7 +1916,7 @@ export default function Home() {
                 onClick={() => setShowBoardModal(true)}
                 className="text-xs bg-indigo-950/45 hover:bg-indigo-900/60 border border-indigo-500/30 text-indigo-300 px-3.5 py-1.5 rounded-lg font-semibold cursor-pointer transition-all flex items-center gap-1.5"
               >
-                📋 행정 게시판
+                📋 행정 게시판  
               </button>
               <button 
                 onClick={() => setShowLoginModal(true)}

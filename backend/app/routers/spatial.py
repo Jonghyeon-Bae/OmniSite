@@ -3549,7 +3549,11 @@ async def db_check(db: Session = Depends(get_db)):
             "restricted_zones": get_count("restricted_zones"),
             "commercial_shops": get_count("commercial_shops"),
             "transit_stations": get_count("transit_stations"),
-            "illegal_dumping_zones": get_count("illegal_dumping_zones")
+            "illegal_dumping_zones": get_count("illegal_dumping_zones"),
+            "registered_domain_tags": get_count("registered_domain_tags"),
+            "district_regulations": get_count("district_regulations"),
+            "pipeline_execution_logs": get_count("pipeline_execution_logs"),
+            "audit_logs": get_count("pipeline_execution_logs")
         }
 
         # Datasets 폴더 존재 여부 확인 (컨테이너/로컬 다중 경로 탐색)
@@ -3568,3 +3572,37 @@ async def db_check(db: Session = Depends(get_db)):
         }
     except Exception as e:
         return {"status": "error", "detail": str(e)}
+
+@router.get("/spatial/db-table-preview/{table_name}")
+async def db_table_preview(table_name: str, db: Session = Depends(get_db)):
+    """[v1.0.0-Final-Release] PostGIS DB 마스터 테이블 실시간 5개 샘플 미리보기 API"""
+    allowed_tables = {
+        "cadastral_lands": "SELECT id, pnu, jibun, land_use_code, ownership_type, is_restricted FROM cadastral_lands LIMIT 5",
+        "commercial_shops": "SELECT id, shop_name, category_code, category_name FROM commercial_shops LIMIT 5",
+        "restricted_zones": "SELECT id, zone_type, zone_name, address, registered_at FROM restricted_zones LIMIT 5",
+        "registered_domain_tags": "SELECT id, tag_name, tag_description FROM registered_domain_tags LIMIT 5",
+        "district_regulations": "SELECT id, regulation_title, clause_number, effective_date, created_at FROM district_regulations ORDER BY id LIMIT 5",
+        "pipeline_execution_logs": "SELECT id, action_type, current_hash, session_id, step_number, created_at FROM pipeline_execution_logs ORDER BY id DESC LIMIT 5",
+        "audit_logs": "SELECT id, action_type, current_hash, session_id, step_number, created_at FROM pipeline_execution_logs ORDER BY id DESC LIMIT 5"
+    }
+    
+    if table_name not in allowed_tables:
+        raise HTTPException(status_code=400, detail="조회 불가능한 테이블명입니다.")
+        
+    try:
+        query = text(allowed_tables[table_name])
+        result = db.execute(query)
+        columns = result.keys()
+        rows = [dict(zip(columns, row)) for row in result.fetchall()]
+        
+        # Serialize datetime
+        for row in rows:
+            for k, v in row.items():
+                if hasattr(v, "isoformat"):
+                    row[k] = v.isoformat()
+                    
+        return {"status": "success", "table_name": table_name, "sample_rows": rows}
+    except Exception as e:
+        db.rollback()
+        return {"status": "error", "detail": str(e)}
+

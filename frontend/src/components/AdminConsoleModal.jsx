@@ -86,6 +86,48 @@ export default function AdminConsoleModal({
   // 데이터 규격 안내 모달 상태
   const [showDataGuideModal, setShowDataGuideModal] = useState(false);
 
+  // [v1.0.0-Final-Release] PostGIS DB 마스터 테이블 미리보기 5개 샘플 및 카운트 로드
+  const [previewTable, setPreviewTable] = useState('cadastral_lands');
+  const [previewRows, setPreviewRows] = useState([]);
+  const [dbCounts, setDbCounts] = useState({});
+  const [isPreviewLoading, setIsPreviewLoading] = useState(false);
+
+  const fetchDbCounts = async () => {
+    try {
+      const res = await apiFetch('/api/v1/spatial/db-check');
+      if (res.ok) {
+        const data = await res.json();
+        setDbCounts(data.counts || {});
+      }
+    } catch (err) {
+      console.error('DB 카운트 조회 실패:', err);
+    }
+  };
+
+  const fetchTablePreview = async (tableName) => {
+    setIsPreviewLoading(true);
+    try {
+      const res = await apiFetch(`/api/v1/spatial/db-table-preview/${tableName}`);
+      if (res.ok) {
+        const data = await res.json();
+        setPreviewRows(data.sample_rows || []);
+      } else {
+        setPreviewRows([]);
+      }
+    } catch (err) {
+      setPreviewRows([]);
+    } finally {
+      setIsPreviewLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (show) {
+      fetchDbCounts();
+      fetchTablePreview(previewTable);
+    }
+  }, [show, previewTable, adminTab]);
+
   // 콜드스타트 위저드 및 ZIP 파일 상태
   const [coldStartFile, setColdStartFile] = useState(null);
   const [isColdStarting, setIsColdStarting] = useState(false);
@@ -760,51 +802,77 @@ export default function AdminConsoleModal({
               />
             </div>
 
-            {/* 기능 1: 공간/행정 데이터 벌크 적재 */}
-            <div className="flex flex-col gap-2 border-t border-slate-800 pt-3">
+            {/* [v1.0.0-Final-Release] 공간/행정 DB 적재 현황 및 투명 실시간 데이터 검증 미리보기 */}
+            <div className="flex flex-col gap-3 border-t border-slate-800 pt-3">
               <div className="flex items-center justify-between">
                 <label className="text-[11px] font-bold text-slate-200 flex items-center gap-2">
-                  <span>🚀 원천 데이터 벌크 적재 (PostGIS CSV/Shapefile Seed)</span>
-                  <button
-                    type="button"
-                    onClick={() => setShowDataGuideModal(true)}
-                    className="px-2.5 py-0.5 text-[10px] font-bold bg-amber-500/15 hover:bg-amber-500/30 text-amber-400 border border-amber-500/40 rounded-full transition-all cursor-pointer flex items-center gap-1 shadow-sm hover:scale-105"
-                  >
-                    <span>💡 업로드 데이터 규격가이드</span>
-                  </button>
+                  <span>📊 PostGIS 공간 DB 적재 현황 및 실시간 샘플 데이터 검증</span>
+                  <span className="px-2 py-0.5 text-[9px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 rounded-full">
+                    Read-Only Audit Mode
+                  </span>
                 </label>
               </div>
-              <div className="flex gap-2">
+
+              {/* 테이블 선택 및 카운트 뱃지 */}
+              <div className="flex items-center gap-2">
                 <select 
-                  value={seedTable} 
-                  onChange={(e) => setSeedTable(e.target.value)}
-                  className="bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-white outline-none cursor-pointer w-full font-semibold"
+                  value={previewTable} 
+                  onChange={(e) => setPreviewTable(e.target.value)}
+                  className="bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-amber-300 outline-none cursor-pointer flex-1 font-bold"
                 >
-                  <option value="cadastral_lands">지적 필지 정보 (cadastral_lands)</option>
-                  <option value="civil_complaints">주민 민원 데이터 (civil_complaints)</option>
-                  <option value="commercial_shops">상권 점포 정보 (commercial_shops)</option>
-                  <option value="restricted_zones">용도제한 보호구역 (restricted_zones)</option>
-                  <option value="user_exclusion_zones">물리 장애물 금역 (user_exclusion_zones)</option>
-                  <option value="city_spatial_features">범용 공간 피처 (city_spatial_features)</option>
+                  <option value="cadastral_lands">🗺️ 지적 필지 마스터 (cadastral_lands) - MVP : 용산구</option>
+                  <option value="commercial_shops">🏪 상권 점포 마스터 (commercial_shops) - MVP : 용산구</option>
+                  <option value="restricted_zones">🚫 용도제한 보호구역 (restricted_zones) - MVP : 용산구 268개 버퍼</option>
+                  <option value="registered_domain_tags">🏷️ 시맨틱 도메인 태그 (registered_domain_tags) - 1536차원 임베딩</option>
+                  <option value="district_regulations">📜 자치구 조례 벡터 (district_regulations) - MVP : 용산구 HNSW 임베딩</option>
+                  <option value="audit_logs">📜 SHA-256 감사 원장 (audit_logs) - 위변조 방지 체인</option>
                 </select>
+
+                <div className="px-3 py-1.5 bg-slate-950 border border-slate-800 rounded-lg text-[11px] font-mono font-bold text-slate-300 flex items-center gap-1.5 whitespace-nowrap">
+                  <span className="text-slate-400">총 적재:</span>
+                  <span className="text-amber-400">{dbCounts[previewTable] !== undefined ? `${dbCounts[previewTable].toLocaleString()} 건` : '조회 중...'}</span>
+                </div>
               </div>
-              <div 
-                onClick={() => document.getElementById('seed-csv-uploader').click()}
-                className="border-2 border-dashed border-slate-700 hover:border-amber-500 rounded-xl p-4 text-center cursor-pointer transition-all bg-slate-950/40 hover:bg-slate-900/30 flex flex-col items-center justify-center gap-1"
-              >
-                <span className="text-lg">📁</span>
-                <p className="text-[11px] text-slate-300 font-semibold">벌크 CSV 또는 Shapefile 셋 업로드</p>
-                <p className="text-[9px] text-slate-500">CSV 한 개 또는 Shapefile 셋(.shp,.dbf,.shx)을 드래그하여 공간 변환 적재합니다.</p>
-                {isSeeding && <p className="text-[10px] text-amber-400 mt-1 animate-pulse">PostGIS 벌크 시딩 및 GIST 인덱싱 가동 중...</p>}
+
+              {/* 실시간 5개 샘플 데이터 검증 표 */}
+              <div className="border border-slate-800 rounded-xl bg-slate-950/60 p-3 flex flex-col gap-2">
+                <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+                  <span className="text-[10px] font-bold text-slate-400 flex items-center gap-1">
+                    <span>👁️ PostgreSQL DB 실시간 5개 샘플 행 레코드 검증</span>
+                    {isPreviewLoading && <span className="text-amber-400 animate-pulse">(조회 중...)</span>}
+                  </span>
+                  <span className="text-[9px] text-slate-500">WGS84 공간 변환 및 1536차원 임베딩 검증 완공</span>
+                </div>
+
+                {previewRows.length > 0 ? (
+                  <div className="overflow-x-auto max-h-48 scrollbar-thin">
+                    <table className="w-full text-left text-[10px] border-collapse">
+                      <thead>
+                        <tr className="border-b border-slate-800 bg-slate-900/60 text-amber-300 font-bold">
+                          {Object.keys(previewRows[0]).map((col) => (
+                            <th key={col} className="p-1.5 whitespace-nowrap font-mono">{col}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-800/60 text-slate-300 font-mono">
+                        {previewRows.map((row, rIdx) => (
+                          <tr key={rIdx} className="hover:bg-slate-900/40 transition-colors">
+                            {Object.values(row).map((val, cIdx) => (
+                              <td key={cIdx} className="p-1.5 whitespace-nowrap max-w-[200px] truncate text-slate-300">
+                                {val !== null && val !== undefined ? String(val) : <span className="text-slate-600">NULL</span>}
+                              </td>
+                            ))}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="text-center py-4 text-[11px] text-slate-500">
+                    {isPreviewLoading ? 'PostgreSQL 실시간 레코드를 불러오는 중입니다...' : '적재된 샘플 레코드가 없습니다.'}
+                  </div>
+                )}
               </div>
-              <input 
-                type="file" 
-                multiple
-                accept=".csv,.shp,.dbf,.shx" 
-                id="seed-csv-uploader" 
-                className="hidden" 
-                onChange={handleSeedFileChange} 
-              />
             </div>
 
           </div>

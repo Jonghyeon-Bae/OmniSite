@@ -481,6 +481,29 @@ export default function Dashboard() {
     setShowDetailModal(true);
   };
 
+  const handleLogout = async () => {
+  try {
+    const token = sessionStorage.getItem('token');
+    const username = sessionStorage.getItem('username') || municipalId;
+    await apiFetch('/api/v1/system/unregister-session', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token, username })
+    });
+  } catch (_) {}
+  if (typeof window !== 'undefined') {
+    sessionStorage.clear();
+    setIsLoggedIn(false);
+    setIsTokenValid(false);
+    setUserRole('user');
+    setMunicipalId('');
+    alert("정상적으로 행정 세션이 로그아웃(휘발 소거)되었습니다.");
+    window.location.href = '/';
+  }
+};
+
+
+
   // WeasyPrint 스타일의 HTML 행정 보고서 발급 기능 (한국어 호환용 정규 규격 문서)
   const downloadReportHTML = (item) => {
     const debateLogs = item.debateLogs || [];
@@ -608,9 +631,9 @@ export default function Dashboard() {
         </div>
         <nav className="flex items-center gap-6 text-xs font-semibold">
           <Link href="/spatial" className="text-slate-400 hover:text-white transition-all pb-1 flex items-center gap-1">
-            🏠 GIS 입지분석
+            🏠 입지분석 메인 (Map)
           </Link>
-          <Link href="/dashboard" className="text-blue-400 border-b-2 border-blue-500 pb-1 flex items-center gap-1 font-bold">
+          <Link href="/dashboard" className="text-blue-400 border-b-2 hover:text-white border-blue-500 pb-1 flex items-center gap-1 font-bold">
             📊 의사결정 대시보드
           </Link>
           <button 
@@ -618,12 +641,6 @@ export default function Dashboard() {
             className="text-indigo-400 hover:text-indigo-300 transition-all cursor-pointer flex items-center gap-1 font-semibold"
           >
             📋 행정 게시판
-          </button>
-          <button 
-            onClick={() => setShowPasswordChangeModal(true)} 
-            className="text-slate-400 hover:text-slate-200 transition-all cursor-pointer flex items-center gap-1"
-          >
-            🔑 암호 변경
           </button>
           <button 
             onClick={() => setShowAuditLogModal(true)} 
@@ -658,6 +675,18 @@ export default function Dashboard() {
             >
               <span>🔄 세션 연장 (+1시간)</span>
             </button>
+            <button 
+                onClick={() => setShowPasswordChangeModal(true)}
+                className="text-xs bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 px-3.5 py-1.5 rounded-lg font-semibold cursor-pointer transition-all flex items-center gap-1.5"
+              >
+                🔑 비밀번호 변경
+              </button>
+          <button 
+                onClick={handleLogout}
+                className="text-xs bg-rose-950/45 hover:bg-rose-900/60 border border-rose-500/30 text-rose-300 px-3.5 py-1.5 rounded-lg font-semibold cursor-pointer transition-all flex items-center gap-1.5"
+              >
+                🔓 로그아웃
+          </button>
           </div>
         )}
       </header>

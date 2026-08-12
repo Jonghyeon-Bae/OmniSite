@@ -1813,12 +1813,13 @@ export default function Home() {
       {/* 1. 상단 글로벌 네비게이션 헤더 (JWT Session-aware) */}
       <header className="absolute top-0 left-0 right-0 h-16 glass-panel rounded-none border-t-0 border-x-0 z-45 px-8 flex justify-between items-center">
         <div className="flex items-center gap-3">
-          <span className="text-xl font-bold tracking-tight text-white">OmniSite</span>
-          <span className="text-[10px] bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded border border-blue-500/30">{OMNISITE_DISPLAY_VERSION}</span>
+          <Link href="/spatial" className="text-xl font-bold tracking-tight text-white hover:text-blue-400 transition-all flex items-center gap-2">
+            OmniSite <span className="text-[10px] bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded border border-blue-500/30">{OMNISITE_DISPLAY_VERSION}</span>
+          </Link>
         </div>
         <nav className="flex items-center gap-8 text-xs font-semibold">
-          <Link href="/spatial" className="text-white border-b-2 border-blue-500 pb-1">입지분석 메인 (Map)</Link>
-          <Link href="/dashboard" className="text-slate-400 hover:text-white transition-all pb-1">이력 대시보드 (Analytics)</Link>
+          <Link href="/spatial" className="text-white border-b-2 border-blue-500 pb-1">🏠 입지분석 메인 (Map)</Link>
+          <Link href="/dashboard" className="text-slate-400 hover:text-white transition-all pb-1">📊 의사결정 대시보드(Analytics)</Link>
           
           <button
             type="button"
@@ -1841,12 +1842,43 @@ export default function Home() {
 
           {isLoggedIn && isTokenValid ? (
             <div className="flex items-center gap-3">
+
+              
+              <button
+                onClick={() => setShowBoardModal(true)}
+                className="text-xs bg-indigo-950/45 hover:bg-indigo-900/60 border border-indigo-500/30 text-indigo-300 px-4.5 py-1.5 rounded-lg font-semibold cursor-pointer transition-all flex items-center gap-1.5"
+              >
+                📋 행정 게시판
+              </button>
+
+              <button 
+                onClick={() => setShowAuditLogModal(true)}
+                className="text-xs bg-indigo-500/15 hover:bg-indigo-500/25 border border-indigo-500/30 text-indigo-300 px-4.5 py-1.5 rounded-lg font-bold cursor-pointer transition-all flex items-center gap-1.5"
+                >
+                📜 감사 로그
+              </button>
+
+                {/* 관리자(Admin) 권한 가드 ⚙️ 버튼 동적 렌더링 */}
+                {userRole === 'admin' && (
+                  <button 
+                    onClick={() => setShowAdminConsoleModal(true)}
+                    className="text-xs bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-amber-400 px-4.5 py-1.5 rounded-lg font-bold cursor-pointer transition-all flex items-center gap-1.5"
+                  >
+                    ⚙️ 관리자 콘솔
+                  </button>
+                )}
+
+
               {/* 🟢 실시간 행정 접속자 수 뱃지 [v1.5.0] */}
               <div className="bg-emerald-950/80 border border-emerald-500/40 px-3 py-1.5 rounded-lg flex items-center gap-1.5 shadow-sm">
                 <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
                 <span className="text-[11px] text-emerald-300 font-medium">접속자:</span>
                 <span className="text-[11px] font-bold font-mono text-emerald-200">🟢 {activeUserCount}명</span>
               </div>
+              {/* 소속 부서 및 실무관 식별 */}
+              <span className="text-[10px] bg-slate-800/80 border border-slate-700/80 text-slate-300 px-3 py-1.5 rounded-lg font-medium">
+                🏢 {department} | <span className="font-bold text-white">{municipalId}</span> 실무관
+              </span>
 
               {/* JWT 실시간 남은 세션 타이머 뱃지 [v1.4.2] */}
               <div className="bg-slate-900/90 px-3 py-1.5 rounded-lg border border-slate-800 flex items-center gap-1.5">
@@ -1865,43 +1897,12 @@ export default function Home() {
               >
                 <span>🔄 세션 연장 (+1시간)</span>
               </button>
-
-              {/* 소속 부서 및 실무관 식별 */}
-              <span className="text-[10px] bg-slate-800/80 border border-slate-700/80 text-slate-300 px-3 py-1.5 rounded-lg font-medium">
-                🏢 {department} | <span className="font-bold text-white">{municipalId}</span> 실무관
-              </span>
-              
-              {/* 관리자(Admin) 권한 가드 ⚙️ 버튼 동적 렌더링 */}
-              {userRole === 'admin' && (
-                <button 
-                  onClick={() => setShowAdminConsoleModal(true)}
-                  className="text-xs bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-amber-400 px-3.5 py-1.5 rounded-lg font-bold cursor-pointer transition-all flex items-center gap-1.5"
-                >
-                  ⚙️ 관리자 콘솔
-                </button>
-              )}
-
-              <button 
-                onClick={() => setShowAuditLogModal(true)}
-                className="text-xs bg-indigo-500/15 hover:bg-indigo-500/25 border border-indigo-500/30 text-indigo-300 px-3.5 py-1.5 rounded-lg font-bold cursor-pointer transition-all flex items-center gap-1.5"
-              >
-                📜 감사 로그
-              </button>
-
               <button 
                 onClick={() => setShowPasswordChangeModal(true)}
                 className="text-xs bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 px-3.5 py-1.5 rounded-lg font-semibold cursor-pointer transition-all flex items-center gap-1.5"
               >
                 🔑 비밀번호 변경
               </button>
-
-              <button
-                onClick={() => setShowBoardModal(true)}
-                className="text-xs bg-indigo-950/45 hover:bg-indigo-900/60 border border-indigo-500/30 text-indigo-300 px-3.5 py-1.5 rounded-lg font-semibold cursor-pointer transition-all flex items-center gap-1.5"
-              >
-                📋 행정 게시판
-              </button>
-
               <button 
                 onClick={handleLogout}
                 className="text-xs bg-rose-950/45 hover:bg-rose-900/60 border border-rose-500/30 text-rose-300 px-3.5 py-1.5 rounded-lg font-semibold cursor-pointer transition-all flex items-center gap-1.5"

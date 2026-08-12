@@ -36,10 +36,12 @@ Thumbs.db
 
 # Reports, Scratch & Documentation artifacts (Excluded from Git / Production container builds)
 결과보고/
+스마트시티_SDSS_옴니사이트_종합_연구노트.md
 scratch/
 brain/
 .checkpoints/
 .agents/
+.github/
 
 # One-off testing & inspection scripts
 backend/app/scripts/test_*.py

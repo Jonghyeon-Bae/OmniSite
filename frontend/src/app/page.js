@@ -257,7 +257,7 @@ export default function GatewayPage() {
           <div className="flex border-b border-slate-800 pb-2 gap-2">
             <button
               onClick={() => setAuthTab('login')}
-              className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-colors ${
+              className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-colors cursor-pointer ${
                 authTab === 'login'
                   ? 'bg-blue-600 text-white shadow'
                   : 'bg-slate-800 text-slate-400 hover:text-slate-200'
@@ -267,7 +267,7 @@ export default function GatewayPage() {
             </button>
             <button
               onClick={() => setAuthTab('register')}
-              className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-colors ${
+              className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-colors cursor-pointer ${
                 authTab === 'register'
                   ? 'bg-blue-600 text-white shadow'
                   : 'bg-slate-800 text-slate-400 hover:text-slate-200'
@@ -356,7 +356,7 @@ export default function GatewayPage() {
                   <select 
                     value={regRole}
                     onChange={(e) => setRegRole(e.target.value)}
-                    className="bg-slate-950/60 border border-slate-800 focus:border-blue-500/80 rounded-lg p-2 text-xs text-white outline-none transition-all"
+                    className="bg-slate-950/60 border border-slate-800 focus:border-blue-500/80 rounded-lg p-2 text-xs text-white outline-none transition-all cursor-pointer"
                   >
                     <option value="user">일반 공무원 (User)</option>
                     <option value="admin">시스템 관리자 (Admin)</option>

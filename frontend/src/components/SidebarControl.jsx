@@ -345,8 +345,8 @@ export default function SidebarControl({
         </div>
 
         <div className="flex flex-col gap-3">
-          {criteriaList.map(item => (
-            <div key={item.key} className="flex flex-col gap-1">
+          {criteriaList.map((item, idx) => (
+            <div key={item.key ? `${item.key}_${idx}` : `crit_${idx}`} className="flex flex-col gap-1">
               <div className="flex justify-between text-[11px] text-slate-400">
                 <span>{item.label}</span>
                 <span className="font-mono text-white">{ahpWeights[item.key] !== undefined ? parseFloat(ahpWeights[item.key]).toFixed(1) : '5.0'}</span>

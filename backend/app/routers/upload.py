@@ -974,6 +974,21 @@ async def audit_upload_files(request: AuditRequest, db: Session = Depends(get_db
             file_behaviors_global = result_json.get("file_behaviors", {})
             score_modifiers_global = result_json.get("score_modifiers", [])
             
+            # [v6.0.0 Key Deduplication] AHP criteria 키 중복 방지 (React Unique Key 에러 방지)
+            seen_crit_keys = {}
+            sanitized_crit = []
+            for item in criteria_global:
+                base_k = re.sub(r"[^a-zA-Z0-9_]", "", item.get("key", "criterion")).strip()
+                if not base_k: base_k = "criterion"
+                if base_k in seen_crit_keys:
+                    seen_crit_keys[base_k] += 1
+                    item["key"] = f"{base_k}_{seen_crit_keys[base_k]}"
+                else:
+                    seen_crit_keys[base_k] = 1
+                    item["key"] = base_k
+                sanitized_crit.append(item)
+            criteria_global = sanitized_crit
+
             # 도메인 태그 유사도 기반 중복 방지 및 병합 엔진 적용
             inferred_domain_tag = get_or_create_merged_tag(inferred_domain_tag, reasoning_global, db)
             

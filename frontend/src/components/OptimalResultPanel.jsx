@@ -520,7 +520,7 @@ export default function OptimalResultPanel({
 
                   const scoresObj = currentParcel.criteria_scores || {};
 
-                  return Object.entries(scoresObj).map(([k, val]) => {
+                  return Object.entries(scoresObj).map(([k, val], idx) => {
                     // 1. 라벨 결정 (기준 목록에서 탐색 후 라벨 사전 및 디폴트 파싱)
                     const matchedCriterion = (criteriaList || []).find(c => c.key === k || c.label === k);
                     const label = matchedCriterion?.label || DICT_LABELS[k] || k;
@@ -558,7 +558,7 @@ export default function OptimalResultPanel({
                     }
 
                     return (
-                      <div key={k} className="flex flex-col gap-1.5 bg-slate-900/60 p-3 rounded-xl border border-slate-800/80 font-sans shadow-sm hover:border-slate-700 transition-all">
+                      <div key={`${k}_${idx}`} className="flex flex-col gap-1.5 bg-slate-900/60 p-3 rounded-xl border border-slate-800/80 font-sans shadow-sm hover:border-slate-700 transition-all">
                         <div className="flex justify-between items-center text-[11px]">
                           <span className="font-semibold text-slate-200 flex items-center gap-2">
                             <span>{label}</span>

@@ -83,7 +83,7 @@ export default function SidebarControl({
   };
 
   return (
-    <div className="floating-overlay left-6 top-20 w-96 glass-panel p-6 flex flex-col gap-6 max-h-[82vh] overflow-y-auto">
+    <div className="floating-overlay left-4 sm:left-6 top-20 w-80 sm:w-96 max-w-[calc(100vw-2rem)] glass-panel p-4 sm:p-5 flex flex-col gap-4 max-h-[calc(100vh-100px)] overflow-y-auto custom-scrollbar transition-all">
       {/* ========================================================================= */}
       {/* 1. 사이드바 헤더 및 글로벌 파이프라인 단계 출력 */}
       {/* ========================================================================= */}

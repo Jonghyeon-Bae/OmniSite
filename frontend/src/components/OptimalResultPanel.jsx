@@ -30,7 +30,7 @@ export default function OptimalResultPanel({
   const currentParcel = selectedParcel[activeTab] || {};
 
   return (
-    <div className="floating-overlay right-6 top-20 w-96 glass-panel p-6 flex flex-col gap-5 max-h-[82vh] overflow-y-auto">
+    <div className="floating-overlay right-4 sm:right-6 top-20 w-80 sm:w-96 max-w-[calc(100vw-2rem)] glass-panel p-4 sm:p-5 flex flex-col gap-4 max-h-[calc(100vh-100px)] overflow-y-auto custom-scrollbar transition-all">
       {/* ========================================================================= */}
       {/* 1. [Step 2] 비주얼 HITL 좌표 보정 영역 */}
       {/* ========================================================================= */}

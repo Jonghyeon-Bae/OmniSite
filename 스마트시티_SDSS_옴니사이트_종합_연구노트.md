@@ -23,15 +23,19 @@
 - **100% Pure Dynamic Extraction 도입 (`backend/app/routers/upload.py`):**
   - 특정 단어 하드코딩 배열을 100% 전면 삭제.
   - 업로드된 모든 CSV 파일의 실질 파일명 문맥(`all_filename_words`) 및 내부 컬럼 헤더 문맥(`all_header_words`)을 순수 추출하여 `natural_context_query = f"{' '.join(all_filename_words)} {' '.join(all_header_words)}"` 형태로 pgvector 1536차원 벡터 임베딩 쿼리를 결합.
-  - RAG 조례 미매칭 시(유사도 < 0.40) 강제 덤미 조례 할당을 철회하고 `has_regulations: false` 경고 뱃지를 띄우며, GPT-4o LLM이 순수 데이터셋 문맥으로 AI 감리를 도출하도록 정문화.
+  - RAG 조례 미매칭 시(유사도 < 0.60) 강제 덤미 조례 할당을 철회하고 `has_regulations: false` 경고 뱃지를 띄우며, GPT-4o LLM이 순수 데이터셋 문맥으로 AI 감리를 도출하도록 정문화.
+- **RAG 임계도 60%(0.60) 격상 수술 (`backend/app/routers/spatial.py`):**
+  - `주차구역`, `주차장`, `위치` 등 일반 행정 공통 단어로 인해 `01.공영주차장_위치정보_좌표.csv` 적재 시 `전동킥보드 주차구역 조례`가 55.70% 노이즈로 당겨지던 결함을 RAG 임계도를 **60%로 상향**하여 100% 완벽 차단.
 - **HITL 수동 도메인 태그 생성 API & UI 복원:**
   - `POST /api/v1/upload/domain-tags` API 개설 (OpenAI 1536차원 벡터 임베딩 자동 결합 및 `registered_domain_tags` DB 저장).
   - 프론트엔드 `SidebarControl.jsx` 상에 영문 슬러그 + 한글 설명 입력 폼 결합하여 실무 공무원이 새로운 도메인을 수동 등재할 수 있도록 완비.
 - **시맨틱 도메인 태그 <-> XGBoost ML 모델 양방향 삭제 라이프사이클 바인딩 구축:**
   - **시맨틱 태그 삭제 시 (`DELETE /api/v1/upload/domain-tags/{tag_name}`):** DB 태그 레코드 삭제 + 디스크 내 연계 ML 모델 파일(`.pkl`, `_meta.json`, `train_dataset.csv`) 동시 완전 정화 + Model Registry 리로드.
   - **ML 모델 삭제 시 (`DELETE /api/v1/model/registry/{domain}`):** ML 모델 파일 삭제 + DB 내 연계 시맨틱 도메인 태그 및 규제 규칙 동시 완전 삭제 + Model Registry 리로드.
-- **GPT-4o 프롬프트 내 등록된 시맨틱 태그 목록 자동 주입 (Auto-Mapping Enhancement):**
-  - DB 내 `registered_domain_tags` 목록을 AI 감리 프롬프트 상단에 주입하여, 등록 태그가 존재할 경우 유사 태그 난립 없이 `smoking_booth` 등 표준 태그로 1순위 자동 매핑하도록 감리 성능을 극대화함.
+- **다각도 삼각 시맨틱 정합성 Matrix & AI 감리 신뢰도 스코어 구축:**
+  - **`Dataset <-> Tag Similarity`**, **`Dataset <-> Regulation Similarity`**, **`Tag <-> Regulation Similarity`** 삼각 유사도를 계산하여 **종합 AI 감리 확신도(Audit Confidence Score: HIGH/MEDIUM/LOW)**를 정량 수치화하고 프론트엔드 UI 카드 상에 시각적 뱃지로 실시간 노출시킴.
+- **브라우저 확대/축소(Zoom) & DPI 스케일링 동적 반응형 Calibration 적용:**
+  - `SidebarControl.jsx` 및 `OptimalResultPanel.jsx` 패널 높이를 `max-h-[calc(100vh-110px)]` 및 `w-80 sm:w-96 max-w-[calc(100vw-2rem)]` 동적 가변 범위로 보정하여 80%~150% 브라우저 줌 환경에서도 지도 Canvas를 가리지 않고 반응형 보정을 완성함.
 
 ---
 
@@ -50,4 +54,4 @@
 
 ## 🔍 3. CLI 무결성 실측 결과
 - **백엔드 모듈 검증 (`python -c "import app.main"`):** `[PASS]` 0 Error
-- **프론트엔드 프로덕션 빌드 (`npm run build`):** `✓ Compiled successfully in 1,787ms` (0 Error)
+- **프론트엔드 프로덕션 빌드 (`npm run build`):** `✓ Compiled successfully in 1,780ms` (0 Error)

@@ -772,26 +772,31 @@ async def audit_upload_files(request: AuditRequest, db: Session = Depends(get_db
     csv_headers_list = []
     csv_results_dict = {}
     
-    # 1. 업로드된 CSV 파일명 및 헤더 기반 핵심 키워드군 추출
-    csv_keywords = set()
+    # 1. ⚡ [v6.0.0 Pure Dynamic Extraction] 100% 하드코딩 배제 순수 [파일명 + 내부 컬럼] 기반 문맥 추출기
+    all_filename_words = []
+    all_header_words = []
+    
     for filename in request.filenames:
-        clean_name = re.sub(r"[^가-힣a-zA-Z]", " ", filename)
-        csv_keywords.update([w.strip() for w in clean_name.split() if len(w.strip()) >= 2])
+        clean_name = re.sub(r"[^가-힣a-zA-Z0-9]", " ", filename)
+        all_filename_words.extend([w.strip() for w in clean_name.split() if len(w.strip()) >= 2 and not w.isdigit()])
+        
         try:
             file_path = os.path.join(UPLOAD_DIR, filename)
-            headers = parse_csv_header(file_path)
-            for h in headers:
-                clean_h = re.sub(r"[^가-힣a-zA-Z]", " ", h)
-                csv_keywords.update([w.strip() for w in clean_h.split() if len(w.strip()) >= 2])
+            if os.path.exists(file_path):
+                headers = parse_csv_header(file_path)
+                for h in headers:
+                    clean_h = re.sub(r"[^가-힣a-zA-Z0-9]", " ", h)
+                    all_header_words.extend([w.strip() for w in clean_h.split() if len(w.strip()) >= 2 and not w.isdigit()])
         except Exception:
             pass
 
-    # 2. RAG 3단계 하이브리드 조례 매핑 (similarity nan 원천 방지 및 도메인 100% 정합성 보장)
+    # 2. ⚡ [v6.0.0 Pure Dynamic RAG Query] 순수 파일명 문맥 + 내부 컬럼 통합 pgvector 코사인 쿼리
+    natural_context_query = f"{' '.join(all_filename_words)} {' '.join(all_header_words)}"
+
     rag_applied = False
-    query_str = " ".join(list(csv_keywords)[:15]) if csv_keywords else "용산구 금연구역 지정 및 간접흡연 피해방지 조례"
     try:
         from app.routers.spatial import get_rag_matched_regulations
-        matched_regs = get_rag_matched_regulations(db, query_str, facility_type=None, limit=3)
+        matched_regs = get_rag_matched_regulations(db, natural_context_query, facility_type=None, limit=3)
         if matched_regs:
             rag_applied = True
             for reg_text in matched_regs:
@@ -867,6 +872,15 @@ async def audit_upload_files(request: AuditRequest, db: Session = Depends(get_db
         pdf_context = "\n\n".join(pdf_texts)
         csv_context = "\n\n".join(csv_headers_list)
         
+        # [v6.0.0 Tag Auto-Mapping Prompt Injection] DB 내 등록된 표준 시맨틱 태그 목록 사전 조회
+        registered_tags_context = "등록된 태그 없음"
+        try:
+            reg_tag_rows = db.execute(text("SELECT tag_name, tag_description FROM registered_domain_tags ORDER BY id ASC")).fetchall()
+            if reg_tag_rows:
+                registered_tags_context = "\n".join([f"- {r[0]}: {r[1]}" for r in reg_tag_rows])
+        except Exception as reg_err:
+            print(f"[Registered Tags Context Warning] {reg_err}")
+
         prompt = f"""
 당신은 스마트시티 다목적 공간의사결정시스템(SDSS)의 지능형 감리 AI 에이전트입니다.
 사용자가 이번 입지 분석을 진행하기 위해 등록한 행정 조례 문서(PDF)와 업로드한 공간 데이터 파일(CSV) 목록 및 구조는 다음과 같습니다.
@@ -877,9 +891,12 @@ async def audit_upload_files(request: AuditRequest, db: Session = Depends(get_db
 [업로드된 공간 데이터 파일 정보]
 {csv_context if csv_context else "없음"}
 
+[시스템에 등록되어 있는 표준 시맨틱 도메인 태그 목록]
+{registered_tags_context}
+
 위 파일들의 파일명, 컬럼 구성, 그리고 조례 텍스트 내용을 종합 분석하여 다음 정보들을 도출하십시오:
 1. inferred_purpose: 이번 입지 분석의 시맨틱 목적 추론 (예: "지능형 스마트 쉼터 최적 입지 매핑 및 규제구역 제외 분석", "전기차 충전소 최적 입지 매핑 및 규제구역 제외 분석")
-2. inferred_domain_tag: 도메인 분류 단일 영문 단어 태그 슬러그 (절대로 한글, 설명 문장, 특수문자, 괄호를 포함하지 말고 오직 소문자 뱀표기법 영문 태그 한 단어만 반환하십시오. 예: smart_shelter, yellow_carpet, ev_charging)
+2. inferred_domain_tag: 도메인 분류 단일 영문 단어 태그 슬러그 (★중요 매핑 규칙: 수집된 데이터셋의 목적이 위 [시스템에 등록되어 있는 표준 시맨틱 도메인 태그 목록] 중 기존 태그와 시맨틱하게 부합한다면, 새로운 유사 태그를 난립시키지 말고 반드시 기존 등록 태그명을 1순위로 채택하십시오. 기존 목록에 완전히 존재하지 않는 새로운 시설물인 경우에만 소문자 뱀표기법 영문 단어로 새로 도출하십시오. 예: smart_shelter, yellow_carpet, ev_charging)
 3. hitl_question: 사용자(공무원)에게 의사결정 목적이 맞는지 최종 확정하기 위한 확인 질문 (예: "업로드하신 데이터들은 [특정 도메인 지정]을 위한 입지 분석이 맞습니까?")
 4. reasoning: 어떤 조례 문서의 조항 구절과 어떤 CSV 파일명의 키워드 및 컬럼 헤더들을 대조하여 위 inferred_purpose와 inferred_domain_tag를 판독했는지 상세히 서술하십시오
 5. opinion: 전체 조례 및 공간 데이터를 교차 검토하여 특정 시설물 제한 구역에 대한 감리 평가 의견
@@ -976,7 +993,7 @@ async def audit_upload_files(request: AuditRequest, db: Session = Depends(get_db
             reasoning_global = "공간 데이터 파일명 및 조례 텍스트에서 금연/흡연(smoking) 관련 키워드가 감지되어 실외 흡연구역 선정을 위한 입지분석 목적으로 시맨틱 추론했습니다."
             inferred_domain_tag = get_or_create_merged_tag(inferred_domain_tag, reasoning_global, db)
 
-        elif any(keyword in combined_lower for keyword in ["쉼터", "스마트", "그늘막", "와이파이", "한파", "무더위", "shelter", "쉘터"]):
+        elif any(keyword in combined_lower for keyword in ["스마트 쉼터", "스마트쉼터", "무더위 쉼터", "스마트 쉘터", "스마트쉘터", "그늘막", "한파쉼터", "shelter", "쉘터"]):
             inferred_purpose = "지능형 스마트 쉼터 최적 입지 매핑 및 규제 분석"
             inferred_domain_tag = "smart_shelter"
             hitl_question = "업로드하신 데이터들은 [지능형 스마트 쉼터/스마트 쉘터]를 위한 입지 분석이 맞습니까?"
@@ -3071,6 +3088,54 @@ def ensure_domain_regulation_rules_table(db: Session):
         db.rollback()
         print(f"[Domain Regulation Rules Init Warning] {e}")
 
+class CreateDomainTagRequest(BaseModel):
+    tag_name: str
+    tag_description: str
+
+@router.post("/upload/domain-tags")
+def create_domain_tag_endpoint(req: CreateDomainTagRequest, db: Session = Depends(get_db)):
+    """[v6.0.0 HITL] 수동 도메인 태그 등재 API (OpenAI 1536차원 벡터 임베딩 결합)"""
+    ensure_domain_regulation_rules_table(db)
+    clean_tag = sanitize_domain_tag(req.tag_name)
+    if not clean_tag:
+        raise HTTPException(status_code=400, detail="유효한 영문/숫자 태그 슬러그를 입력해야 합니다.")
+        
+    try:
+        client = get_openai_client()
+        tag_embedding = None
+        if client:
+            try:
+                emb_res = client.embeddings.create(
+                    model="text-embedding-3-small",
+                    input=f"{clean_tag} {req.tag_description}"
+                )
+                tag_embedding = emb_res.data[0].embedding
+            except Exception as emb_err:
+                print(f"[Create Tag Embedding Warning] {emb_err}")
+
+        insert_query = text("""
+            INSERT INTO registered_domain_tags (tag_name, tag_description, embedding)
+            VALUES (:tag_name, :tag_description, :embedding)
+            ON CONFLICT (tag_name) DO UPDATE 
+            SET tag_description = EXCLUDED.tag_description,
+                embedding = COALESCE(EXCLUDED.embedding, registered_domain_tags.embedding)
+        """)
+        db.execute(insert_query, {
+            "tag_name": clean_tag,
+            "tag_description": req.tag_description,
+            "embedding": tag_embedding
+        })
+        db.commit()
+        return {
+            "status": "success",
+            "message": f"시맨틱 도메인 태그 '{clean_tag}'가 성공적으로 등재되었습니다.",
+            "tag_name": clean_tag,
+            "tag_description": req.tag_description
+        }
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"태그 등재 중 오류가 발생했습니다: {str(e)}")
+
 def register_inferred_domain_tag(db: Session, tag_name: str, tag_description: str):
     try:
         ensure_domain_regulation_rules_table(db)
@@ -3088,13 +3153,64 @@ def register_inferred_domain_tag(db: Session, tag_name: str, tag_description: st
 
 @router.delete("/upload/domain-tags/{tag_name}")
 def delete_domain_tag(tag_name: str, db: Session = Depends(get_db), current_admin: dict = Depends(get_current_admin)):
-    """[v5.5.0] DB(registered_domain_tags & domain_regulation_rules) 시맨틱 도메인 태그 삭제 API"""
+    """[v6.0.0 Two-Way Lifecycle] 시맨틱 도메인 태그 DB 삭제 + 연계 ML 모델 아티팩트(.pkl, _meta.json, dataset.csv) 동시 정화 API"""
     ensure_domain_regulation_rules_table(db)
+    clean_tag = sanitize_domain_tag(tag_name)
     try:
-        db.execute(text("DELETE FROM registered_domain_tags WHERE tag_name = :tag_name"), {"tag_name": tag_name})
-        db.execute(text("DELETE FROM domain_regulation_rules WHERE facility_type = :tag_name"), {"tag_name": tag_name})
+        # 1. DB 레코드 삭제 (registered_domain_tags & domain_regulation_rules)
+        db.execute(text("DELETE FROM registered_domain_tags WHERE tag_name = :tag_name OR tag_name = :clean_tag"), {
+            "tag_name": tag_name,
+            "clean_tag": clean_tag
+        })
+        db.execute(text("DELETE FROM domain_regulation_rules WHERE facility_type = :tag_name OR facility_type = :clean_tag"), {
+            "tag_name": tag_name,
+            "clean_tag": clean_tag
+        })
         db.commit()
-        return {"status": "success", "message": f"시맨틱 태그 '{tag_name}' 및 관련 공간 규제가 삭제되었습니다."}
+
+        # 2. 연계 ML 모델 아티팩트 디스크 파일 완전 정화
+        deleted_ml_artifacts = []
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        registry_dir = os.path.join(base_dir, "models", "registry")
+        processed_dir = os.path.join(os.path.dirname(base_dir), "data", "processed")
+        
+        target_slugs = list(set([tag_name, clean_tag]))
+        for slug in target_slugs:
+            if not slug: continue
+            if os.path.exists(registry_dir):
+                for f in os.listdir(registry_dir):
+                    if f.startswith(f"{slug}_") or f.startswith(f"css_train_dataset_{slug}"):
+                        f_path = os.path.join(registry_dir, f)
+                        try:
+                            os.remove(f_path)
+                            deleted_ml_artifacts.append(f)
+                            print(f"[Two-Way Model Clean] Deleted: {f}")
+                        except Exception as rm_err:
+                            print(f"[Two-Way Model Clean Warning] {rm_err}")
+                            
+            if os.path.exists(processed_dir):
+                for f in os.listdir(processed_dir):
+                    if f.startswith(f"css_train_dataset_{slug}"):
+                        f_path = os.path.join(processed_dir, f)
+                        try:
+                            os.remove(f_path)
+                            deleted_ml_artifacts.append(f)
+                            print(f"[Two-Way Dataset Clean] Deleted: {f}")
+                        except Exception as rm_err:
+                            print(f"[Two-Way Dataset Clean Warning] {rm_err}")
+
+        # 3. ML Model Registry 인메모리 바인딩 즉시 리로드
+        try:
+            from app.routers.model import model_registry
+            model_registry.load_models()
+        except Exception as reg_err:
+            print(f"[Model Registry Reload Warning] {reg_err}")
+
+        return {
+            "status": "success",
+            "message": f"시맨틱 태그 '{clean_tag}' 및 연계 ML 모델({len(deleted_ml_artifacts)}개)이 완전 삭제되었습니다.",
+            "deleted_ml_artifacts": deleted_ml_artifacts
+        }
     except Exception as e:
         db.rollback()
-        raise HTTPException(status_code=500, detail=f"태그 삭제 실패: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"태그 및 연계 모델 삭제 실패: {str(e)}")

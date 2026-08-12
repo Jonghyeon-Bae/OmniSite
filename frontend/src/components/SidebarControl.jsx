@@ -31,8 +31,11 @@ export default function SidebarControl({
   onOpenGuideModal
 }) {
   const [registeredTags, setRegisteredTags] = React.useState([]);
+  const [customTagName, setCustomTagName] = React.useState('');
+  const [customTagDesc, setCustomTagDesc] = React.useState('');
+  const [isRegisteringTag, setIsRegisteringTag] = React.useState(false);
 
-  React.useEffect(() => {
+  const fetchRegisteredTags = () => {
     fetch('/api/v1/upload/domain-tags')
       .then(res => res.json())
       .then(data => {
@@ -41,7 +44,43 @@ export default function SidebarControl({
         }
       })
       .catch(err => console.error("Domain tags fetch error:", err));
+  };
+
+  React.useEffect(() => {
+    fetchRegisteredTags();
   }, []);
+
+  const handleCreateCustomTag = async () => {
+    if (!customTagName.trim() || !customTagDesc.trim()) {
+      alert("태그 영문 슬러그와 한글 설명을 모두 입력해 주십시오.");
+      return;
+    }
+    setIsRegisteringTag(true);
+    try {
+      const res = await fetch('/api/v1/upload/domain-tags', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tag_name: customTagName.trim(),
+          tag_description: customTagDesc.trim()
+        })
+      });
+      const data = await res.json();
+      if (res.ok && data.status === 'success') {
+        alert(`신규 도메인 태그 '${data.tag_name}'가 성공적으로 등재되었습니다.`);
+        setCustomTagName('');
+        setCustomTagDesc('');
+        setInferredDomainTag(data.tag_name);
+        fetchRegisteredTags();
+      } else {
+        alert("태그 등재 실패: " + (data.detail || "서버 응답 오류"));
+      }
+    } catch (err) {
+      alert("태그 등재 중 오류가 발생했습니다: " + err.message);
+    } finally {
+      setIsRegisteringTag(false);
+    }
+  };
 
   return (
     <div className="floating-overlay left-6 top-20 w-96 glass-panel p-6 flex flex-col gap-6 max-h-[82vh] overflow-y-auto">
@@ -155,6 +194,37 @@ export default function SidebarControl({
                     <option value={inferredDomainTag}>{inferredDomainTag} (신규 AI 등재 태그)</option>
                   )}
                 </select>
+              </div>
+
+              {/* HITL 신규 태그 수동 생성 및 DB 등재 폼 */}
+              <div className="bg-slate-900/90 p-3 rounded-lg border border-slate-800 flex flex-col gap-2 my-1">
+                <span className="text-[10px] font-bold text-slate-300 flex items-center gap-1">
+                  <span>➕</span> HITL 신규 도메인 태그 수동 등재
+                </span>
+                <div className="flex flex-col gap-1.5">
+                  <input
+                    type="text"
+                    placeholder="영문 태그 슬러그 (예: hydrogen_station)"
+                    value={customTagName}
+                    onChange={(e) => setCustomTagName(e.target.value)}
+                    className="bg-slate-950 border border-slate-700/80 rounded px-2.5 py-1 text-[10px] text-white outline-none focus:border-blue-500 font-mono"
+                  />
+                  <input
+                    type="text"
+                    placeholder="태그 한글 설명 (예: 수소차 충전 인프라 입지)"
+                    value={customTagDesc}
+                    onChange={(e) => setCustomTagDesc(e.target.value)}
+                    className="bg-slate-950 border border-slate-700/80 rounded px-2.5 py-1 text-[10px] text-white outline-none focus:border-blue-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleCreateCustomTag}
+                    disabled={isRegisteringTag}
+                    className="bg-emerald-600/80 hover:bg-emerald-600 text-white text-[10px] font-bold py-1.5 rounded transition-all flex items-center justify-center gap-1 cursor-pointer"
+                  >
+                    {isRegisteringTag ? "등재 중..." : "➕ 수동 태그 생성 및 DB 등재"}
+                  </button>
+                </div>
               </div>
             </div>
             <button

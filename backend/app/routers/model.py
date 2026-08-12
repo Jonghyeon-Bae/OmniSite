@@ -556,10 +556,12 @@ async def get_model_status(
 @router.delete("/registry/{domain}")
 async def delete_model_from_registry(
     domain: str,
+    db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
-    """[v5.5.0] 레지스트리에 저장된 ML 모델(.pkl, _meta.json) 및 학습 데이터셋 삭제 API"""
+    """[v6.0.0 Two-Way Lifecycle] ML 모델 아티팩트 삭제 + DB 시맨틱 태그(registered_domain_tags & domain_regulation_rules) 동시 삭제 API"""
     try:
+        # 1. 디스크 내 ML 모델(.pkl, _meta.json) 및 훈련 데이터셋 삭제
         pkl_path = os.path.join(registry_path, f"{domain}_v1.pkl")
         meta_path = os.path.join(registry_path, f"{domain}_v1_meta.json")
         csv_path = os.path.join(base_dir, "data", "processed", f"css_train_dataset_{domain}.csv")
@@ -569,14 +571,33 @@ async def delete_model_from_registry(
             if os.path.exists(p):
                 os.remove(p)
                 deleted_files.append(os.path.basename(p))
+
+        # 2. DB 시맨틱 도메인 태그 및 규제 규칙 양방향 동시 삭제
+        try:
+            from app.routers.upload import sanitize_domain_tag, ensure_domain_regulation_rules_table
+            ensure_domain_regulation_rules_table(db)
+            clean_tag = sanitize_domain_tag(domain)
+            db.execute(text("DELETE FROM registered_domain_tags WHERE tag_name = :domain OR tag_name = :clean_tag"), {
+                "domain": domain,
+                "clean_tag": clean_tag
+            })
+            db.execute(text("DELETE FROM domain_regulation_rules WHERE facility_type = :domain OR facility_type = :clean_tag"), {
+                "domain": domain,
+                "clean_tag": clean_tag
+            })
+            db.commit()
+            print(f"[Two-Way Tag Clean] Deleted DB tags for domain: '{domain}' ('{clean_tag}')")
+        except Exception as db_err:
+            db.rollback()
+            print(f"[Two-Way Tag Clean Warning] {db_err}")
                 
-        # reload registry
+        # 3. reload registry
         model_registry.load_models()
         
         return {
             "status": "success",
-            "message": f"도메인 '{domain}' ML 모델 및 관련 파일이 삭제되었습니다.",
+            "message": f"도메인 '{domain}' ML 모델 및 연계 시맨틱 태그가 완전 삭제되었습니다.",
             "deleted_files": deleted_files
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"모델 삭제 실패: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"모델 및 시맨틱 태그 삭제 실패: {str(e)}")

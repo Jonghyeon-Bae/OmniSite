@@ -1,9 +1,9 @@
 {
-  "domain": "city_feature",
-  "model_filename": "city_feature_v1.pkl",
-  "last_trained_at": "2026-08-10 17:08:10",
+  "domain": "ev_kickboard",
+  "model_filename": "ev_kickboard_v1.pkl",
+  "last_trained_at": "2026-08-12 10:58:30",
   "accuracy": 0.7673,
-  "f1_score": 0.4881,
+  "f1_score": 0.7819,
   "sample_count": 7390,
   "feature_importances": {
     "area": 0.07378018647432327,

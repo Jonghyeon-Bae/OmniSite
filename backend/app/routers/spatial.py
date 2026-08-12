@@ -1904,60 +1904,22 @@ def get_rag_matched_regulations(db: Session, query_str: str, facility_type: Opti
                 WHERE embedding IS NOT NULL 
                   AND vector_dims(embedding) = 1536
                   AND embedding != array_fill(0.0, ARRAY[1536])::vector
-                  AND (1 - (embedding <=> CAST(:query_embedding AS vector))) >= 0.20
+                  AND (1 - (embedding <=> CAST(:query_embedding AS vector))) >= 0.40
                 ORDER BY similarity DESC
                 LIMIT :limit
             """)
             rag_rows = db.execute(rag_query, {"query_embedding": query_embedding, "limit": limit}).fetchall()
             for row in rag_rows:
-                formatted = f"[{row[0]}] {row[1][:200]}..."
-                if formatted not in matched_regulations:
-                    matched_regulations.append(formatted)
-                    print(f"[RAG Vector Match] 조례: '{row[0]}', 유사도: {row[2]*100:.2f}%")
-        except Exception as e:
-            print(f"[RAG Vector Search Warning] {e}")
-
-    # 2. 동적 키워드 추출 기반 DB 텍스트 검색 (하드코딩 문자열 100% 배제)
-    if len(matched_regulations) < limit:
-        try:
-            raw_text = f"{facility_type or ''} {query_str or ''}"
-            clean_words = [w.strip() for w in re.findall(r"[가-힣a-zA-Z0-9]+", raw_text) if len(w.strip()) >= 2]
-            
-            stopwords = {"선정", "지정", "설치", "검수", "결과", "보고서", "완료", "사업", "구역", "이하", "이상"}
-            dynamic_keywords = [w for w in clean_words if w not in stopwords][:5]
-            
-            if dynamic_keywords:
-                conditions = " OR ".join([f"content ILIKE :kw_{i} OR regulation_title ILIKE :kw_{i}" for i in range(len(dynamic_keywords))])
-                kw_params = {f"kw_{i}": f"%{kw}%" for i, kw in enumerate(dynamic_keywords)}
-                kw_params["limit"] = limit
-                
-                dynamic_query = text(f"""
-                    SELECT regulation_title, content
-                    FROM district_regulations
-                    WHERE {conditions}
-                    ORDER BY id ASC
-                    LIMIT :limit
-                """)
-                kw_rows = db.execute(dynamic_query, kw_params).fetchall()
-                for row in kw_rows:
+                sim = float(row[2]) if row[2] is not None and not math.isnan(row[2]) else 0.0
+                if sim >= 0.40:
                     formatted = f"[{row[0]}] {row[1][:200]}..."
                     if formatted not in matched_regulations:
                         matched_regulations.append(formatted)
-                        print(f"[RAG Dynamic Text Match] 조례: '{row[0]}'")
-        except Exception as kw_err:
-            print(f"[RAG Dynamic Text Search Warning] {kw_err}")
+                        print(f"[RAG Vector Match] 조례: '{row[0]}', 유사도: {sim*100:.2f}%")
+        except Exception as e:
+            print(f"[RAG Vector Search Warning] {e}")
 
-    # 3. 최후 DB 기본 레코드 동적 바인딩 (하드코딩 배제)
-    if len(matched_regulations) < limit:
-        try:
-            fallback_rows = db.execute(text("SELECT regulation_title, content FROM district_regulations ORDER BY id ASC LIMIT :limit"), {"limit": limit}).fetchall()
-            for row in fallback_rows:
-                formatted = f"[{row[0]}] {row[1][:200]}..."
-                if formatted not in matched_regulations:
-                    matched_regulations.append(formatted)
-        except Exception as fb_err:
-            print(f"[RAG DB Fallback Warning] {fb_err}")
-
+    # 2. ⚡ [v6.0.0 User Directive] 유사도 40% 미만 시 억지 매칭 금지 (미매칭 시 has_regulations: false 노출 및 순수 CSV 감리)
     return matched_regulations
 
 @router.post("/spatial/analyze-address")

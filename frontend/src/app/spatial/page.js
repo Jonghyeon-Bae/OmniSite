@@ -1930,7 +1930,7 @@ export default function Home() {
       </header>
 
       {/* 2. 인터랙티브 Leaflet GIS 3D 맵 공간 영역 (Map Container) */}
-      <div className="relative w-full flex-1 min-h-[calc(100vh-140px)]">
+      <div className="relative w-full flex-1 min-h-[calc(100vh-180px)]">
         <div id="interactive-map" className="map-container w-full h-full" />
         
         {/* [v4.4.1] 마우스로 끌어서 이동할 수 있는 공간 통제 영역 제어판 (Draggable Control Panel) */}

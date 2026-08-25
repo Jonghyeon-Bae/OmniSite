@@ -50,9 +50,15 @@ class LoginLockoutManager:
         self._lockouts: Dict[str, datetime] = {}
 
     def get_key(self, username: str, client_ip: str) -> str:
-        clean_user = (username or "unknown").strip().lower()
-        clean_ip = (client_ip or "127.0.0.1").strip()
-        return f"{clean_user}:{clean_ip}"
+        clean_user = (username or "").strip().lower()
+        clean_ip = (client_ip or "127.0.0.1").strip().lower()
+        if clean_ip in ["::1", "localhost", "::ffff:127.0.0.1"]:
+            clean_ip = "127.0.0.1"
+        
+        # 🛡️ 계정명(username)이 존재하는 경우 계정 단위 단일 키로 바인딩 (IPv4/IPv6 소켓 파편화 방지)
+        if clean_user:
+            return f"user:{clean_user}"
+        return f"ip:{clean_ip}"
 
     def check_lockout(self, username: str, client_ip: str) -> tuple:
         key = self.get_key(username, client_ip)

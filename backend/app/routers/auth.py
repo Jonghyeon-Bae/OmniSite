@@ -1,9 +1,10 @@
 from typing import Optional, List, Dict, Any
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 from sqlalchemy import text
-from datetime import timedelta
+from datetime import datetime, timedelta
+import threading
 
 import re
 from app.database import get_db
@@ -14,6 +15,70 @@ from app.utils.auth import (
     get_current_user,
     get_current_admin
 )
+
+class LoginLockoutManager:
+    """[Option A] 인메모리 스레드-세이프 로그인 차단 및 무차별 대입 공격 방어 관리자"""
+    def __init__(self, max_failures: int = 5, lockout_minutes: int = 15, window_minutes: int = 10):
+        self.max_failures = max_failures
+        self.lockout_seconds = lockout_minutes * 60
+        self.window_seconds = window_minutes * 60
+        self._lock = threading.Lock()
+        self._failures: Dict[str, List[datetime]] = {}
+        self._lockouts: Dict[str, datetime] = {}
+
+    def get_key(self, username: str, client_ip: str) -> str:
+        clean_user = (username or "unknown").strip().lower()
+        clean_ip = (client_ip or "127.0.0.1").strip()
+        return f"{clean_user}:{clean_ip}"
+
+    def check_lockout(self, username: str, client_ip: str) -> tuple:
+        key = self.get_key(username, client_ip)
+        now = datetime.now()
+        with self._lock:
+            if key in self._lockouts:
+                expire_time = self._lockouts[key]
+                if now < expire_time:
+                    remaining = int((expire_time - now).total_seconds())
+                    rem_min = remaining // 60
+                    rem_sec = remaining % 60
+                    time_str = f"{rem_min}분 {rem_sec}초" if rem_min > 0 else f"{rem_sec}초"
+                    return True, remaining, time_str
+                else:
+                    del self._lockouts[key]
+                    if key in self._failures:
+                        del self._failures[key]
+        return False, 0, ""
+
+    def record_failure(self, username: str, client_ip: str) -> tuple:
+        key = self.get_key(username, client_ip)
+        now = datetime.now()
+        with self._lock:
+            if key not in self._failures:
+                self._failures[key] = []
+            
+            window_start = now - timedelta(seconds=self.window_seconds)
+            self._failures[key] = [t for t in self._failures[key] if t > window_start]
+            self._failures[key].append(now)
+
+            count = len(self._failures[key])
+            if count >= self.max_failures:
+                expire_time = now + timedelta(seconds=self.lockout_seconds)
+                self._lockouts[key] = expire_time
+                rem_min = self.lockout_seconds // 60
+                return True, count, 0, f"{rem_min}분"
+            
+            remaining_attempts = self.max_failures - count
+            return False, count, remaining_attempts, ""
+
+    def reset(self, username: str, client_ip: str):
+        key = self.get_key(username, client_ip)
+        with self._lock:
+            if key in self._failures:
+                del self._failures[key]
+            if key in self._lockouts:
+                del self._lockouts[key]
+
+lockout_manager = LoginLockoutManager(max_failures=5, lockout_minutes=15, window_minutes=10)
 
 def validate_password_strength(password: str) -> None:
     if not password or len(password) < 8:
@@ -72,7 +137,26 @@ class UserRegisterRequest(BaseModel):
 
 # --- 2. 로그인 API ---
 @router.post("/login")
-async def login(req: UserLoginRequest, db: Session = Depends(get_db)):
+async def login(req: UserLoginRequest, request: Request, db: Session = Depends(get_db)):
+    client_ip = request.client.host if (request and request.client) else "127.0.0.1"
+
+    # 🛡️ 1. 무차별 로그인 대입 공격 잠금 상태 사전 검증
+    is_locked, remaining_sec, time_str = lockout_manager.check_lockout(req.username, client_ip)
+    if is_locked:
+        try:
+            from app.routers.spatial import save_pipeline_log
+            save_pipeline_log(db, 'SECURITY', '[AUTH_LOCKOUT_BLOCKED]', {
+                'username': req.username,
+                'client_ip': client_ip,
+                'remaining_seconds': remaining_sec
+            }, session_id=req.username)
+        except Exception:
+            pass
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=f"비밀번호 5회 연속 오류로 계정이 15분간 잠겼습니다. ({time_str} 후 다시 시도하세요.)"
+        )
+
     try:
         ensure_user_approval_column(db)
         
@@ -103,15 +187,9 @@ async def login(req: UserLoginRequest, db: Session = Depends(get_db)):
                 db.rollback()
                 print(f"[Auth Auto-Seed Warning] {seed_err}")
 
-        if not user:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="가입되지 않은 아이디이거나 비밀번호가 일치하지 않습니다."
-            )
-        
         # 비밀번호 검증 (실패 시 기본 계정인 경우 fallback 비밀번호 자동 보정)
-        is_valid_password = verify_password(req.password, user[2]) if user[2] else False
-        if not is_valid_password:
+        is_valid_password = verify_password(req.password, user[2]) if (user and user[2]) else False
+        if not is_valid_password and user:
             # admin 계정 디폴트 패스워드 호환성 자동 보정 (Admin1234!, admin1234!, admin1234 중 어떤 것이든 수용)
             if user[1] == "admin" and req.password in ["Admin1234!", "admin1234!", "admin1234"]:
                 is_valid_password = True
@@ -130,11 +208,38 @@ async def login(req: UserLoginRequest, db: Session = Depends(get_db)):
                 except Exception:
                     db.rollback()
 
-        if not is_valid_password:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="가입되지 않은 아이디이거나 비밀번호가 일치하지 않습니다."
-            )
+        # 계정이 존재하지 않거나 비밀번호 검증 실패 시 -> 카운트 누적 및 차단 여부 판단
+        if not user or not is_valid_password:
+            is_now_locked, fail_count, rem_attempts, lock_time_str = lockout_manager.record_failure(req.username, client_ip)
+            try:
+                from app.routers.spatial import save_pipeline_log
+                if is_now_locked:
+                    save_pipeline_log(db, 'SECURITY', '[AUTH_LOCKOUT_TRIGGERED]', {
+                        'username': req.username,
+                        'client_ip': client_ip,
+                        'fail_count': fail_count,
+                        'lockout_duration': lock_time_str
+                    }, session_id=req.username)
+                else:
+                    save_pipeline_log(db, 'SECURITY', '[AUTH_FAILED_ATTEMPT]', {
+                        'username': req.username,
+                        'client_ip': client_ip,
+                        'fail_count': fail_count,
+                        'remaining_attempts': rem_attempts
+                    }, session_id=req.username)
+            except Exception:
+                pass
+
+            if is_now_locked:
+                raise HTTPException(
+                    status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                    detail=f"비밀번호 5회 연속 오류로 계정이 15분간 잠겼습니다. (15분 후 다시 시도하세요.)"
+                )
+            else:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"가입되지 않은 아이디이거나 비밀번호가 일치하지 않습니다. (오류 {fail_count}/5회 - 5회 연속 실패 시 15분간 잠금)"
+                )
 
         # 승인 여부 검증 (is_approved == False 일 경우 403 Forbidden)
         is_approved = user[6]
@@ -143,6 +248,9 @@ async def login(req: UserLoginRequest, db: Session = Depends(get_db)):
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="관리자 승인 대기 중인 계정입니다. 스마트도시과 최고관리자의 승인 후 로그인하실 수 있습니다."
             )
+
+        # 로그인 성공 시 실패 기록 및 잠금 카운터 리셋
+        lockout_manager.reset(req.username, client_ip)
 
         access_token = create_access_token(data={"sub": user[1]})
         

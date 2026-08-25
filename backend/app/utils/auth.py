@@ -1,5 +1,6 @@
 import bcrypt
 from datetime import datetime, timedelta, timezone
+import uuid
 from typing import Optional, Dict, Any
 from jose import jwt, JWTError
 from fastapi import Depends, HTTPException, status
@@ -33,6 +34,9 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 # --- 2. JWT Access Token 발급 ---
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     to_encode = data.copy()
+    if "jti" not in to_encode:
+        to_encode["jti"] = str(uuid.uuid4())
+        
     if expires_delta:
         expire = datetime.now(timezone.utc) + expires_delta
     else:
@@ -53,8 +57,23 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = De
         # JWT 디코딩
         payload = jwt.decode(token, settings.JWT_SECRET_KEY, algorithms=[settings.JWT_ALGORITHM])
         username: str = payload.get("sub")
+        jti: str = payload.get("jti")
         if username is None:
             raise credentials_exception
+            
+        # 🔒 토큰 블랙리스트 (로그아웃 / 파기) 실시간 검증
+        try:
+            from app.routers.auth import token_blacklist_manager
+            if jti and token_blacklist_manager.is_blacklisted(jti):
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="로그아웃되었거나 파기된 토큰입니다. 다시 로그인하세요."
+                )
+        except HTTPException:
+            raise
+        except Exception:
+            pass
+
     except JWTError:
         raise credentials_exception
     

@@ -3,13 +3,15 @@ OmniSite SHA-256 Hash Chain Audit Service (v3.2.0-PrecisionUiAndAuditFix)
 Provides O(1) unified hash chain calculation, verification, and tamper detection.
 """
 import hashlib
+import hmac
 import json
 from datetime import datetime, timezone, timedelta
 from app.utils.helpers import get_kst_now
 
 def compute_sha256_hash(prev_hash: str, payload_data: dict) -> str:
     """
-    Computes SHA-256 hash by normalizing previous hash and current log payload.
+    Computes HMAC-SHA256 hash by normalizing previous hash and current log payload
+    using server-side secret key to prevent offline chain recalculation attacks.
     """
     prev_h = prev_hash or ("0" * 64)
     detail = payload_data.get("detail_json")
@@ -26,7 +28,8 @@ def compute_sha256_hash(prev_hash: str, payload_data: dict) -> str:
         "detail_json": detail
     }
     raw_str = f"{prev_h}:{json.dumps(norm_payload, sort_keys=True, ensure_ascii=False)}"
-    return hashlib.sha256(raw_str.encode('utf-8')).hexdigest()
+    secret_key = b"OMNISITE_ENTERPRISE_HMAC_AUDIT_SECRET_2026"
+    return hmac.new(secret_key, raw_str.encode('utf-8'), hashlib.sha256).hexdigest()
 
 def verify_log_chain(logs: list) -> tuple[bool, int, str]:
     """

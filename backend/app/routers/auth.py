@@ -1,12 +1,15 @@
+import asyncio
+import threading
+import re
 from typing import Optional, List, Dict, Any
-from fastapi import APIRouter, Depends, HTTPException, status, Request
+from fastapi import APIRouter, Depends, HTTPException, status, Request, Response
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from datetime import datetime, timedelta
-import threading
+from jose import jwt
 
-import re
+from app.config import settings
 from app.database import get_db
 from app.utils.auth import (
     verify_password,
@@ -15,6 +18,26 @@ from app.utils.auth import (
     get_current_user,
     get_current_admin
 )
+
+class TokenBlacklistManager:
+    """[OWASP Level-4] 인메모리 스레드-세이프 JWT 토큰 블랙리스트 관리자 (RTR & 로그아웃 파기)"""
+    def __init__(self):
+        self._blacklisted_jtis = set()
+        self._lock = threading.Lock()
+
+    def add(self, jti: str):
+        if not jti:
+            return
+        with self._lock:
+            self._blacklisted_jtis.add(jti)
+
+    def is_blacklisted(self, jti: str) -> bool:
+        if not jti:
+            return False
+        with self._lock:
+            return jti in self._blacklisted_jtis
+
+token_blacklist_manager = TokenBlacklistManager()
 
 class LoginLockoutManager:
     """[Option A] 인메모리 스레드-세이프 로그인 차단 및 무차별 대입 공격 방어 관리자"""
@@ -137,7 +160,7 @@ class UserRegisterRequest(BaseModel):
 
 # --- 2. 로그인 API ---
 @router.post("/login")
-async def login(req: UserLoginRequest, request: Request, db: Session = Depends(get_db)):
+async def login(req: UserLoginRequest, request: Request, response: Response, db: Session = Depends(get_db)):
     client_ip = request.client.host if (request and request.client) else "127.0.0.1"
 
     # 🛡️ 1. 무차별 로그인 대입 공격 잠금 상태 사전 검증
@@ -187,8 +210,8 @@ async def login(req: UserLoginRequest, request: Request, db: Session = Depends(g
                 db.rollback()
                 print(f"[Auth Auto-Seed Warning] {seed_err}")
 
-        # 비밀번호 검증 (실패 시 기본 계정인 경우 fallback 비밀번호 자동 보정)
-        is_valid_password = verify_password(req.password, user[2]) if (user and user[2]) else False
+        # 🛡️ 비밀번호 검증 비동기 격리 (asyncio.to_thread - CPU DoS 방어)
+        is_valid_password = await asyncio.to_thread(verify_password, req.password, user[2]) if (user and user[2]) else False
         if not is_valid_password and user:
             # admin 계정 디폴트 패스워드 호환성 자동 보정 (Admin1234!, admin1234!, admin1234 중 어떤 것이든 수용)
             if user[1] == "admin" and req.password in ["Admin1234!", "admin1234!", "admin1234"]:
@@ -254,6 +277,16 @@ async def login(req: UserLoginRequest, request: Request, db: Session = Depends(g
 
         access_token = create_access_token(data={"sub": user[1]})
         
+        # 🔒 HttpOnly + SameSite 쿠키 발행 (OWASP 웹 보안 준수)
+        response.set_cookie(
+            key="access_token",
+            value=access_token,
+            httponly=True,
+            max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+            samesite="lax",
+            secure=False
+        )
+
         # 🔒 실시간 단일 세션 보장: 올바른 계정 정보로 로그인 시 이전 선점 세션을 100% 무조건 덮어쓰고 소거
         try:
             from app.routers.spatial import set_active_user_session
@@ -262,7 +295,7 @@ async def login(req: UserLoginRequest, request: Request, db: Session = Depends(g
             print(f"[Auth Session Register Warning] {sess_err}")
 
         require_password_change = False
-        if user[1] == "admin" and user[2] and verify_password("admin1234", user[2]):
+        if user[1] == "admin" and user[2] and await asyncio.to_thread(verify_password, "admin1234", user[2]):
             require_password_change = True
             
         try:
@@ -296,6 +329,37 @@ async def login(req: UserLoginRequest, request: Request, db: Session = Depends(g
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"로그인 인증 처리 중 서버 내부 오류: {str(exc)}"
         )
+
+# --- 2-1. 로그아웃 API 및 JWT 토큰 파기 ---
+@router.post("/logout")
+async def logout(request: Request, response: Response, db: Session = Depends(get_db)):
+    """[OWASP] 토큰 블랙리스트 등록 및 HttpOnly 쿠키 삭제를 통한 즉시 세션 파기"""
+    auth_header = request.headers.get("Authorization")
+    token = None
+    if auth_header and auth_header.startswith("Bearer "):
+        token = auth_header.split(" ")[1]
+    elif "access_token" in request.cookies:
+        token = request.cookies.get("access_token")
+
+    username = "unknown"
+    if token:
+        try:
+            payload = jwt.decode(token, settings.JWT_SECRET_KEY, algorithms=[settings.JWT_ALGORITHM])
+            jti = payload.get("jti")
+            username = payload.get("sub", "unknown")
+            if jti:
+                token_blacklist_manager.add(jti)
+        except Exception:
+            pass
+
+    response.delete_cookie("access_token")
+    try:
+        from app.routers.spatial import save_pipeline_log
+        save_pipeline_log(db, 'SYSTEM', '[AUTH_LOGOUT]', {'username': username}, session_id=username)
+    except Exception:
+        pass
+
+    return {"message": "성공적으로 로그아웃되었으며 인증 토큰이 파기되었습니다."}
 
 # --- 3. 회원가입/계정 생성 신청 API (공개 접근 가능 - 인증 가드 없음) ---
 @router.post("/register")
